@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+:root {
+  --brand-primary: #5d1a89;
+  --brand-primary-light: #7b3da8;
+  --brand-primary-dark: #451366;
+  --brand-accent: #ff7f11;
+  --surface-sidebar: #1e1b24;
+  --surface-main: #faf8f5;
+  --surface-card: #ffffff;
+  --surface-border: #e8e4df;
+  --text-primary: #1a1625;
+  --text-secondary: #6b6578;
+  --semantic-success: #2d8a5e;
+  --semantic-warning: #b8860b;
+  --semantic-error: #c44545;
+  --shadow-card: 0 1px 3px rgba(26, 22, 37, 0.06), 0 8px 24px rgba(26, 22, 37, 0.06);
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', 'Roboto', sans-serif;
+  background-color: var(--surface-main);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* AG Grid — premium warm theme */
+.ag-theme-leap {
+  --ag-font-family: 'Plus Jakarta Sans', 'Inter', 'Roboto', sans-serif;
+  --ag-background-color: var(--surface-card);
+  --ag-foreground-color: var(--text-primary);
+  --ag-header-background-color: var(--surface-main);
+  --ag-header-foreground-color: var(--text-secondary);
+  --ag-border-color: var(--surface-border);
+  --ag-row-hover-color: #f5eff9;
+  --ag-selected-row-background-color: #e8d9f2;
+  --ag-range-selection-border-color: var(--brand-primary);
+  --ag-checkbox-checked-color: var(--brand-primary);
+  --ag-font-size: 14px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 48px;
+  --ag-header-height: 48px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-card);
+}
+
+.ag-theme-leap .ag-header-cell-label {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rbc-calendar {
+  min-height: 500px;
+}
+
+.kanban-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+}
+
+.kanban-column {
+  min-width: 280px;
+  max-width: 320px;
+  flex-shrink: 0;
+}
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: calc(100vh - 120px);
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Login brand panel gradient */
+.login-brand-panel {
+  background: linear-gradient(145deg, #451366 0%, #5d1a89 45%, #7b3da8 100%);
+}
+
+.login-accent-bar {
+  background: linear-gradient(90deg, #ff7f11, #ff9a44);
+}
