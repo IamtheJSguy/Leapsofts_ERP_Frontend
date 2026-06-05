@@ -41,6 +41,7 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
               [
                 ['firstName', 'First Name'],
                 ['lastName', 'Last Name'],
+                ['prospectName', 'Prospect Name'],
                 ['email', 'Email'],
                 ['linkedInUrl', 'LinkedIn URL'],
                 ['salesNavigatorUrl', 'Sales Navigator URL'],
@@ -50,6 +51,14 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
                 ['companySize', 'Company Size'],
                 ['location', 'Location'],
                 ['phone', 'Phone'],
+                ['profile', 'Profile'],
+                ['icp', 'ICP'],
+                ['leadStatus', 'Lead Status'],
+                ['date', 'Date'],
+                ['followUp', 'Follow Up'],
+                ['linkedinMsg', 'LinkedIn Msg'],
+                ['commentsAfterCall', 'Comments after Call'],
+                ['notes', 'Notes'],
               ] as const
             ).map(([field, label]) => (
               <Grid item xs={12} sm={6} key={field}>

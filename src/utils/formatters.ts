@@ -27,7 +27,8 @@ export const getLeadDisplayName = (lead: {
   lastName?: string;
   email?: string;
   company?: string;
+  prospectName?: string;
 }): string => {
   const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
-  return name || lead.email || lead.company || 'Unnamed Lead';
+  return name || lead.prospectName || lead.email || lead.company || 'Unnamed Lead';
 };

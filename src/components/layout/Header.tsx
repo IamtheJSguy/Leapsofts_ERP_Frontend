@@ -22,6 +22,7 @@ import { useLogout } from '@/hooks/api/useAuth';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
   const { toggleSidebar, setNotificationPanelOpen, theme, setTheme } = useUIStore();
@@ -30,6 +31,7 @@ export const Header = () => {
   const logout = useLogout();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -165,11 +167,21 @@ export const Header = () => {
             </Typography>
           </Box>
           <Divider />
+          <MenuItem
+            onClick={() => {
+              setProfileOpen(true);
+              setAnchorEl(null);
+            }}
+            sx={{ py: 1.25, fontWeight: 500 }}
+          >
+            Profile & Sheet
+          </MenuItem>
           <MenuItem onClick={handleLogout} sx={{ py: 1.25, fontWeight: 500 }}>
             Sign out
           </MenuItem>
         </Menu>
       </Toolbar>
+      <ProfileSettingsModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </AppBar>
   );
 };

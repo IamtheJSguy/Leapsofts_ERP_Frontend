@@ -50,8 +50,18 @@ export const LeadDetailDrawer = ({
         <Typography variant="body2" color="text.secondary" gutterBottom>
           {lead.title} at {lead.company}
         </Typography>
-        <Typography variant="body2">{lead.email}</Typography>
-        <Typography variant="body2">{lead.location}</Typography>
+        <Typography variant="body2"><strong>Email:</strong> {lead.email || 'N/A'}</Typography>
+        <Typography variant="body2"><strong>Location:</strong> {lead.location || 'N/A'}</Typography>
+        {lead.prospectName && <Typography variant="body2"><strong>Prospect Name:</strong> {lead.prospectName}</Typography>}
+        {lead.profile && <Typography variant="body2"><strong>Profile:</strong> {lead.profile}</Typography>}
+        {lead.icp && <Typography variant="body2"><strong>ICP:</strong> {lead.icp}</Typography>}
+        {lead.leadStatus && <Typography variant="body2"><strong>Lead Status (Raw):</strong> {lead.leadStatus}</Typography>}
+        {lead.date && <Typography variant="body2"><strong>Date:</strong> {lead.date}</Typography>}
+        {lead.followUp && <Typography variant="body2"><strong>Follow Up:</strong> {lead.followUp}</Typography>}
+        {lead.linkedinMsg && <Typography variant="body2"><strong>LinkedIn Msg (Raw):</strong> {lead.linkedinMsg}</Typography>}
+        {lead.commentsAfterCall && <Typography variant="body2"><strong>Comments after call:</strong> {lead.commentsAfterCall}</Typography>}
+        {lead.notes && <Typography variant="body2"><strong>Notes:</strong> {lead.notes}</Typography>}
+
         <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
           <Button variant="outlined" onClick={onEdit}>Edit</Button>
           <Button variant="outlined" color="error" onClick={onDelete}>Delete</Button>

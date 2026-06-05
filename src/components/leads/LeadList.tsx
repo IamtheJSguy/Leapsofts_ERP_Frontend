@@ -56,6 +56,8 @@ export const LeadList = () => {
         valueGetter: (p) => getLeadDisplayName(p.data || {}),
         flex: 1.5,
       },
+      { field: 'profile', headerName: 'Profile', flex: 1 },
+      { field: 'icp', headerName: 'ICP', flex: 1 },
       { field: 'company', headerName: 'Company', flex: 1 },
       { field: 'email', headerName: 'Email', flex: 1.2 },
       {

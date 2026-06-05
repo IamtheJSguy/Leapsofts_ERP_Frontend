@@ -39,6 +39,7 @@ export interface User {
     kpiAlerts: boolean;
     meetingReminders: boolean;
   };
+  googleSheetId?: string;
   createdAt?: string;
 }
 
@@ -63,6 +64,15 @@ export interface Lead {
   versionHistory?: VersionHistoryEntry[];
   createdAt?: string;
   updatedAt?: string;
+  prospectName?: string;
+  profile?: string;
+  icp?: string;
+  leadStatus?: string;
+  date?: string;
+  followUp?: string;
+  linkedinMsg?: string;
+  commentsAfterCall?: string;
+  notes?: string;
 }
 
 export interface ProfileSection {
