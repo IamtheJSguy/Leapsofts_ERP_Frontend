@@ -28,6 +28,7 @@ import { useLogout } from '@/hooks/api/useAuth';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
   const { toggleSidebar, setNotificationPanelOpen, theme, setTheme } = useUIStore();
@@ -36,6 +37,7 @@ export const Header = () => {
   const logout = useLogout();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const elapsedSeconds = useTimeTrackerStore((s) => s.elapsedSeconds);
@@ -303,7 +305,6 @@ export const Header = () => {
               </Box>
             </Box>
           </Box>
-
           <Divider sx={{ mx: 1, my: 0.5, opacity: theme === 'dark' ? 0.08 : 0.08 }} />
 
           {/* Menu Items with Premium Hover and Icons */}
@@ -330,7 +331,10 @@ export const Header = () => {
           </MenuItem>
 
           <MenuItem
-            onClick={() => setAnchorEl(null)}
+            onClick={() => {
+              setProfileOpen(true);
+              setAnchorEl(null);
+            }}
             sx={{
               py: 1,
               px: 2,
@@ -348,7 +352,7 @@ export const Header = () => {
             }}
           >
             <SettingsOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            Settings
+            Profile & Sheet Settings
           </MenuItem>
 
           <Divider sx={{ mx: 1, my: 0.5, opacity: theme === 'dark' ? 0.08 : 0.08 }} />
@@ -375,6 +379,7 @@ export const Header = () => {
           </MenuItem>
         </Menu>
       </Toolbar>
+      <ProfileSettingsModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </AppBar>
   );
 };

@@ -32,6 +32,15 @@ export const leadSchema = z.object({
   phone: z.string().optional(),
   connectionStatus: z.enum(CONNECTION_STATUS_OPTIONS as [string, ...string[]]).optional(),
   messageStatus: z.enum(MESSAGE_STATUS_OPTIONS as [string, ...string[]]).optional(),
+  prospectName: z.string().optional(),
+  profile: z.string().optional(),
+  icp: z.string().optional(),
+  leadStatus: z.string().optional(),
+  date: z.string().optional(),
+  followUp: z.string().optional(),
+  linkedinMsg: z.string().optional(),
+  commentsAfterCall: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export const kpiSchema = z.object({

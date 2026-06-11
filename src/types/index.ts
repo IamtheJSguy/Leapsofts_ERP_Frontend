@@ -43,6 +43,7 @@ export interface User {
     kpiAlerts: boolean;
     meetingReminders: boolean;
   };
+  googleSheetId?: string;
   createdAt?: string;
 }
 

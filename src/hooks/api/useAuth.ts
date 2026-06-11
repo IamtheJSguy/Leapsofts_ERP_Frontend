@@ -61,3 +61,22 @@ export const useCurrentUser = () => {
     retry: false,
   });
 };
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  return useMutation({
+    mutationFn: (data: { googleSheetId?: string; firstName?: string; lastName?: string }) =>
+      api.put('/users/me', data),
+    onSuccess: (res) => {
+      setAuth(res.data.data);
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+};
+
+export const useSyncMySheet = () => {
+  return useMutation({
+    mutationFn: () => api.post('/sheets/sync-my-sheet'),
+  });
+};
