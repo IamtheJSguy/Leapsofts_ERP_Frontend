@@ -14,11 +14,15 @@ const userApi = {
     api.put(`/users/${id}/role`, { role }),
 };
 
-export const useUsers = (filters: Record<string, string> = {}) =>
+export const useUsers = (
+  filters: Record<string, string> = {},
+  options?: { enabled?: boolean }
+) =>
   useQuery({
     queryKey: ['users', filters],
     queryFn: () => userApi.getUsers(filters).then((r) => r.data.data),
     staleTime: 1000 * 600,
+    ...options,
   });
 
 export const useUser = (id: string | undefined) =>

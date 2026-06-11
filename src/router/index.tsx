@@ -8,6 +8,7 @@ import { ROLES } from '@/lib/constants';
 import {
   LoginPage,
   DashboardPage,
+  TasksPage,
   LeadsPage,
   KanbanPage,
   KPIPage,
@@ -15,7 +16,11 @@ import {
   MeetingsPage,
   ChatPage,
   AdminPage,
+  TeamPage,
+  SalesPage,
   NotFoundPage,
+  ProfilePage,
+  TeamInsightsPage,
 } from './lazy-pages';
 
 const wrap = (element: React.ReactNode) => (
@@ -38,6 +43,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: wrap(<DashboardPage />) },
+      {
+        path: 'tasks',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <TasksPage />
+          </ProtectedRoute>,
+        ),
+      },
       {
         path: 'leads',
         element: wrap(
@@ -91,6 +104,38 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <AdminPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'team',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <TeamPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'sales',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <SalesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'profile',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <ProfilePage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'team/insights',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <TeamInsightsPage />
           </ProtectedRoute>,
         ),
       },

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, CssBaseline } from '@mui/material';
@@ -9,6 +10,14 @@ import { lightTheme, darkTheme } from '@/styles/theme';
 
 function App() {
   const theme = useUIStore((s) => s.theme);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>

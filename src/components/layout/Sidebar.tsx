@@ -10,8 +10,10 @@ import {
   useMediaQuery,
   useTheme,
   alpha,
+  IconButton,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContactPageIcon from '@mui/icons-material/ContactPage';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -19,9 +21,14 @@ import ChatIcon from '@mui/icons-material/Chat';
 import EventIcon from '@mui/icons-material/Event';
 import SpeedIcon from '@mui/icons-material/Speed';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import PeopleIcon from '@mui/icons-material/People';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthStore } from '@/store/useAuthStore';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 
@@ -34,37 +41,66 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: <DashboardIcon fontSize="small" /> },
-  { label: 'Leads', path: '/leads', icon: <ContactPageIcon fontSize="small" /> },
-  { label: 'Kanban', path: '/kanban', icon: <ViewKanbanIcon fontSize="small" /> },
-  { label: 'KPIs', path: '/kpis', icon: <SpeedIcon fontSize="small" /> },
-  { label: 'Reports', path: '/reports', icon: <AssessmentIcon fontSize="small" /> },
-  { label: 'Meetings', path: '/meetings', icon: <EventIcon fontSize="small" /> },
-  { label: 'Chat', path: '/chat', icon: <ChatIcon fontSize="small" /> },
-  { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon fontSize="small" />, adminOnly: true },
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    title: 'Workspace',
+    items: [
+      { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Kanban', path: '/kanban', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} /> },
+    ],
+  },
+  {
+    title: 'Analytics',
+    items: [
+      { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Team Insights', path: '/team/insights', icon: <TimelineIcon sx={{ fontSize: 18 }} />, adminOnly: true },
+    ],
+  },
+  {
+    title: 'Collaboration',
+    items: [
+      { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} /> },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon sx={{ fontSize: 18 }} />, adminOnly: true },
+    ],
+  },
 ];
 
 const BrandMark = () => (
   <Box
     sx={{
-      width: 42,
-      height: 42,
-      borderRadius: 2,
-      background: `linear-gradient(135deg, ${tokens.brand.primary} 0%, ${tokens.brand.primaryLight} 55%, ${tokens.brand.accent} 100%)`,
+      width: 36,
+      height: 36,
+      borderRadius: '8px',
+      background: `linear-gradient(135deg, ${tokens.brand.primary} 0%, ${tokens.brand.primaryLight} 60%, ${tokens.brand.accent} 100%)`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
-      boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.45)}`,
+      boxShadow: `0 4px 10px ${alpha(tokens.brand.primary, 0.35)}`,
     }}
     aria-hidden
   >
     <Typography
       component="span"
-      sx={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '-0.02em' }}
+      sx={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '-0.03em' }}
     >
-      B2
+      LS
     </Typography>
   </Box>
 );
@@ -75,8 +111,18 @@ export const Sidebar = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isDarkMode = theme.palette.mode === 'dark';
 
-  const filteredItems = navItems.filter((item) => !item.adminOnly || canManageUsers);
+  const user = useAuthStore((s) => s.user);
+  const userInitial = user?.firstName
+    ? user.firstName.charAt(0).toUpperCase()
+    : user?.email
+      ? user.email.charAt(0).toUpperCase()
+      : 'U';
+  const userName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user?.firstName || 'Leapsofts User';
+  const userEmail = user?.email || 'user@leapsofts.com';
 
   const drawerContent = (
     <Box
@@ -84,118 +130,227 @@ export const Sidebar = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: tokens.surface.sidebar,
-        color: tokens.text.sidebar,
+        background: isDarkMode
+          ? 'linear-gradient(180deg, #131117 0%, #1a1721 65%, #0f0d12 100%)'
+          : 'linear-gradient(180deg, #1c1825 0%, #24202e 65%, #18151f 100%)',
+        color: '#E8E4EF',
+        borderRadius: 0,
       }}
     >
-      <Box
-        sx={{
-          px: 2.5,
-          py: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          borderBottom: `1px solid ${alpha('#fff', 0.06)}`,
-        }}
-      >
-        <BrandMark />
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              color: tokens.text.inverse,
-              fontWeight: 700,
-              lineHeight: 1.2,
-              letterSpacing: '-0.01em',
-            }}
-            noWrap
-          >
-            {APP_NAME}
-          </Typography>
-          <Typography variant="caption" sx={{ color: tokens.text.inverseMuted }}>
-            LEAP SOFTS
-          </Typography>
+      {/* Workspace Selector Dropdown Header */}
+      <Box sx={{ px: 2, pt: 3, pb: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            p: 1.25,
+            borderRadius: '12px',
+            bgcolor: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+            <BrandMark />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '0.86rem',
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.015em',
+                }}
+                noWrap
+              >
+                {APP_NAME}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.45)',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                }}
+                noWrap
+              >
+                Enterprise Workspace
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       </Box>
 
-      <List sx={{ px: 1.5, py: 2, flex: 1 }}>
-        {filteredItems.map((item) => {
-          const isActive =
-            item.path === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.path);
+      {/* Grouped Navigation Lists */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          px: 2,
+          py: 1.5,
+          scrollbarWidth: 'none', // Firefox
+          '&::-webkit-scrollbar': {
+            display: 'none', // Chrome, Safari, Edge
+          },
+          '-ms-overflow-style': 'none', // IE
+        }}
+      >
+        {navGroups.map((group, groupIdx) => {
+          // Filter items based on permissions
+          const filteredItems = group.items.filter(
+            (item) => !item.adminOnly || canManageUsers
+          );
+
+          if (filteredItems.length === 0) return null;
 
           return (
-            <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                component={NavLink}
-                to={item.path}
-                onClick={() => isMobile && toggleSidebar()}
+            <Box key={group.title} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : 3 }}>
+              {/* Category Header Label */}
+              <Typography
+                variant="caption"
                 sx={{
-                  borderRadius: tokens.radius.pill,
-                  py: 1.25,
-                  px: 2,
-                  color: tokens.text.sidebarMuted,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: tokens.surface.sidebarHover,
-                    color: tokens.text.inverse,
-                  },
-                  ...(isActive && {
-                    bgcolor: tokens.surface.sidebarActive,
-                    color: tokens.text.inverse,
-                    '& .MuiListItemIcon-root': {
-                      color: tokens.brand.accent,
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: 8,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 3,
-                      height: 20,
-                      borderRadius: 2,
-                      bgcolor: tokens.brand.accent,
-                    },
-                  }),
+                  display: 'block',
+                  px: 1.5,
+                  mb: 1,
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'rgba(255, 255, 255, 0.32)',
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    minWidth: 36,
-                    color: 'inherit',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: 14,
-                    fontWeight: isActive ? 600 : 500,
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
+                {group.title}
+              </Typography>
+
+              {/* Group Items */}
+              <List sx={{ p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {filteredItems.map((item) => {
+                  const isActive =
+                    item.path === '/'
+                      ? location.pathname === '/'
+                      : location.pathname.startsWith(item.path);
+
+                  return (
+                    <ListItem key={item.path} disablePadding>
+                      <ListItemButton
+                        component={NavLink}
+                        to={item.path}
+                        onClick={() => isMobile && toggleSidebar()}
+                        sx={{
+                          borderRadius: '10px',
+                          border: '1px solid transparent',
+                          py: 1,
+                          px: 1.5,
+                          color: 'rgba(232, 228, 239, 0.65)',
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 0.03)',
+                            borderColor: 'rgba(255, 255, 255, 0.04)',
+                            color: '#FFFFFF',
+                          },
+                          ...(isActive && {
+                            bgcolor: 'rgba(93, 26, 137, 0.12)',
+                            borderColor: alpha(tokens.brand.primary, 0.25),
+                            color: '#FFFFFF',
+                            boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.02)',
+                            '& .MuiListItemIcon-root': {
+                              color: tokens.brand.accent,
+                            },
+                            '&:hover': {
+                              bgcolor: 'rgba(93, 26, 137, 0.16)',
+                              borderColor: alpha(tokens.brand.primary, 0.35),
+                            }
+                          }),
+                        }}
+                      >
+                        <ListItemIcon
+                          sx={{
+                            minWidth: 28,
+                            color: 'inherit',
+                            transition: 'color 0.25s',
+                          }}
+                        >
+                          {item.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={item.label}
+                          primaryTypographyProps={{
+                            fontSize: '0.84rem',
+                            fontWeight: isActive ? 700 : 500,
+                            letterSpacing: '-0.01em',
+                          }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Box>
           );
         })}
-      </List>
+      </Box>
 
+      {/* User Account profile panel */}
       <Box
         sx={{
           px: 2.5,
-          py: 2,
-          borderTop: `1px solid ${alpha('#fff', 0.06)}`,
+          py: 2.25,
+          borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mt: 'auto',
+          bgcolor: 'rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Box
-          className="login-accent-bar"
-          sx={{ height: 3, borderRadius: tokens.radius.pill, mb: 1.5, opacity: 0.9 }}
-        />
-        <Typography variant="caption" sx={{ color: tokens.text.inverseMuted }}>
-          B2B Lead Generation
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              bgcolor: tokens.brand.primary,
+              backgroundImage: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              border: '2px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            {userInitial}
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: '#FFFFFF', fontWeight: 600, fontSize: '0.82rem', lineHeight: 1.2 }}
+              noWrap
+            >
+              {userName}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.7rem', display: 'block' }}
+              noWrap
+            >
+              {userEmail}
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          size="small"
+          sx={{
+            color: 'rgba(255, 255, 255, 0.4)',
+            transition: 'color 0.2s',
+            '&:hover': { color: '#FFFFFF' },
+          }}
+          onClick={() => alert("Settings configuration is accessible from user dashboard menu.")}
+        >
+          <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </Box>
     </Box>
   );
@@ -204,6 +359,7 @@ export const Sidebar = () => {
     width: DRAWER_WIDTH,
     boxSizing: 'border-box' as const,
     border: 'none',
+    borderRadius: 0,
     boxShadow: tokens.shadow.sidebar,
   };
 

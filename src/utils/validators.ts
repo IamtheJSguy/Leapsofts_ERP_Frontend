@@ -48,7 +48,8 @@ export const kpiChangeRequestSchema = z.object({
 
 export const meetingSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  link: z.string().url().optional().or(z.literal('')),
+  description: z.string().optional(),
+  meetingLink: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   scheduledAt: z.string().min(1, 'Date is required'),
   participants: z.array(z.string()).optional(),
 });

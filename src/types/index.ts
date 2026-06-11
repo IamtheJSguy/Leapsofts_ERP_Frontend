@@ -33,6 +33,10 @@ export interface User {
   lastName?: string;
   role: Role;
   isActive?: boolean;
+  phone?: string;
+  jobTitle?: string;
+  department?: string;
+  bio?: string;
   notificationPreferences?: {
     email: boolean;
     portal: boolean;
@@ -63,6 +67,12 @@ export interface Lead {
   versionHistory?: VersionHistoryEntry[];
   createdAt?: string;
   updatedAt?: string;
+  prospectName?: string;
+  profile?: string;
+  icp?: string;
+  leadStatus?: string;
+  date?: string;
+  linkedinMsg?: string;
 }
 
 export interface ProfileSection {
@@ -92,11 +102,32 @@ export interface ApiResponse<T> {
 export interface KPI {
   _id: string;
   name: string;
+  description?: string;
   targetValue: number;
   timeFrame: KpiTimeframe;
-  metricType: 'count' | 'ratio' | 'time' | 'duration';
+  metricType?: 'count' | 'ratio' | 'time' | 'duration';
   assignedTo?: string[] | User[];
   changeRequests?: ChangeRequest[];
+}
+
+export interface KPITemplateItem {
+  _id?: string;
+  name: string;
+  description?: string;
+  defaultTargetValue: number;
+  timeFrame: string;
+  assignedTo?: string[];
+}
+
+export interface KPITemplate {
+  _id: string;
+  name: string;
+  description?: string;
+  items: KPITemplateItem[];
+  createdBy?: string | { _id: string; email: string; firstName?: string; lastName?: string };
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ChangeRequest {
@@ -141,7 +172,9 @@ export interface Notification {
 export interface Meeting {
   _id: string;
   title: string;
-  link?: string;
+  description?: string;
+  meetingLink?: string;
+  link?: string; // legacy alias
   scheduledAt: string;
   participants: string[] | User[];
   status?: 'scheduled' | 'completed' | 'cancelled';
