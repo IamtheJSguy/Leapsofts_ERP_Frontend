@@ -40,6 +40,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { meetingSchema, type MeetingFormData } from '@/utils/validators';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MeetingListProps {
   onScheduleTrigger?: () => void;
@@ -55,6 +56,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
+  const { user } = useAuth();
 
   const getParticipantDetails = (participant: string | any) => {
     const id = typeof participant === 'string' ? participant : participant._id;
@@ -111,31 +113,33 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 }}
               >
                 {/* Delete button positioned absolute at top right */}
-                <Tooltip title="Cancel Meeting">
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(meeting._id);
-                    }}
-                    aria-label="Delete meeting"
-                    sx={{
-                      position: 'absolute',
-                      top: 18,
-                      right: 16,
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)',
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                      transition: 'all 0.2s',
-                      zIndex: 2,
-                      '&:hover': {
-                        color: tokens.semantic.error,
-                        bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
-                      }
-                    }}
-                  >
-                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
+                {user?.role === 'admin' && (
+                  <Tooltip title="Cancel Meeting">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(meeting._id);
+                      }}
+                      aria-label="Delete meeting"
+                      sx={{
+                        position: 'absolute',
+                        top: 18,
+                        right: 16,
+                        color: isDarkMode ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)',
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        transition: 'all 0.2s',
+                        zIndex: 2,
+                        '&:hover': {
+                          color: tokens.semantic.error,
+                          bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
+                        }
+                      }}
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
 
                 <Box sx={{ p: 3, pt: 3.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   {/* Top Row: Category Icon Box & Badge */}
@@ -523,24 +527,26 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
               }}
             >
               {/* Top row: destructive action */}
-              <Button
-                onClick={() => setDeleteId(selectedMeeting._id)}
-                fullWidth
-                sx={{
-                  py: 1,
-                  borderRadius: '14px',
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  color: tokens.semantic.error,
-                  bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.08)' : 'rgba(196, 69, 69, 0.05)',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
-                  }
-                }}
-              >
-                Cancel Meeting
-              </Button>
+              {user?.role === 'admin' && (
+                <Button
+                  onClick={() => setDeleteId(selectedMeeting._id)}
+                  fullWidth
+                  sx={{
+                    py: 1,
+                    borderRadius: '14px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: tokens.semantic.error,
+                    bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.08)' : 'rgba(196, 69, 69, 0.05)',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
+                    }
+                  }}
+                >
+                  Cancel Meeting
+                </Button>
+              )}
 
               {/* Bottom row: navigation actions */}
               <Box sx={{ display: 'flex', gap: 1.5 }}>
@@ -560,29 +566,31 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 >
                   Close
                 </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    setEditMeeting(selectedMeeting);
-                    setSelectedMeeting(null);
-                  }}
-                  sx={{
-                    flex: 1,
-                    py: 1,
-                    borderRadius: '14px',
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    borderColor: tokens.brand.primaryLight,
-                    color: tokens.brand.primaryLight,
-                    '&:hover': {
-                      borderColor: tokens.brand.primaryDark,
-                      bgcolor: 'rgba(93, 26, 137, 0.04)',
-                    }
-                  }}
-                >
-                  Edit Details
-                </Button>
+                {user?.role === 'admin' && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setEditMeeting(selectedMeeting);
+                      setSelectedMeeting(null);
+                    }}
+                    sx={{
+                      flex: 1,
+                      py: 1,
+                      borderRadius: '14px',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      borderColor: tokens.brand.primaryLight,
+                      color: tokens.brand.primaryLight,
+                      '&:hover': {
+                        borderColor: tokens.brand.primaryDark,
+                        bgcolor: 'rgba(93, 26, 137, 0.04)',
+                      }
+                    }}
+                  >
+                    Edit Details
+                  </Button>
+                )}
                 {(selectedMeeting.meetingLink || selectedMeeting.link) && (
                   <Button
                     variant="contained"

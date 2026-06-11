@@ -4,12 +4,15 @@ import AddIcon from '@mui/icons-material/Add';
 import { MeetingScheduler } from '@/components/meetings/MeetingScheduler';
 import { MeetingList } from '@/components/meetings/MeetingList';
 import { tokens } from '@/styles/tokens';
+import { useAuth } from '@/hooks/useAuth';
 
 const MeetingsPage = () => {
   const [tab, setTab] = useState(0);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 4 }}>
@@ -48,30 +51,32 @@ const MeetingsPage = () => {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setSchedulerOpen(true)}
-          sx={{
-            bgcolor: tokens.brand.primary,
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: '0.82rem',
-            px: 3.5,
-            py: 1.25,
-            borderRadius: '24px',
-            boxShadow: 'none',
-            textTransform: 'none',
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              bgcolor: tokens.brand.primaryDark,
-              transform: 'translateY(-1px)',
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setSchedulerOpen(true)}
+            sx={{
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              px: 3.5,
+              py: 1.25,
+              borderRadius: '24px',
               boxShadow: 'none',
-            },
-          }}
-        >
-          Schedule Meeting
-        </Button>
+              textTransform: 'none',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: tokens.brand.primaryDark,
+                transform: 'translateY(-1px)',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            Schedule Meeting
+          </Button>
+        )}
       </Box>
 
       {/* Translucent Tab Navigation Pill Switcher */}
@@ -109,7 +114,7 @@ const MeetingsPage = () => {
             '&:hover': {
               bgcolor: tab === 0
                 ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
-                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                 : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
             }
           }}
         >
@@ -128,7 +133,7 @@ const MeetingsPage = () => {
               ? (isDarkMode ? '#fff' : tokens.brand.primary)
               : 'text.secondary',
             bgcolor: tab === 1
-              ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#fff')
+              ? (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#fff')
               : 'transparent',
             boxShadow: tab === 1 && !isDarkMode
               ? '0 1px 3px rgba(0,0,0,0.05)'
@@ -136,8 +141,8 @@ const MeetingsPage = () => {
             transition: 'all 0.2s',
             '&:hover': {
               bgcolor: tab === 1
-                ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
-                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                ? (isDarkMode ? 'rgba(255, 255, 255, 0.12)' : '#fff')
+                : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
             }
           }}
         >
@@ -150,10 +155,14 @@ const MeetingsPage = () => {
         <MeetingScheduler dialogOpen={schedulerOpen} setDialogOpen={setSchedulerOpen} />
       ) : (
         <MeetingList
-          onScheduleTrigger={() => {
-            setTab(0);
-            setSchedulerOpen(true);
-          }}
+          onScheduleTrigger={
+            isAdmin
+              ? () => {
+                  setTab(0);
+                  setSchedulerOpen(true);
+                }
+              : undefined
+          }
         />
       )}
     </Box>

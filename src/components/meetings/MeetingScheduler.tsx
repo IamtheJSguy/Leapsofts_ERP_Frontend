@@ -17,6 +17,7 @@ import {
   Autocomplete,
   Chip,
   Avatar,
+  IconButton,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +32,9 @@ import LabelIcon from '@mui/icons-material/Label';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import EventIcon from '@mui/icons-material/Event';
 import GroupIcon from '@mui/icons-material/Group';
+import CloseIcon from '@mui/icons-material/Close';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useAuth } from '@/hooks/useAuth';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -51,8 +55,11 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
   const [date, setDate] = useState<Date>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const { register, handleSubmit, reset, setValue, control } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
@@ -287,15 +294,21 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
           onNavigate={(newDate) => setDate(newDate)}
           style={{ height: 600 }}
           onSelectSlot={(slot) => {
-            setSelectedSlot(slot.start);
-            setDialogOpen(true);
+            if (isAdmin) {
+              setSelectedSlot(slot.start);
+              setDialogOpen(true);
+            }
           }}
           onSelectEvent={(event) => {
-            setEditingMeeting(event.resource);
-            setDialogOpen(true);
+            if (isAdmin) {
+              setEditingMeeting(event.resource);
+              setDialogOpen(true);
+            } else {
+              setSelectedMeeting(event.resource);
+            }
           }}
           eventPropGetter={eventPropGetter}
-          selectable
+          selectable={isAdmin}
         />
       </Box>
 
@@ -537,6 +550,255 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      {/* Details Dialog for Non-Admin Users */}
+      <Dialog
+        open={!!selectedMeeting}
+        onClose={() => setSelectedMeeting(null)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            border: '1px solid',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+            p: 1,
+            bgcolor: 'background.paper',
+            boxShadow: tokens.shadow.cardHover,
+            overflow: 'hidden',
+          }
+        }}
+      >
+        {selectedMeeting && (
+          <>
+            <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                <Box sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: '10px',
+                  bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                  color: tokens.brand.primaryLight,
+                  border: `1px solid ${isDarkMode ? 'rgba(123, 61, 168, 0.25)' : 'rgba(93, 26, 137, 0.08)'}`,
+                }}>
+                  Meeting Details
+                </Box>
+                <IconButton onClick={() => setSelectedMeeting(null)} size="small" sx={{ color: 'text.secondary' }}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: '-0.02em', lineHeight: 1.3, color: 'text.primary' }}>
+                {selectedMeeting.title}
+              </Typography>
+            </DialogTitle>
+            
+            <DialogContent sx={{ px: 3, py: 1.5, overflowX: 'hidden' }}>
+              {/* Timing Grid */}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 2,
+                  mb: 2.5,
+                  p: 2,
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
+                  borderRadius: '16px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}`,
+                }}
+              >
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Scheduled Date
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                    <EventIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
+                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                      {format(new Date(selectedMeeting.scheduledAt), 'eeee, MMM d, yyyy')}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Scheduled Time
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                    <EventIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
+                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                      {format(new Date(selectedMeeting.scheduledAt), 'h:mm a')}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Participants list */}
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                Participants ({selectedMeeting.participants?.length || 0})
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
+                {!selectedMeeting.participants || selectedMeeting.participants.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                    No participants added yet.
+                  </Typography>
+                ) : (
+                  selectedMeeting.participants.map((p, idx) => {
+                    const id = typeof p === 'string' ? p : p._id;
+                    const details = dbUsers.find((u: any) => u._id === id) || (typeof p === 'object' ? p : null);
+                    const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : 'Unknown Participant');
+                    const email = details?.email || '';
+                    const role = details?.role || 'user';
+                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+                    
+                    return (
+                      <Box
+                        key={idx}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          p: 1.25,
+                          borderRadius: '12px',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                        }}
+                      >
+                        <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
+                          {initials}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {name}
+                          </Typography>
+                          {email && (
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                              {email}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Chip
+                          label={role.toUpperCase()}
+                          size="small"
+                          sx={{
+                            borderRadius: '8px',
+                            fontWeight: 750,
+                            fontSize: '0.62rem',
+                            bgcolor: role === 'admin' ? 'rgba(217, 82, 54, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                            color: role === 'admin' ? '#d95236' : tokens.brand.primaryLight,
+                          }}
+                        />
+                      </Box>
+                    );
+                  })
+                )}
+              </Box>
+
+              {/* Description */}
+              {selectedMeeting.description && (
+                <Box
+                  sx={{
+                    mb: 3,
+                    p: 2,
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
+                    borderRadius: '14px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}`,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.75 }}>
+                    Description
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                    {selectedMeeting.description}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Meeting Link detail */}
+              {(selectedMeeting.meetingLink || selectedMeeting.link) && (
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.06)' : 'rgba(93, 26, 137, 0.03)',
+                    borderRadius: '14px',
+                    border: `1px solid ${isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.08)'}`,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.75 }}>
+                    Meeting Link
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: tokens.brand.primaryLight,
+                      fontWeight: 650,
+                      wordBreak: 'break-all',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => window.open(selectedMeeting.meetingLink || selectedMeeting.link, '_blank', 'noopener,noreferrer')}
+                  >
+                    {selectedMeeting.meetingLink || selectedMeeting.link}
+                  </Typography>
+                </Box>
+              )}
+            </DialogContent>
+            
+            <DialogActions
+              sx={{
+                px: 3,
+                pb: 2.5,
+                pt: 1,
+                display: 'flex',
+                gap: 1.5,
+                justifyContent: 'flex-end',
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => setSelectedMeeting(null)}
+                sx={{
+                  py: 1,
+                  px: 3,
+                  borderRadius: '14px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  color: 'text.secondary',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+                }}
+              >
+                Close
+              </Button>
+              {(selectedMeeting.meetingLink || selectedMeeting.link) && (
+                <Button
+                  variant="contained"
+                  startIcon={<VideocamIcon />}
+                  endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                  onClick={() => window.open(selectedMeeting.meetingLink || selectedMeeting.link, '_blank', 'noopener,noreferrer')}
+                  sx={{
+                    py: 1,
+                    px: 4,
+                    borderRadius: '14px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    bgcolor: tokens.brand.primary,
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: tokens.brand.primaryDark,
+                    }
+                  }}
+                >
+                  Join Meeting
+                </Button>
+              )}
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </Box>
   );
