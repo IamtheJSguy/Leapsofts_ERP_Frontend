@@ -73,6 +73,9 @@ export interface Lead {
   leadStatus?: string;
   date?: string;
   linkedinMsg?: string;
+  followUp?: string;
+  commentsAfterCall?: string;
+  notes?: string;
 }
 
 export interface ProfileSection {
