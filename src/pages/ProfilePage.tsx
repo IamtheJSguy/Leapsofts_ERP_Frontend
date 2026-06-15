@@ -28,8 +28,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useUpdateUser } from '@/hooks/api/useUsers';
-import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/api/useSettings';
+import { useUpdateMe } from '@/hooks/api/useUsers';
+import { useSystemSettings } from '@/hooks/api/useSettings';
 import { useSyncGoogleSheet } from '@/hooks/api/useGoogleSheets';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
@@ -39,9 +39,9 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const updateAuthUser = useAuthStore((s) => s.updateUser);
   const { data: settings } = useSystemSettings();
-  const updateSettings = useUpdateSystemSettings();
+
   const syncGoogleSheet = useSyncGoogleSheet();
-  const updateUserMutation = useUpdateUser();
+  const updateMeMutation = useUpdateMe();
   const addToast = useUIStore((s) => s.addToast);
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
@@ -61,20 +61,20 @@ export default function ProfilePage() {
   const [syncStageText, setSyncStageText] = useState('');
   const [linkError, setLinkError] = useState('');
 
-  // Hydrate fields from user and settings
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
       setPhone(user.phone || '');
+      setSheetUrl((user as any).googleSheetId || '');
     }
   }, [user]);
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !sheetUrl && !(user as any)?.googleSheetId) {
       setSheetUrl(settings.referenceSheetUrl || '');
     }
-  }, [settings]);
+  }, [settings, user, sheetUrl]);
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -96,16 +96,12 @@ export default function ProfilePage() {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?._id) return;
 
-    updateUserMutation.mutate(
+    updateMeMutation.mutate(
       {
-        id: user._id,
-        data: {
-          firstName,
-          lastName,
-          phone,
-        },
+        firstName,
+        lastName,
+        phone,
       },
       {
         onSuccess: () => {
@@ -157,14 +153,14 @@ export default function ProfilePage() {
       });
     }, 250);
 
-    // Save Sheet URL to settings and trigger sync API
-    updateSettings.mutate(
+    // Save Sheet ID to user profile and trigger sync API
+    updateMeMutation.mutate(
       {
-        ...settings,
-        referenceSheetUrl: trimmedInput,
-      },
+        googleSheetId: sheetId,
+      } as any,
       {
         onSuccess: () => {
+          updateAuthUser({ googleSheetId: sheetId } as any);
           syncGoogleSheet.mutate(sheetId, {
             onSuccess: () => {
               clearInterval(progressInterval);
@@ -188,21 +184,21 @@ export default function ProfilePage() {
         onError: () => {
           clearInterval(progressInterval);
           setIsSyncing(false);
-          addToast({ message: 'Failed to update settings with reference sheet.', severity: 'error' });
+          addToast({ message: 'Failed to update your profile with reference sheet.', severity: 'error' });
         },
       }
     );
   };
 
   const handleDisconnectGoogleSheet = () => {
-    updateSettings.mutate(
+    updateMeMutation.mutate(
       {
-        ...settings,
-        referenceSheetUrl: '',
-      },
+        googleSheetId: '',
+      } as any,
       {
         onSuccess: () => {
           setSheetUrl('');
+          updateAuthUser({ googleSheetId: '' } as any);
           addToast({ message: 'Google Sheet unlinked successfully.', severity: 'info' });
         },
         onError: () => {
@@ -482,8 +478,8 @@ export default function ProfilePage() {
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={updateUserMutation.isPending}
-                  startIcon={updateUserMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <SaveOutlinedIcon sx={{ fontSize: 18 }} />}
+                  disabled={updateMeMutation.isPending}
+                  startIcon={updateMeMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <SaveOutlinedIcon sx={{ fontSize: 18 }} />}
                   sx={{
                     bgcolor: tokens.brand.primary,
                     color: '#fff',
@@ -504,7 +500,7 @@ export default function ProfilePage() {
                     },
                   }}
                 >
-                  {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updateMeMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </Box>
             </Box>
@@ -575,7 +571,7 @@ export default function ProfilePage() {
 
                 {/* Button Actions Layout */}
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 1.5 }}>
-                  {settings?.referenceSheetUrl && (
+                  {(user as any)?.googleSheetId && (
                     <Button
                       variant="outlined"
                       onClick={handleDisconnectGoogleSheet}
@@ -656,11 +652,11 @@ export default function ProfilePage() {
                     sx={{
                       p: 3,
                       borderRadius: '16px',
-                      bgcolor: settings?.referenceSheetUrl
+                      bgcolor: (user as any)?.googleSheetId
                         ? (isDarkMode ? 'rgba(45, 138, 94, 0.08)' : 'rgba(45, 138, 94, 0.04)')
                         : (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'),
                       border: `1px solid ${
-                        settings?.referenceSheetUrl
+                        (user as any)?.googleSheetId
                           ? (isDarkMode ? 'rgba(45, 138, 94, 0.18)' : 'rgba(45, 138, 94, 0.1)')
                           : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
                       }`,
@@ -669,16 +665,16 @@ export default function ProfilePage() {
                       gap: 2,
                     }}
                   >
-                    {settings?.referenceSheetUrl ? (
+                    {(user as any)?.googleSheetId ? (
                       <CheckCircleOutlineIcon sx={{ color: tokens.semantic.success, fontSize: 28 }} />
                     ) : (
                       <CloudQueueIcon sx={{ color: 'text.secondary', fontSize: 28 }} />
                     )}
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5 }}>
-                        {settings?.referenceSheetUrl ? 'Spreadsheet Sync Active' : 'Offline Mode'}
+                        {(user as any)?.googleSheetId ? 'Spreadsheet Sync Active' : 'Offline Mode'}
                       </Typography>
-                      {settings?.referenceSheetUrl ? (
+                      {(user as any)?.googleSheetId ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography
                             variant="caption"
@@ -686,11 +682,11 @@ export default function ProfilePage() {
                             noWrap
                             sx={{ display: 'block', maxWidth: 180 }}
                           >
-                            {settings.referenceSheetUrl}
+                            {(user as any).googleSheetId}
                           </Typography>
                           <IconButton
                             component="a"
-                            href={settings.referenceSheetUrl}
+                            href={`https://docs.google.com/spreadsheets/d/${(user as any).googleSheetId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             size="small"

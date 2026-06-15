@@ -182,6 +182,7 @@ export interface Meeting {
   scheduledAt: string;
   participants: string[] | User[];
   status?: 'scheduled' | 'completed' | 'cancelled';
+  createdBy?: string | User; // the user who created this meeting
 }
 
 export interface KanbanColumn {

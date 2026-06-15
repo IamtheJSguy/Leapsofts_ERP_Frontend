@@ -8,12 +8,23 @@ import {
   CircularProgress,
   useTheme,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SearchIcon from '@mui/icons-material/Search';
 import FolderIcon from '@mui/icons-material/Folder';
 import ForumIcon from '@mui/icons-material/Forum';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import AddToDriveIcon from '@mui/icons-material/AddToDrive';
+import ImageIcon from '@mui/icons-material/Image';
 import { useMessages, useSendMessage, useConversations, useCreateConversation } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
@@ -42,6 +53,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { joinRoom, leaveRoom } = useSocket();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  // Attachment Menu State
+  const [attachAnchorEl, setAttachAnchorEl] = useState<null | HTMLElement>(null);
+  const isAttachMenuOpen = Boolean(attachAnchorEl);
+
+  // Drive Dialog State
+  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
+  const [driveLink, setDriveLink] = useState('');
 
   useEffect(() => {
     if (activeConversationId) {
@@ -99,8 +118,39 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }));
   }, [messages, activeConversationId, dbUsers, user]);
 
-  const displayMessages = activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages;
-  const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-');
+  const dummyMessages = useMemo(() => {
+    return [
+      {
+        _id: 'msg-1',
+        conversationId: 'dummy-chat-1',
+        sender: { _id: 'dummy-user-1', firstName: 'Emily', lastName: 'Chen' },
+        content: 'Hi! Have you reviewed the latest Q3 metrics?',
+        type: 'text',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        _id: 'msg-2',
+        conversationId: 'dummy-chat-1',
+        sender: user,
+        content: 'Yes, looking solid. I think we can push for a 15% increase.',
+        type: 'text',
+        createdAt: new Date(Date.now() - 3000000).toISOString(),
+      },
+      {
+        _id: 'msg-3',
+        conversationId: 'dummy-chat-1',
+        sender: { _id: 'dummy-user-1', firstName: 'Emily', lastName: 'Chen' },
+        content: 'Sounds perfect! Let\'s finalize the proposal.',
+        type: 'text',
+        createdAt: new Date(Date.now() - 100000).toISOString(),
+      }
+    ] as any[];
+  }, [user]);
+
+  const displayMessages = activeConversationId === 'dummy-chat-1' 
+    ? dummyMessages 
+    : (activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages);
+  const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-') && activeConversationId !== 'dummy-chat-1';
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -112,7 +162,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (activeConversationId.startsWith('mock-conv-')) {
       const targetUserId = activeConversationId.replace('mock-conv-', '');
       createConversation.mutate(
-        { participantIds: [targetUserId] },
+        { participantId: targetUserId },
         {
           onSuccess: (response: any) => {
             const newConvId = response.data?.data?._id || response.data?._id;
@@ -146,13 +196,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return { name, initial, isOnline };
     }
 
+    if (activeConversationId === 'dummy-chat-1') {
+      return { name: 'Emily Chen', initial: 'EC', isOnline: true };
+    }
+
     const activeConversation = conversations.find((c) => c._id === activeConversationId);
     if (!activeConversation) return null;
 
-    const otherParticipants = activeConversation.participants.filter((p) => p._id !== user?._id);
+    const otherParticipants = activeConversation.participants.filter((p: any) => p._id !== user?._id);
     const mainParticipant = otherParticipants[0] || activeConversation.participants[0] || user;
-    const name = otherParticipants.map((p) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
-    const initial = name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U';
+    if (otherParticipants.length === 0) return { name: 'Me', initial: 'M', isOnline: true };
+    const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
+    const initial = name.split(' ').map((n: any) => n[0]).join('').toUpperCase() || 'U';
     const isOnline = mainParticipant?.isActive || (mainParticipant as any)?.status === 'active' || false;
     return { name, initial, isOnline };
   }, [activeConversationId, conversations, dbUsers, user]);
@@ -167,33 +222,57 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           justifyContent: 'center',
           height: '100%',
           p: 4,
-          bgcolor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.002)',
+          bgcolor: 'transparent',
         }}
       >
-        <Avatar
-          sx={{
-            width: 70,
-            height: 70,
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(93, 26, 137, 0.04)',
-            color: tokens.brand.primary,
-            mb: 2.5,
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.08)'}`,
-          }}
-        >
-          <ForumIcon sx={{ fontSize: 32 }} />
-        </Avatar>
-        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', mb: 1, letterSpacing: '-0.01em' }}>
+        <Box sx={{ position: 'relative', mb: 3 }}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: 120,
+              height: 120,
+              transform: 'translate(-50%, -50%)',
+              bgcolor: tokens.brand.primary,
+              borderRadius: '50%',
+              filter: 'blur(40px)',
+              opacity: isDarkMode ? 0.4 : 0.15,
+              animation: 'pulse 4s infinite ease-in-out',
+              '@keyframes pulse': {
+                '0%': { transform: 'translate(-50%, -50%) scale(0.9)', opacity: isDarkMode ? 0.3 : 0.1 },
+                '50%': { transform: 'translate(-50%, -50%) scale(1.1)', opacity: isDarkMode ? 0.5 : 0.2 },
+                '100%': { transform: 'translate(-50%, -50%) scale(0.9)', opacity: isDarkMode ? 0.3 : 0.1 },
+              }
+            }}
+          />
+          <Avatar
+            sx={{
+              width: 80,
+              height: 80,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
+              color: tokens.brand.primary,
+              boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 24px rgba(93,26,137,0.08)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93,26,137,0.04)'}`,
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <ForumIcon sx={{ fontSize: 36 }} />
+          </Avatar>
+        </Box>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mb: 1.5, letterSpacing: '-0.02em', zIndex: 1 }}>
           Select a Conversation
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 280, textAlign: 'center', fontWeight: 500 }}>
-          Choose a team member from the conversations list to begin real-time messaging.
+        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 320, textAlign: 'center', fontWeight: 500, lineHeight: 1.5, zIndex: 1 }}>
+          Choose a team member from the sidebar or start a new chat to begin real-time messaging.
         </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.1)' : '#fff' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, bgcolor: 'transparent', position: 'relative' }}>
       {/* Dynamic Conversational Header Bar */}
       <Box
         sx={{
@@ -202,8 +281,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           justifyContent: 'space-between',
           px: 3,
           py: 2,
-          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-          bgcolor: isDarkMode ? 'rgba(24, 20, 31, 0.25)' : 'rgba(0,0,0,0.002)',
+          borderBottom: 'none',
+          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: isDarkMode ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.02)',
+          zIndex: 10,
         }}
       >
         {chatHeaderDetails && (
@@ -248,15 +331,31 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         )}
 
         {/* Action Header Tools */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
           <Tooltip title="Search Messages" arrow>
-            <IconButton onClick={onSearchOpen} size="small" sx={{ border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} aria-label="Search messages">
-              <SearchIcon sx={{ fontSize: 18 }} />
+            <IconButton 
+              onClick={onSearchOpen} 
+              size="small" 
+              sx={{ 
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
+              }} 
+            >
+              <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Google Drive Files" arrow>
-            <IconButton onClick={onDriveOpen} size="small" sx={{ border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} aria-label="Google Drive">
-              <FolderIcon sx={{ fontSize: 18 }} />
+            <IconButton 
+              onClick={onDriveOpen} 
+              size="small" 
+              sx={{ 
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
+              }} 
+            >
+              <FolderIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -283,7 +382,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       </Box>
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ p: 2.5, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
+      <Box sx={{ p: 3, pt: 1, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
         <Box
           sx={{
             display: 'flex',
@@ -291,25 +390,75 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             gap: 1.5,
             p: 1,
             px: 2,
-            borderRadius: '28px',
-            bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
-            boxShadow: isDarkMode ? 'none' : 'inset 0 1px 2px rgba(0,0,0,0.02)',
+            borderRadius: '32px',
+            bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.8)' : 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+            boxShadow: isDarkMode ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(93,26,137,0.08)',
+            transition: 'all 0.3s ease',
+            '&:focus-within': {
+              boxShadow: isDarkMode ? '0 16px 48px rgba(0,0,0,0.6)' : '0 16px 48px rgba(93,26,137,0.12)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(93,26,137,0.1)'}`,
+            }
           }}
         >
           <Tooltip title="Attach Files" arrow>
-            <IconButton size="small" sx={{ color: 'text.secondary' }} aria-label="Attach file">
+            <IconButton 
+              size="small" 
+              onClick={(e) => setAttachAnchorEl(e.currentTarget)}
+              sx={{ 
+                color: 'text.secondary',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                width: 36,
+                height: 36,
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }
+              }} 
+              aria-label="Attach file"
+            >
               <AttachFileIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
 
+          {/* Attach Menu */}
+          <Menu
+            anchorEl={attachAnchorEl}
+            open={isAttachMenuOpen}
+            onClose={() => setAttachAnchorEl(null)}
+            PaperProps={{
+              sx: {
+                borderRadius: '16px',
+                mt: -2,
+                minWidth: 160,
+                boxShadow: isDarkMode ? '0 12px 32px rgba(0,0,0,0.5)' : '0 12px 32px rgba(0,0,0,0.1)',
+                bgcolor: isDarkMode ? '#25212e' : '#fff',
+                backgroundImage: 'none',
+              }
+            }}
+            transformOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+            anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
+          >
+            <MenuItem onClick={() => { setAttachAnchorEl(null); }} sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon>
+                <ImageIcon fontSize="small" sx={{ color: tokens.brand.primary }} />
+              </ListItemIcon>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>Media</Typography>
+            </MenuItem>
+            <MenuItem onClick={() => { setAttachAnchorEl(null); setDriveDialogOpen(true); }} sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon>
+                <AddToDriveIcon fontSize="small" sx={{ color: '#0F9D58' }} />
+              </ListItemIcon>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>Drive</Typography>
+            </MenuItem>
+          </Menu>
+
           <TextField
             fullWidth
             multiline
-            maxRows={4}
+            maxRows={5}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type your message here..."
+            placeholder="Type a message..."
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -322,9 +471,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }}
             sx={{
               '& .MuiInputBase-root': {
-                fontSize: '0.86rem',
+                fontSize: '0.95rem',
                 color: 'text.primary',
-                py: 0.5,
+                py: 1,
               },
             }}
             aria-label="Message input"
@@ -334,30 +483,102 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             onClick={handleSend}
             disabled={sendMessage.isPending || !text.trim()}
             sx={{
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               bgcolor: tokens.brand.primary,
               color: '#fff',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 4px 12px rgba(93, 26, 137, 0.3)',
               '&:hover': {
                 bgcolor: tokens.brand.primaryDark,
-                transform: 'scale(1.06)',
+                transform: 'scale(1.08)',
+                boxShadow: '0 6px 16px rgba(93, 26, 137, 0.4)',
+              },
+              '&:active': {
+                transform: 'scale(0.95)',
               },
               '&.Mui-disabled': {
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                 color: 'text.disabled',
+                boxShadow: 'none',
               },
             }}
             aria-label="Send message"
           >
             {sendMessage.isPending ? (
-              <CircularProgress size={18} color="inherit" />
+              <CircularProgress size={20} color="inherit" />
             ) : (
-              <SendIcon sx={{ fontSize: 16 }} />
+              <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />
             )}
           </IconButton>
         </Box>
       </Box>
+
+      {/* Google Drive Link Dialog */}
+      <Dialog
+        open={driveDialogOpen}
+        onClose={() => setDriveDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? '#1e1b24' : '#fff',
+            backgroundImage: 'none',
+            boxShadow: tokens.shadow.card,
+            width: '100%',
+            maxWidth: 400,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Connect to Drive</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
+            Enter the Google Drive link to attach it to this conversation.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            fullWidth
+            placeholder="https://drive.google.com/..."
+            value={driveLink}
+            onChange={(e) => setDriveLink(e.target.value)}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
+            onClick={() => { setDriveDialogOpen(false); setDriveLink(''); }} 
+            sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (driveLink) {
+                // Pre-fill chat with link or immediately send it
+                setText(prev => prev ? `${prev} ${driveLink}` : driveLink);
+                setDriveDialogOpen(false);
+                setDriveLink('');
+              }
+            }}
+            disabled={!driveLink.trim()}
+            variant="contained"
+            sx={{
+              bgcolor: tokens.brand.primary,
+              borderRadius: '12px',
+              fontWeight: 700,
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' }
+            }}
+          >
+            Connect
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

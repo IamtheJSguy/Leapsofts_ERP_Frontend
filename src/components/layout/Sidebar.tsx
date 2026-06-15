@@ -54,7 +54,7 @@ const navGroups: NavGroup[] = [
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
       { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Kanban', path: '/kanban', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
       { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} /> },
     ],
   },

@@ -44,9 +44,10 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface MeetingListProps {
   onScheduleTrigger?: () => void;
+  currentUser?: any;
 }
 
-export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
+export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps) => {
   const { data: meetings = [], isLoading } = useMeetings();
   const deleteMeeting = useDeleteMeeting();
   const { data: dbUsers = [] } = useUsers();
@@ -57,11 +58,47 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  // Filter meetings to only show those where the current user is a participant
+  const myMeetings = meetings.filter((m: Meeting) => {
+    if (!currentUser) return false;
+    const participantIds = (m.participants || []).map((p: any) =>
+      typeof p === 'string' ? p : p._id
+    );
+    return participantIds.includes(currentUser._id);
+  });
 
   const getParticipantDetails = (participant: string | any) => {
     const id = typeof participant === 'string' ? participant : participant._id;
     return dbUsers.find((u) => u._id === id) || (typeof participant === 'object' ? participant : null);
   };
+
+  // Check if the meeting was created by an admin
+  const isCreatedByAdmin = (meeting: Meeting) => {
+    if (!meeting.createdBy) return false;
+    const creatorId = typeof meeting.createdBy === 'string' ? meeting.createdBy : meeting.createdBy._id;
+    const creator = dbUsers.find((u: any) => u._id === creatorId);
+    // If createdBy is a populated object with role
+    if (typeof meeting.createdBy === 'object' && (meeting.createdBy as any).role) {
+      return (meeting.createdBy as any).role === 'admin';
+    }
+    return creator?.role === 'admin';
+  };
+
+  // Can the current user edit or delete this meeting?
+  // - Admins can always
+  // - Users can only if THEY created it AND it was NOT created by an admin
+  const canEditOrDelete = (meeting: Meeting) => {
+    if (isAdmin) return true;
+    if (isCreatedByAdmin(meeting)) return false;
+    if (!currentUser) return false;
+    const creatorId = typeof meeting.createdBy === 'string'
+      ? meeting.createdBy
+      : (meeting.createdBy as any)?._id;
+    return creatorId === currentUser._id;
+  };
+
 
   if (isLoading) {
     return (
@@ -71,7 +108,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
     );
   }
 
-  if (meetings.length === 0) {
+  if (myMeetings.length === 0) {
     return (
       <EmptyState
         title="No meetings scheduled"
@@ -85,9 +122,9 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
   return (
     <>
       <Grid container spacing={3}>
-        {meetings.map((meeting) => {
+        {myMeetings.map((meeting) => {
           const isMeetingPast = isPast(new Date(meeting.scheduledAt));
-          
+
           return (
             <Grid item xs={12} sm={6} md={4} key={meeting._id}>
               <Card
@@ -112,8 +149,8 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                   },
                 }}
               >
-                {/* Delete button positioned absolute at top right */}
-                {user?.role === 'admin' && (
+                {/* Delete button positioned absolute at top right - visible if user can edit/delete */}
+                {canEditOrDelete(meeting) && (
                   <Tooltip title="Cancel Meeting">
                     <IconButton
                       size="small"
@@ -173,7 +210,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                       fontSize: '1.08rem',
                       lineHeight: 1.4,
                       mb: 2.5,
-                      color: isMeetingPast 
+                      color: isMeetingPast
                         ? (isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')
                         : 'text.primary',
                       display: '-webkit-box',
@@ -230,7 +267,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
                       Participants
                     </Typography>
-                    
+
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       {(!meeting.participants || meeting.participants.length === 0) ? (
                         <Typography variant="caption" sx={{ color: 'text.muted', fontSize: '0.72rem', fontWeight: 550, fontStyle: 'italic' }}>
@@ -242,7 +279,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                             const details = getParticipantDetails(p);
                             const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : '');
                             const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-                            
+
                             return (
                               <Tooltip key={idx} title={name}>
                                 <Box
@@ -364,7 +401,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 {selectedMeeting.title}
               </Typography>
             </DialogTitle>
-            
+
             <DialogContent sx={{ px: 3, py: 1.5, overflowX: 'hidden' }}>
               {/* Timing Grid */}
               <Box
@@ -404,24 +441,89 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 </Box>
               </Box>
 
+              {/* Organizer */}
+              {(() => {
+                if (!selectedMeeting.createdBy) return null;
+                const details = getParticipantDetails(selectedMeeting.createdBy);
+                const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof selectedMeeting.createdBy === 'string' ? selectedMeeting.createdBy : 'Unknown Organizer');
+                const email = details?.email || '';
+                const role = details?.role || 'user';
+                const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+                return (
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Organizer
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.25,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                        {initials}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {name}
+                        </Typography>
+                        {email && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                            {email}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Chip
+                        label={role.toUpperCase()}
+                        size="small"
+                        sx={{
+                          borderRadius: '8px',
+                          fontWeight: 750,
+                          fontSize: '0.62rem',
+                          bgcolor: role === 'admin' ? 'rgba(217, 82, 54, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                          color: role === 'admin' ? '#d95236' : tokens.brand.primaryLight,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                );
+              })()}
+
               {/* Participants list */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
-                Participants ({selectedMeeting.participants?.length || 0})
-              </Typography>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
-                {!selectedMeeting.participants || selectedMeeting.participants.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                    No participants added yet.
-                  </Typography>
-                ) : (
-                  selectedMeeting.participants.map((p, idx) => {
-                    const details = getParticipantDetails(p);
-                    const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : 'Unknown Participant');
-                    const email = details?.email || '';
-                    const role = details?.role || 'user';
-                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-                    
+              {(() => {
+                const createdById = selectedMeeting.createdBy 
+                  ? (typeof selectedMeeting.createdBy === 'string' ? selectedMeeting.createdBy : (selectedMeeting.createdBy as any)._id) 
+                  : null;
+                const participantsToDisplay = selectedMeeting.participants?.filter(p => {
+                  const id = typeof p === 'string' ? p : p._id;
+                  return id !== createdById;
+                }) || [];
+
+                return (
+                  <>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Participants ({participantsToDisplay.length})
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
+                      {participantsToDisplay.length === 0 ? (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          No participants added yet.
+                        </Typography>
+                      ) : (
+                        participantsToDisplay.map((p, idx) => {
+                          const details = getParticipantDetails(p);
+                          const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : 'Unknown Participant');
+                          const email = details?.email || '';
+                          const role = details?.role || 'user';
+                          const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
                     return (
                       <Box
                         key={idx}
@@ -459,13 +561,16 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                             color: role === 'admin' ? '#d95236' : tokens.brand.primaryLight,
                           }}
                         />
-                      </Box>
-                    );
-                  })
-                )}
-              </Box>
+                        </Box>
+                      );
+                    })
+                  )}
+                </Box>
+              </>
+            );
+          })()}
 
-              {/* Description */}
+          {/* Description */}
               {selectedMeeting.description && (
                 <Box
                   sx={{
@@ -515,7 +620,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 </Box>
               )}
             </DialogContent>
-            
+
             <DialogActions
               sx={{
                 px: 3,
@@ -526,8 +631,8 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 alignItems: 'stretch',
               }}
             >
-              {/* Top row: destructive action */}
-              {user?.role === 'admin' && (
+              {/* Top row: destructive action - only if user can edit/delete this meeting */}
+              {selectedMeeting && canEditOrDelete(selectedMeeting) && (
                 <Button
                   onClick={() => setDeleteId(selectedMeeting._id)}
                   fullWidth
@@ -566,7 +671,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
                 >
                   Close
                 </Button>
-                {user?.role === 'admin' && (
+                {selectedMeeting && canEditOrDelete(selectedMeeting) && (
                   <Button
                     variant="outlined"
                     onClick={() => {
@@ -642,6 +747,7 @@ export const MeetingList = ({ onScheduleTrigger }: MeetingListProps) => {
             meeting={editMeeting}
             onClose={() => setEditMeeting(null)}
             dbUsers={dbUsers}
+            canDelete={canEditOrDelete(editMeeting)}
             onDeleteTrigger={(id) => {
               setDeleteId(id);
             }}
@@ -676,9 +782,10 @@ interface EditFormProps {
   onClose: () => void;
   dbUsers: any[];
   onDeleteTrigger: (id: string) => void;
+  canDelete?: boolean;
 }
 
-const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger }: EditFormProps) => {
+const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: EditFormProps) => {
   const updateMeeting = useUpdateMeeting();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
@@ -783,7 +890,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger }: EditFormProps)
             ),
           }}
         />
-        
+
         <Controller
           name="participants"
           control={control}
@@ -879,26 +986,28 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger }: EditFormProps)
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5 }}>
-        <Button
-          onClick={() => {
-            onDeleteTrigger(meeting._id);
-          }}
-          sx={{
-            mr: 'auto',
-            px: 3,
-            py: 1,
-            borderRadius: '24px',
-            textTransform: 'none',
-            fontWeight: 650,
-            color: tokens.semantic.error,
-            bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.08)' : 'rgba(196, 69, 69, 0.05)',
-            '&:hover': {
-              bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
-            }
-          }}
-        >
-          Cancel Meeting
-        </Button>
+        {canDelete && (
+          <Button
+            onClick={() => {
+              onDeleteTrigger(meeting._id);
+            }}
+            sx={{
+              mr: 'auto',
+              px: 3,
+              py: 1,
+              borderRadius: '24px',
+              textTransform: 'none',
+              fontWeight: 650,
+              color: tokens.semantic.error,
+              bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.08)' : 'rgba(196, 69, 69, 0.05)',
+              '&:hover': {
+                bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
+              }
+            }}
+          >
+            Cancel Meeting
+          </Button>
+        )}
         <Button
           onClick={onClose}
           sx={{

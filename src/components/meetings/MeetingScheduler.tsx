@@ -42,9 +42,10 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 interface MeetingSchedulerProps {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
+  currentUser?: any;
 }
 
-export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingSchedulerProps) => {
+export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: MeetingSchedulerProps) => {
   const { data: meetings = [] } = useMeetings();
   const createMeeting = useCreateMeeting();
   const updateMeeting = useUpdateMeeting();
@@ -61,20 +62,49 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
+  // Filter meetings to only show those the current user is a participant of
+  const myMeetings = meetings.filter((m: Meeting) => {
+    if (!currentUser) return false;
+    const participantIds = (m.participants || []).map((p: any) =>
+      typeof p === 'string' ? p : p._id
+    );
+    return participantIds.includes(currentUser._id);
+  });
+
+  // Check if the meeting was created by an admin
+  const isCreatedByAdmin = (meeting: Meeting) => {
+    if (!meeting.createdBy) return false;
+    if (typeof meeting.createdBy === 'object' && (meeting.createdBy as any).role) {
+      return (meeting.createdBy as any).role === 'admin';
+    }
+    return false; // can't determine without populated createdBy
+  };
+
+  // Can the current user edit or delete this meeting?
+  const canEditOrDelete = (meeting: Meeting) => {
+    if (isAdmin) return true;
+    if (isCreatedByAdmin(meeting)) return false;
+    if (!currentUser) return false;
+    const creatorId = typeof meeting.createdBy === 'string'
+      ? meeting.createdBy
+      : (meeting.createdBy as any)?._id;
+    return creatorId === currentUser._id;
+  };
+
   const { register, handleSubmit, reset, setValue, control } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
   });
 
   const events = useMemo(
     () =>
-      meetings.map((m: Meeting) => ({
+      myMeetings.map((m: Meeting) => ({
         id: m._id,
         title: m.title,
         start: new Date(m.scheduledAt),
         end: new Date(m.scheduledAt),
         resource: m,
       })),
-    [meetings],
+    [myMeetings],
   );
 
   useEffect(() => {
@@ -92,7 +122,9 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
         setValue('title', '');
         setValue('description', '');
         setValue('meetingLink', '');
-        setValue('participants', []);
+        // Auto-add current user as first participant
+        const defaultParticipants = currentUser?._id ? [currentUser._id] : [];
+        setValue('participants', defaultParticipants);
         if (selectedSlot) {
           setValue('scheduledAt', format(selectedSlot, "yyyy-MM-dd'T'HH:mm"));
         } else {
@@ -100,7 +132,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
         }
       }
     }
-  }, [dialogOpen, selectedSlot, editingMeeting, setValue]);
+  }, [dialogOpen, selectedSlot, editingMeeting, setValue, currentUser]);
 
   const handleClose = () => {
     setDialogOpen(false);
@@ -294,21 +326,20 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
           onNavigate={(newDate) => setDate(newDate)}
           style={{ height: 600 }}
           onSelectSlot={(slot) => {
-            if (isAdmin) {
-              setSelectedSlot(slot.start);
-              setDialogOpen(true);
-            }
+            setSelectedSlot(slot.start);
+            setDialogOpen(true);
           }}
           onSelectEvent={(event) => {
-            if (isAdmin) {
-              setEditingMeeting(event.resource);
+            const meeting: Meeting = event.resource;
+            if (canEditOrDelete(meeting)) {
+              setEditingMeeting(meeting);
               setDialogOpen(true);
             } else {
-              setSelectedMeeting(event.resource);
+              setSelectedMeeting(meeting);
             }
           }}
           eventPropGetter={eventPropGetter}
-          selectable={isAdmin}
+          selectable
         />
       </Box>
 
@@ -392,7 +423,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
                 ),
               }}
             />
-            
+
             <Controller
               name="participants"
               control={control}
@@ -488,7 +519,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5 }}>
-            {editingMeeting && (
+            {editingMeeting && canEditOrDelete(editingMeeting) && (
               <Button
                 onClick={handleDelete}
                 disabled={deleteMeeting.isPending}
@@ -594,7 +625,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
                 {selectedMeeting.title}
               </Typography>
             </DialogTitle>
-            
+
             <DialogContent sx={{ px: 3, py: 1.5, overflowX: 'hidden' }}>
               {/* Timing Grid */}
               <Box
@@ -634,25 +665,91 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
                 </Box>
               </Box>
 
+              {/* Organizer */}
+              {(() => {
+                if (!selectedMeeting.createdBy) return null;
+                const createdById = typeof selectedMeeting.createdBy === 'string' ? selectedMeeting.createdBy : (selectedMeeting.createdBy as any)._id;
+                const details = dbUsers.find((u: any) => u._id === createdById) || (typeof selectedMeeting.createdBy === 'object' ? selectedMeeting.createdBy : null);
+                const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof selectedMeeting.createdBy === 'string' ? selectedMeeting.createdBy : 'Unknown Organizer');
+                const email = details?.email || '';
+                const role = details?.role || 'user';
+                const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+                return (
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Organizer
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.25,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                        {initials}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {name}
+                        </Typography>
+                        {email && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                            {email}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Chip
+                        label={role.toUpperCase()}
+                        size="small"
+                        sx={{
+                          borderRadius: '8px',
+                          fontWeight: 750,
+                          fontSize: '0.62rem',
+                          bgcolor: role === 'admin' ? 'rgba(217, 82, 54, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                          color: role === 'admin' ? '#d95236' : tokens.brand.primaryLight,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                );
+              })()}
+
               {/* Participants list */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
-                Participants ({selectedMeeting.participants?.length || 0})
-              </Typography>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
-                {!selectedMeeting.participants || selectedMeeting.participants.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                    No participants added yet.
-                  </Typography>
-                ) : (
-                  selectedMeeting.participants.map((p, idx) => {
-                    const id = typeof p === 'string' ? p : p._id;
-                    const details = dbUsers.find((u: any) => u._id === id) || (typeof p === 'object' ? p : null);
-                    const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : 'Unknown Participant');
-                    const email = details?.email || '';
-                    const role = details?.role || 'user';
-                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-                    
+              {(() => {
+                const createdById = selectedMeeting.createdBy 
+                  ? (typeof selectedMeeting.createdBy === 'string' ? selectedMeeting.createdBy : (selectedMeeting.createdBy as any)._id) 
+                  : null;
+                const participantsToDisplay = selectedMeeting.participants?.filter(p => {
+                  const id = typeof p === 'string' ? p : p._id;
+                  return id !== createdById;
+                }) || [];
+
+                return (
+                  <>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Participants ({participantsToDisplay.length})
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
+                      {participantsToDisplay.length === 0 ? (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          No participants added yet.
+                        </Typography>
+                      ) : (
+                        participantsToDisplay.map((p, idx) => {
+                          const id = typeof p === 'string' ? p : p._id;
+                          const details = dbUsers.find((u: any) => u._id === id) || (typeof p === 'object' ? p : null);
+                          const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : 'Unknown Participant');
+                          const email = details?.email || '';
+                          const role = details?.role || 'user';
+                          const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
                     return (
                       <Box
                         key={idx}
@@ -690,13 +787,16 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
                             color: role === 'admin' ? '#d95236' : tokens.brand.primaryLight,
                           }}
                         />
-                      </Box>
-                    );
-                  })
-                )}
-              </Box>
+                        </Box>
+                      );
+                    })
+                  )}
+                </Box>
+              </>
+            );
+          })()}
 
-              {/* Description */}
+          {/* Description */}
               {selectedMeeting.description && (
                 <Box
                   sx={{
@@ -746,7 +846,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen }: MeetingScheduler
                 </Box>
               )}
             </DialogContent>
-            
+
             <DialogActions
               sx={{
                 px: 3,

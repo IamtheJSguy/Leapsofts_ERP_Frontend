@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { 
   Grid, 
   Box, 
-  CircularProgress, 
   Typography, 
   Button, 
   Dialog, 
@@ -24,6 +23,7 @@ import { useDashboard } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
+import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
 
 export const UserDashboard = () => {
   const navigate = useNavigate();
@@ -49,8 +49,14 @@ export const UserDashboard = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
+      <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <ChartSkeleton height={180} />
+        <Grid container spacing={3.5}>
+          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
+          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
+          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
+          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
+        </Grid>
       </Box>
     );
   }

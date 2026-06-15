@@ -12,6 +12,7 @@ const userApi = {
   deleteUser: (id: string) => api.delete(`/users/${id}`),
   updateRole: ({ id, role }: { id: string; role: string }) =>
     api.put(`/users/${id}/role`, { role }),
+  updateMe: (data: Partial<User>) => api.put('/users/me', data),
 };
 
 export const useUsers = (
@@ -64,5 +65,16 @@ export const useDeleteUser = () => {
   return useMutation({
     mutationFn: userApi.deleteUser,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+};
+
+export const useUpdateMe = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: userApi.updateMe,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['auth'] }); // or however auth is cached
+    },
   });
 };

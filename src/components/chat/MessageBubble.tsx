@@ -31,11 +31,12 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
 
   return (
     <Box
+      className="animate-fade-in-up"
       sx={{
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
         alignItems: 'flex-end',
-        mb: 1.5,
+        mb: 2,
         gap: 1.25,
       }}
     >
@@ -80,18 +81,20 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
         <Paper
           elevation={0}
           sx={{
-            p: '10px 16px',
-            borderRadius: '20px',
-            borderBottomRightRadius: isOwn ? '4px' : '20px',
-            borderBottomLeftRadius: isOwn ? '20px' : '4px',
-            bgcolor: isOwn 
-              ? tokens.brand.primary 
-              : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+            p: '12px 18px',
+            borderRadius: '24px',
+            borderBottomRightRadius: isOwn ? '4px' : '24px',
+            borderBottomLeftRadius: isOwn ? '24px' : '4px',
+            background: isOwn 
+              ? `linear-gradient(135deg, ${tokens.brand.primary}, #8A2BE2)` 
+              : (isDarkMode ? 'rgba(255,255,255,0.04)' : '#ffffff'),
             color: isOwn ? '#fff' : 'text.primary',
             border: isOwn 
               ? 'none' 
-              : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-            boxShadow: 'none',
+              : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+            boxShadow: isOwn 
+              ? '0 8px 24px rgba(93,26,137,0.25)' 
+              : (isDarkMode ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.02)'),
           }}
         >
           <Typography

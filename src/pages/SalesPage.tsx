@@ -44,8 +44,9 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import WarningIcon from '@mui/icons-material/Warning';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
-import { useSyncGoogleSheet } from '@/hooks/api/useGoogleSheets';
+import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads } from '@/hooks/api/useLeads';
+import { useUpdateMe } from '@/hooks/api/useUsers';
 
 // High-fidelity synced prospects mock database
 const mockSyncedProspects = [
@@ -143,9 +144,10 @@ const columnsConfig = [
 ];
 
 export const SalesPage = () => {
-  const theme = useTheme();
-  const isDarkMode = theme.palette.mode === 'dark';
-  const syncGoogleSheet = useSyncGoogleSheet();
+  const muiTheme = useTheme();
+  const isDarkMode = muiTheme.palette.mode === 'dark';
+  const syncMySheet = useSyncMySheet();
+  const updateMe = useUpdateMe();
 
   // Dynamic style injection to hide scrollbars globally while this page is active
   useEffect(() => {
@@ -177,8 +179,13 @@ export const SalesPage = () => {
   const [prospects, setProspects] = useState<any[]>([]);
 
   useEffect(() => {
-    if (leadsData?.data) {
-      setProspects(leadsData.data);
+    const leadsDataAny = leadsData as any;
+    if (leadsDataAny?.data && Array.isArray(leadsDataAny.data)) {
+      setProspects(leadsDataAny.data);
+    } else if (leadsData && Array.isArray(leadsData)) {
+      setProspects(leadsData);
+    } else if (leadsDataAny?.data?.data && Array.isArray(leadsDataAny.data.data)) {
+      setProspects(leadsDataAny.data.data);
     }
   }, [leadsData]);
 
@@ -310,28 +317,42 @@ export const SalesPage = () => {
       });
     }, 250);
 
-    syncGoogleSheet.mutate(sheetId, {
-      onSuccess: (response) => {
-        clearInterval(progressInterval);
-        setSyncProgress(100);
-        setSyncStageText('Import complete!');
-        setTimeout(() => {
+    updateMe.mutate(
+      { googleSheetId: sheetId } as any,
+      {
+        onSuccess: () => {
+          syncMySheet.mutate(undefined, {
+            onSuccess: (response) => {
+              clearInterval(progressInterval);
+              setSyncProgress(100);
+              setSyncStageText('Import complete!');
+              setTimeout(() => {
+                setIsSyncing(false);
+                setGoogleSheetLink(fullInput);
+                // Load updated prospects list from server response if available, or fall back to mock synced data
+                if (response?.data?.data && Array.isArray(response.data.data)) {
+                  setProspects(response.data.data);
+                } else if (response?.data && Array.isArray(response.data)) {
+                  setProspects(response.data);
+                } else {
+                  setProspects(mockSyncedProspects);
+                }
+              }, 600);
+            },
+            onError: (err: any) => {
+              clearInterval(progressInterval);
+              setIsSyncing(false);
+              alert(err?.response?.data?.message || 'Failed to sync Google Sheet. Please verify sharing permissions.');
+            },
+          });
+        },
+        onError: () => {
+          clearInterval(progressInterval);
           setIsSyncing(false);
-          setGoogleSheetLink(fullInput);
-          // Load updated prospects list from server response if available, or fall back to mock synced data
-          if (response?.data?.data) {
-            setProspects(response.data.data);
-          } else {
-            setProspects(mockSyncedProspects);
-          }
-        }, 600);
-      },
-      onError: (err: any) => {
-        clearInterval(progressInterval);
-        setIsSyncing(false);
-        alert(err?.response?.data?.message || 'Failed to sync Google Sheet. Please verify sharing permissions.');
-      },
-    });
+          alert('Failed to update user profile with sheet ID.');
+        }
+      }
+    );
   };
 
   const handleRefreshSync = () => {
@@ -1077,7 +1098,7 @@ export const SalesPage = () => {
                 },
               }}
             >
-              New prospect
+              Connect and sync
             </Button>
           </Box>
 

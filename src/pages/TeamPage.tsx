@@ -45,7 +45,7 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import { tokens } from '@/styles/tokens';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/api/useUsers';
 
 const TeamPage = () => {
   const { isAdmin } = usePermissions();
@@ -69,6 +69,8 @@ const TeamPage = () => {
 
   // Dialog State
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields matching Reference mockup exactly
@@ -144,6 +146,56 @@ const TeamPage = () => {
     });
   };
 
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+
+  const handleDeleteUser = () => {
+    if (!selectedUser?._id) return;
+
+    deleteUserMutation.mutate(selectedUser._id, {
+      onSuccess: () => {
+        addToast({ message: 'User deleted successfully!', severity: 'success' });
+        setIsDeleteConfirmOpen(false);
+        setSelectedUser(null);
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || 'Failed to delete user.',
+          severity: 'error'
+        });
+      }
+    });
+  };
+
+  const handleEditUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser?._id) return;
+
+    updateUserMutation.mutate({
+      id: selectedUser._id,
+      data: {
+        firstName: selectedUser.firstName,
+        lastName: selectedUser.lastName,
+        email: selectedUser.email,
+        role: selectedUser.role,
+        isActive: selectedUser.isActive,
+        shiftStart: (selectedUser as any).shiftStart,
+        shiftEnd: (selectedUser as any).shiftEnd,
+      } as any
+    }, {
+      onSuccess: () => {
+        addToast({ message: 'User updated successfully!', severity: 'success' });
+        setIsEditUserOpen(false);
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || 'Failed to update user.',
+          severity: 'error'
+        });
+      }
+    });
+  };
+
   // Reusable custom input styles matching the reference mockup
   const inputSx = {
     mb: 2.5,
@@ -213,7 +265,7 @@ const TeamPage = () => {
           </Button>
 
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-            <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => alert('Editing is disabled in preview mode.')}>
+            <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
               Edit
             </Button>
             <Button startIcon={<LockIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => alert('Resetting password is disabled in preview mode.')}>
@@ -232,7 +284,7 @@ const TeamPage = () => {
                   color: '#EF4444',
                 },
               }}
-              onClick={() => alert('Deletion is disabled in preview mode.')}
+              onClick={() => setIsDeleteConfirmOpen(true)}
             >
               Delete
             </Button>
@@ -615,6 +667,191 @@ const TeamPage = () => {
             </Box>
           </Grid>
         </Grid>
+
+        {/* Edit User Dialog */}
+        <Dialog 
+          open={isEditUserOpen} 
+          onClose={() => setIsEditUserOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              width: '100%',
+              maxWidth: 550,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit User Details</Typography>
+          </DialogTitle>
+          <form onSubmit={handleEditUserSubmit}>
+            <DialogContent sx={{ px: 3 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="First Name"
+                    fullWidth
+                    value={selectedUser.firstName || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, firstName: e.target.value })}
+                    sx={inputSx}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Last Name"
+                    fullWidth
+                    value={selectedUser.lastName || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, lastName: e.target.value })}
+                    sx={inputSx}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Email"
+                    fullWidth
+                    value={selectedUser.email || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                    sx={inputSx}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select
+                    label="Role"
+                    fullWidth
+                    value={selectedUser.role || 'user'}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
+                    sx={inputSx}
+                  >
+                    <MenuItem value="user">User</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select
+                    label="Status"
+                    fullWidth
+                    value={selectedUser.isActive ? 'active' : 'inactive'}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, isActive: e.target.value === 'active' })}
+                    sx={inputSx}
+                  >
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Shift Start"
+                    type="time"
+                    fullWidth
+                    value={selectedUser.shiftStart || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, shiftStart: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    sx={inputSx}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Shift End"
+                    type="time"
+                    fullWidth
+                    value={selectedUser.shiftEnd || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, shiftEnd: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    sx={inputSx}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions sx={{ p: 3, pt: 1 }}>
+              <Button 
+                onClick={() => setIsEditUserOpen(false)} 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  textTransform: 'none'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                variant="contained" 
+                disabled={updateUserMutation.isPending}
+                sx={{ 
+                  bgcolor: tokens.brand.primary,
+                  color: '#fff',
+                  fontWeight: 700,
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  px: 3,
+                  boxShadow: 'none',
+                  '&:hover': {
+                    bgcolor: tokens.brand.primaryLight,
+                  }
+                }}
+              >
+                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog 
+          open={isDeleteConfirmOpen} 
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              maxWidth: 400,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3, color: '#EF4444' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Confirm Deletion</Typography>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3 }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? '#e0e0e0' : tokens.text.primary }}>
+              Are you sure you want to delete {userFullName}? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 2 }}>
+            <Button 
+              onClick={() => setIsDeleteConfirmOpen(false)} 
+              sx={{ 
+                color: 'text.secondary',
+                fontWeight: 600,
+                textTransform: 'none'
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteUser}
+              variant="contained" 
+              disabled={deleteUserMutation.isPending}
+              sx={{ 
+                bgcolor: '#EF4444',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 3,
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: '#DC2626',
+                }
+              }}
+            >
+              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Activity Log Card */}
         <Card

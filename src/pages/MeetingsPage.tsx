@@ -12,7 +12,6 @@ const MeetingsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 4 }}>
@@ -51,32 +50,30 @@ const MeetingsPage = () => {
           </Typography>
         </Box>
 
-        {isAdmin && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setSchedulerOpen(true)}
-            sx={{
-              bgcolor: tokens.brand.primary,
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              px: 3.5,
-              py: 1.25,
-              borderRadius: '24px',
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setSchedulerOpen(true)}
+          sx={{
+            bgcolor: tokens.brand.primary,
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.82rem',
+            px: 3.5,
+            py: 1.25,
+            borderRadius: '24px',
+            boxShadow: 'none',
+            textTransform: 'none',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              bgcolor: tokens.brand.primaryDark,
+              transform: 'translateY(-1px)',
               boxShadow: 'none',
-              textTransform: 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: tokens.brand.primaryDark,
-                transform: 'translateY(-1px)',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Schedule Meeting
-          </Button>
-        )}
+            },
+          }}
+        >
+          Schedule Meeting
+        </Button>
       </Box>
 
       {/* Translucent Tab Navigation Pill Switcher */}
@@ -114,7 +111,7 @@ const MeetingsPage = () => {
             '&:hover': {
               bgcolor: tab === 0
                 ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
-                 : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
             }
           }}
         >
@@ -151,20 +148,15 @@ const MeetingsPage = () => {
       </Box>
 
       {/* Tab Panels */}
-      {tab === 0 ? (
-        <MeetingScheduler dialogOpen={schedulerOpen} setDialogOpen={setSchedulerOpen} />
-      ) : (
+      <Box sx={{ display: tab === 0 ? 'block' : 'none' }}>
+        <MeetingScheduler dialogOpen={schedulerOpen} setDialogOpen={setSchedulerOpen} currentUser={user} />
+      </Box>
+      <Box sx={{ display: tab === 1 ? 'block' : 'none' }}>
         <MeetingList
-          onScheduleTrigger={
-            isAdmin
-              ? () => {
-                  setTab(0);
-                  setSchedulerOpen(true);
-                }
-              : undefined
-          }
+          onScheduleTrigger={() => setSchedulerOpen(true)}
+          currentUser={user}
         />
-      )}
+      </Box>
     </Box>
   );
 };

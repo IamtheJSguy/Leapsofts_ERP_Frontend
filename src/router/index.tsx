@@ -10,7 +10,6 @@ import {
   DashboardPage,
   TasksPage,
   LeadsPage,
-  KanbanPage,
   KPIPage,
   ReportsPage,
   MeetingsPage,
@@ -21,6 +20,9 @@ import {
   NotFoundPage,
   ProfilePage,
   TeamInsightsPage,
+  ProjectsPage,
+  ProjectDetailsPage,
+  KanbanBoardPage,
 } from './lazy-pages';
 
 const wrap = (element: React.ReactNode) => (
@@ -60,10 +62,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'kanban',
+        path: 'projects',
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <KanbanPage />
+            <ProjectsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'projects/:projectId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <ProjectDetailsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'projects/:projectId/boards/:boardId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <KanbanBoardPage />
           </ProtectedRoute>,
         ),
       },

@@ -13,16 +13,38 @@ const chatApi = {
     fileUrl?: string;
     driveFileId?: string;
   }) => api.post('/chat/messages', data),
-  createConversation: (data: { participantIds: string[] }) =>
+  createConversation: (data: { participantId: string }) =>
     api.post('/chat/conversations', data),
   searchMessages: (query: string) =>
     api.get('/chat/search', { params: { q: query } }),
 };
 
+const dummyConversation = {
+  _id: 'dummy-chat-1',
+  participants: [
+    {
+      _id: 'dummy-user-1',
+      firstName: 'Emily',
+      lastName: 'Chen',
+      email: 'emily.chen@example.com',
+      isActive: true,
+    }
+  ],
+  lastMessage: {
+    content: 'Sounds perfect! Let\'s finalize the proposal.',
+    createdAt: new Date().toISOString(),
+  },
+  unreadCount: 1,
+  updatedAt: new Date().toISOString(),
+};
+
 export const useConversations = () =>
   useQuery({
     queryKey: ['conversations'],
-    queryFn: () => chatApi.getConversations().then((r) => r.data.data),
+    queryFn: () => chatApi.getConversations().then((r) => {
+      const data = r.data.data || [];
+      return [dummyConversation as any, ...data];
+    }),
   });
 
 export const useMessages = (conversationId: string | null, params: Record<string, string> = {}) =>
