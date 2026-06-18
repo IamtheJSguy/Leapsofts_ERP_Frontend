@@ -9,13 +9,13 @@ import {
   Button,
   Typography,
   CircularProgress,
-  Alert,
   useMediaQuery,
   useTheme,
   InputAdornment,
   IconButton,
   FormControlLabel,
   Checkbox,
+  keyframes,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -26,6 +26,12 @@ import { useLogin } from '@/hooks/api/useAuth';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 
+const shakeAnimation = keyframes`
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+`;
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const login = useLogin();
@@ -34,6 +40,7 @@ const LoginPage = () => {
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [showPassword, setShowPassword] = useState(false);
+  const [shake, setShake] = useState(false);
   const handleTogglePassword = () => setShowPassword((prev) => !prev);
 
   const {
@@ -45,7 +52,10 @@ const LoginPage = () => {
   const onSubmit = (data: LoginFormData) => {
     login.mutate(data, {
       onSuccess: () => navigate('/'),
-      onError: () => {},
+      onError: () => {
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+      },
     });
   };
 
@@ -400,12 +410,7 @@ const LoginPage = () => {
             Sign in to continue to your workspace
           </Typography>
 
-          {login.isError && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {(login.error as { response?: { data?: { error?: { message?: string } } } })?.response
-                ?.data?.error?.message || 'Login failed'}
-            </Alert>
-          )}
+
 
           {/* OAuth Single Sign On */}
           <Button
@@ -471,7 +476,13 @@ const LoginPage = () => {
             <Box sx={{ flex: 1, height: '1px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
           </Box>
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+          <Box 
+            component="form" 
+            onSubmit={handleSubmit(onSubmit)}
+            sx={{
+              animation: shake ? `${shakeAnimation} 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both` : 'none',
+            }}
+          >
             {/* Email Input */}
             <Box sx={{ mb: 2.5 }}>
               <Typography
@@ -490,7 +501,7 @@ const LoginPage = () => {
                 placeholder="you@example.com"
                 type="email"
                 fullWidth
-                error={!!errors.email}
+                error={!!errors.email || login.isError}
                 helperText={errors.email?.message}
                 InputProps={{
                   startAdornment: (
@@ -555,8 +566,8 @@ const LoginPage = () => {
                 placeholder="Enter password"
                 type={showPassword ? 'text' : 'password'}
                 fullWidth
-                error={!!errors.password}
-                helperText={errors.password?.message}
+                error={!!errors.password || login.isError}
+                helperText={errors.password?.message || (login.isError ? 'Incorrect email or password' : '')}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
