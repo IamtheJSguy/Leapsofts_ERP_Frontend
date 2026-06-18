@@ -130,9 +130,26 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const displayMessages = activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages;
   const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-');
 
+  // Memoize user lookup map for O(1) sender resolution
+  const userMap = useMemo(() => {
+    const map = new Map();
+    dbUsers.forEach((u) => map.set(u._id, u));
+    return map;
+  }, [dbUsers]);
+
+  // Memoize enhanced messages list so it doesn't recalculate on every keystroke
+  const enhancedMessages = useMemo(() => {
+    return displayMessages.map((msg: any) => {
+      const senderRef = msg.sender || msg.senderId;
+      const senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
+      const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
+      return { msg: { ...msg, sender: senderObj }, isOwn };
+    });
+  }, [displayMessages, userMap, user?._id]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [displayMessages]);
+  }, [enhancedMessages]);
 
   const handleSend = () => {
     if (!activeConversationId || !text.trim()) return;
@@ -341,10 +358,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         </Box>
       </Box>
 
-      {/* Messages Stream Scrollbox */}
       <Box sx={{
         flex: 1,
         overflowY: 'auto',
+        transform: 'translateZ(0)',
+        willChange: 'transform',
         p: 3,
         display: 'flex',
         flexDirection: 'column',
@@ -369,20 +387,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Box>
         ) : (
           <>
-            {displayMessages.map((msg: any) => {
-              const senderRef = msg.sender || msg.senderId;
-              const senderObj = typeof senderRef === 'string' ? (dbUsers.find(u => u._id === senderRef) || senderRef) : senderRef;
-              const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
-              const enhancedMsg = { ...msg, sender: senderObj };
-
-              return (
+            {enhancedMessages.map(({ msg, isOwn }: any) => (
                 <MessageBubble
                   key={msg._id}
-                  message={enhancedMsg}
+                  message={msg}
                   isOwn={isOwn}
                 />
-              );
-            })}
+            ))}
             <div ref={bottomRef} />
           </>
         )}

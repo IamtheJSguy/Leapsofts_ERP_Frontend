@@ -49,6 +49,23 @@ export const ChatSidebar = () => {
   const [groupDesc, setGroupDesc] = useState('');
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
 
+  const getChatDetails = (conv: any) => {
+    if (conv.isGroup) {
+      const name = conv.name || 'Group Chat';
+      const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
+      return { name, email: `${conv.participants.length} members`, initial, isOnline: true, isGroup: true };
+    }
+
+    const otherParticipants = conv.participants.filter((p: any) => p._id !== currentUser?._id);
+    const mainParticipant = otherParticipants[0] || conv.participants[0] || currentUser;
+    const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
+    const email = mainParticipant?.email || '';
+    const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
+    const isOnline = mainParticipant?.isActive || mainParticipant?.status === 'active' || false;
+
+    return { name, email, initial, isOnline, isGroup: false };
+  };
+
   // Filter existing conversations based on search query
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) => {
@@ -60,7 +77,7 @@ export const ChatSidebar = () => {
           .join(', ');
       return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()));
-    });
+    }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
   }, [conversations, searchQuery, currentUser]);
 
   // Filter dbUsers based on New Chat Search
@@ -125,25 +142,7 @@ export const ChatSidebar = () => {
     }
   };
 
-  const getChatDetails = (conv: any) => {
-    if (conv.isGroup) {
-      const name = conv.name || 'Group Chat';
-      const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
-      return { name, email: `${conv.participants.length} members`, initial, isOnline: true, isGroup: true };
-    }
 
-    // Get details of the other participants (excluding current user)
-    const otherParticipants = conv.participants.filter((p: any) => p._id !== currentUser?._id);
-    const mainParticipant = otherParticipants[0] || conv.participants[0] || currentUser;
-    const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
-    const email = mainParticipant?.email || '';
-    const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
-
-    // Simulate active status (e.g. if the user is active)
-    const isOnline = mainParticipant?.isActive || mainParticipant?.status === 'active' || false;
-
-    return { name, email, initial, isOnline, isGroup: false };
-  };
 
   return (
     <Box
@@ -208,9 +207,9 @@ export const ChatSidebar = () => {
           </Box>
         ) : (
           <List disablePadding sx={{ py: 1 }}>
-            {filteredConversations.map((conv) => {
+            {filteredConversations.map((conv: any) => {
               const active = activeConversationId === conv._id;
-              const details = getChatDetails(conv);
+              const details = conv.details;
               const unreadCount = conv.unreadCount || 0;
               const typingUsersInConv = typingUsers[conv._id] || [];
               const otherTypingUsers = typingUsersInConv.filter((id) => id !== currentUser?._id);
@@ -234,7 +233,8 @@ export const ChatSidebar = () => {
                       ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)')
                       : 'transparent',
                     boxShadow: active && !isDarkMode ? '0 4px 12px rgba(93,26,137,0.08)' : 'none',
-                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s',
+                    willChange: 'transform',
                     '&.Mui-selected': {
                       bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)',
                       '&:hover': {
