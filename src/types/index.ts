@@ -44,6 +44,8 @@ export interface User {
     meetingReminders: boolean;
   };
   googleSheetId?: string;
+  shiftStart?: string;
+  shiftEnd?: string;
   createdAt?: string;
 }
 

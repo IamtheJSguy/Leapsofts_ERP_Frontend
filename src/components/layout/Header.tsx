@@ -18,7 +18,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTodayShift, useCheckIn, useCheckOut } from '@/hooks/api/useShifts';
@@ -344,30 +344,7 @@ export const Header = () => {
             My Profile
           </MenuItem>
 
-          <MenuItem
-            onClick={() => {
-              setProfileOpen(true);
-              setAnchorEl(null);
-            }}
-            sx={{
-              py: 1,
-              px: 2,
-              borderRadius: '8px',
-              mx: 0.5,
-              fontSize: '0.86rem',
-              fontWeight: 600,
-              gap: 1.5,
-              color: 'text.primary',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(93, 26, 137, 0.04)',
-                color: tokens.brand.primary,
-              }
-            }}
-          >
-            <SettingsOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            Profile & Sheet Settings
-          </MenuItem>
+
 
           <Divider sx={{ mx: 1, my: 0.5, opacity: theme === 'dark' ? 0.08 : 0.08 }} />
 

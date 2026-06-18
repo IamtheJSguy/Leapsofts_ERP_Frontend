@@ -1782,7 +1782,7 @@ const TasksPage = () => {
               setWizardStep(0);
             }}
             sx={{
-              bgcolor: '#FFA08A',
+              bgcolor: tokens.brand.primary,
               color: '#fff',
               fontWeight: 700,
               fontSize: '0.82rem',
@@ -1792,7 +1792,7 @@ const TasksPage = () => {
               boxShadow: 'none',
               transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: '#FF8A6F',
+                bgcolor: tokens.brand.primary, 
                 transform: 'translateY(-1px)',
                 boxShadow: 'none',
               },
@@ -2149,7 +2149,7 @@ const TasksPage = () => {
                             size="small"
                             onClick={() => handleOpenAssignModal(tpl)}
                             sx={{
-                              bgcolor: '#FFA08A',
+                              bgcolor: tokens.brand.primary,
                               color: '#fff',
                               borderRadius: '20px',
                               textTransform: 'none',
@@ -2158,7 +2158,7 @@ const TasksPage = () => {
                               boxShadow: 'none',
                               ml: 'auto',
                               '&:hover': {
-                                bgcolor: '#FF8A6F',
+                                bgcolor: tokens.brand.primary,
                                 boxShadow: 'none',
                               },
                             }}

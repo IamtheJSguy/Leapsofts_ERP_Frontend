@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Typography, Button, useTheme, IconButton, InputAdornment, TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Button, useTheme, IconButton, InputAdornment, TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, Checkbox, FormControlLabel, alpha } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,6 +9,11 @@ import AddIcon from '@mui/icons-material/Add';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CloseIcon from '@mui/icons-material/Close';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import SendIcon from '@mui/icons-material/Send';
 import { tokens } from '@/styles/tokens';
 
 import {
@@ -49,14 +54,16 @@ const getTagColor = (type: string) => {
   }
 };
 
-const TaskCardVisual = ({ task, isDarkMode }: any) => {
+const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
   const tagStyle = getTagColor(task.type);
   return (
     <Box
+      onClick={onClick}
       sx={{
         bgcolor: isDarkMode ? '#1E1B24' : '#fff',
         borderRadius: '12px',
         p: 2,
+        cursor: 'pointer',
         boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
       }}
@@ -83,7 +90,7 @@ const TaskCardVisual = ({ task, isDarkMode }: any) => {
   );
 };
 
-const SortableTask = ({ task, isDarkMode }: any) => {
+const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: 'Task', task },
@@ -98,7 +105,7 @@ const SortableTask = ({ task, isDarkMode }: any) => {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCardVisual task={task} isDarkMode={isDarkMode} />
+      <TaskCardVisual task={task} isDarkMode={isDarkMode} onClick={() => onTaskClick(task)} />
     </div>
   );
 };
@@ -125,6 +132,167 @@ const DroppableColumn = ({ col, isDarkMode, children }: any) => {
   );
 };
 
+const TaskDetailDrawer = ({ task, open, onClose, isDarkMode }: any) => {
+  if (!task) return null;
+  const tagStyle = getTagColor(task.type);
+
+  return (
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: { xs: '100%', sm: 480 },
+          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          borderTopLeftRadius: '24px',
+          borderBottomLeftRadius: '24px',
+          boxShadow: isDarkMode ? '-8px 0 32px rgba(0,0,0,0.5)' : '-8px 0 32px rgba(26, 22, 37, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 1300,
+        },
+      }}
+      ModalProps={{
+        BackdropProps: {
+          sx: {
+            bgcolor: 'rgba(0,0,0,0.2)',
+            backdropFilter: 'blur(4px)',
+          },
+        },
+      }}
+    >
+      {/* Drawer Header */}
+      <Box sx={{ p: 3, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+            <Chip label={task.type} size="small" sx={{ bgcolor: tagStyle.bg, color: tagStyle.text, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+            <Chip label="High Priority" size="small" sx={{ bgcolor: alpha(tokens.brand.accent, 0.1), color: tokens.brand.accent, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+            {task.title}
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Drawer Content Area */}
+      <Box sx={{ p: 3, overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        
+        {/* Description Section */}
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+            <DescriptionOutlinedIcon fontSize="small" />
+            <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
+          </Box>
+          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500 }}>
+            We need to design a high-converting landing page mockup for the new campaign. This involves creating wireframes, selecting appropriate assets, and adhering to the brand guidelines. Please ensure the final output is responsive and pixel-perfect.
+          </Typography>
+        </Box>
+
+        {/* Subtasks Section */}
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+            <FormatListBulletedIcon fontSize="small" />
+            <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtasks</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <FormControlLabel control={<Checkbox defaultChecked size="small" sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }} />} label={<Typography variant="body2" sx={{ color: 'text.secondary', textDecoration: 'line-through' }}>Review brand guidelines</Typography>} />
+            <FormControlLabel control={<Checkbox size="small" sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }} />} label={<Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>Create desktop wireframes</Typography>} />
+            <FormControlLabel control={<Checkbox size="small" sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }} />} label={<Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>Create mobile wireframes</Typography>} />
+          </Box>
+        </Box>
+
+        {/* Attachments Section */}
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+            <AttachFileIcon fontSize="small" />
+            <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Attachments ({task.attachments})</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+            {[1, 2].slice(0, task.attachments).map((_, i) => (
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                <Box sx={{ p: 1, bgcolor: alpha(tokens.brand.primary, 0.1), color: tokens.brand.primary, borderRadius: '8px' }}>
+                  <InsertDriveFileIcon fontSize="small" />
+                </Box>
+                <Box sx={{ mr: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>assets_v{i+1}.zip</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{(2.4 * (i+1)).toFixed(1)} MB</Typography>
+                </Box>
+              </Box>
+            ))}
+            {task.attachments === 0 && <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>No attachments yet.</Typography>}
+          </Box>
+        </Box>
+
+        {/* Comments Feed Section */}
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary' }}>
+            <ChatBubbleOutlineIcon fontSize="small" />
+            <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comments</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: tokens.brand.primaryMuted, fontSize: '0.8rem', fontWeight: 800 }}>J</Avatar>
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750 }}>Jane Doe</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>2 hours ago</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block' }}>
+                  I've uploaded the initial wireframes. Let me know what you think before I proceed to high-fidelity!
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>A</Avatar>
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750 }}>Alex Smith</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>1 hour ago</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block' }}>
+                  Looks solid. Make sure the hero section padding is consistent with the new guidelines.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Drawer Action Footer */}
+      <Box sx={{ p: 2.5, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)' }}>
+        <TextField
+          fullWidth
+          placeholder="Write a comment..."
+          size="small"
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton sx={{ color: tokens.brand.primary }} size="small">
+                  <SendIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
+              '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
+              '&:hover fieldset': { borderColor: tokens.brand.primary },
+            },
+          }}
+        />
+      </Box>
+    </Drawer>
+  );
+};
+
 export const KanbanBoardPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -134,6 +302,7 @@ export const KanbanBoardPage = () => {
   const [columns, setColumns] = useState(initialColumns);
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTask, setActiveTask] = useState<any | null>(null);
+  const [drawerTask, setDrawerTask] = useState<any | null>(null);
 
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
@@ -253,7 +422,7 @@ export const KanbanBoardPage = () => {
                 <SortableContext items={colTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                   <DroppableColumn col={col} isDarkMode={isDarkMode}>
                     {colTasks.map(task => (
-                      <SortableTask key={task.id} task={task} isDarkMode={isDarkMode} />
+                      <SortableTask key={task.id} task={task} isDarkMode={isDarkMode} onTaskClick={setDrawerTask} />
                     ))}
                   </DroppableColumn>
                 </SortableContext>
@@ -285,6 +454,14 @@ export const KanbanBoardPage = () => {
           <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} variant="contained" sx={{ bgcolor: '#FF5733', borderRadius: '24px', '&:hover': { bgcolor: '#E04A2A' } }}>Add</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Detailed Task Drawer */}
+      <TaskDetailDrawer
+        task={drawerTask}
+        open={Boolean(drawerTask)}
+        onClose={() => setDrawerTask(null)}
+        isDarkMode={isDarkMode}
+      />
     </Box>
   );
 };
