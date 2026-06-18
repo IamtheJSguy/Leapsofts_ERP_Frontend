@@ -33,6 +33,10 @@ export interface User {
   lastName?: string;
   role: Role;
   isActive?: boolean;
+  phone?: string;
+  jobTitle?: string;
+  department?: string;
+  bio?: string;
   notificationPreferences?: {
     email: boolean;
     portal: boolean;
@@ -69,8 +73,8 @@ export interface Lead {
   icp?: string;
   leadStatus?: string;
   date?: string;
-  followUp?: string;
   linkedinMsg?: string;
+  followUp?: string;
   commentsAfterCall?: string;
   notes?: string;
 }
@@ -102,11 +106,32 @@ export interface ApiResponse<T> {
 export interface KPI {
   _id: string;
   name: string;
+  description?: string;
   targetValue: number;
   timeFrame: KpiTimeframe;
-  metricType: 'count' | 'ratio' | 'time' | 'duration';
+  metricType?: 'count' | 'ratio' | 'time' | 'duration';
   assignedTo?: string[] | User[];
   changeRequests?: ChangeRequest[];
+}
+
+export interface KPITemplateItem {
+  _id?: string;
+  name: string;
+  description?: string;
+  defaultTargetValue: number;
+  timeFrame: string;
+  assignedTo?: string[];
+}
+
+export interface KPITemplate {
+  _id: string;
+  name: string;
+  description?: string;
+  items: KPITemplateItem[];
+  createdBy?: string | { _id: string; email: string; firstName?: string; lastName?: string };
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ChangeRequest {
@@ -151,10 +176,13 @@ export interface Notification {
 export interface Meeting {
   _id: string;
   title: string;
-  link?: string;
+  description?: string;
+  meetingLink?: string;
+  link?: string; // legacy alias
   scheduledAt: string;
   participants: string[] | User[];
   status?: 'scheduled' | 'completed' | 'cancelled';
+  createdBy?: string | User; // the user who created this meeting
 }
 
 export interface KanbanColumn {
@@ -198,9 +226,28 @@ export interface KanbanBoard {
 
 export interface Conversation {
   _id: string;
+  isGroup?: boolean;
+  name?: string;
+  description?: string;
+  admin?: string | User;
   participants: User[];
   lastMessage?: Message;
   unreadCount?: number;
+  updatedAt: string;
+}
+
+export interface Shift {
+  _id: string;
+  userId: string | User;
+  date: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  scheduledStart: string;
+  scheduledEnd: string;
+  totalMinutes: number;
+  status: 'not_started' | 'checked_in' | 'checked_out';
+  isActive: boolean;
+  createdAt: string;
   updatedAt: string;
 }
 

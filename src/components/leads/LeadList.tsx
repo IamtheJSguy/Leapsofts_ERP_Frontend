@@ -13,7 +13,6 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { LeadForm } from './LeadForm';
 import { BulkUploadModal } from './BulkUploadModal';
 import { LeadDetailDrawer } from './LeadDetailDrawer';
-import { ProfileEnrichmentModal } from './ProfileEnrichmentModal';
 import { ConnectionStatusCell } from './ConnectionStatusCell';
 import { MessageStatusCell } from './MessageStatusCell';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -22,6 +21,7 @@ import {
   useCreateLead,
   useUpdateLead,
   useDeleteLead,
+  useQualifyLead,
 } from '@/hooks/api/useLeads';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -38,7 +38,6 @@ export const LeadList = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [qualifyLead, setQualifyLead] = useState<Lead | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
@@ -46,6 +45,7 @@ export const LeadList = () => {
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();
+  const qualifyLeadMutation = useQualifyLead();
 
   const leads = data?.data || [];
 
@@ -94,8 +94,16 @@ export const LeadList = () => {
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setQualifyLead(p.data!);
+                    qualifyLeadMutation.mutate(
+                      { id: p.data!._id },
+                      {
+                        onSuccess: () => {
+                          addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
+                        },
+                      }
+                    );
                   }}
+                  disabled={qualifyLeadMutation.isPending}
                   aria-label="Qualify lead"
                 >
                   <StarIcon fontSize="small" />
@@ -172,11 +180,6 @@ export const LeadList = () => {
         onClose={() => setDetailOpen(false)}
         onEdit={() => { setDetailOpen(false); setFormOpen(true); }}
         onDelete={() => selectedLead && setDeleteId(selectedLead._id)}
-      />
-      <ProfileEnrichmentModal
-        lead={qualifyLead}
-        open={!!qualifyLead}
-        onClose={() => setQualifyLead(null)}
       />
       <ConfirmDialog
         open={!!deleteId}

@@ -8,14 +8,22 @@ import { ROLES } from '@/lib/constants';
 import {
   LoginPage,
   DashboardPage,
+  TasksPage,
   LeadsPage,
-  KanbanPage,
   KPIPage,
   ReportsPage,
   MeetingsPage,
   ChatPage,
   AdminPage,
+  TeamPage,
+  SalesPage,
   NotFoundPage,
+  ProfilePage,
+  TeamInsightsPage,
+  ProjectsPage,
+  ProjectDetailsPage,
+  KanbanBoardPage,
+  AttendancePage,
 } from './lazy-pages';
 
 const wrap = (element: React.ReactNode) => (
@@ -39,6 +47,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: wrap(<DashboardPage />) },
       {
+        path: 'tasks',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <TasksPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
         path: 'leads',
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
@@ -47,10 +63,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'kanban',
+        path: 'projects',
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <KanbanPage />
+            <ProjectsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'projects/:projectId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <ProjectDetailsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'projects/:projectId/boards/:boardId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <KanbanBoardPage />
           </ProtectedRoute>,
         ),
       },
@@ -91,6 +123,46 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <AdminPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'team',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <TeamPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'attendance',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <AttendancePage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'sales',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <SalesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'profile',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <ProfilePage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'team/insights',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+            <TeamInsightsPage />
           </ProtectedRoute>,
         ),
       },

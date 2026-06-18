@@ -45,6 +45,8 @@ export const SOCKET_EVENTS = {
   USER_ONLINE: 'user:online',
   JOIN_ROOM: 'join:room',
   LEAVE_ROOM: 'leave:room',
+  SHIFT_UPDATED: 'shift:updated',
+  CHAT_TYPING: 'chat:typing',
 } as const;
 
 export const CONNECTION_STATUS_OPTIONS = Object.values(CONNECTION_STATUS);

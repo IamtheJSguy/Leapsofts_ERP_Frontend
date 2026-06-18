@@ -6,11 +6,17 @@
   --brand-primary-dark: #451366;
   --brand-accent: #ff7f11;
   --surface-sidebar: #1e1b24;
+  --surface-sidebar-hover: #2a2633;
+  --surface-sidebar-active: #352f42;
   --surface-main: #faf8f5;
   --surface-card: #ffffff;
+  --surface-elevated: #ffffff;
   --surface-border: #e8e4df;
+  --surface-border-light: #f0ece7;
+  --surface-input: #ffffff;
   --text-primary: #1a1625;
   --text-secondary: #6b6578;
+  --text-muted: #9a94a8;
   --semantic-success: #2d8a5e;
   --semantic-warning: #b8860b;
   --semantic-error: #c44545;
@@ -19,11 +25,35 @@
   --radius-pill: 9999px;
 }
 
+.dark-mode {
+  --surface-sidebar: #12101a;
+  --surface-sidebar-hover: #1e1b24;
+  --surface-sidebar-active: #2a2633;
+  --surface-main: #141218;
+  --surface-card: #1e1b24;
+  --surface-elevated: #24202e;
+  --surface-border: #352f42;
+  --surface-border-light: #2d2838;
+  --surface-input: #141218;
+  --text-primary: #f5f3f8;
+  --text-secondary: #9a94a8;
+  --text-muted: #6b6578;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari and Opera */
 }
 
 body {
@@ -99,3 +129,59 @@ body {
 .login-accent-bar {
   background: linear-gradient(90deg, #ff7f11, #ff9a44);
 }
+
+/* Premium Login Redesign Classes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ambientPulse {
+  0%, 100% {
+    transform: scale(1) translate(0px, 0px);
+  }
+  50% {
+    transform: scale(1.1) translate(15px, -15px);
+  }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-ambient {
+  animation: ambientPulse 12s ease-in-out infinite;
+}
+
+.login-glass-card {
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 32px 0 rgba(26, 22, 37, 0.04), 
+              0 1px 3px 0 rgba(26, 22, 37, 0.02) !important;
+}
+
+/* Dark mode glassmorphic styling */
+.dark-mode .login-glass-card {
+  background-color: rgba(30, 27, 36, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+}
+
+/* Hide scrollbar track but allow scrolling */
+.no-scrollbar {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari and Opera */
+}
+

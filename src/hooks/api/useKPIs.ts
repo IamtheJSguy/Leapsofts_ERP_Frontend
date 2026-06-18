@@ -3,7 +3,7 @@ import api from '@/lib/axios';
 import type { KPI, KPIRecord, ChangeRequest } from '@/types';
 
 const kpiApi = {
-  getKPIs: () => api.get<{ data: KPI[] }>('/kpis'),
+  getKPIs: () => api.get<{ data: KPI[] }>('/kpis/my'),
   getMyKPIs: () => api.get<{ data: KPI[] }>('/kpis/my'),
   getKPIRecords: (params: Record<string, string>) =>
     api.get<{ data: KPIRecord[] }>('/kpis/records', { params }),
