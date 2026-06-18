@@ -1,6 +1,11 @@
-import React from 'react';
-import { Box, Typography, Card, LinearProgress, CircularProgress, useTheme } from '@mui/material';
-import ShieldIcon from '@mui/icons-material/Shield';
+import { useState, useMemo } from 'react';
+import { Box, Typography, Card, CircularProgress, useTheme, Chip } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import { useDailyKpis, useMarkDailyKpiComplete, useMarkDailyKpiIncomplete } from '@/hooks/api/useShifts';
 import { tokens } from '@/styles/tokens';
 
@@ -8,232 +13,235 @@ export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   
-  // Use local date for querying today's KPIs
-  const today = new Date().toISOString().split('T')[0];
-  
-  const { data: dailyKpis = [], isLoading } = useDailyKpis(today);
+  const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done'>('active');
+
+  const { data: allKpis = [], isLoading } = useDailyKpis();
 
   const markComplete = useMarkDailyKpiComplete();
   const markIncomplete = useMarkDailyKpiIncomplete();
   
-  const [loadingIds, setLoadingIds] = React.useState<Set<string>>(new Set());
-
-  const completedCount = dailyKpis.filter((k) => k.isCompleted).length;
-  
-  const totalCount = dailyKpis.length;
-
-  const progressPercent = totalCount > 0 
-    ? Math.round((completedCount / totalCount) * 100) 
-    : 0;
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
 
   const handleToggle = (id: string, isCompleted: boolean) => {
     setLoadingIds((prev) => new Set(prev).add(id));
-
     if (isCompleted) {
       markIncomplete.mutate(id, {
-        onSettled: () => {
-          setLoadingIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-        }
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; })
       });
     } else {
       markComplete.mutate({ id }, {
-        onSettled: () => {
-          setLoadingIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-        }
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; })
       });
     }
   };
 
+  const filteredKpis = useMemo(() => {
+    return allKpis.filter((kpi: any) => {
+      const isCompleted = kpi.isCompleted;
+      const dueDate = new Date(kpi.date || new Date().toISOString());
+      const now = new Date();
+      const isPast = dueDate.setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
+      
+      if (filter === 'done') return isCompleted;
+      if (isCompleted) return false;
+      if (filter === 'overdue') return isPast;
+      if (filter === 'high') return isPast || (dueDate.getTime() - now.getTime() <= 172800000);
+      if (filter === 'active') return !isPast;
+      return true;
+    });
+  }, [allKpis, filter]);
+
+  const completedCount = allKpis.filter((k: any) => k.isCompleted).length;
+
+  const filters = [
+    { id: 'active', label: 'Active', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0)).length },
+    { id: 'overdue', label: 'Overdue', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)).length },
+    { id: 'high', label: 'High priority', count: allKpis.filter((k: any) => !k.isCompleted && (new Date(k.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) || (new Date(k.date || new Date()).getTime() - new Date().getTime() <= 172800000))).length },
+    { id: 'done', label: 'Done', count: completedCount },
+  ];
+
   if (isLoading) {
-    return <Box sx={{ p: 4 }}><LinearProgress /></Box>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+        <CircularProgress sx={{ color: tokens.brand.primary }} />
+      </Box>
+    );
   }
 
   return (
-    <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
-      {/* Premium Summary Header */}
-      <Card
-        sx={{
-          mb: 4,
-          p: 4,
-          borderRadius: '24px',
-          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.8)',
+    <Box className="animate-fade-in-up" sx={{ pb: 6, maxWidth: 900, mx: 'auto' }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em', mb: 1 }}>
+          My Tasks
+        </Typography>
+        <Typography variant="body1" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
+          Everything assigned to you across projects, tailored to your workflow.
+        </Typography>
+      </Box>
+
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          gap: 1.5, 
+          mb: 4, 
+          p: 1, 
+          borderRadius: '24px', 
+          bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', 
           backdropFilter: 'blur(20px)',
-          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)'}`,
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
+          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}`,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { display: 'none' }
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                background: `linear-gradient(135deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                mb: 0.5
-              }}
-            >
-              Today's Targets
+        {filters.map(f => (
+          <Chip
+            key={f.id}
+            label={`${f.label} ${f.count}`}
+            onClick={() => setFilter(f.id as any)}
+            sx={{
+              px: 1,
+              height: 38,
+              borderRadius: '12px',
+              fontWeight: filter === f.id ? 800 : 600,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              border: filter === f.id && f.id === 'overdue' 
+                ? `1px solid rgba(239, 68, 68, 0.3)` 
+                : filter === f.id
+                  ? `1px solid ${tokens.brand.primaryLight}`
+                  : `1px solid transparent`,
+              bgcolor: filter === f.id 
+                ? f.id === 'overdue' ? 'rgba(239, 68, 68, 0.08)' : isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)'
+                : 'transparent',
+              color: filter === f.id 
+                ? f.id === 'overdue' ? tokens.semantic.error : tokens.brand.primary
+                : isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: filter === f.id 
+                  ? f.id === 'overdue' ? 'rgba(239, 68, 68, 0.12)' : isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)'
+                  : isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              }
+            }}
+          />
+        ))}
+      </Box>
+
+      <Card
+        sx={{
+          borderRadius: '24px',
+          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.04)',
+          overflow: 'hidden',
+          minHeight: 400,
+        }}
+      >
+        {filteredKpis.length === 0 ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 400, gap: 2 }}>
+            <Box sx={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: '50%', 
+              bgcolor: 'rgba(16, 185, 129, 0.1)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              mb: 1
+            }}>
+              <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+              All caught up
             </Typography>
-            <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, fontWeight: 500 }}>
-              {progressPercent === 100 ? "Amazing work! You've crushed all your daily goals. 🎉" : "Stay focused! Check off your targets as you complete them."}
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+              Nothing on your plate that matches this filter.
             </Typography>
           </Box>
-
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, color: tokens.brand.primary, lineHeight: 1 }}>
-              {progressPercent}%
-            </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.accent }}>
-              {completedCount} / {totalCount} Completed
-            </Typography>
-          </Box>
-        </Box>
-
-        <LinearProgress
-          variant="determinate"
-          value={progressPercent}
-          sx={{
-            mt: 2,
-            height: 12,
-            borderRadius: 6,
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-            '& .MuiLinearProgress-bar': {
-              background: `linear-gradient(90deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)`,
-              borderRadius: 6,
-            },
-          }}
-        />
-      </Card>
-
-      {/* KPI List items */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {dailyKpis.length === 0 ? (
-          <Card sx={{ p: 6, textAlign: 'center', borderRadius: '24px', bgcolor: 'transparent', border: '1px dashed rgba(155, 107, 184, 0.4)' }}>
-            <Typography variant="h6" sx={{ color: tokens.text.muted }}>No daily KPIs generated for today.</Typography>
-          </Card>
         ) : (
-          dailyKpis.map((kpi: any) => {
-            const isChecked = kpi.isCompleted;
-            const isLoading = loadingIds.has(kpi._id);
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
+            {filteredKpis.map((kpi: any) => {
+              const isChecked = kpi.isCompleted;
+              const isKpiLoading = loadingIds.has(kpi._id);
+              const isOverdue = new Date(kpi.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && !isChecked;
 
-            return (
-              <Box
-                key={kpi._id}
-                onClick={() => {
-                  if (!isLoading) handleToggle(kpi._id, isChecked);
-                }}
-                sx={{
-                  p: 2.5,
-                  pr: 4,
-                  borderRadius: '16px',
-                  cursor: 'pointer',
-                  bgcolor: isChecked
-                    ? isDarkMode ? 'rgba(45, 138, 94, 0.05)' : 'rgba(16, 185, 129, 0.04)'
-                    : isDarkMode ? 'rgba(30, 27, 36, 0.7)' : '#ffffff',
-                  border: `1px solid ${
-                    isChecked
-                      ? isDarkMode ? 'rgba(45, 138, 94, 0.3)' : 'rgba(16, 185, 129, 0.4)'
-                      : isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
-                  }`,
-                  boxShadow: isChecked 
-                    ? 'none' 
-                    : isDarkMode ? '0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.02)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2.5,
-                  transition: 'all 0.3s ease',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Custom Animated Circular Checkbox */}
+              return (
                 <Box
+                  key={kpi._id}
+                  onClick={() => !isKpiLoading && handleToggle(kpi._id, isChecked)}
                   sx={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    border: isChecked || isLoading ? 'none' : `2px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
-                    background: isLoading 
-                      ? 'transparent'
-                      : isChecked 
-                        ? `linear-gradient(135deg, #10B981 0%, #059669 100%)` 
-                        : 'transparent',
-                    boxShadow: isChecked && !isLoading ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
-                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isLoading) handleToggle(kpi._id, isChecked);
+                    gap: 3,
+                    p: 2.5,
+                    px: 3,
+                    cursor: 'pointer',
+                    borderRadius: '16px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'}`,
+                    bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.5)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                    }
                   }}
                 >
-                  {isLoading ? (
-                    <CircularProgress size={16} thickness={5} sx={{ color: tokens.brand.primary }} />
-                  ) : (
-                    <Box
-                      sx={{
-                        width: 14,
-                        height: 14,
-                        opacity: isChecked ? 1 : 0,
-                        transform: isChecked ? 'scale(1) rotate(0deg)' : 'scale(0) rotate(-45deg)',
-                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s',
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </Box>
-                  )}
-                </Box>
-                <Box sx={{ flexGrow: 1, zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: '1.05rem',
+                  <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isKpiLoading ? (
+                      <CircularProgress size={24} thickness={4} sx={{ color: tokens.brand.primary }} />
+                    ) : isChecked ? (
+                      <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success, transition: 'transform 0.2s ease', '&:hover': { transform: 'scale(1.1)' } }} />
+                    ) : (
+                      <RadioButtonUncheckedIcon sx={{ fontSize: 26, color: isOverdue ? tokens.semantic.error : isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', transition: 'all 0.2s ease', '&:hover': { color: tokens.brand.primary, transform: 'scale(1.1)' } }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography 
+                      variant="subtitle1" 
+                      sx={{ 
+                        fontWeight: 700, 
+                        fontSize: '1rem',
                         color: isChecked 
-                          ? isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' 
-                          : isDarkMode ? '#ffffff' : tokens.text.primary,
+                          ? isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' 
+                          : isDarkMode ? '#fff' : tokens.text.primary,
                         textDecoration: isChecked ? 'line-through' : 'none',
-                        transition: 'all 0.3s ease',
-                        mb: 0.25,
+                        transition: 'color 0.2s ease'
                       }}
                     >
-                      {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed KPI'}
+                      {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
                     </Typography>
                     
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.5 }}>
+                      {kpi.targetValue !== undefined && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)', px: 1.25, py: 0.5, borderRadius: '6px', border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.3)' : 'rgba(93, 26, 137, 0.1)'}`, opacity: isChecked ? 0.6 : 1 }}>
+                          <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, letterSpacing: '0.02em' }}>
+                            Target: {kpi.targetValue}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      {kpi.date && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', px: 1.25, py: 0.5, borderRadius: '6px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, opacity: isChecked ? 0.6 : 1 }}>
+                          <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: '0.02em' }}>
+                            {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+
                     {(kpi.description || kpi.kpiId?.description) && (
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: isChecked 
-                            ? isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' 
-                            : 'text.secondary',
-                          fontWeight: 400,
-                          textDecoration: isChecked ? 'line-through' : 'none',
-                          transition: 'all 0.3s ease',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: isChecked ? isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' : 'text.secondary',
+                          fontWeight: 500,
+                          fontSize: '0.85rem',
+                          mt: 0.5
                         }}
                       >
                         {kpi.description || kpi.kpiId?.description}
@@ -241,51 +249,41 @@ export const UserDailyKpisView = () => {
                     )}
                   </Box>
 
-                  <Box sx={{ textAlign: 'right', pl: 2, borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` }}>
-                    <Typography 
-                      variant="overline" 
-                      sx={{ 
-                        lineHeight: 1, 
-                        display: 'block', 
-                        color: 'text.secondary', 
-                        fontWeight: 600, 
-                        letterSpacing: '0.05em',
-                        mb: 0.5
-                      }}
-                    >
-                      TARGET
-                    </Typography>
-                    <Typography 
-                      variant="h5" 
-                      sx={{ 
-                        lineHeight: 1, 
-                        fontWeight: 800, 
-                        color: isChecked ? tokens.semantic.success : tokens.brand.primary,
-                        transition: 'color 0.3s ease',
-                      }}
-                    >
-                      {kpi.targetValue || kpi.kpiId?.targetValue || 0}
-                    </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {isOverdue && (
+                      <Chip 
+                        icon={<WarningRoundedIcon sx={{ fontSize: '14px !important' }} />} 
+                        label="Overdue" 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: 'rgba(239, 68, 68, 0.1)', 
+                          color: tokens.semantic.error, 
+                          fontWeight: 700, 
+                          fontSize: '0.7rem',
+                          borderRadius: '8px' 
+                        }} 
+                      />
+                    )}
+                    {isChecked && (
+                      <Chip 
+                        label="Done" 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                          color: tokens.semantic.success, 
+                          fontWeight: 700, 
+                          fontSize: '0.7rem',
+                          borderRadius: '8px' 
+                        }} 
+                      />
+                    )}
                   </Box>
                 </Box>
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    right: -20,
-                    top: -20,
-                    opacity: isChecked ? 0.08 : 0,
-                    transform: isChecked ? 'scale(1)' : 'scale(0.5)',
-                    transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <ShieldIcon sx={{ color: tokens.semantic.success, fontSize: 120 }} />
-                </Box>
-              </Box>
-            );
-          })
+              );
+            })}
+          </Box>
         )}
-      </Box>
+      </Card>
     </Box>
   );
 };
