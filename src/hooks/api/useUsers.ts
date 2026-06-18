@@ -13,6 +13,7 @@ const userApi = {
   updateRole: ({ id, role }: { id: string; role: string }) =>
     api.put(`/users/${id}/role`, { role }),
   updateMe: (data: Partial<User>) => api.put('/users/me', data),
+  getMe: () => api.get<{ data: User }>('/users/me'),
 };
 
 export const useUsers = (
@@ -75,6 +76,23 @@ export const useUpdateMe = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['auth'] }); // or however auth is cached
+      queryClient.invalidateQueries({ queryKey: ['me'] });
     },
+  });
+};
+
+import { useAuthStore } from '@/store/useAuthStore';
+
+export const useMe = () => {
+  const updateAuthUser = useAuthStore((s) => s.updateUser);
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => userApi.getMe().then((r) => {
+      if (r.data?.data) {
+        updateAuthUser(r.data.data);
+        return r.data.data;
+      }
+      return null;
+    }),
   });
 };

@@ -33,24 +33,21 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import EmailIcon from '@mui/icons-material/Email';
-import RoomIcon from '@mui/icons-material/Room';
-import LinkIcon from '@mui/icons-material/Link';
 import SyncIcon from '@mui/icons-material/Sync';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import WarningIcon from '@mui/icons-material/Warning';
+import LinkIcon from '@mui/icons-material/Link';
+import EmailIcon from '@mui/icons-material/Email';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
-import { useLeads, useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
-import { DndContext, useDraggable, useDroppable, DragOverlay, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { useLeads, useQualifyLead } from '@/hooks/api/useLeads';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useUpdateMe } from '@/hooks/api/useUsers';
+import { useUpdateMe, useMe } from '@/hooks/api/useUsers';
 
 // High-fidelity synced prospects mock database
 const mockSyncedProspects = [
@@ -137,144 +134,14 @@ const mockSyncedProspects = [
   },
 ];
 
-// Kanban columns config
-const columnsConfig = [
-  { id: 'qualified', label: 'Qualified', color: '#FF4E3A' },
-  { id: 'discovery', label: 'Discovery', color: '#F59E0B' },
-  { id: 'proposal', label: 'proposal', color: '#3B82F6' },
-  { id: 'negotation', label: 'negotation', color: '#8B5CF6' },
-  { id: 'closed_won', label: 'closed won', color: '#10B981' },
-  { id: 'closed_lost', label: 'closed lost', color: '#6B7280' },
-];
-
-const getLeadName = (lead: any): string => {
-  if (!lead) return 'Unnamed Lead';
-  if (lead.prospectName) return lead.prospectName;
-  const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
-  return name || lead.email || lead.company || 'Unnamed Lead';
-};
-
-const DroppableColumn = ({ columnId, children, isDarkMode }: any) => {
-  const { setNodeRef, isOver } = useDroppable({ id: columnId });
-  return (
-    <Box
-      ref={setNodeRef}
-      sx={{
-        width: 290,
-        flexShrink: 0,
-        bgcolor: isDarkMode ? (isOver ? 'rgba(255,255,255,0.08)' : 'rgba(30, 27, 36, 0.45)') : (isOver ? 'rgba(0,0,0,0.08)' : 'rgba(255, 255, 255, 0.45)'),
-        backdropFilter: 'blur(10px)',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-        borderRadius: '20px',
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        minHeight: 450,
-        transition: 'background-color 0.2s',
-      }}
-    >
-      {children}
-    </Box>
-  );
-};
-
-const DraggableCard = ({ lead, children }: any) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: lead._id,
-    data: { lead },
-  });
-
-  const style = isDragging ? { opacity: 0 } : undefined;
-
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      {children}
-    </div>
-  );
-};
-
-const PipelineLeadCard = ({ lead, isDarkMode }: any) => {
-  const leadName = getLeadName(lead);
-  const initials = leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
-  return (
-    <Card
-      sx={{
-        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#fff',
-        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0,0,0,0.05)'}`,
-        borderRadius: '12px',
-        p: 1.75,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-        cursor: 'grab',
-        transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: '0 4px 12px rgba(93, 26, 137, 0.06)',
-          borderColor: tokens.brand.primary,
-        },
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, mb: 1.5 }}>
-        <Avatar
-          sx={{
-            width: 28,
-            height: 28,
-            bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#F2EEEC',
-            color: isDarkMode ? '#fff' : '#1A1625',
-            fontSize: '0.72rem',
-            fontWeight: 800,
-          }}
-        >
-          {initials}
-        </Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 750, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.82rem', lineHeight: 1.2 }}
-            noWrap
-          >
-            {leadName}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.72rem' }}
-            noWrap
-          >
-            {lead.company || lead.industry || 'Company info missing'}
-          </Typography>
-        </Box>
-      </Box>
-
-      <Typography
-        variant="caption"
-        sx={{ color: 'text.secondary', display: 'block', mb: 1, fontSize: '0.72rem', fontWeight: 550 }}
-        noWrap
-      >
-        {lead.title || lead.profile || lead.icp || 'Role info missing'}
-      </Typography>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.7rem' }}>
-          <RoomIcon sx={{ fontSize: 12 }} />
-          {lead.location || 'Location missing'}
-        </Typography>
-        <Chip
-          label={lead.status}
-          size="small"
-          sx={{ height: 18, fontSize: '0.58rem', fontWeight: 750, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', color: 'text.secondary', textTransform: 'capitalize' }}
-        />
-      </Box>
-    </Card>
-  );
-};
 
 export const SalesPage = () => {
+  useMe(); // Fetch and hydrate store with latest profile data on mount
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
   const syncMySheet = useSyncMySheet();
   const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
-  const updateLead = useUpdateLead();
   const addToast = useUIStore((s) => s.addToast);
 
   // Dynamic style injection to hide scrollbars globally while this page is active
@@ -367,11 +234,13 @@ export const SalesPage = () => {
   };
 
   const [googleSheetLink, setGoogleSheetLink] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'prospects'>('pipeline');
+  const activeTab = 'prospects'; // Pipeline tab removed per user request
+
+  const { user } = useAuth();
+
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('Location');
   const [selectedIndustry, setSelectedIndustry] = useState('Industry (ICP)');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
 
@@ -383,53 +252,18 @@ export const SalesPage = () => {
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStageText, setSyncStageText] = useState('');
 
-  // Drag and Drop state
-  const [activeDragLead, setActiveDragLead] = useState<any>(null);
-
   // Qualify Lead Modal state
   const [isQualifyModalOpen, setIsQualifyModalOpen] = useState(false);
   const [selectedLeadToQualify, setSelectedLeadToQualify] = useState<string>('');
 
-  const handleDragStart = (e: DragStartEvent) => {
-    const lead = prospects.find(p => p._id === e.active.id);
-    if (lead) setActiveDragLead(lead);
-  };
-
-  const handleDragEnd = (e: DragEndEvent) => {
-    setActiveDragLead(null);
-    const { active, over } = e;
-    if (!over) return;
-    
-    const leadId = active.id as string;
-    const newColumnId = over.id as string;
-    
-    let newStatus = '';
-    if (newColumnId === 'qualified') newStatus = 'qualified';
-    if (newColumnId === 'discovery') newStatus = 'meeting';
-    if (newColumnId === 'proposal') newStatus = 'proposal sent';
-    if (newColumnId === 'negotation') newStatus = 'messaged';
-    if (newColumnId === 'closed_won') newStatus = 'closed won';
-    if (newColumnId === 'closed_lost') newStatus = 'closed lost';
-
-    if (newStatus) {
-      setProspects(prev => prev.map(p => p._id === leadId ? { ...p, status: newStatus, isQualified: newStatus === 'qualified' ? true : p.isQualified } : p));
-      updateLead.mutate({ id: leadId, data: { leadStatus: newStatus } });
-      addToast({ message: `Lead moved to ${newColumnId.replace('_', ' ')}`, severity: 'success' });
+  useEffect(() => {
+    if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
+      const sheetId = (user as any).googleSheetId;
+      setGoogleSheetLink(`https://docs.google.com/spreadsheets/d/${sheetId}`);
+      setInputLink(`https://docs.google.com/spreadsheets/d/${sheetId}`);
     }
-  };
+  }, [user, googleSheetLink, inputLink]);
 
-  // Map prospect status to Kanban stage columns
-  const getColumnLeads = (columnId: string) => {
-    return prospects.filter((p) => {
-      if (columnId === 'qualified') return p.isQualified || p.status === 'qualified' || p.status === 'connection accepted' || p.status === 'replied';
-      if (columnId === 'discovery') return p.status === 'meeting';
-      if (columnId === 'proposal') return p.status === 'proposal sent';
-      if (columnId === 'negotation') return p.status === 'messaged';
-      if (columnId === 'closed_won') return p.status === 'closed won';
-      if (columnId === 'closed_lost') return p.status === 'closed lost';
-      return false;
-    });
-  };
 
   // Helper to extract the unique spreadsheet ID from a Google Sheet URL,
   // or return the input as is if it is already a direct spreadsheet ID.
@@ -525,11 +359,6 @@ export const SalesPage = () => {
     }
   };
 
-  const handleDisconnect = () => {
-    setGoogleSheetLink(null);
-    setProspects([]);
-    setInputLink('');
-  };
 
   // Calculate dynamic sales stats derived from prospects
   const stats = useMemo(() => {
@@ -614,11 +443,6 @@ export const SalesPage = () => {
         icp.includes(query) ||
         industry.includes(query);
 
-      const matchesLocation =
-        selectedLocation === 'Location' ||
-        selectedLocation === 'All Locations' ||
-        (p.location && p.location === selectedLocation);
-
       const matchesICP =
         selectedIndustry === 'Industry (ICP)' ||
         selectedIndustry === 'All Industries' ||
@@ -631,9 +455,9 @@ export const SalesPage = () => {
         (p.leadStatus && p.leadStatus.toLowerCase() === selectedStatus.toLowerCase()) ||
         (p.status && p.status === selectedStatus);
 
-      return matchesSearch && matchesLocation && matchesICP && matchesStatus;
+      return matchesSearch && matchesICP && matchesStatus;
     });
-  }, [prospects, searchQuery, selectedLocation, selectedIndustry, selectedStatus]);
+  }, [prospects, searchQuery, selectedIndustry, selectedStatus]);
 
   // Styles for input selects
   const filterSelectSx = {
@@ -778,38 +602,17 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
           borderRadius: '24px',
           p: 0.5,
-          gap: 0.5,
-          width: 'fit-content',
+          alignItems: 'center',
           mb: 4,
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'}`,
         }}
       >
-        {(['pipeline', 'prospects'] as const).map((tab) => (
-          <Button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            sx={{
-              borderRadius: '20px',
-              px: 3.5,
-              py: 0.75,
-              bgcolor: activeTab === tab ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-              color: activeTab === tab ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
-              '&:hover': {
-                bgcolor: activeTab === tab ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.04)',
-              },
-              transition: 'all 0.2s ease',
-              fontWeight: 700,
-              textTransform: 'capitalize',
-              fontSize: '0.86rem',
-            }}
-          >
-            {tab}
-          </Button>
-        ))}
+        <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, ml: 1, py: 1 }}>
+          Prospects List
+        </Typography>
       </Box>
 
       {/* Linked Sheet Status Banner Toolbar */}
-      {googleSheetLink && activeTab === 'prospects' && (
+      {googleSheetLink && (
         <Box
           sx={{
             display: 'flex',
@@ -882,139 +685,11 @@ export const SalesPage = () => {
             >
               Sync Now
             </Button>
-            <Button
-              variant="text"
-              size="small"
-              color="error"
-              startIcon={<DeleteOutlineIcon />}
-              onClick={handleDisconnect}
-              sx={{
-                borderRadius: '20px',
-                fontWeight: 700,
-                textTransform: 'none',
-                fontSize: '0.78rem',
-                px: 2,
-                '&:hover': {
-                  bgcolor: 'rgba(239, 68, 68, 0.05)',
-                },
-              }}
-            >
-              Disconnect
-            </Button>
           </Box>
         </Box>
       )}
 
-      {/* Tab Panel: Pipeline View */}
-      {activeTab === 'pipeline' && (
-        <Box className="animate-fade-in-up">
-          {/* Sub-header actions row */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-              {prospects.filter((p) => ['connection accepted', 'replied', 'meeting', 'proposal sent', 'messaged'].includes(p.status)).length} qualified leads on the board
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
-              {/* Stage button removed temporarily as per user request */}
-              <Button
-                variant="contained"
-                onClick={() => setIsQualifyModalOpen(true)}
-                startIcon={<PersonAddIcon sx={{ fontSize: 16 }} />}
-                sx={{
-                  bgcolor: '#FFA08A',
-                  color: '#fff',
-                  textTransform: 'none',
-                  borderRadius: '24px',
-                  px: 2.75,
-                  py: 0.75,
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    bgcolor: '#FF8A6F',
-                    boxShadow: 'none',
-                  },
-                }}
-              >
-                Qualify a lead
-              </Button>
-            </Box>
-          </Box>
 
-          {/* Kanban board columns row */}
-          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2.5,
-                overflowX: 'auto',
-                pb: 3.5,
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': { display: 'none' },
-                '-ms-overflow-style': 'none',
-              }}
-            >
-            {columnsConfig.map((col) => {
-              const colLeads = getColumnLeads(col.id);
-              return (
-                <DroppableColumn key={col.id} columnId={col.id} isDarkMode={isDarkMode}>
-                  {/* Column header */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: col.color }} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.88rem' }}>
-                        {col.label}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                        {colLeads.length}
-                      </Typography>
-                      <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                        <MoreHorizIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
-
-                  {/* Column content */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1 }}>
-                    {colLeads.length > 0 ? (
-                      colLeads.map((lead) => (
-                        <DraggableCard key={lead._id} lead={lead}>
-                          <PipelineLeadCard lead={lead} isDarkMode={isDarkMode} />
-                        </DraggableCard>
-                      ))
-                    ) : (
-                      <Box
-                        sx={{
-                          flexGrow: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: `1.5px dashed ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                          borderRadius: '16px',
-                          minHeight: 300,
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 650, fontSize: '0.82rem' }}>
-                          No leads
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                </DroppableColumn>
-              );
-            })}
-            <DragOverlay dropAnimation={null}>
-              {activeDragLead ? (
-                <div style={{ width: 258, transform: 'rotate(2deg) scale(1.02)' }}>
-                  <PipelineLeadCard lead={activeDragLead} isDarkMode={isDarkMode} />
-                </div>
-              ) : null}
-            </DragOverlay>
-          </Box>
-          </DndContext>
-        </Box>
-      )}
 
       {/* Tab Panel: Prospects View */}
       {activeTab === 'prospects' && (
@@ -1064,21 +739,7 @@ export const SalesPage = () => {
               }}
             />
 
-            {/* Location Select Dropdown */}
-            <FormControl sx={filterSelectSx}>
-              <Select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                input={<OutlinedInput />}
-              >
-                <MenuItem value="Location">Location</MenuItem>
-                <MenuItem value="All Locations">All Locations</MenuItem>
-                <MenuItem value="Pakistan">Pakistan</MenuItem>
-                <MenuItem value="USA">USA</MenuItem>
-                <MenuItem value="Canada">Canada</MenuItem>
-                <MenuItem value="UK">UK</MenuItem>
-              </Select>
-            </FormControl>
+
 
             {/* Industry ICP Select Dropdown */}
             <FormControl sx={filterSelectSx}>
@@ -1121,7 +782,7 @@ export const SalesPage = () => {
               startIcon={<AddIcon sx={{ fontSize: 16 }} />}
               onClick={() => setIsLinkDialogOpen(true)}
               sx={{
-                bgcolor: '#FFA08A',
+                bgcolor: tokens.brand.primary,
                 color: '#fff',
                 textTransform: 'none',
                 borderRadius: '24px',
@@ -1132,7 +793,7 @@ export const SalesPage = () => {
                 boxShadow: 'none',
                 alignSelf: { xs: 'stretch', sm: 'auto' },
                 '&:hover': {
-                  bgcolor: '#FF8A6F',
+                  bgcolor: tokens.brand.primaryLight,
                   boxShadow: 'none',
                 },
               }}
