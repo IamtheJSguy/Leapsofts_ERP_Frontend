@@ -226,9 +226,28 @@ export interface KanbanBoard {
 
 export interface Conversation {
   _id: string;
+  isGroup?: boolean;
+  name?: string;
+  description?: string;
+  admin?: string | User;
   participants: User[];
   lastMessage?: Message;
   unreadCount?: number;
+  updatedAt: string;
+}
+
+export interface Shift {
+  _id: string;
+  userId: string | User;
+  date: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  scheduledStart: string;
+  scheduledEnd: string;
+  totalMinutes: number;
+  status: 'not_started' | 'checked_in' | 'checked_out';
+  isActive: boolean;
+  createdAt: string;
   updatedAt: string;
 }
 

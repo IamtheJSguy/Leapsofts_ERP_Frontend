@@ -43,5 +43,17 @@ export const useSocket = () => {
     getSocket().emit(SOCKET_EVENTS.LEAVE_ROOM, { room });
   };
 
-  return { joinRoom, leaveRoom, socket: getSocket() };
+  const joinChat = (conversationId: string) => {
+    getSocket().emit('chat:join', conversationId);
+  };
+
+  const leaveChat = (conversationId: string) => {
+    getSocket().emit('chat:leave', conversationId);
+  };
+
+  const emitTyping = (conversationId: string) => {
+    getSocket().emit(SOCKET_EVENTS.CHAT_TYPING, { conversationId });
+  };
+
+  return { joinRoom, leaveRoom, joinChat, leaveChat, emitTyping, socket: getSocket() };
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import {
   CircularProgress,
   useTheme,
   alpha,
+  Badge,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -43,9 +44,11 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
 import { tokens } from '@/styles/tokens';
+import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/api/useUsers';
+import { getSocket } from '@/lib/socket';
 
 const TeamPage = () => {
   const { isAdmin } = usePermissions();
@@ -94,6 +97,14 @@ const TeamPage = () => {
       return name.includes(query) || job.includes(query) || dept.includes(query) || mail.includes(query);
     });
   }, [teamList, searchQuery]);
+
+  useEffect(() => {
+    if (teamList.length > 0) {
+      const userIds = teamList.map((u: any) => u._id);
+      const socket = getSocket();
+      socket.emit('presence:subscribe', userIds);
+    }
+  }, [teamList]);
 
   const handleResetForm = () => {
     setFullName('');
@@ -591,8 +602,10 @@ const TeamPage = () => {
                   {[
                     { label: 'Department', value: selectedUser.department || 'Engineering' },
                     { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : 'EMPLOYEE' },
+                    { label: 'Shift Start', value: formatTime12Hour(selectedUser.shiftStart) || '09:00 AM' },
+                    { label: 'Shift End', value: formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM' },
                     { label: 'Start Date', value: 'Jun 3, 2026' },
-                    { label: 'Status', value: 'ACTIVE', isStatus: true },
+                    { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
                   ].map((meta, idx) => (
                     <Grid item xs={6} key={idx} sx={{ mb: 1 }}>
                       <Typography
@@ -1264,22 +1277,37 @@ const TeamPage = () => {
                   }}
                 >
                   <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                    <Avatar
-                      className="avatar-glow"
+                    <Badge
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                      variant="dot"
                       sx={{
-                        width: 64,
-                        height: 64,
-                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
-                        color: isDarkMode ? '#FFFFFF' : '#1A1625',
-                        fontSize: '1.4rem',
-                        fontWeight: 800,
-                        mb: 2,
-                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
-                        transition: 'all 0.3s ease',
+                        '& .MuiBadge-badge': {
+                          backgroundColor: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                          color: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                          boxShadow: `0 0 0 2px ${isDarkMode ? 'rgba(30, 27, 36, 1)' : '#fff'}`,
+                          minWidth: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                        },
                       }}
                     >
-                      {initials}
-                    </Avatar>
+                      <Avatar
+                        className="avatar-glow"
+                        sx={{
+                          width: 64,
+                          height: 64,
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
+                          color: isDarkMode ? '#FFFFFF' : '#1A1625',
+                          fontSize: '1.4rem',
+                          fontWeight: 800,
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        {initials}
+                      </Avatar>
+                    </Badge>
 
                     <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
                       {name}
@@ -1380,19 +1408,35 @@ const TeamPage = () => {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar
+                  <Badge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    variant="dot"
                     sx={{
-                      width: 44,
-                      height: 44,
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
-                      color: isDarkMode ? '#FFFFFF' : '#1A1625',
-                      fontSize: '1rem',
-                      fontWeight: 800,
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                      '& .MuiBadge-badge': {
+                        backgroundColor: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                        color: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                        boxShadow: `0 0 0 2px ${isDarkMode ? 'rgba(30, 27, 36, 1)' : '#fff'}`,
+                        minWidth: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                      },
                     }}
                   >
-                    {initials}
-                  </Avatar>
+                    <Avatar
+                      sx={{
+                        width: 46,
+                        height: 46,
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
+                        color: isDarkMode ? '#FFFFFF' : '#1A1625',
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                      }}
+                    >
+                      {initials}
+                    </Avatar>
+                  </Badge>
                   <Box>
                     <Typography
                       variant="subtitle1"

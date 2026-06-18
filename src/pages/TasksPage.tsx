@@ -43,6 +43,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useKPITemplates, useCreateKPITemplate, useUpdateKPITemplate, useDeleteKPITemplate, useAssignKPITemplate, useMyAssignments, useKPITemplateAssignments, useUnassignKPITemplate } from '@/hooks/api/usekpiTemplate';
+import { UserDailyKpisView } from '@/components/dashboard/UserDailyKpisView';
 import api from '@/lib/axios';
 import type { User } from '@/types';
 
@@ -1728,6 +1729,10 @@ const TasksPage = () => {
   }
 
   // STANDARD GOALS LIST DASHBOARD RENDERING
+  if (!isAdmin) {
+    return <UserDailyKpisView />;
+  }
+
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
       {/* Page Title Header */}

@@ -32,3 +32,14 @@ export const getLeadDisplayName = (lead: {
   const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
   return name || lead.prospectName || lead.email || lead.company || 'Unnamed Lead';
 };
+
+export const formatTime12Hour = (timeStr?: string): string => {
+  if (!timeStr) return '';
+  const [hourStr, minuteStr] = timeStr.split(':');
+  if (!hourStr || !minuteStr) return timeStr;
+  let hour = parseInt(hourStr, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  hour = hour ? hour : 12;
+  return `${hour.toString().padStart(2, '0')}:${minuteStr} ${ampm}`;
+};

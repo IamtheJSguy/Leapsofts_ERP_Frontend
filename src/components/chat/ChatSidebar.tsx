@@ -33,7 +33,7 @@ export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
-  const { activeConversationId, setActiveConversation } = useChatStore();
+  const { activeConversationId, setActiveConversation, typingUsers } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -42,7 +42,7 @@ export const ChatSidebar = () => {
   const [selectedUserToChat, setSelectedUserToChat] = useState<any>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
-  
+
   // Group chat states
   const [chatTab, setChatTab] = useState(0); // 0 = Direct, 1 = Group
   const [groupName, setGroupName] = useState('');
@@ -52,11 +52,13 @@ export const ChatSidebar = () => {
   // Filter existing conversations based on search query
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) => {
-      const names = conv.participants
-        .filter((p: any) => p._id !== currentUser?._id)
-        .map((p: any) => getDisplayName(p))
-        .join(', ');
-      return names.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const names = conv.isGroup
+        ? (conv.name || 'Group Chat')
+        : conv.participants
+          .filter((p: any) => p._id !== currentUser?._id)
+          .map((p: any) => getDisplayName(p))
+          .join(', ');
+      return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()));
     });
   }, [conversations, searchQuery, currentUser]);
@@ -102,11 +104,11 @@ export const ChatSidebar = () => {
     } else {
       if (!groupName.trim() || selectedGroupMembers.length === 0) return;
       createConversation(
-        { 
-          isGroup: true, 
-          name: groupName, 
-          description: groupDesc, 
-          participantIds: selectedGroupMembers 
+        {
+          isGroup: true,
+          name: groupName,
+          description: groupDesc,
+          participantIds: selectedGroupMembers
         } as any,
         {
           onSuccess: (res) => {
@@ -124,17 +126,23 @@ export const ChatSidebar = () => {
   };
 
   const getChatDetails = (conv: any) => {
+    if (conv.isGroup) {
+      const name = conv.name || 'Group Chat';
+      const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
+      return { name, email: `${conv.participants.length} members`, initial, isOnline: true, isGroup: true };
+    }
+
     // Get details of the other participants (excluding current user)
     const otherParticipants = conv.participants.filter((p: any) => p._id !== currentUser?._id);
     const mainParticipant = otherParticipants[0] || conv.participants[0] || currentUser;
     const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
     const email = mainParticipant?.email || '';
-    const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U';
-    
+    const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
+
     // Simulate active status (e.g. if the user is active)
     const isOnline = mainParticipant?.isActive || mainParticipant?.status === 'active' || false;
-    
-    return { name, email, initial, isOnline };
+
+    return { name, email, initial, isOnline, isGroup: false };
   };
 
   return (
@@ -173,12 +181,12 @@ export const ChatSidebar = () => {
             '& input': { fontSize: '0.85rem' }
           }}
         />
-        <IconButton 
+        <IconButton
           onClick={() => setIsNewChatModalOpen(true)}
-          sx={{ 
-            bgcolor: tokens.brand.primary, 
-            color: '#fff', 
-            width: 38, 
+          sx={{
+            bgcolor: tokens.brand.primary,
+            color: '#fff',
+            width: 38,
             height: 38,
             '&:hover': { bgcolor: tokens.brand.primary }
           }}
@@ -193,9 +201,9 @@ export const ChatSidebar = () => {
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {filteredConversations.length === 0 ? (
           <Box sx={{ py: 6, px: 2 }}>
-            <EmptyState 
-              title={conversations.length === 0 ? "No active chats" : "No chats found"} 
-              description={conversations.length === 0 ? "Search for members to start chatting." : "Try searching for another team member."} 
+            <EmptyState
+              title={conversations.length === 0 ? "No active chats" : "No chats found"}
+              description={conversations.length === 0 ? "Search for members to start chatting." : "Try searching for another team member."}
             />
           </Box>
         ) : (
@@ -204,6 +212,8 @@ export const ChatSidebar = () => {
               const active = activeConversationId === conv._id;
               const details = getChatDetails(conv);
               const unreadCount = conv.unreadCount || 0;
+              const typingUsersInConv = typingUsers[conv._id] || [];
+              const otherTypingUsers = typingUsersInConv.filter((id) => id !== currentUser?._id);
 
               return (
                 <ListItemButton
@@ -220,8 +230,8 @@ export const ChatSidebar = () => {
                     mx: 2,
                     borderRadius: '20px',
                     position: 'relative',
-                    bgcolor: active 
-                      ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)') 
+                    bgcolor: active
+                      ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)')
                       : 'transparent',
                     boxShadow: active && !isDarkMode ? '0 4px 12px rgba(93,26,137,0.08)' : 'none',
                     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -308,18 +318,34 @@ export const ChatSidebar = () => {
                     }
                     secondary={
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.25 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: 'text.secondary',
-                            fontSize: '0.76rem',
-                            fontWeight: unreadCount > 0 ? 700 : 500,
-                            maxWidth: unreadCount > 0 ? '80%' : '100%',
-                          }}
-                          noWrap
-                        >
-                          {conv.lastMessage?.content || 'No messages yet.'}
-                        </Typography>
+                        {otherTypingUsers.length > 0 ? (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: tokens.brand.primary,
+                              fontSize: '0.76rem',
+                              fontWeight: 600,
+                              fontStyle: 'italic',
+                              maxWidth: unreadCount > 0 ? '80%' : '100%',
+                            }}
+                            noWrap
+                          >
+                            Typing...
+                          </Typography>
+                        ) : (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.76rem',
+                              fontWeight: unreadCount > 0 ? 700 : 500,
+                              maxWidth: unreadCount > 0 ? '80%' : '100%',
+                            }}
+                            noWrap
+                          >
+                            {conv.lastMessage?.content || 'No messages yet.'}
+                          </Typography>
+                        )}
                         {unreadCount > 0 && (
                           <Badge
                             badgeContent={unreadCount}
@@ -394,14 +420,14 @@ export const ChatSidebar = () => {
                   cursor: 'pointer',
                   fontWeight: 700,
                   fontSize: '0.85rem',
-                  color: chatTab === tab.val 
-                    ? (isDarkMode ? '#fff' : tokens.brand.primary) 
+                  color: chatTab === tab.val
+                    ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
-                  bgcolor: chatTab === tab.val 
-                    ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') 
+                  bgcolor: chatTab === tab.val
+                    ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff')
                     : 'transparent',
-                  boxShadow: chatTab === tab.val && !isDarkMode 
-                    ? '0 2px 8px rgba(0,0,0,0.04)' 
+                  boxShadow: chatTab === tab.val && !isDarkMode
+                    ? '0 2px 8px rgba(0,0,0,0.04)'
                     : 'none',
                   transition: 'all 0.2s ease',
                 }}
@@ -460,7 +486,7 @@ export const ChatSidebar = () => {
                 </InputAdornment>
               ),
             }}
-            sx={{ 
+            sx={{
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
               borderRadius: '16px',
               px: 2,
@@ -476,7 +502,7 @@ export const ChatSidebar = () => {
             {filteredNewChatUsers.map((user, index) => {
               const name = getDisplayName(user);
               const initial = name.charAt(0).toUpperCase();
-              
+
               const isTopMatch = chatTab === 0 && newChatSearch.trim().length > 0 && index === 0;
               const isSelectedGroupMember = selectedGroupMembers.includes(user._id);
 
@@ -487,7 +513,7 @@ export const ChatSidebar = () => {
                     if (chatTab === 0) {
                       setSelectedUserToChat(user);
                     } else {
-                      setSelectedGroupMembers(prev => 
+                      setSelectedGroupMembers(prev =>
                         prev.includes(user._id) ? prev.filter(id => id !== user._id) : [...prev, user._id]
                       );
                     }
@@ -498,17 +524,17 @@ export const ChatSidebar = () => {
                     mb: 1,
                     mx: 2,
                     borderRadius: '18px',
-                    bgcolor: isTopMatch 
-                      ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)') 
+                    bgcolor: isTopMatch
+                      ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)')
                       : (isSelectedGroupMember ? (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f9fafb') : 'transparent'),
-                    border: isTopMatch 
-                      ? `1px solid ${tokens.brand.primary}` 
+                    border: isTopMatch
+                      ? `1px solid ${tokens.brand.primary}`
                       : '1px solid transparent',
                     transition: 'all 0.2s ease',
-                    '&:hover': { 
-                      bgcolor: isTopMatch 
-                        ? (isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)') 
-                        : (isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb') 
+                    '&:hover': {
+                      bgcolor: isTopMatch
+                        ? (isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)')
+                        : (isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb')
                     },
                   }}
                 >
@@ -521,11 +547,11 @@ export const ChatSidebar = () => {
                       )}
                     </Box>
                   )}
-                  <Avatar 
-                    sx={{ 
-                      width: 44, 
-                      height: 44, 
-                      mr: 2, 
+                  <Avatar
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      mr: 2,
                       bgcolor: isTopMatch ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6'),
                       color: isTopMatch ? '#fff' : tokens.brand.primary,
                       fontWeight: 700,
@@ -550,7 +576,7 @@ export const ChatSidebar = () => {
               </Typography>
             )}
           </List>
-          
+
           {chatTab === 1 && (
             <Box sx={{ px: 2, pt: 2 }}>
               <Button
@@ -597,16 +623,16 @@ export const ChatSidebar = () => {
         }}
       >
         <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Avatar 
-            sx={{ 
-              width: 64, 
-              height: 64, 
-              bgcolor: tokens.brand.primary, 
-              color: '#fff', 
-              fontSize: '1.5rem', 
-              fontWeight: 800, 
-              mx: 'auto', 
-              mb: 2 
+          <Avatar
+            sx={{
+              width: 64,
+              height: 64,
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              fontSize: '1.5rem',
+              fontWeight: 800,
+              mx: 'auto',
+              mb: 2
             }}
           >
             {selectedUserToChat ? getDisplayName(selectedUserToChat).charAt(0).toUpperCase() : ''}
@@ -617,17 +643,17 @@ export const ChatSidebar = () => {
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
             Would you like to open a direct message with <strong>{selectedUserToChat ? getDisplayName(selectedUserToChat) : ''}</strong>?
           </Typography>
-          
+
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
+            <Button
               fullWidth
-              onClick={() => setSelectedUserToChat(null)} 
-              sx={{ 
-                color: 'text.primary', 
+              onClick={() => setSelectedUserToChat(null)}
+              sx={{
+                color: 'text.primary',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                 borderRadius: '16px',
                 py: 1.5,
-                fontWeight: 700, 
+                fontWeight: 700,
                 textTransform: 'none',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }
               }}

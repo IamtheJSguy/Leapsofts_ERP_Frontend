@@ -8,6 +8,7 @@ interface TimeTrackerState {
   checkIn: () => void;
   checkOut: () => void;
   tick: () => void;
+  syncWithShift: (shift: any) => void;
 }
 
 export const useTimeTrackerStore = create<TimeTrackerState>()(
@@ -41,6 +42,22 @@ export const useTimeTrackerStore = create<TimeTrackerState>()(
         }
         const elapsed = Math.floor((Date.now() - new Date(checkInTime).getTime()) / 1000);
         set({ elapsedSeconds: elapsed >= 0 ? elapsed : 0 });
+      },
+      syncWithShift: (shift) => {
+        if (!shift) {
+          set({ isCheckedIn: false, checkInTime: null, elapsedSeconds: 0 });
+          return;
+        }
+        if (shift.status === 'checked_in' && shift.checkInTime) {
+          const elapsed = Math.floor((Date.now() - new Date(shift.checkInTime).getTime()) / 1000);
+          set({
+            isCheckedIn: true,
+            checkInTime: shift.checkInTime,
+            elapsedSeconds: elapsed >= 0 ? elapsed : 0,
+          });
+        } else {
+          set({ isCheckedIn: false, checkInTime: null, elapsedSeconds: 0 });
+        }
       },
     }),
     {

@@ -14,17 +14,16 @@ import {
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
-import ContactPageIcon from '@mui/icons-material/ContactPage';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ChatIcon from '@mui/icons-material/Chat';
 import EventIcon from '@mui/icons-material/Event';
-import SpeedIcon from '@mui/icons-material/Speed';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -53,15 +52,16 @@ const navGroups: NavGroup[] = [
       { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
+      // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
       { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, adminOnly: true },
     ],
   },
   {
     title: 'Analytics',
     items: [
-      { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
+      // { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} /> },
       { label: 'Team Insights', path: '/team/insights', icon: <TimelineIcon sx={{ fontSize: 18 }} />, adminOnly: true },
     ],

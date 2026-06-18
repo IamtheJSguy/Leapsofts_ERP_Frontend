@@ -10,7 +10,9 @@ import {
   ListItemText,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { useLeadHistory } from '@/hooks/api/useLeads';
+import StarIcon from '@mui/icons-material/Star';
+import { useLeadHistory, useQualifyLead } from '@/hooks/api/useLeads';
+import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { Lead } from '@/types';
@@ -31,6 +33,8 @@ export const LeadDetailDrawer = ({
   onDelete,
 }: LeadDetailDrawerProps) => {
   const { data: history = [] } = useLeadHistory(lead?._id);
+  const qualifyLeadMutation = useQualifyLead();
+  const addToast = useUIStore((s) => s.addToast);
 
   if (!lead) return null;
 
@@ -65,6 +69,26 @@ export const LeadDetailDrawer = ({
         <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
           <Button variant="outlined" onClick={onEdit}>Edit</Button>
           <Button variant="outlined" color="error" onClick={onDelete}>Delete</Button>
+          {!lead.isQualified && (
+            <Button
+              variant="contained"
+              startIcon={<StarIcon />}
+              onClick={() => {
+                qualifyLeadMutation.mutate(
+                  { id: lead._id },
+                  {
+                    onSuccess: () => {
+                      addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
+                    },
+                  }
+                );
+              }}
+              disabled={qualifyLeadMutation.isPending}
+              sx={{ bgcolor: '#FF5733', '&:hover': { bgcolor: '#E04A2A' } }}
+            >
+              Qualify
+            </Button>
+          )}
         </Box>
         <Divider sx={{ my: 2 }} />
         <Typography variant="subtitle2">Version History</Typography>

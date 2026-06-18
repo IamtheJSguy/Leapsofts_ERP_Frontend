@@ -45,7 +45,11 @@ import WarningIcon from '@mui/icons-material/Warning';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
-import { useLeads } from '@/hooks/api/useLeads';
+import { useLeads, useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
+import { DndContext, useDraggable, useDroppable, DragOverlay, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { useUIStore } from '@/store/useUIStore';
+import StarIcon from '@mui/icons-material/Star';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useUpdateMe } from '@/hooks/api/useUsers';
 
 // High-fidelity synced prospects mock database
@@ -143,11 +147,135 @@ const columnsConfig = [
   { id: 'closed_lost', label: 'closed lost', color: '#6B7280' },
 ];
 
+const getLeadName = (lead: any): string => {
+  if (!lead) return 'Unnamed Lead';
+  if (lead.prospectName) return lead.prospectName;
+  const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
+  return name || lead.email || lead.company || 'Unnamed Lead';
+};
+
+const DroppableColumn = ({ columnId, children, isDarkMode }: any) => {
+  const { setNodeRef, isOver } = useDroppable({ id: columnId });
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        width: 290,
+        flexShrink: 0,
+        bgcolor: isDarkMode ? (isOver ? 'rgba(255,255,255,0.08)' : 'rgba(30, 27, 36, 0.45)') : (isOver ? 'rgba(0,0,0,0.08)' : 'rgba(255, 255, 255, 0.45)'),
+        backdropFilter: 'blur(10px)',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+        borderRadius: '20px',
+        p: 2,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        minHeight: 450,
+        transition: 'background-color 0.2s',
+      }}
+    >
+      {children}
+    </Box>
+  );
+};
+
+const DraggableCard = ({ lead, children }: any) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: lead._id,
+    data: { lead },
+  });
+
+  const style = isDragging ? { opacity: 0 } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {children}
+    </div>
+  );
+};
+
+const PipelineLeadCard = ({ lead, isDarkMode }: any) => {
+  const leadName = getLeadName(lead);
+  const initials = leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
+  return (
+    <Card
+      sx={{
+        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#fff',
+        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0,0,0,0.05)'}`,
+        borderRadius: '12px',
+        p: 1.75,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+        cursor: 'grab',
+        transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 4px 12px rgba(93, 26, 137, 0.06)',
+          borderColor: tokens.brand.primary,
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, mb: 1.5 }}>
+        <Avatar
+          sx={{
+            width: 28,
+            height: 28,
+            bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#F2EEEC',
+            color: isDarkMode ? '#fff' : '#1A1625',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+          }}
+        >
+          {initials}
+        </Avatar>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 750, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.82rem', lineHeight: 1.2 }}
+            noWrap
+          >
+            {leadName}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.72rem' }}
+            noWrap
+          >
+            {lead.company || lead.industry || 'Company info missing'}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Typography
+        variant="caption"
+        sx={{ color: 'text.secondary', display: 'block', mb: 1, fontSize: '0.72rem', fontWeight: 550 }}
+        noWrap
+      >
+        {lead.title || lead.profile || lead.icp || 'Role info missing'}
+      </Typography>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.7rem' }}>
+          <RoomIcon sx={{ fontSize: 12 }} />
+          {lead.location || 'Location missing'}
+        </Typography>
+        <Chip
+          label={lead.status}
+          size="small"
+          sx={{ height: 18, fontSize: '0.58rem', fontWeight: 750, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', color: 'text.secondary', textTransform: 'capitalize' }}
+        />
+      </Box>
+    </Card>
+  );
+};
+
 export const SalesPage = () => {
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
   const syncMySheet = useSyncMySheet();
   const updateMe = useUpdateMe();
+  const qualifyLead = useQualifyLead();
+  const updateLead = useUpdateLead();
+  const addToast = useUIStore((s) => s.addToast);
 
   // Dynamic style injection to hide scrollbars globally while this page is active
   useEffect(() => {
@@ -255,10 +383,45 @@ export const SalesPage = () => {
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStageText, setSyncStageText] = useState('');
 
+  // Drag and Drop state
+  const [activeDragLead, setActiveDragLead] = useState<any>(null);
+
+  // Qualify Lead Modal state
+  const [isQualifyModalOpen, setIsQualifyModalOpen] = useState(false);
+  const [selectedLeadToQualify, setSelectedLeadToQualify] = useState<string>('');
+
+  const handleDragStart = (e: DragStartEvent) => {
+    const lead = prospects.find(p => p._id === e.active.id);
+    if (lead) setActiveDragLead(lead);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveDragLead(null);
+    const { active, over } = e;
+    if (!over) return;
+    
+    const leadId = active.id as string;
+    const newColumnId = over.id as string;
+    
+    let newStatus = '';
+    if (newColumnId === 'qualified') newStatus = 'qualified';
+    if (newColumnId === 'discovery') newStatus = 'meeting';
+    if (newColumnId === 'proposal') newStatus = 'proposal sent';
+    if (newColumnId === 'negotation') newStatus = 'messaged';
+    if (newColumnId === 'closed_won') newStatus = 'closed won';
+    if (newColumnId === 'closed_lost') newStatus = 'closed lost';
+
+    if (newStatus) {
+      setProspects(prev => prev.map(p => p._id === leadId ? { ...p, status: newStatus, isQualified: newStatus === 'qualified' ? true : p.isQualified } : p));
+      updateLead.mutate({ id: leadId, data: { leadStatus: newStatus } });
+      addToast({ message: `Lead moved to ${newColumnId.replace('_', ' ')}`, severity: 'success' });
+    }
+  };
+
   // Map prospect status to Kanban stage columns
   const getColumnLeads = (columnId: string) => {
     return prospects.filter((p) => {
-      if (columnId === 'qualified') return p.status === 'connection accepted' || p.status === 'replied';
+      if (columnId === 'qualified') return p.isQualified || p.status === 'qualified' || p.status === 'connection accepted' || p.status === 'replied';
       if (columnId === 'discovery') return p.status === 'meeting';
       if (columnId === 'proposal') return p.status === 'proposal sent';
       if (columnId === 'negotation') return p.status === 'messaged';
@@ -751,28 +914,10 @@ export const SalesPage = () => {
               {prospects.filter((p) => ['connection accepted', 'replied', 'meeting', 'proposal sent', 'messaged'].includes(p.status)).length} qualified leads on the board
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                sx={{
-                  borderRadius: '24px',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
-                  color: isDarkMode ? 'rgba(255,255,255,0.8)' : tokens.text.secondary,
-                  textTransform: 'none',
-                  px: 2.5,
-                  py: 0.75,
-                  fontWeight: 650,
-                  fontSize: '0.82rem',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
-                  },
-                }}
-              >
-                Stage
-              </Button>
+              {/* Stage button removed temporarily as per user request */}
               <Button
                 variant="contained"
+                onClick={() => setIsQualifyModalOpen(true)}
                 startIcon={<PersonAddIcon sx={{ fontSize: 16 }} />}
                 sx={{
                   bgcolor: '#FFA08A',
@@ -796,36 +941,22 @@ export const SalesPage = () => {
           </Box>
 
           {/* Kanban board columns row */}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 2.5,
-              overflowX: 'auto',
-              pb: 3.5,
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-              '-ms-overflow-style': 'none',
-            }}
-          >
+          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2.5,
+                overflowX: 'auto',
+                pb: 3.5,
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+                '-ms-overflow-style': 'none',
+              }}
+            >
             {columnsConfig.map((col) => {
               const colLeads = getColumnLeads(col.id);
               return (
-                <Box
-                  key={col.id}
-                  sx={{
-                    width: 290,
-                    flexShrink: 0,
-                    bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.45)',
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                    borderRadius: '20px',
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    minHeight: 450,
-                  }}
-                >
+                <DroppableColumn key={col.id} columnId={col.id} isDarkMode={isDarkMode}>
                   {/* Column header */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
@@ -847,111 +978,11 @@ export const SalesPage = () => {
                   {/* Column content */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1 }}>
                     {colLeads.length > 0 ? (
-                      colLeads.map((lead) => {
-                        const leadName = getLeadName(lead);
-                        const initials = leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
-                        return (
-                          <Card
-                            key={lead._id}
-                            sx={{
-                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#fff',
-                              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0,0,0,0.05)'}`,
-                              borderRadius: '12px',
-                              p: 1.75,
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
-                              '&:hover': {
-                                transform: 'translateY(-2px)',
-                                boxShadow: '0 4px 12px rgba(93, 26, 137, 0.06)',
-                                borderColor: tokens.brand.primary,
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, mb: 1.5 }}>
-                              <Avatar
-                                sx={{
-                                  width: 28,
-                                  height: 28,
-                                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#F2EEEC',
-                                  color: isDarkMode ? '#fff' : '#1A1625',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 800,
-                                }}
-                              >
-                                {initials}
-                              </Avatar>
-                              <Box sx={{ minWidth: 0 }}>
-                                <Typography
-                                  variant="subtitle2"
-                                  sx={{
-                                    fontWeight: 750,
-                                    color: isDarkMode ? '#fff' : tokens.text.primary,
-                                    fontSize: '0.82rem',
-                                    lineHeight: 1.2,
-                                  }}
-                                  noWrap
-                                >
-                                  {leadName}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    color: 'text.secondary',
-                                    fontWeight: 500,
-                                    fontSize: '0.72rem',
-                                  }}
-                                  noWrap
-                                >
-                                  {lead.company}
-                                </Typography>
-                              </Box>
-                            </Box>
-
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'text.secondary',
-                                display: 'block',
-                                mb: 1,
-                                fontSize: '0.72rem',
-                                fontWeight: 550,
-                              }}
-                              noWrap
-                            >
-                              {lead.title}
-                            </Typography>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: 'text.secondary',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 0.5,
-                                  fontSize: '0.7rem',
-                                }}
-                              >
-                                <RoomIcon sx={{ fontSize: 12 }} />
-                                {lead.location}
-                              </Typography>
-                              <Chip
-                                label={lead.status}
-                                size="small"
-                                sx={{
-                                  height: 18,
-                                  fontSize: '0.58rem',
-                                  fontWeight: 750,
-                                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                                  color: 'text.secondary',
-                                  textTransform: 'capitalize',
-                                }}
-                              />
-                            </Box>
-                          </Card>
-                        );
-                      })
+                      colLeads.map((lead) => (
+                        <DraggableCard key={lead._id} lead={lead}>
+                          <PipelineLeadCard lead={lead} isDarkMode={isDarkMode} />
+                        </DraggableCard>
+                      ))
                     ) : (
                       <Box
                         sx={{
@@ -970,10 +1001,18 @@ export const SalesPage = () => {
                       </Box>
                     )}
                   </Box>
-                </Box>
+                </DroppableColumn>
               );
             })}
+            <DragOverlay dropAnimation={null}>
+              {activeDragLead ? (
+                <div style={{ width: 258, transform: 'rotate(2deg) scale(1.02)' }}>
+                  <PipelineLeadCard lead={activeDragLead} isDarkMode={isDarkMode} />
+                </div>
+              ) : null}
+            </DragOverlay>
           </Box>
+          </DndContext>
         </Box>
       )}
 
@@ -1350,9 +1389,57 @@ export const SalesPage = () => {
                         </TableCell>
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
-                          <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                            <MoreHorizIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {prospect.isQualified || prospect.status === 'connection accepted' || prospect.status === 'qualified' ? (
+                              <Chip
+                                icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
+                                label="Qualified"
+                                size="small"
+                                sx={{
+                                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                                  color: '#10B981',
+                                  fontWeight: 700,
+                                  fontSize: '0.65rem',
+                                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                                }}
+                              />
+                            ) : (
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<StarIcon sx={{ fontSize: '14px !important' }} />}
+                                onClick={() => {
+                                  qualifyLead.mutate(
+                                    { id: prospect._id },
+                                    {
+                                      onSuccess: () => {
+                                        addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
+                                      },
+                                    }
+                                  );
+                                }}
+                                disabled={qualifyLead.isPending}
+                                sx={{
+                                  borderRadius: '20px',
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  fontSize: '0.7rem',
+                                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: tokens.brand.primary,
+                                    borderColor: tokens.brand.primary,
+                                    color: '#fff',
+                                  },
+                                }}
+                              >
+                                Qualify
+                              </Button>
+                            )}
+                            <IconButton size="small" sx={{ color: 'text.secondary' }}>
+                              <MoreHorizIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     );
@@ -1519,6 +1606,105 @@ export const SalesPage = () => {
             }}
           />
         </Box>
+      </Dialog>
+      {/* Qualify a Lead Modal */}
+      <Dialog
+        open={isQualifyModalOpen}
+        onClose={() => {
+          setIsQualifyModalOpen(false);
+          setSelectedLeadToQualify('');
+        }}
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? '#1e1b24' : '#fff',
+            backgroundImage: 'none',
+            minWidth: 400,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            Qualify a Lead
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.5 }}>
+            Move an unqualified prospect into your active pipeline.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pb: 3, pt: 2 }}>
+          <FormControl fullWidth sx={filterSelectSx}>
+            <Typography variant="caption" sx={{ fontWeight: 700, mb: 1, display: 'block', color: 'text.secondary' }}>
+              SELECT PROSPECT
+            </Typography>
+            <Select
+              value={selectedLeadToQualify}
+              onChange={(e) => setSelectedLeadToQualify(e.target.value)}
+              displayEmpty
+              input={<OutlinedInput />}
+            >
+              <MenuItem value="" disabled>
+                <em>Choose a prospect...</em>
+              </MenuItem>
+              {prospects
+                .filter((p) => {
+                  const isActive = p.isQualified || p.status === 'qualified' || p.status === 'connection accepted' || p.status === 'replied' || p.status === 'meeting' || p.status === 'proposal sent' || p.status === 'messaged' || p.status === 'closed won' || p.status === 'closed lost';
+                  return !isActive;
+                })
+                .map((p) => (
+                  <MenuItem key={p._id} value={p._id}>
+                    {getLeadName(p)} {p.company ? `- ${p.company}` : ''}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button
+            onClick={() => {
+              setIsQualifyModalOpen(false);
+              setSelectedLeadToQualify('');
+            }}
+            sx={{
+              color: 'text.secondary',
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '20px',
+              px: 3,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!selectedLeadToQualify || qualifyLead.isPending}
+            onClick={() => {
+              if (selectedLeadToQualify) {
+                qualifyLead.mutate(
+                  { id: selectedLeadToQualify },
+                  {
+                    onSuccess: () => {
+                      addToast({ message: 'Lead successfully qualified!', severity: 'success' });
+                      setIsQualifyModalOpen(false);
+                      setSelectedLeadToQualify('');
+                      // The queryClient invalidation in useQualifyLead will auto-refresh the prospects
+                    },
+                  }
+                );
+              }
+            }}
+            sx={{
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '20px',
+              px: 3.5,
+              '&:hover': { bgcolor: tokens.brand.primaryLight },
+            }}
+          >
+            {qualifyLead.isPending ? 'Qualifying...' : 'Confirm'}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

@@ -44,10 +44,10 @@ export const ProfileEnrichmentModal = ({ lead, open, onClose }: ProfileEnrichmen
 
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
 
-  const onSubmit = (data: { sections: { title: string; content?: string }[] }) => {
+  const onSubmit = () => {
     if (!lead) return;
     qualifyLead.mutate(
-      { id: lead._id, enrichment: { profileSections: data.sections } },
+      { id: lead._id },
       {
         onSuccess: () => {
           addToast({ message: 'Lead qualified', severity: 'success' });

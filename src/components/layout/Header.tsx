@@ -19,8 +19,9 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTodayShift, useCheckIn, useCheckOut } from '@/hooks/api/useShifts';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,10 +40,22 @@ export const Header = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const { data: todayShift } = useTodayShift();
+  const { mutate: checkInMutate, isPending: isCheckingIn } = useCheckIn();
+  const { mutate: checkOutMutate, isPending: isCheckingOut } = useCheckOut();
+
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const elapsedSeconds = useTimeTrackerStore((s) => s.elapsedSeconds);
-  const checkIn = useTimeTrackerStore((s) => s.checkIn);
-  const checkOut = useTimeTrackerStore((s) => s.checkOut);
+  const syncWithShift = useTimeTrackerStore((s) => s.syncWithShift);
+
+  useEffect(() => {
+    if (todayShift !== undefined) {
+      syncWithShift(todayShift);
+    }
+  }, [todayShift, syncWithShift]);
+
+  const handleCheckIn = () => checkInMutate(undefined);
+  const handleCheckOut = () => checkOutMutate(undefined);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -166,7 +179,8 @@ export const Header = () => {
               <Button
                 size="small"
                 variant="contained"
-                onClick={isCheckedIn ? checkOut : checkIn}
+                onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
+                disabled={isCheckingIn || isCheckingOut}
                 sx={{
                   height: 24,
                   minWidth: 0,
@@ -185,7 +199,7 @@ export const Header = () => {
                   },
                 }}
               >
-                {isCheckedIn ? 'Check Out' : 'Check In'}
+                {isCheckingIn || isCheckingOut ? 'Loading...' : isCheckedIn ? 'Check Out' : 'Check In'}
               </Button>
             </Box>
           )}

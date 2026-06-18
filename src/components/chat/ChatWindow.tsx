@@ -25,12 +25,14 @@ import ForumIcon from '@mui/icons-material/Forum';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddToDriveIcon from '@mui/icons-material/AddToDrive';
 import ImageIcon from '@mui/icons-material/Image';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useMessages, useSendMessage, useConversations, useCreateConversation } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
+import { GroupSettingsModal } from './GroupSettingsModal';
 import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
 import { useMemo } from 'react';
@@ -50,9 +52,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const createConversation = useCreateConversation();
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { joinRoom, leaveRoom } = useSocket();
+  const { joinChat, leaveChat, emitTyping } = useSocket();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  
+  // Track typing
+  const typingUsers = useChatStore((s) => activeConversationId ? s.typingUsers[activeConversationId] : undefined);
+  const otherTypingUsers = (typingUsers || []).filter((id) => id !== user?._id);
+  const lastTypingEmit = useRef<number>(0);
 
   // Attachment Menu State
   const [attachAnchorEl, setAttachAnchorEl] = useState<null | HTMLElement>(null);
@@ -62,13 +69,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [driveDialogOpen, setDriveDialogOpen] = useState(false);
   const [driveLink, setDriveLink] = useState('');
 
+  // Group Settings State
+  const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
+
   useEffect(() => {
     if (activeConversationId) {
-      const room = `conversation:${activeConversationId}`;
-      joinRoom(room);
-      return () => leaveRoom(room);
+      joinChat(activeConversationId);
+      return () => leaveChat(activeConversationId);
     }
-  }, [activeConversationId, joinRoom, leaveRoom]);
+  }, [activeConversationId, joinChat, leaveChat]);
 
   // Intercept and generate mock messages if this is a mock conversation
   const mockMessages = useMemo(() => {
@@ -118,39 +127,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }));
   }, [messages, activeConversationId, dbUsers, user]);
 
-  const dummyMessages = useMemo(() => {
-    return [
-      {
-        _id: 'msg-1',
-        conversationId: 'dummy-chat-1',
-        sender: { _id: 'dummy-user-1', firstName: 'Emily', lastName: 'Chen' },
-        content: 'Hi! Have you reviewed the latest Q3 metrics?',
-        type: 'text',
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-      },
-      {
-        _id: 'msg-2',
-        conversationId: 'dummy-chat-1',
-        sender: user,
-        content: 'Yes, looking solid. I think we can push for a 15% increase.',
-        type: 'text',
-        createdAt: new Date(Date.now() - 3000000).toISOString(),
-      },
-      {
-        _id: 'msg-3',
-        conversationId: 'dummy-chat-1',
-        sender: { _id: 'dummy-user-1', firstName: 'Emily', lastName: 'Chen' },
-        content: 'Sounds perfect! Let\'s finalize the proposal.',
-        type: 'text',
-        createdAt: new Date(Date.now() - 100000).toISOString(),
-      }
-    ] as any[];
-  }, [user]);
-
-  const displayMessages = activeConversationId === 'dummy-chat-1' 
-    ? dummyMessages 
-    : (activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages);
-  const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-') && activeConversationId !== 'dummy-chat-1';
+  const displayMessages = activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages;
+  const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-');
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -203,11 +181,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const activeConversation = conversations.find((c) => c._id === activeConversationId);
     if (!activeConversation) return null;
 
+    if (activeConversation.isGroup) {
+      const name = activeConversation.name || 'Group Chat';
+      const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
+      return { name, initial, isOnline: true };
+    }
+
     const otherParticipants = activeConversation.participants.filter((p: any) => p._id !== user?._id);
     const mainParticipant = otherParticipants[0] || activeConversation.participants[0] || user;
     if (otherParticipants.length === 0) return { name: 'Me', initial: 'M', isOnline: true };
     const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
-    const initial = name.split(' ').map((n: any) => n[0]).join('').toUpperCase() || 'U';
+    const initial = name.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
     const isOnline = mainParticipant?.isActive || (mainParticipant as any)?.status === 'active' || false;
     return { name, initial, isOnline };
   }, [activeConversationId, conversations, dbUsers, user]);
@@ -226,26 +210,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         }}
       >
         <Box sx={{ position: 'relative', mb: 3 }}>
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: 120,
-              height: 120,
-              transform: 'translate(-50%, -50%)',
-              bgcolor: tokens.brand.primary,
-              borderRadius: '50%',
-              filter: 'blur(40px)',
-              opacity: isDarkMode ? 0.4 : 0.15,
-              animation: 'pulse 4s infinite ease-in-out',
-              '@keyframes pulse': {
-                '0%': { transform: 'translate(-50%, -50%) scale(0.9)', opacity: isDarkMode ? 0.3 : 0.1 },
-                '50%': { transform: 'translate(-50%, -50%) scale(1.1)', opacity: isDarkMode ? 0.5 : 0.2 },
-                '100%': { transform: 'translate(-50%, -50%) scale(0.9)', opacity: isDarkMode ? 0.3 : 0.1 },
-              }
-            }}
-          />
+
           <Avatar
             sx={{
               width: 80,
@@ -332,28 +297,43 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
         {/* Action Header Tools */}
         <Box sx={{ display: 'flex', gap: 1.5 }}>
+          {conversations.find((c) => c._id === activeConversationId)?.isGroup && (
+            <Tooltip title="Group Info" arrow>
+              <IconButton
+                onClick={() => setIsGroupSettingsOpen(true)}
+                size="small"
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                  transition: 'all 0.2s',
+                  '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
+                }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Search Messages" arrow>
-            <IconButton 
-              onClick={onSearchOpen} 
-              size="small" 
-              sx={{ 
+            <IconButton
+              onClick={onSearchOpen}
+              size="small"
+              sx={{
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
-              }} 
+              }}
             >
               <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Google Drive Files" arrow>
-            <IconButton 
-              onClick={onDriveOpen} 
-              size="small" 
-              sx={{ 
+            <IconButton
+              onClick={onDriveOpen}
+              size="small"
+              sx={{
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
-              }} 
+              }}
             >
               <FolderIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
             </IconButton>
@@ -362,24 +342,62 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       </Box>
 
       {/* Messages Stream Scrollbox */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box sx={{
+        flex: 1,
+        overflowY: 'auto',
+        p: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5,
+        '&::-webkit-scrollbar': {
+          width: '6px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(93, 26, 137, 0.15)',
+          borderRadius: '10px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(93, 26, 137, 0.3)',
+        },
+      }}>
         {showLoader ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress size={28} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
           <>
-            {displayMessages.map((msg) => (
-              <MessageBubble
-                key={msg._id}
-                message={msg}
-                isOwn={(typeof msg.sender === 'object' ? msg.sender?._id : msg.sender) === user?._id}
-              />
-            ))}
+            {displayMessages.map((msg: any) => {
+              const senderRef = msg.sender || msg.senderId;
+              const senderObj = typeof senderRef === 'string' ? (dbUsers.find(u => u._id === senderRef) || senderRef) : senderRef;
+              const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
+              const enhancedMsg = { ...msg, sender: senderObj };
+
+              return (
+                <MessageBubble
+                  key={msg._id}
+                  message={enhancedMsg}
+                  isOwn={isOwn}
+                />
+              );
+            })}
             <div ref={bottomRef} />
           </>
         )}
       </Box>
+
+      {/* Typing Indicator */}
+      {otherTypingUsers.length > 0 && (
+        <Box sx={{ px: 4, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="caption" sx={{ color: tokens.brand.primary, fontStyle: 'italic', fontWeight: 600 }}>
+            {otherTypingUsers.length === 1
+              ? `${dbUsers.find(u => u._id === otherTypingUsers[0])?.firstName || 'Someone'} is typing...`
+              : 'Several people are typing...'}
+          </Typography>
+        </Box>
+      )}
 
       {/* Floating Capsule Composer Area */}
       <Box sx={{ p: 3, pt: 1, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
@@ -404,16 +422,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           }}
         >
           <Tooltip title="Attach Files" arrow>
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={(e) => setAttachAnchorEl(e.currentTarget)}
-              sx={{ 
+              sx={{
                 color: 'text.secondary',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 width: 36,
                 height: 36,
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }
-              }} 
+              }}
               aria-label="Attach file"
             >
               <AttachFileIcon sx={{ fontSize: 20 }} />
@@ -457,7 +475,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             multiline
             maxRows={5}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              const now = Date.now();
+              if (activeConversationId && !activeConversationId.startsWith('mock-') && now - lastTypingEmit.current > 1500) {
+                emitTyping(activeConversationId);
+                lastTypingEmit.current = now;
+              }
+            }}
             placeholder="Type a message..."
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -549,8 +574,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           />
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button 
-            onClick={() => { setDriveDialogOpen(false); setDriveLink(''); }} 
+          <Button
+            onClick={() => { setDriveDialogOpen(false); setDriveLink(''); }}
             sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}
           >
             Cancel
@@ -579,6 +604,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Group Settings Modal */}
+      {conversations.find((c) => c._id === activeConversationId) && (
+        <GroupSettingsModal
+          open={isGroupSettingsOpen}
+          onClose={() => setIsGroupSettingsOpen(false)}
+          conversation={conversations.find((c) => c._id === activeConversationId)!}
+        />
+      )}
     </Box>
   );
 };

@@ -23,6 +23,7 @@ import {
   ProjectsPage,
   ProjectDetailsPage,
   KanbanBoardPage,
+  AttendancePage,
 } from './lazy-pages';
 
 const wrap = (element: React.ReactNode) => (
@@ -128,8 +129,16 @@ export const router = createBrowserRouter([
       {
         path: 'team',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <TeamPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'attendance',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+            <AttendancePage />
           </ProtectedRoute>,
         ),
       },
