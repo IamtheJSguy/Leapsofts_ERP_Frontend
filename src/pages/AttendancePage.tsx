@@ -12,7 +12,6 @@ import {
   LinearProgress,
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import TimerIcon from '@mui/icons-material/Timer';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -63,101 +62,100 @@ export const AttendancePage = () => {
   }, [historyData]);
 
   return (
-    <Box className="animate-fade-in-up" sx={{ p: { xs: 2, md: 4 }, maxWidth: 1200, mx: 'auto', pb: 8 }}>
+    <Box className="animate-fade-in-up" sx={{ pb: 6, height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 5, gap: 2.5 }}>
-        <Box
-          sx={{
-            width: 56,
-            height: 56,
-            borderRadius: '20px',
-            bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: tokens.brand.primary,
-            boxShadow: isDarkMode ? '0 8px 32px rgba(93, 26, 137, 0.2)' : '0 8px 24px rgba(93, 26, 137, 0.08)',
-          }}
-        >
-          <CalendarTodayIcon sx={{ fontSize: 28 }} />
-        </Box>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.025em', mb: 0.5, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              letterSpacing: '-0.025em',
+              mb: 0.5,
+              color: isDarkMode ? '#fff' : tokens.text.primary,
+            }}
+          >
             My Attendance
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+          <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary, fontWeight: 500 }}>
             Track your shifts, hours, and daily punctuality.
           </Typography>
         </Box>
       </Box>
 
       {/* KPI Widgets */}
-      <Grid container spacing={3} sx={{ mb: 6 }}>
+      <Grid container spacing={3.5} sx={{ mb: 4.5 }}>
         {[
           {
             title: 'Hours This Week',
             value: formatHours(totalHoursWorked),
-            icon: <TimerIcon sx={{ fontSize: 24, color: '#3B82F6' }} />,
-            bgIcon: '#EFF6FF',
+            icon: <TimerIcon sx={{ fontSize: 26 }} />,
+            color: '#3B82F6',
+            bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+            hoverBorder: '#3B82F6',
             trend: '+2.5h from last week',
           },
           {
             title: 'Punctuality Score',
             value: `${punctualityScore}%`,
-            icon: <CheckCircleOutlineIcon sx={{ fontSize: 24, color: '#10B981' }} />,
-            bgIcon: '#ECFDF5',
+            icon: <CheckCircleOutlineIcon sx={{ fontSize: 26 }} />,
+            color: tokens.semantic.success,
+            bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
+            hoverBorder: tokens.semantic.success,
             trend: 'Top 10% in team',
           },
           {
             title: 'Total Shifts',
             value: historyData?.total || 0,
-            icon: <TrendingUpIcon sx={{ fontSize: 24, color: '#8B5CF6' }} />,
-            bgIcon: '#F5F3FF',
+            icon: <TrendingUpIcon sx={{ fontSize: 26 }} />,
+            color: tokens.brand.primary,
+            bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.08)',
+            hoverBorder: tokens.brand.primary,
             trend: 'Consistent schedule',
           },
         ].map((kpi, index) => (
           <Grid item xs={12} sm={4} key={index}>
             <Card
               sx={{
-                borderRadius: '24px',
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.02)',
+                borderRadius: '24px',
                 p: 3,
-                height: '100%',
                 display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                transition: 'transform 0.2s',
+                alignItems: 'center',
+                gap: 2.5,
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
+                cursor: 'pointer',
                 '&:hover': {
-                  transform: 'translateY(-4px)',
+                  transform: 'translateY(-3px)',
+                  boxShadow: tokens.shadow.cardHover,
+                  borderColor: kpi.hoverBorder,
                 }
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Box
-                  sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '14px',
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : kpi.bgIcon,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {kpi.icon}
-                </Box>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '16px',
+                  bgcolor: kpi.bgcolor,
+                  color: kpi.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {kpi.icon}
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.68rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {kpi.title}
                 </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: kpi.color, mt: 0.5 }}>
+                  {kpi.value}
+                </Typography>
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1 }}>
-                {kpi.value}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                {kpi.trend}
-              </Typography>
             </Card>
           </Grid>
         ))}
@@ -210,14 +208,15 @@ export const AttendancePage = () => {
                   p: 3,
                   gap: 3,
                   borderRadius: '24px',
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                  boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 24px rgba(0,0,0,0.02)',
-                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  cursor: 'pointer',
                   '&:hover': {
-                    transform: 'scale(1.01)',
-                    boxShadow: isDarkMode ? '0 12px 48px rgba(93, 26, 137, 0.25)' : '0 12px 32px rgba(93, 26, 137, 0.08)',
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+                    transform: 'translateY(-3px)',
+                    boxShadow: tokens.shadow.cardHover,
+                    borderColor: tokens.brand.primary,
                   }
                 }}
               >

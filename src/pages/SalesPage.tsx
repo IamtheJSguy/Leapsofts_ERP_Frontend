@@ -7,7 +7,6 @@ import {
   Card,
   Avatar,
   Chip,
-  IconButton,
   TextField,
   Select,
   MenuItem,
@@ -38,7 +37,6 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import WarningIcon from '@mui/icons-material/Warning';
 import LinkIcon from '@mui/icons-material/Link';
 import EmailIcon from '@mui/icons-material/Email';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
@@ -47,6 +45,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SendIcon from '@mui/icons-material/Send';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import ForumIcon from '@mui/icons-material/Forum';
+import EventIcon from '@mui/icons-material/Event';
+import DescriptionIcon from '@mui/icons-material/Description';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useUpdateMe, useMe } from '@/hooks/api/useUsers';
 
 // High-fidelity synced prospects mock database
@@ -143,6 +147,60 @@ export const SalesPage = () => {
   const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
+
+  const getCardTheme = (label: string) => {
+    switch (label) {
+      case 'CONNECTIONS SENT':
+        return {
+          icon: <SendIcon sx={{ fontSize: 20 }} />,
+          color: tokens.brand.primary,
+          bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.08)',
+          hoverBorder: tokens.brand.primary,
+        };
+      case 'ACCEPTED':
+        return {
+          icon: <GroupAddIcon sx={{ fontSize: 20 }} />,
+          color: tokens.brand.accent,
+          bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
+          hoverBorder: tokens.brand.accent,
+        };
+      case 'REPLIED':
+        return {
+          icon: <ForumIcon sx={{ fontSize: 20 }} />,
+          color: '#3B82F6',
+          bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+          hoverBorder: '#3B82F6',
+        };
+      case 'MEETING':
+        return {
+          icon: <EventIcon sx={{ fontSize: 20 }} />,
+          color: '#EC4899',
+          bgcolor: isDarkMode ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.08)',
+          hoverBorder: '#EC4899',
+        };
+      case 'PROPOSAL SENT':
+        return {
+          icon: <DescriptionIcon sx={{ fontSize: 20 }} />,
+          color: '#F59E0B',
+          bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
+          hoverBorder: '#F59E0B',
+        };
+      case 'CLOSED WON':
+        return {
+          icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,
+          color: tokens.semantic.success,
+          bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
+          hoverBorder: tokens.semantic.success,
+        };
+      default:
+        return {
+          icon: <SendIcon sx={{ fontSize: 20 }} />,
+          color: tokens.brand.primary,
+          bgcolor: 'rgba(0,0,0,0.05)',
+          hoverBorder: tokens.brand.primary,
+        };
+    }
+  };
 
   // Dynamic style injection to hide scrollbars globally while this page is active
   useEffect(() => {
@@ -538,61 +596,87 @@ export const SalesPage = () => {
       </Box>
 
       {/* Stats Counter Row */}
-      <Grid container spacing={2.5} sx={{ mb: 4.5 }}>
-        {stats.map((item, idx) => (
-          <Grid item xs={6} sm={4} md={2} key={idx}>
-            <Card
-              sx={{
-                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                borderRadius: '16px',
-                p: 2.25,
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
-                '&:hover': {
-                  borderColor: tokens.brand.primary,
-                  transform: 'translateY(-1px)',
-                  boxShadow: isDarkMode ? 'none' : '0 4px 12px rgba(93, 26, 137, 0.05)',
-                },
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                <Typography
-                  variant="caption"
+      <Grid container spacing={2} sx={{ mb: 4.5 }}>
+        {stats.map((item, idx) => {
+          const theme = getCardTheme(item.label);
+          return (
+            <Grid item xs={6} sm={4} md={2} key={idx}>
+              <Card
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  borderRadius: '24px',
+                  p: 2.25,
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.75,
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: theme.hoverBorder,
+                    transform: 'translateY(-3px)',
+                    boxShadow: tokens.shadow.cardHover,
+                  },
+                }}
+              >
+                <Box
                   sx={{
-                    color: 'text.secondary',
-                    fontWeight: 750,
-                    fontSize: '0.62rem',
-                    letterSpacing: '0.04em',
-                    lineHeight: 1.2,
+                    width: 42,
+                    height: 42,
+                    borderRadius: '12px',
+                    bgcolor: theme.bgcolor,
+                    color: theme.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
                   }}
                 >
-                  {item.label}
-                </Typography>
-                {item.percent && (
-                  <Chip
-                    label={item.percent}
-                    size="small"
-                    sx={{
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                      color: 'text.secondary',
-                      fontSize: '0.62rem',
-                      height: 18,
-                      fontWeight: 700,
-                    }}
-                  />
-                )}
-              </Box>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mt: 1 }}>
-                {item.value}
-              </Typography>
-            </Card>
-          </Grid>
-        ))}
+                  {theme.icon}
+                </Box>
+                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                        fontWeight: 750,
+                        fontSize: '0.6rem',
+                        letterSpacing: '0.04em',
+                        lineHeight: 1.2,
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                    {item.percent && (
+                      <Chip
+                        label={item.percent}
+                        size="small"
+                        sx={{
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                          color: 'text.secondary',
+                          fontSize: '0.58rem',
+                          height: 16,
+                          fontWeight: 800,
+                          px: 0.2,
+                          '& .MuiChip-label': { px: 0.75 }
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
+                    {item.value}
+                  </Typography>
+                </Box>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
 
       {/* Sub-Navigation Tabs Row */}
@@ -1097,9 +1181,6 @@ export const SalesPage = () => {
                                 Qualify
                               </Button>
                             )}
-                            <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                              <MoreHorizIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
                           </Box>
                         </TableCell>
                       </TableRow>

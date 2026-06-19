@@ -6,8 +6,6 @@ import {
   Button,
   useTheme,
   Chip,
-  Tabs,
-  Tab,
   IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -134,41 +132,71 @@ export const ProjectDetailsPage = () => {
       </Box>
 
       {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onChange={(_, newValue) => setActiveTab(newValue)}
-        variant="scrollable"
-        scrollButtons="auto"
+      <Box
         sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
           mb: 4,
-          minHeight: 36,
-          '& .MuiTabs-indicator': { display: 'none' },
-          '& .MuiTabs-flexContainer': { gap: 1 }
+          p: 0.6,
+          alignSelf: 'flex-start',
+          borderRadius: '30px',
+          bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+          border: '1px solid',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          scrollbarWidth: 'none', // Firefox
+          '&::-webkit-scrollbar': { display: 'none' }, // Safari & Chrome
         }}
       >
-        {TABS.map((tab, idx) => (
-          <Tab
-            key={tab}
-            label={tab}
-            sx={{
-              minHeight: 36,
-              py: 0.5,
-              px: 2,
-              textTransform: 'none',
-              fontWeight: 650,
-              fontSize: '0.9rem',
-              borderRadius: '20px',
-              color: activeTab === idx ? (isDarkMode ? '#000' : '#000') : 'text.secondary',
-              bgcolor: activeTab === idx ? (isDarkMode ? '#fff' : '#fff') : 'transparent',
-              border: activeTab === idx ? `1px solid ${isDarkMode ? '#fff' : 'rgba(0,0,0,0.1)'}` : '1px solid transparent',
-              boxShadow: activeTab === idx && !isDarkMode ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
-              '&:hover': {
-                bgcolor: activeTab === idx ? (isDarkMode ? '#fff' : '#fff') : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-              }
-            }}
-          />
-        ))}
-      </Tabs>
+        {TABS.map((tab, idx) => {
+          const isSelected = activeTab === idx;
+          const activeColor = isDarkMode ? tokens.brand.primaryLight : tokens.brand.primary;
+          const activeBg = isDarkMode ? 'rgba(123, 61, 168, 0.12)' : 'rgba(93, 26, 137, 0.08)';
+          const activeBorder = isDarkMode ? 'rgba(123, 61, 168, 0.3)' : 'rgba(93, 26, 137, 0.25)';
+
+          return (
+            <Button
+              key={tab}
+              onClick={() => setActiveTab(idx)}
+              sx={{
+                textTransform: 'none',
+                borderRadius: '24px',
+                px: 3,
+                py: 0.8,
+                fontWeight: 700,
+                fontSize: '0.86rem',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                bgcolor: isSelected ? activeBg : 'transparent',
+                color: isSelected ? activeColor : 'text.secondary',
+                border: '1px solid',
+                borderColor: isSelected ? activeBorder : 'transparent',
+                boxShadow: isSelected
+                  ? `0 4px 14px ${isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(93, 26, 137, 0.04)'}`
+                  : 'none',
+                '&:hover': {
+                  transform: 'translateY(-1.5px)',
+                  bgcolor: isSelected
+                    ? activeBg
+                    : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                  borderColor: isSelected ? activeBorder : 'transparent',
+                  color: isSelected ? activeColor : 'text.primary',
+                },
+                '&:active': {
+                  transform: 'scale(0.97)',
+                }
+              }}
+            >
+              {tab}
+            </Button>
+          );
+        })}
+      </Box>
 
       {/* Tab Content */}
       <Box sx={{ flexGrow: 1 }}>

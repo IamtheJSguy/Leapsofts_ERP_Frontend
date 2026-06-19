@@ -10,6 +10,7 @@ import {
   IconButton,
   Avatar,
   AvatarGroup,
+  LinearProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -136,15 +137,17 @@ const ProjectsPage = () => {
             startIcon={<AddIcon />}
             onClick={() => setIsFormOpen(true)}
             sx={{
-              bgcolor: '#FF5733', // Custom orange-red for the design
+              bgcolor: tokens.brand.primary,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
               textTransform: 'none',
               boxShadow: 'none',
               px: 3,
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
-                bgcolor: '#E04A2A',
+                bgcolor: tokens.brand.primary,
+                transform: 'translateY(-1px)',
                 boxShadow: 'none',
               }
             }}
@@ -156,7 +159,7 @@ const ProjectsPage = () => {
 
       {/* Toolbar */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
           <TextField
             placeholder="Search projects..."
             size="small"
@@ -164,11 +167,24 @@ const ProjectsPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
               width: 260,
+              transition: 'transform 0.2s ease-in-out',
+              '&:focus-within': {
+                transform: 'scale(1.015)',
+              },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '24px',
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.6)',
+                backdropFilter: 'blur(8px)',
+                transition: 'all 0.25s ease',
                 '& fieldset': {
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                },
+                '&:hover fieldset': {
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: isDarkMode ? tokens.brand.primaryLight : tokens.brand.primary,
+                  borderWidth: '1px',
                 },
               }
             }}
@@ -181,66 +197,135 @@ const ProjectsPage = () => {
             }}
           />
 
-          <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
-            {filters.map(f => (
-              <Chip
-                key={f}
-                label={f}
-                onClick={() => setActiveFilter(f)}
-                sx={{
-                  borderRadius: '16px',
-                  fontWeight: 650,
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  bgcolor: activeFilter === f ? (isDarkMode ? '#fff' : tokens.text.primary) : 'transparent',
-                  color: activeFilter === f ? (isDarkMode ? '#000' : '#fff') : 'text.secondary',
-                  border: 'none',
-                  '&:hover': {
-                    bgcolor: activeFilter === f
-                      ? (isDarkMode ? '#e0e0e0' : '#333')
-                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-                  }
-                }}
-              />
-            ))}
+          {/* Status Filters Capsule */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              p: 0.5,
+              borderRadius: '30px',
+              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+              border: '1px solid',
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
+            {filters.map(f => {
+              const isSelected = activeFilter === f;
+              const activeColor = isDarkMode ? tokens.brand.primaryLight : tokens.brand.primary;
+              const activeBg = isDarkMode ? 'rgba(123, 61, 168, 0.12)' : 'rgba(93, 26, 137, 0.08)';
+              const activeBorder = isDarkMode ? 'rgba(123, 61, 168, 0.3)' : 'rgba(93, 26, 137, 0.25)';
+
+              return (
+                <Button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  size="small"
+                  sx={{
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    px: 2,
+                    py: 0.5,
+                    minWidth: 'auto',
+                    height: 28,
+                    fontWeight: 700,
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    bgcolor: isSelected ? activeBg : 'transparent',
+                    color: isSelected ? activeColor : 'text.secondary',
+                    border: '1px solid',
+                    borderColor: isSelected ? activeBorder : 'transparent',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      bgcolor: isSelected
+                        ? activeBg
+                        : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                      borderColor: isSelected ? activeBorder : 'transparent',
+                      color: isSelected ? activeColor : 'text.primary',
+                    },
+                    '&:active': {
+                      transform: 'scale(0.97)',
+                    }
+                  }}
+                >
+                  {f.replace('_', ' ')}
+                </Button>
+              );
+            })}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 0.5, ml: 2, borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, pl: 2 }}>
-            {types.map(t => (
-              <Chip
-                key={t}
-                label={t}
-                onClick={() => setActiveType(t)}
-                sx={{
-                  borderRadius: '16px',
-                  fontWeight: 650,
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  bgcolor: activeType === t ? (isDarkMode ? '#fff' : tokens.text.primary) : 'transparent',
-                  color: activeType === t ? (isDarkMode ? '#000' : '#fff') : 'text.secondary',
-                  border: 'none',
-                  '&:hover': {
-                    bgcolor: activeType === t
-                      ? (isDarkMode ? '#e0e0e0' : '#333')
-                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-                  }
-                }}
-              />
-            ))}
+          {/* Type Filters Capsule */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              p: 0.5,
+              borderRadius: '30px',
+              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+              border: '1px solid',
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
+            {types.map(t => {
+              const isSelected = activeType === t;
+              const activeColor = isDarkMode ? tokens.brand.primaryLight : tokens.brand.primary;
+              const activeBg = isDarkMode ? 'rgba(123, 61, 168, 0.12)' : 'rgba(93, 26, 137, 0.08)';
+              const activeBorder = isDarkMode ? 'rgba(123, 61, 168, 0.3)' : 'rgba(93, 26, 137, 0.25)';
+
+              return (
+                <Button
+                  key={t}
+                  onClick={() => setActiveType(t)}
+                  size="small"
+                  sx={{
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    px: 2,
+                    py: 0.5,
+                    minWidth: 'auto',
+                    height: 28,
+                    fontWeight: 700,
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    bgcolor: isSelected ? activeBg : 'transparent',
+                    color: isSelected ? activeColor : 'text.secondary',
+                    border: '1px solid',
+                    borderColor: isSelected ? activeBorder : 'transparent',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      bgcolor: isSelected
+                        ? activeBg
+                        : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                      borderColor: isSelected ? activeBorder : 'transparent',
+                      color: isSelected ? activeColor : 'text.primary',
+                    },
+                    '&:active': {
+                      transform: 'scale(0.97)',
+                    }
+                  }}
+                >
+                  {t}
+                </Button>
+              );
+            })}
           </Box>
         </Box>
 
+        {/* View Switcher Capsule */}
         <Box sx={{
           display: 'flex',
-          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff',
-          borderRadius: '24px',
+          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+          borderRadius: '30px',
           p: 0.5,
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`
         }}>
-          <IconButton size="small" sx={{ color: 'text.primary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }}>
+          <IconButton size="small" sx={{ color: 'text.primary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', borderRadius: '50%' }}>
             <GridViewIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" sx={{ color: 'text.secondary' }}>
+          <IconButton size="small" sx={{ color: 'text.secondary', borderRadius: '50%', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}>
             <FormatListBulletedIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -255,102 +340,151 @@ const ProjectsPage = () => {
             </Typography>
           </Box>
         )}
-        {filteredProjects.map(project => (
-          <Box
-            key={project.id}
-            onClick={() => navigate(`/projects/${project.id}`)}
-            sx={{
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-              borderRadius: '24px',
-              p: 3,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: tokens.shadow.cardHover,
-                borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)',
-              }
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
-                {project.title}
-              </Typography>
-              <Chip
-                label={project.status}
-                size="small"
+        {(() => {
+          const getStatusColor = (status: string) => {
+            switch (status) {
+              case 'Active':
+                return tokens.semantic.success;
+              case 'In Development':
+              case 'Dev':
+                return tokens.semantic.info;
+              case 'On Hold':
+                return tokens.semantic.warning;
+              default:
+                return tokens.brand.primary;
+            }
+          };
+
+          return filteredProjects.map(project => {
+            const statusColor = getStatusColor(project.status);
+            const progressVal = project.title === 'Berger App' ? 75 : 35;
+
+            return (
+              <Box
+                key={project.id}
+                onClick={() => navigate(`/projects/${project.id}`)}
                 sx={{
-                  bgcolor: 'rgba(59, 130, 246, 0.1)',
-                  color: '#3b82f6',
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
-                  height: 24,
-                  '& .MuiChip-label': {
-                    px: 1.5,
-                  },
-                  '&::before': {
-                    content: '""',
-                    display: 'inline-block',
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    bgcolor: '#3b82f6',
-                    ml: 1.2,
-                    mr: -0.5
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  borderRadius: '24px',
+                  p: 3,
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: tokens.shadow.cardHover,
+                    borderColor: tokens.brand.primary,
                   }
                 }}
-              />
-            </Box>
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 1.5 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
+                    {project.title}
+                  </Typography>
+                  <Chip
+                    label={project.status}
+                    size="small"
+                    sx={{
+                      bgcolor: `${statusColor}15`,
+                      color: statusColor,
+                      fontWeight: 700,
+                      fontSize: '0.68rem',
+                      height: 24,
+                      borderRadius: '8px',
+                      border: `1px solid ${statusColor}30`,
+                      '& .MuiChip-label': {
+                        px: 1.25,
+                      },
+                      '&::before': {
+                        content: '""',
+                        display: 'inline-block',
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: statusColor,
+                        ml: 0.5,
+                        mr: -0.5
+                      }
+                    }}
+                  />
+                </Box>
 
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 2 }}>
-              {project.type}
-            </Typography>
-
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-              {project.description}
-            </Typography>
-
-            <Box sx={{ display: 'flex', gap: 1, mb: 4 }}>
-              {project.techStack.map(tech => (
-                <Chip
-                  key={tech}
-                  label={tech}
-                  size="small"
-                  sx={{
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    color: 'text.secondary',
-                    fontWeight: 650,
-                    fontSize: '0.7rem',
-                    borderRadius: '12px',
-                  }}
-                />
-              ))}
-            </Box>
-
-            {/* Footer */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              pt: 2,
-              borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`
-            }}>
-              <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 30, height: 30, fontSize: '0.75rem', fontWeight: 700, borderColor: isDarkMode ? '#1e1b24' : '#fff' } }}>
-                {project.members.map((m, i) => (
-                  <Avatar key={i}>{m}</Avatar>
-                ))}
-              </AvatarGroup>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-                <FolderIcon sx={{ fontSize: 16 }} />
-                <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                  {project.boardCount}
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', mb: 2, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  {project.type}
                 </Typography>
+
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, minHeight: 40, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {project.description}
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1, mb: 3.5, flexWrap: 'wrap' }}>
+                  {project.techStack.map(tech => (
+                    <Chip
+                      key={tech}
+                      label={tech}
+                      size="small"
+                      sx={{
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                        color: 'text.secondary',
+                        fontWeight: 650,
+                        fontSize: '0.7rem',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  ))}
+                </Box>
+
+                {/* Progress Bar Section */}
+                <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Project Completion
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: statusColor, fontSize: '0.75rem' }}>
+                      {progressVal}%
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={progressVal}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 3,
+                        bgcolor: statusColor,
+                      }
+                    }}
+                  />
+                </Box>
+
+                {/* Footer */}
+                <Box sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  pt: 2.25,
+                  borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+                }}>
+                  <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 28, height: 28, fontSize: '0.72rem', fontWeight: 700, borderColor: isDarkMode ? '#1e1b24' : '#fff' } }}>
+                    {project.members.map((m, i) => (
+                      <Avatar key={i}>{m}</Avatar>
+                    ))}
+                  </AvatarGroup>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+                    <FolderIcon sx={{ fontSize: 16 }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                      {project.boardCount} boards
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
-            </Box>
-          </Box>
-        ))}
+            );
+          });
+        })()}
       </Box>
 
       <ProjectFormDialog
