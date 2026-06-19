@@ -1,3 +1,4 @@
+import React from 'react';
 import { Box, Typography, Paper, Avatar, useTheme } from '@mui/material';
 import type { Message } from '@/types';
 import { getDisplayName } from '@/utils/formatters';
@@ -9,7 +10,7 @@ interface MessageBubbleProps {
   isOwn: boolean;
 }
 
-export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
+export const MessageBubble = React.memo(({ message, isOwn }: MessageBubbleProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   
@@ -31,7 +32,6 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
 
   return (
     <Box
-      className="animate-fade-in-up"
       sx={{
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
@@ -92,9 +92,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             border: isOwn 
               ? 'none' 
               : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
-            boxShadow: isOwn 
-              ? '0 8px 24px rgba(93,26,137,0.25)' 
-              : (isDarkMode ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.02)'),
+            boxShadow: 'none',
           }}
         >
           <Typography
@@ -143,4 +141,4 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
       </Box>
     </Box>
   );
-};
+});
