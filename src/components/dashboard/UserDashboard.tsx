@@ -62,20 +62,21 @@ export const UserDashboard = () => {
   }
 
   // Extract real kanban cards or fallback to screenshot mock data
-  const allCards = boards?.[0]?.columns.flatMap(col => col.cards) || [];
+  const allCards = boards?.[0]?.columns?.flatMap(col => col.cards || [])?.filter(Boolean) || [];
   const tasksList = allCards.length > 0 
     ? allCards.slice(0, 3).map((card) => {
-        const leadName = typeof card.leadId === 'object' && card.leadId 
-          ? `${card.leadId.firstName || ''} ${card.leadId.lastName || ''}`.trim() || 'Unassigned Lead'
+        const leadId = card.leadId;
+        const leadName = typeof leadId === 'object' && leadId 
+          ? `${leadId.firstName || ''} ${leadId.lastName || ''}`.trim() || 'Unassigned Lead'
           : card.title || 'Untitled Lead Task';
-        const companyName = typeof card.leadId === 'object' && card.leadId?.company 
-          ? ` - ${card.leadId.company}` 
+        const companyName = typeof leadId === 'object' && leadId && leadId.company 
+          ? ` - ${leadId.company}` 
           : '';
         
         const rawDate = (card.activityLog?.[0]?.timestamp)
           ? card.activityLog[0].timestamp
-          : (typeof card.leadId === 'object' && card.leadId?.createdAt)
-            ? card.leadId.createdAt
+          : (typeof leadId === 'object' && leadId && leadId.createdAt)
+            ? leadId.createdAt
             : null;
 
         return {

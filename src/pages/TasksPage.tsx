@@ -35,6 +35,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EventIcon from '@mui/icons-material/Event';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -557,7 +560,9 @@ const TasksPage = () => {
             severity: 'success',
           });
           setIsAssignOpen(false);
-          setDashboardTab('assignments');
+          if (!isAdmin) {
+            setDashboardTab('assignments');
+          }
         },
         onError: (err: any) => {
           addToast({
@@ -747,9 +752,10 @@ const TasksPage = () => {
   };
 
   // FULL PAGE KPI TEMPLATE CREATION WIZARD RENDERING
-  if (viewMode === 'create') {
-    return (
-      <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
+  const renderMainContent = () => {
+    if (viewMode === 'create') {
+      return (
+        <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
         {/* Back navigation header toolbar */}
         <Box sx={{ mb: 4.5, display: 'flex', alignItems: 'center' }}>
           <Button
@@ -1417,6 +1423,112 @@ const TasksPage = () => {
                   </Box>
                 </Box>
               </Card>
+
+              {isAdmin && (() => {
+                const templateAssignments = activeAssignments.filter(
+                  (a) => a.templateId === selectedTemplate._id
+                );
+                return (
+                  <Card
+                    sx={{
+                      p: 4,
+                      mt: 3.5,
+                      borderRadius: '24px',
+                      bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 800,
+                        mb: 3,
+                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                        letterSpacing: '-0.015em',
+                      }}
+                    >
+                      Assigned Agents
+                    </Typography>
+
+                    {templateAssignments.length === 0 ? (
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                        This template has not been assigned to any agents.
+                      </Typography>
+                    ) : (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {templateAssignments.map((assign) => {
+                          const userId = assign.assignedTo[0];
+                          const userObj = dbUsers.find((u) => u._id === userId);
+                          const fullName = userObj
+                            ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
+                            : (assignerNames[userId]?.name || 'Unknown Agent');
+                          const email = userObj ? userObj.email : (assignerNames[userId]?.email || 'N/A');
+                          const initial = fullName.split(' ').map((n) => n[0]).join('').toUpperCase() || '?';
+
+                          return (
+                            <Box
+                              key={assign._id}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                p: 1.5,
+                                borderRadius: '16px',
+                                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Avatar
+                                  sx={{
+                                    width: 32,
+                                    height: 32,
+                                    fontSize: '0.75rem',
+                                    bgcolor: tokens.brand.primary,
+                                    color: '#fff',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {initial}
+                                </Avatar>
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.84rem' }}
+                                  >
+                                    {fullName}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: 'text.secondary', display: 'block', fontSize: '0.72rem' }}
+                                  >
+                                    {email}
+                                  </Typography>
+                                </Box>
+                              </Box>
+
+                              <IconButton
+                                size="small"
+                                onClick={() => handleUnassign(assign)}
+                                disabled={unassignTemplateMutation.isPending}
+                                sx={{
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    color: 'error.main',
+                                    bgcolor: 'rgba(239, 68, 68, 0.08)',
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Card>
+                );
+              })()}
             </Grid>
           </Grid>
         </Box>
@@ -1728,13 +1840,13 @@ const TasksPage = () => {
     }
   }
 
-  // STANDARD GOALS LIST DASHBOARD RENDERING
-  if (!isAdmin) {
-    return <UserDailyKpisView />;
-  }
+    // STANDARD GOALS LIST DASHBOARD RENDERING
+    if (!isAdmin) {
+      return <UserDailyKpisView />;
+    }
 
-  return (
-    <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
+    return (
+      <>
       {/* Page Title Header */}
       <Box
         sx={{
@@ -1811,21 +1923,43 @@ const TasksPage = () => {
               sx={{
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                borderRadius: '20px',
-                p: 2.75,
-                transition: 'all 0.2s ease',
+                borderRadius: '24px',
+                p: 3,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2.5,
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
+                cursor: 'pointer',
                 '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: tokens.shadow.cardHover,
                   borderColor: tokens.brand.primary,
                 },
               }}
             >
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.65rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                KPI Templates
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mt: 1 }}>
-                {stats.activeTemplatesCount}
-              </Typography>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '16px',
+                  bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: tokens.brand.primary,
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 26 }} />
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.68rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  KPI Templates
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: tokens.brand.primary, mt: 0.5 }}>
+                  {stats.activeTemplatesCount}
+                </Typography>
+              </Box>
             </Box>
           </Grid>
         )}
@@ -1835,21 +1969,43 @@ const TasksPage = () => {
             sx={{
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-              borderRadius: '20px',
-              p: 2.75,
-              transition: 'all 0.2s ease',
+              borderRadius: '24px',
+              p: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2.5,
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
+              cursor: 'pointer',
               '&:hover': {
-                borderColor: tokens.brand.primary,
+                transform: 'translateY(-3px)',
+                boxShadow: tokens.shadow.cardHover,
+                borderColor: tokens.brand.accent,
               },
             }}
           >
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.65rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Active Assignments
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mt: 1 }}>
-              {stats.activeAssignmentsCount}
-            </Typography>
+            <Box
+              sx={{
+                width: 52,
+                height: 52,
+                borderRadius: '16px',
+                bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: tokens.brand.accent,
+              }}
+            >
+              <TrackChangesIcon sx={{ fontSize: 26 }} />
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.68rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Active Assignments
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: tokens.brand.accent, mt: 0.5 }}>
+                {stats.activeAssignmentsCount}
+              </Typography>
+            </Box>
           </Box>
         </Grid>
 
@@ -1858,60 +2014,49 @@ const TasksPage = () => {
             sx={{
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-              borderRadius: '20px',
-              p: 2.75,
-              transition: 'all 0.2s ease',
+              borderRadius: '24px',
+              p: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2.5,
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
+              cursor: 'pointer',
               '&:hover': {
-                borderColor: tokens.brand.primary,
+                transform: 'translateY(-3px)',
+                boxShadow: tokens.shadow.cardHover,
+                borderColor: tokens.semantic.success,
               },
             }}
           >
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.65rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Completed Assignments
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mt: 1 }}>
-              {stats.completedAssignmentsCount}
-            </Typography>
+            <Box
+              sx={{
+                width: 52,
+                height: 52,
+                borderRadius: '16px',
+                bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: tokens.semantic.success,
+              }}
+            >
+              <CheckCircleIcon sx={{ fontSize: 26 }} />
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.68rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Completed Assignments
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: tokens.semantic.success, mt: 0.5 }}>
+                {stats.completedAssignmentsCount}
+              </Typography>
+            </Box>
           </Box>
         </Grid>
       </Grid>
 
       {/* Navigation Sub-Tabs */}
-      {isAdmin && (
-        <Box sx={{ mb: 4.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            <Box
-              onClick={() => setDashboardTab('templates')}
-              sx={{
-                pb: 1.5,
-                cursor: 'pointer',
-                borderBottom: `2px solid ${dashboardTab === 'templates' ? tokens.brand.primary : 'transparent'}`,
-                color: dashboardTab === 'templates' ? tokens.brand.primary : 'text.secondary',
-                fontWeight: dashboardTab === 'templates' ? 700 : 500,
-                fontSize: '0.94rem',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              KPI Templates Library
-            </Box>
-            <Box
-              onClick={() => setDashboardTab('assignments')}
-              sx={{
-                pb: 1.5,
-                cursor: 'pointer',
-                borderBottom: `2px solid ${dashboardTab === 'assignments' ? tokens.brand.primary : 'transparent'}`,
-                color: dashboardTab === 'assignments' ? tokens.brand.primary : 'text.secondary',
-                fontWeight: dashboardTab === 'assignments' ? 700 : 500,
-                fontSize: '0.94rem',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              Active Target Assignments
-            </Box>
-          </Box>
-        </Box>
-      )}
+      {/* Hidden for Admin to consolidate active assignments inside KPI Templates details view */}
 
       {/* Control filters bar */}
       <Box
@@ -2805,6 +2950,13 @@ const TasksPage = () => {
           )}
         </>
       )}
+    </>
+  );
+};
+
+return (
+  <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
+    {renderMainContent()}
 
       {/* ASSIGN TEMPLATE DIALOG MODAL */}
       <Dialog

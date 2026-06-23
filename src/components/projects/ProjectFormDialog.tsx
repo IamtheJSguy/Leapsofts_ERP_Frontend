@@ -25,9 +25,10 @@ interface ProjectFormDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => void;
+  isSubmitting?: boolean;
 }
 
-export const ProjectFormDialog = ({ open, onClose, onSubmit }: ProjectFormDialogProps) => {
+export const ProjectFormDialog = ({ open, onClose, onSubmit, isSubmitting }: ProjectFormDialogProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -169,7 +170,7 @@ export const ProjectFormDialog = ({ open, onClose, onSubmit }: ProjectFormDialog
         <Button onClick={onClose} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
         <Button 
           onClick={handleSubmit} 
-          disabled={!formData.title}
+          disabled={!formData.title || isSubmitting}
           variant="contained" 
           sx={{ 
             bgcolor: '#FF5733', 
@@ -179,7 +180,7 @@ export const ProjectFormDialog = ({ open, onClose, onSubmit }: ProjectFormDialog
             '&:hover': { bgcolor: '#E04A2A' }
           }}
         >
-          Create Project
+          {isSubmitting ? 'Creating...' : 'Create Project'}
         </Button>
       </DialogActions>
     </Dialog>
