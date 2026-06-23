@@ -283,7 +283,9 @@ export default function ProfilePage() {
           border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)'}`,
           boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
           display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
           alignItems: 'center',
+          textAlign: { xs: 'center', sm: 'left' },
           gap: 3,
         }}
       >
@@ -323,7 +325,7 @@ export default function ProfilePage() {
           >
             {displayName}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
             <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {user?.role === 'admin' ? 'Administrator' : 'Sales Representative'}
             </Typography>
@@ -341,10 +343,13 @@ export default function ProfilePage() {
           display: 'flex',
           gap: 1.5,
           p: 1,
+          flexWrap: { xs: 'nowrap', sm: 'wrap' },
+          overflowX: 'auto',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(10px)',
           borderRadius: '20px',
-          width: 'fit-content',
+          width: { xs: '100%', sm: 'fit-content' },
+          maxWidth: '100%',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)'}`,
           boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         }}
@@ -359,12 +364,14 @@ export default function ProfilePage() {
             onClick={() => setActiveTab(tab.key as any)}
             startIcon={tab.icon}
             sx={{
-              px: 3,
+              px: { xs: 2.5, sm: 3 },
               py: 1.25,
               borderRadius: '14px',
               textTransform: 'none',
               fontSize: '0.86rem',
               fontWeight: 700,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               color: activeTab === tab.key
                 ? '#fff'
                 : 'text.secondary',
@@ -489,10 +496,11 @@ export default function ProfilePage() {
                       bgcolor: tokens.brand.primary,
                       color: '#fff',
                       fontWeight: 700,
-                      px: 5,
+                      px: { xs: 3, sm: 5 },
                       py: 1.4,
                       borderRadius: '14px',
                       textTransform: 'none',
+                      whiteSpace: 'nowrap',
                       fontSize: '0.86rem',
                       boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -532,7 +540,7 @@ export default function ProfilePage() {
                       { key: 'kpiAlerts', label: 'KPI Target Alerts', desc: 'Get notified when you miss or hit targets.', icon: <CheckCircleOutlineIcon /> },
                       { key: 'meetingReminders', label: 'Meeting Reminders', desc: 'Alerts 15 mins before upcoming meetings.', icon: <NotificationsActiveOutlinedIcon /> },
                     ].map((pref) => (
-                      <Box key={pref.key} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}` }}>
+                      <Box key={pref.key} sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}` }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                           <Box sx={{ color: tokens.brand.primary, display: 'flex' }}>{pref.icon}</Box>
                           <Box>
@@ -558,10 +566,11 @@ export default function ProfilePage() {
                         bgcolor: tokens.brand.primary,
                         color: '#fff',
                         fontWeight: 700,
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
                         py: 1.25,
                         borderRadius: '12px',
                         textTransform: 'none',
+                        whiteSpace: 'nowrap',
                         boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
                         '&:hover': { bgcolor: tokens.brand.primaryLight, transform: 'translateY(-1px)' },
                       }}
@@ -641,7 +650,7 @@ export default function ProfilePage() {
             <Grid container spacing={4}>
               <Grid item xs={12} lg={7}>
                 <Card sx={{ ...cardSx, height: '100%' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3.5 }}>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', textAlign: { xs: 'center', sm: 'left' }, gap: 2, mb: 3.5 }}>
                     <Box
                       sx={{
                         p: 1.25,
@@ -700,10 +709,11 @@ export default function ProfilePage() {
                         bgcolor: tokens.brand.primary,
                         color: '#fff',
                         fontWeight: 700,
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
                         py: 1.25,
                         borderRadius: '14px',
                         textTransform: 'none',
+                        whiteSpace: 'nowrap',
                         fontSize: '0.86rem',
                         boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
                         transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',

@@ -83,6 +83,7 @@ const MeetingsPage = () => {
           gap: 1,
           mb: 4,
           p: 0.5,
+          flexWrap: 'wrap',
           bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
           borderRadius: '16px',
           width: 'fit-content',

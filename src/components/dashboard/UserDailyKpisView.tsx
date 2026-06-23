@@ -185,9 +185,9 @@ export const UserDailyKpisView = () => {
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 3,
+                  gap: { xs: 1.5, sm: 3 },
                   p: 1.75,
-                  px: 2.5,
+                  px: { xs: 1.5, sm: 2.5 },
                   cursor: 'pointer',
                   borderRadius: '16px',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
@@ -227,7 +227,7 @@ export const UserDailyKpisView = () => {
                     {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
                   </Typography>
                   
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.5 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: { xs: 1, sm: 1.5 }, mt: 0.5 }}>
                     {kpi.targetValue !== undefined && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)', px: 1.25, py: 0.5, borderRadius: '6px', border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.3)' : 'rgba(93, 26, 137, 0.1)'}`, opacity: isChecked ? 0.6 : 1 }}>
                         <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
@@ -262,7 +262,7 @@ export const UserDailyKpisView = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-end', sm: 'center' }, gap: 1 }}>
                   {isOverdue && (
                     <Chip 
                       icon={<WarningRoundedIcon sx={{ fontSize: '14px !important' }} />} 

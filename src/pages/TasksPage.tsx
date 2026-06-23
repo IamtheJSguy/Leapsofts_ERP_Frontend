@@ -2069,7 +2069,7 @@ const TasksPage = () => {
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 2,
-          alignItems: 'center',
+          alignItems: { xs: 'stretch', sm: 'center' },
         }}
       >
         <TextField
@@ -2105,7 +2105,7 @@ const TasksPage = () => {
           }}
         />
 
-        <Box sx={{ display: 'flex', gap: 1.5, ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1.5, ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' }, alignItems: 'center' }}>
           <ToggleButtonGroup
             value={viewLayout}
             exclusive
@@ -2260,6 +2260,7 @@ const TasksPage = () => {
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
+                          flexWrap: 'wrap',
                           gap: 1.5,
                           pt: 2.5,
                           borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
@@ -2301,7 +2302,8 @@ const TasksPage = () => {
                               fontWeight: 700,
                               fontSize: '0.78rem',
                               boxShadow: 'none',
-                              ml: 'auto',
+                              ml: { xs: 0, sm: 'auto' },
+                              width: { xs: '100%', sm: 'auto' },
                               '&:hover': {
                                 bgcolor: tokens.brand.primary,
                                 boxShadow: 'none',

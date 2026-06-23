@@ -60,7 +60,7 @@ export default function TeamInsightsPage() {
   // Process dynamic statistics based on real data, with fallback constants if database is empty
   const processedData = useMemo(() => {
     // 1. Flatten all cards from boards
-    const allCards = boards?.flatMap((board) => board.columns.flatMap((col) => col.cards)) || [];
+    const allCards = boards?.flatMap((board) => board.columns?.flatMap((col) => col.cards || []) || []) || [];
     
     // Helper to determine if a column counts as "completed"
     const isCompletedCol = (colName: string) => {
@@ -73,7 +73,7 @@ export default function TeamInsightsPage() {
     let realOpenCount = 0;
 
     boards?.forEach((board) => {
-      board.columns.forEach((col) => {
+      board.columns?.forEach((col) => {
         const completed = isCompletedCol(col.name);
         if (completed) {
           realDoneCount += col.cards?.length || 0;
@@ -90,7 +90,8 @@ export default function TeamInsightsPage() {
     });
 
     allCards.forEach((card) => {
-      const col = boards?.flatMap(b => b.columns).find(c => c._id === card.columnId);
+      if (!card) return;
+      const col = boards?.flatMap(b => b.columns || []).find(c => c?._id === card.columnId);
       if (col && !isCompletedCol(col.name)) {
         // Task is open. Count assignments.
         if (Array.isArray(card.members)) {
@@ -213,6 +214,7 @@ export default function TeamInsightsPage() {
               display: 'flex',
               gap: 0.5,
               p: 0.5,
+              flexWrap: 'wrap',
               bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
               borderRadius: '16px',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
@@ -256,6 +258,7 @@ export default function TeamInsightsPage() {
             sx={{
               display: 'flex',
               alignItems: 'center',
+              flexWrap: 'wrap',
               bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : '#fff',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : tokens.surface.border}`,
               borderRadius: '16px',
@@ -345,7 +348,7 @@ export default function TeamInsightsPage() {
           border: `1px solid ${isDarkMode ? 'rgba(255, 127, 17, 0.12)' : 'rgba(255, 127, 17, 0.08)'}`,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5, flexWrap: 'wrap' }}>
           <WarningAmberOutlinedIcon sx={{ color: tokens.brand.accent }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.accent, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.76rem' }}>
             Heads-Up • {processedData.alerts.length} Things Need Attention
@@ -531,6 +534,8 @@ export default function TeamInsightsPage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 1,
                   p: 2,
                   borderRadius: '16px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)',
@@ -595,7 +600,7 @@ export default function TeamInsightsPage() {
                   }}
                 >
                   {/* Member Profile Header */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Avatar sx={{ width: 44, height: 44, bgcolor: tokens.brand.primary, fontWeight: 700, fontSize: '0.94rem' }}>
                         {mInitials}
@@ -638,7 +643,7 @@ export default function TeamInsightsPage() {
                       { label: 'OVERDUE', val: 0 },
                       { label: 'CYCLE TIME', val: hasNoTasks ? '—' : '1.4d' },
                     ].map((stat, sIdx) => (
-                      <Grid item xs={3} key={sIdx}>
+                      <Grid item xs={6} sm={3} key={sIdx}>
                         <Box
                           sx={{
                             p: 1.5,
@@ -672,7 +677,7 @@ export default function TeamInsightsPage() {
                         { label: 'Done', count: hasNoTasks ? 0 : 3 },
                         { label: 'Comments', count: hasNoTasks ? 0 : 2 },
                       ].map((act, actIdx) => (
-                        <Grid item xs={3} key={actIdx} sx={{ textAlign: 'center' }}>
+                        <Grid item xs={6} sm={3} key={actIdx} sx={{ textAlign: 'center' }}>
                           <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: tokens.brand.primary, mb: 0.5 }}>
                             {act.count}
                           </Typography>
@@ -690,7 +695,7 @@ export default function TeamInsightsPage() {
                       Daily Pipeline Contributions
                     </Typography>
 
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                       {activityBlocks.map((count, bIdx) => {
                         let squareBg = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
                         if (count > 0) {
@@ -764,8 +769,10 @@ export default function TeamInsightsPage() {
                 key={index}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
                   justifyContent: 'space-between',
+                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                  gap: 1.5,
                   p: 2,
                   borderRadius: '16px',
                   bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.005)',

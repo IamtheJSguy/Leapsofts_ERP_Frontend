@@ -135,7 +135,7 @@ export const TeamProgressView = () => {
             border: `1px solid ${tokens.surface.borderLight}`,
             backgroundColor: '#FFFFFF',
             boxShadow: tokens.shadow.card,
-            overflow: 'hidden',
+            overflowX: 'auto',
           }}
         >
           <Box sx={{ p: 3, pb: 1 }}>

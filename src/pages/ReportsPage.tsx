@@ -164,6 +164,9 @@ const ReportsPage = () => {
           <Tabs
             value={activeTab}
             onChange={(_, val) => setActiveTab(val)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
               backgroundColor: tokens.brand.primary50,
               borderRadius: '24px',
@@ -246,6 +249,8 @@ const ReportsPage = () => {
             backgroundColor: '#FFFFFF',
             boxShadow: tokens.shadow.card,
             display: 'flex',
+            flexWrap: 'wrap',
+            gap: 2,
             justifyContent: 'space-between',
             alignItems: 'center',
           }}

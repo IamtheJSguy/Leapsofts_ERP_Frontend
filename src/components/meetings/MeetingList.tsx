@@ -407,7 +407,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                   gap: 2,
                   mb: 2.5,
                   p: 2,
@@ -654,7 +654,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
               )}
 
               {/* Bottom row: navigation actions */}
-              <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                 <Button
                   variant="outlined"
                   onClick={() => setSelectedMeeting(null)}

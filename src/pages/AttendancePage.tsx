@@ -205,8 +205,8 @@ export const AttendancePage = () => {
                   display: 'flex',
                   alignItems: { xs: 'flex-start', md: 'center' },
                   flexDirection: { xs: 'column', md: 'row' },
-                  p: 3,
-                  gap: 3,
+                  p: { xs: 2, sm: 3 },
+                  gap: { xs: 2, md: 3 },
                   borderRadius: '24px',
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
@@ -244,7 +244,7 @@ export const AttendancePage = () => {
                 </Box>
 
                 {/* Times & Info */}
-                <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                <Box sx={{ flexGrow: 1, minWidth: { xs: 0, sm: 200 }, width: { xs: '100%', md: 'auto' } }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
                       Daily Shift
@@ -265,7 +265,7 @@ export const AttendancePage = () => {
                       }}
                     />
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 }, alignItems: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <AccessTimeIcon sx={{ fontSize: 16 }} />
                       Scheduled: {shift.scheduledStart} - {shift.scheduledEnd}

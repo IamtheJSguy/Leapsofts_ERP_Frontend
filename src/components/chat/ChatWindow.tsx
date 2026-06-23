@@ -26,6 +26,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddToDriveIcon from '@mui/icons-material/AddToDrive';
 import ImageIcon from '@mui/icons-material/Image';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useMessages, useSendMessage, useConversations, useCreateConversation } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
@@ -261,8 +262,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: 3,
-          py: 2,
+          px: { xs: 1.5, md: 3 },
+          py: { xs: 1.5, md: 2 },
           borderBottom: 'none',
           bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
           backdropFilter: 'blur(20px)',
@@ -272,8 +273,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         }}
       >
         {chatHeaderDetails && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
+            <IconButton
+              onClick={() => setActiveConversation(null)}
+              sx={{ display: { xs: 'flex', md: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Box sx={{ position: 'relative', flexShrink: 0 }}>
               <Avatar
                 sx={{
                   width: 40,
@@ -301,11 +308,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 />
               )}
             </Box>
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
                 {chatHeaderDetails.name}
               </Typography>
-              <Typography variant="caption" sx={{ color: chatHeaderDetails.isOnline ? tokens.semantic.success : 'text.secondary', fontWeight: 600 }}>
+              <Typography variant="caption" noWrap sx={{ display: 'block', color: chatHeaderDetails.isOnline ? tokens.semantic.success : 'text.secondary', fontWeight: 600 }}>
                 {chatHeaderDetails.isOnline ? 'Active now' : 'Offline'}
               </Typography>
             </Box>
@@ -313,7 +320,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         )}
 
         {/* Action Header Tools */}
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 1.5 }, flexShrink: 0 }}>
           {conversations.find((c) => c._id === activeConversationId)?.isGroup && (
             <Tooltip title="Group Info" arrow>
               <IconButton
@@ -363,7 +370,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         overflowY: 'auto',
         transform: 'translateZ(0)',
         willChange: 'transform',
-        p: 3,
+        p: { xs: 1.5, md: 3 },
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -411,7 +418,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ p: 3, pt: 1, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+      <Box sx={{ p: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 2, md: 3 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
         <Box
           sx={{
             display: 'flex',

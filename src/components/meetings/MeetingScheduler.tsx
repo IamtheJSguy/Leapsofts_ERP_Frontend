@@ -284,6 +284,11 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 2,
+            '& .rbc-btn-group': {
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '4px',
+            },
             '& .rbc-toolbar-label': {
               fontSize: '1.2rem',
               fontWeight: 800,
@@ -296,9 +301,13 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               border: '1px solid',
               borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
               borderRadius: '24px',
-              padding: '6px 18px',
+              padding: '6px 16px',
               fontWeight: 650,
               fontSize: '0.82rem',
+              [theme.breakpoints.down('sm')]: {
+                padding: '4px 10px',
+                fontSize: '0.75rem',
+              },
               transition: 'all 0.2s',
               cursor: 'pointer',
               '&:hover': {
@@ -631,7 +640,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                   gap: 2,
                   mb: 2.5,
                   p: 2,
