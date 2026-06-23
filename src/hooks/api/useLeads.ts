@@ -93,6 +93,7 @@ export const useQualifyLead = () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });

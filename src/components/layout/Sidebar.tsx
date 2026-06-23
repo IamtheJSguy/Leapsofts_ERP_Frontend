@@ -24,7 +24,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -54,7 +54,7 @@ const navGroups: NavGroup[] = [
       { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
       { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
       // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Board', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Board', path: '/board', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
       { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, adminOnly: true },
     ],
   },
@@ -108,6 +108,7 @@ const BrandMark = () => (
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const { canManageUsers } = usePermissions();
+  const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -347,7 +348,7 @@ export const Sidebar = () => {
             transition: 'color 0.2s',
             '&:hover': { color: '#FFFFFF' },
           }}
-          onClick={() => alert("Settings configuration is accessible from user dashboard menu.")}
+          onClick={() => navigate('/profile')}
         >
           <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
         </IconButton>

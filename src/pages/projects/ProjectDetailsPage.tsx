@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -7,15 +7,22 @@ import {
   useTheme,
   Chip,
   IconButton,
+  CircularProgress,
+  Avatar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { tokens } from '@/styles/tokens';
+import { useKanbanBoard, useShareBoard } from '@/hooks/api/useKanban';
+import { useUsers } from '@/hooks/api/useUsers';
 
 // Dummy data
 const dummyProject = {
@@ -32,11 +39,6 @@ const dummyProject = {
   teamMembersCount: 2,
 };
 
-const dummyBoards = [
-  { id: 'b1', title: 'Berger App Board', columnsCount: 5, tasksCount: 0, columns: [0, 0, 0, 0, 0] },
-  { id: 'b2', title: 'Pinoyaya-bugs', columnsCount: 6, tasksCount: 66, columns: [7, 10, 3, 46, 0, 0] },
-];
-
 const TABS = ['Overview', 'Board', 'Analysis', 'Team', 'Milestones', 'Notes', 'Files'];
 
 export const ProjectDetailsPage = () => {
@@ -47,8 +49,84 @@ export const ProjectDetailsPage = () => {
 
   const [activeTab, setActiveTab] = useState(0);
 
-  // In a real app we'd fetch project details using `projectId`
-  const project = dummyProject; // Fallback to dummy data for UI
+  const { data: board, isLoading } = useKanbanBoard(projectId);
+  const { data: dbUsers = [] } = useUsers();
+  const shareBoardMutation = useShareBoard();
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
+
+  const project = useMemo(() => {
+    if (!board) return dummyProject;
+    const actualBoard = (board as any).board || board;
+    const cards = (board as any).cards || [];
+    const totalCards = cards.length || actualBoard.columns?.reduce((acc: number, col: any) => acc + (col.cards?.length || 0), 0) || 0;
+
+    const lastColumn = actualBoard.columns && actualBoard.columns.length > 0
+      ? actualBoard.columns[actualBoard.columns.length - 1]
+      : null;
+    const lastColCards = lastColumn
+      ? (cards.length > 0 ? cards.filter((c: any) => c.columnId === lastColumn._id).length : (lastColumn.cards?.length || 0))
+      : 0;
+    const progressVal = totalCards > 0 ? Math.round((lastColCards / totalCards) * 100) : 0;
+
+    let status = 'In Development';
+    if (progressVal === 100 && totalCards > 0) {
+      status = 'Active';
+    } else if (totalCards === 0) {
+      status = 'On Hold';
+    }
+
+    const techStack = actualBoard.columns?.slice(0, 3).map((c: any) => {
+      const colCardsCount = cards.length > 0 ? cards.filter((card: any) => card.columnId === c._id).length : (c.cards?.length || 0);
+      return `${c.name} (${colCardsCount})`;
+    }) || [];
+    const type = (actualBoard.name || '').toLowerCase().includes('internal') ? 'Internal Product' : 'Client';
+
+    const ownerUser = dbUsers.find(u => u._id === actualBoard.ownerId);
+    const sharedUsers = Array.isArray(actualBoard.sharedWith)
+      ? actualBoard.sharedWith.map((id: any) => dbUsers.find(u => u._id === id)).filter(Boolean)
+      : [];
+    const boardMembers = [ownerUser, ...sharedUsers].filter(Boolean);
+    const teamMembersCount = boardMembers.length || 1;
+
+    return {
+      id: actualBoard._id,
+      title: actualBoard.name,
+      type,
+      description: `Lead pipeline board containing ${actualBoard.columns?.length || 0} active columns and ${totalCards} total lead cards.`,
+      status,
+      startedAt: 'Jun 4, 2026',
+      deadline: 'Jun 25, 2026',
+      techStack,
+      boardCount: 1,
+      milestoneCount: 0,
+      teamMembersCount,
+    };
+  }, [board]);
+
+  const boardsList = useMemo(() => {
+    if (!board) return [];
+    const actualBoard = (board as any).board || board;
+    const cards = (board as any).cards || [];
+    const totalCards = cards.length || actualBoard.columns?.reduce((acc: number, col: any) => acc + (col.cards?.length || 0), 0) || 0;
+
+    return [
+      {
+        id: actualBoard._id,
+        title: actualBoard.name,
+        columnsCount: actualBoard.columns?.length || 0,
+        tasksCount: totalCards,
+        columns: actualBoard.columns?.map((col: any) => cards.length > 0 ? cards.filter((c: any) => c.columnId === col._id).length : (col.cards?.length || 0)) || [],
+      }
+    ];
+  }, [board]);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
+        <CircularProgress sx={{ color: tokens.brand.primary }} />
+      </Box>
+    );
+  }
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -56,7 +134,7 @@ export const ProjectDetailsPage = () => {
       {/* Back Button */}
       <Button
         startIcon={<ArrowBackIcon fontSize="small" />}
-        onClick={() => navigate('/projects')}
+        onClick={() => navigate('/board')}
         sx={{
           color: 'text.secondary',
           textTransform: 'none',
@@ -102,32 +180,6 @@ export const ProjectDetailsPage = () => {
           <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
             {project.type}
           </Typography>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon sx={{ fontSize: 18 }} />}
-            sx={{
-              borderRadius: '24px',
-              textTransform: 'none',
-              fontWeight: 650,
-              color: 'text.primary',
-              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-              '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }
-            }}
-          >
-            Edit
-          </Button>
-          <IconButton
-            sx={{
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              borderRadius: '50%',
-              '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', borderColor: 'transparent' }
-            }}
-          >
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
         </Box>
       </Box>
 
@@ -257,7 +309,7 @@ export const ProjectDetailsPage = () => {
                     TECH STACK
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    {project.techStack.map(tech => (
+                    {project.techStack.map((tech: any) => (
                       <Chip
                         key={tech}
                         label={tech}
@@ -306,63 +358,30 @@ export const ProjectDetailsPage = () => {
           <Box className="animate-fade-in-up">
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
               <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                {dummyBoards.length} boards
+                {boardsList.length} boards
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                sx={{
-                  bgcolor: '#FF5733',
-                  color: '#fff',
-                  fontWeight: 700,
-                  borderRadius: '24px',
-                  textTransform: 'none',
-                  boxShadow: 'none',
-                  px: 3,
-                  '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' }
-                }}
-              >
-                New Board
-              </Button>
             </Box>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 3 }}>
-              {dummyBoards.map((board) => (
+              {boardsList.map((board) => (
                 <Box
                   key={board.id}
-                  onClick={() => navigate(`/projects/${projectId}/boards/${board.id}`)}
+                  onClick={() => navigate(`/board/${projectId}/boards/${board.id}`)}
                   sx={{
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+                    bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                     borderRadius: '24px',
                     p: 3,
                     cursor: 'pointer',
                     position: 'relative',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: tokens.shadow.cardHover,
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)',
-                      '& .delete-btn': { opacity: 1 }
+                      borderColor: tokens.brand.primary,
                     }
                   }}
                 >
-                  <IconButton
-                    className="delete-btn"
-                    size="small"
-                    sx={{
-                      position: 'absolute',
-                      top: 16,
-                      right: 16,
-                      opacity: 0,
-                      transition: 'opacity 0.2s',
-                      color: 'text.secondary',
-                      '&:hover': { color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)' }
-                    }}
-                  >
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-
                   <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em', mb: 0.5 }}>
                     {board.title}
                   </Typography>
@@ -372,7 +391,7 @@ export const ProjectDetailsPage = () => {
 
                   {/* Columns Visualizer */}
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    {board.columns.map((colTasks, idx) => {
+                    {board.columns.map((colTasks: any, idx: any) => {
                       const totalTasks = board.tasksCount || 1; // avoid division by zero
                       const widthPercent = board.tasksCount === 0 ? 100 / board.columnsCount : Math.max(5, (colTasks / totalTasks) * 100);
 
@@ -384,7 +403,7 @@ export const ProjectDetailsPage = () => {
                             borderRadius: '3px',
                             flexBasis: `${widthPercent}%`,
                             flexGrow: board.tasksCount === 0 ? 1 : 0,
-                            bgcolor: colTasks > 0 ? '#FF7A59' : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
+                            bgcolor: colTasks > 0 ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
                             opacity: colTasks > 20 ? 1 : (colTasks > 0 ? 0.6 : 1),
                           }}
                         />
@@ -397,8 +416,174 @@ export const ProjectDetailsPage = () => {
           </Box>
         )}
 
+        {/* Team Tab */}
+        {activeTab === 3 && (() => {
+          const actualBoard = (board as any)?.board || board;
+          const ownerUser = dbUsers.find(u => u._id === actualBoard?.ownerId);
+          const sharedUserIds = Array.isArray(actualBoard?.sharedWith) ? actualBoard.sharedWith : [];
+          const sharedUsers = sharedUserIds.map((id: any) => dbUsers.find(u => u._id === id)).filter(Boolean);
+          const allMembers = [ownerUser, ...sharedUsers].filter(Boolean);
+          
+          const availableUsersToAdd = dbUsers.filter(u => 
+            u._id !== actualBoard?.ownerId && !sharedUserIds.includes(u._id)
+          );
+
+          const handleAddMember = () => {
+            if (selectedUserToAdd && projectId) {
+              const updatedShared = [...sharedUserIds, selectedUserToAdd];
+              shareBoardMutation.mutate({
+                boardId: projectId,
+                userIds: updatedShared,
+              }, {
+                onSuccess: () => setSelectedUserToAdd('')
+              });
+            }
+          };
+
+          const handleRemoveMember = (userId: string) => {
+            if (projectId) {
+              const updatedShared = sharedUserIds.filter((id: any) => id !== userId);
+              shareBoardMutation.mutate({
+                boardId: projectId,
+                userIds: updatedShared,
+              });
+            }
+          };
+
+          return (
+            <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* Add Team Member Section */}
+              <Box sx={{
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: '20px',
+                p: 3,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 2
+              }}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>Manage Project Team</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Add new members or modify permissions for this project board.</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', minWidth: 280 }}>
+                  <FormControl size="small" sx={{ flexGrow: 1 }}>
+                    <InputLabel id="add-member-label">Select User</InputLabel>
+                    <Select
+                      labelId="add-member-label"
+                      value={selectedUserToAdd}
+                      onChange={(e) => setSelectedUserToAdd(e.target.value)}
+                      label="Select User"
+                      sx={{ borderRadius: '24px' }}
+                    >
+                      {availableUsersToAdd.map((u: any) => (
+                        <MenuItem key={u._id} value={u._id}>
+                          {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                        </MenuItem>
+                      ))}
+                      {availableUsersToAdd.length === 0 && (
+                        <MenuItem disabled>No users available</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddMember}
+                    disabled={!selectedUserToAdd || shareBoardMutation.isPending}
+                    startIcon={<PersonAddIcon />}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      borderRadius: '24px',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      boxShadow: 'none',
+                      px: 3,
+                      '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Members List */}
+              <Box sx={{
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: '24px',
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2
+              }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Project Members ({allMembers.length})</Typography>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {allMembers.map((m: any, idx: number) => {
+                    const isOwner = m._id === actualBoard?.ownerId;
+                    const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email || 'User';
+                    const initial = (m.firstName?.charAt(0) || m.email?.charAt(0) || 'U').toUpperCase();
+
+                    return (
+                      <Box
+                        key={m._id || idx}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 2,
+                          borderRadius: '16px',
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          <Avatar sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{fullName}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{m.email}</Typography>
+                          </Box>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                          <Chip
+                            label={isOwner ? "Project Owner" : "Member"}
+                            size="small"
+                            sx={{
+                              bgcolor: isOwner ? 'rgba(93, 26, 137, 0.08)' : 'rgba(0,0,0,0.04)',
+                              color: isOwner ? tokens.brand.primary : 'text.secondary',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                            }}
+                          />
+                          {!isOwner && (
+                            <IconButton
+                              size="small"
+                              onClick={() => handleRemoveMember(m._id)}
+                              disabled={shareBoardMutation.isPending}
+                              sx={{
+                                color: 'text.secondary',
+                                '&:hover': { color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)' }
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            </Box>
+          );
+        })()}
+
         {/* Placeholder for other tabs */}
-        {activeTab > 1 && (
+        {activeTab > 1 && activeTab !== 3 && (
           <Box sx={{
             py: 8,
             textAlign: 'center',
