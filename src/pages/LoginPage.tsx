@@ -306,7 +306,7 @@ const LoginPage = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          p: { xs: 3, sm: 6 },
+          p: { xs: 2, sm: 6 },
           position: 'relative',
           zIndex: 1,
         }}
@@ -348,7 +348,7 @@ const LoginPage = () => {
           elevation={0}
           className="login-glass-card animate-fade-in-up"
           sx={{
-            p: { xs: 4, sm: 5 },
+            p: { xs: 3, sm: 5 },
             width: '100%',
             maxWidth: 430,
             borderRadius: 6,
@@ -395,6 +395,7 @@ const LoginPage = () => {
             sx={{
               letterSpacing: '-0.03em',
               mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2.125rem' },
               color: isDarkMode ? '#fff' : tokens.text.primary,
             }}
           >
@@ -443,8 +444,8 @@ const LoginPage = () => {
               borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
               color: isDarkMode ? '#fff' : tokens.text.primary,
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'transparent',
-              fontWeight: 500,
-              fontSize: '0.88rem',
+              fontWeight: 600,
+              fontSize: { xs: '0.8rem', sm: '0.88rem' },
               textTransform: 'none',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
@@ -640,11 +641,11 @@ const LoginPage = () => {
               size="large"
               disabled={login.isPending}
               sx={{
-                mt: 3,
-                py: 1.6,
+                mt: { xs: 2, sm: 3 },
+                py: { xs: 1.2, sm: 1.6 },
                 borderRadius: tokens.radius.pill,
                 fontWeight: 600,
-                fontSize: '0.95rem',
+                fontSize: { xs: '0.85rem', sm: '0.95rem' },
                 letterSpacing: '0.02em',
                 background: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
                 boxShadow: `0 4px 20px ${isDarkMode ? 'rgba(93, 26, 137, 0.3)' : 'rgba(93, 26, 137, 0.2)'}`,
