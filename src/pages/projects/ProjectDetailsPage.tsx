@@ -23,6 +23,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { tokens } from '@/styles/tokens';
 import { useKanbanBoard, useShareBoard } from '@/hooks/api/useKanban';
 import { useUsers } from '@/hooks/api/useUsers';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 // Dummy data
 const dummyProject = {
@@ -53,6 +54,7 @@ export const ProjectDetailsPage = () => {
   const { data: dbUsers = [] } = useUsers();
   const shareBoardMutation = useShareBoard();
   const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
 
   const project = useMemo(() => {
     if (!board) return dummyProject;
@@ -148,9 +150,9 @@ export const ProjectDetailsPage = () => {
       </Button>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
             <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
               {project.title}
             </Typography>
@@ -196,7 +198,9 @@ export const ProjectDetailsPage = () => {
           bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
           border: '1px solid',
           borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+          width: { xs: '100%', sm: 'auto' },
           maxWidth: '100%',
+          boxSizing: 'border-box',
           overflowX: 'auto',
           whiteSpace: 'nowrap',
           scrollbarWidth: 'none', // Firefox
@@ -261,7 +265,7 @@ export const ProjectDetailsPage = () => {
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
                 borderRadius: '24px',
-                p: 4,
+                p: { xs: 2.5, sm: 4 },
               }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary', mb: 3 }}>
@@ -271,7 +275,7 @@ export const ProjectDetailsPage = () => {
                 {project.description}
               </Typography>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 4 }}>
                 <Box>
                   <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', mb: 1, letterSpacing: '0.05em' }}>
                     TYPE
@@ -308,7 +312,7 @@ export const ProjectDetailsPage = () => {
                   <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', mb: 1.5, letterSpacing: '0.05em' }}>
                     TECH STACK
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {project.techStack.map((tech: any) => (
                       <Chip
                         key={tech}
@@ -362,7 +366,7 @@ export const ProjectDetailsPage = () => {
               </Typography>
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(360px, 1fr))' }, gap: 3 }}>
               {boardsList.map((board) => (
                 <Box
                   key={board.id}
@@ -441,11 +445,18 @@ export const ProjectDetailsPage = () => {
           };
 
           const handleRemoveMember = (userId: string) => {
-            if (projectId) {
-              const updatedShared = sharedUserIds.filter((id: any) => id !== userId);
+            setMemberToRemove(userId);
+          };
+
+          const confirmRemoveMember = () => {
+            if (projectId && memberToRemove) {
+              const updatedShared = sharedUserIds.filter((id: any) => id !== memberToRemove);
               shareBoardMutation.mutate({
                 boardId: projectId,
                 userIds: updatedShared,
+              }, {
+                onSuccess: () => setMemberToRemove(null),
+                onError: () => setMemberToRemove(null),
               });
             }
           };
@@ -469,7 +480,7 @@ export const ProjectDetailsPage = () => {
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>Add new members or modify permissions for this project board.</Typography>
                 </Box>
                 
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', minWidth: 280 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, minWidth: { xs: '100%', sm: 280 } }}>
                   <FormControl size="small" sx={{ flexGrow: 1 }}>
                     <InputLabel id="add-member-label">Select User</InputLabel>
                     <Select
@@ -534,6 +545,8 @@ export const ProjectDetailsPage = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: 2,
                           p: 2,
                           borderRadius: '16px',
                           bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
@@ -578,6 +591,16 @@ export const ProjectDetailsPage = () => {
                   })}
                 </Box>
               </Box>
+
+              <ConfirmDialog
+                open={!!memberToRemove}
+                title="Remove Team Member"
+                message="Are you sure you want to remove this member from the project? They will no longer have access to this board and its tasks."
+                confirmLabel="Remove Member"
+                isPending={shareBoardMutation.isPending}
+                onConfirm={confirmRemoveMember}
+                onCancel={() => setMemberToRemove(null)}
+              />
             </Box>
           );
         })()}

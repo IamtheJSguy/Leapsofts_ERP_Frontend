@@ -566,6 +566,7 @@ export const SalesPage = () => {
             color: isDarkMode ? '#fff' : tokens.text.primary,
             display: 'flex',
             alignItems: 'center',
+            flexWrap: 'wrap',
             gap: 1.5,
           }}
         >
@@ -609,8 +610,9 @@ export const SalesPage = () => {
                   p: 2.25,
                   height: '100%',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.75,
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: { xs: 1.2, sm: 1.75 },
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
                   cursor: 'pointer',
@@ -700,8 +702,8 @@ export const SalesPage = () => {
         <Box
           sx={{
             display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
             justifyContent: 'space-between',
             bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.08)' : 'rgba(93, 26, 137, 0.02)',
             border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)'}`,
@@ -782,10 +784,10 @@ export const SalesPage = () => {
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
+              flexDirection: { xs: 'column', md: 'row' },
               flexWrap: 'wrap',
               gap: 1.5,
-              alignItems: 'center',
+              alignItems: { xs: 'stretch', md: 'center' },
               mb: 3.5,
             }}
           >
@@ -990,7 +992,8 @@ export const SalesPage = () => {
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                 boxShadow: 'none',
-                overflow: 'hidden',
+                overflowX: 'auto',
+                overflowY: 'hidden',
               }}
             >
               <Table>

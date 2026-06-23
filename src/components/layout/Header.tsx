@@ -112,11 +112,11 @@ export const Header = () => {
           <MenuIcon />
         </IconButton>
 
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, ml: { xs: 1, sm: 0 } }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
             {greeting()}
           </Typography>
-          <Typography variant="h6" noWrap sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+          <Typography noWrap sx={{ fontWeight: 700, letterSpacing: '-0.02em', fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
             {displayName}
           </Typography>
         </Box>
@@ -165,14 +165,14 @@ export const Header = () => {
                 sx={{
                   fontWeight: 700,
                   color: isCheckedIn ? tokens.semantic.success : 'text.secondary',
-                  fontSize: '0.8rem',
+                  fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   fontFamily: 'monospace',
                   letterSpacing: '0.05em',
                   display: 'flex',
                   alignItems: 'center',
                 }}
               >
-                {isCheckedIn ? formatTime(elapsedSeconds) : 'INACTIVE'}
+                {isCheckedIn ? formatTime(elapsedSeconds) : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>INACTIVE</Box>}
               </Typography>
 
               {/* Action Button */}
@@ -190,6 +190,7 @@ export const Header = () => {
                   fontSize: '0.7rem',
                   fontWeight: 800,
                   textTransform: 'none',
+                  whiteSpace: 'nowrap',
                   bgcolor: isCheckedIn ? tokens.semantic.error : tokens.brand.accent,
                   color: '#fff',
                   boxShadow: 'none',
@@ -207,7 +208,7 @@ export const Header = () => {
           <IconButton
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"
-            sx={{ color: 'text.secondary' }}
+            sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline-flex' } }}
           >
             {theme === 'light' ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
           </IconButton>
@@ -242,10 +243,10 @@ export const Header = () => {
           >
             <Avatar
               sx={{
-                width: 40,
-                height: 40,
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
                 bgcolor: tokens.brand.primary,
-                fontSize: 14,
+                fontSize: { xs: 12, sm: 14 },
                 fontWeight: 700,
               }}
             >

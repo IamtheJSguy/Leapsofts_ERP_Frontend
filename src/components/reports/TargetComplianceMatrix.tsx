@@ -282,9 +282,11 @@ export const TargetComplianceMatrix = ({
               key={agent._id}
               sx={{
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' },
                 justifyContent: 'space-between',
-                py: 1,
+                gap: 1,
+                py: 1.5,
                 borderBottom: `1px solid ${tokens.surface.borderLight}`,
                 '&:last-child': { borderBottom: 'none' },
               }}
@@ -305,7 +307,7 @@ export const TargetComplianceMatrix = ({
               </Box>
 
               {/* 30-day compliance cells strip */}
-              <Box sx={{ display: 'flex', gap: '4px', overflowX: 'auto', py: 0.5 }}>
+              <Box sx={{ display: 'flex', gap: '4px', overflowX: 'auto', py: 0.5, width: { xs: '100%', sm: 'auto' } }}>
                 {agent.days.map((day: any, idx: number) => (
                   <Tooltip key={idx} title={getTooltipTitle(day)} arrow placement="top">
                     <Box

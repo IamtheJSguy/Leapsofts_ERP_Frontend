@@ -239,7 +239,7 @@ const DashboardPage = () => {
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 3.5, 
+            gap: { xs: 1.5, sm: 3.5 }, 
             width: { xs: '100%', sm: 'auto' },
             justifyContent: { xs: 'space-between', sm: 'flex-end' }
           }}
@@ -317,11 +317,12 @@ const DashboardPage = () => {
                 : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
               color: joinUrl ? '#fff' : 'text.disabled',
               fontWeight: 800,
-              fontSize: '0.85rem',
-              px: 3.5,
-              py: 1.1,
+              fontSize: { xs: '0.75rem', sm: '0.85rem' },
+              px: { xs: 2, sm: 3.5 },
+              py: { xs: 0.8, sm: 1.1 },
               borderRadius: '20px',
               textTransform: 'none',
+              whiteSpace: 'nowrap',
               boxShadow: joinUrl ? '0 4px 15px rgba(255, 127, 17, 0.18)' : 'none',
               transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': joinUrl ? {

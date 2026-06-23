@@ -79,6 +79,8 @@ export const ReportTable = ({ onSelect }: ReportTableProps) => {
             onClick={() => onSelect?.(report)}
             sx={{
               display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2,
               alignItems: 'center',
               justifyContent: 'space-between',
               p: 2,
@@ -121,7 +123,7 @@ export const ReportTable = ({ onSelect }: ReportTableProps) => {
             </Box>
 
             {/* Right Section: Status Badge & Downloads */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
               <Chip
                 label={report.status}
                 size="small"

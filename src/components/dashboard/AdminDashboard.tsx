@@ -62,30 +62,33 @@ export const AdminDashboard = () => {
   }
 
   // Extract real kanban cards or fallback to screenshot mock data
-  const allCards = boards?.[0]?.columns.flatMap(col => col.cards) || [];
+  const allCards = boards?.[0]?.columns.flatMap(col => col.cards ?? []).filter(Boolean) || [];
   const tasksList = allCards.length > 0 
     ? allCards.slice(0, 3).map((card) => {
-        const leadName = typeof card.leadId === 'object' && card.leadId 
-          ? `${card.leadId.firstName || ''} ${card.leadId.lastName || ''}`.trim() || 'Unassigned Lead'
-          : card.title || 'Untitled Lead Task';
-        const companyName = typeof card.leadId === 'object' && card.leadId?.company 
-          ? ` - ${card.leadId.company}` 
+        if (!card) return null;
+        const leadId = (card as any).leadId;
+        const leadName = typeof leadId === 'object' && leadId 
+          ? `${leadId.firstName || ''} ${leadId.lastName || ''}`.trim() || 'Unassigned Lead'
+          : (card as any).title || 'Untitled Lead Task';
+        const companyName = typeof leadId === 'object' && leadId?.company 
+          ? ` - ${leadId.company}` 
           : '';
         
-        const rawDate = (card.activityLog?.[0]?.timestamp)
-          ? card.activityLog[0].timestamp
-          : (typeof card.leadId === 'object' && card.leadId?.createdAt)
-            ? card.leadId.createdAt
+        const activityLog = (card as any).activityLog;
+        const rawDate = activityLog?.[0]?.timestamp
+          ? activityLog[0].timestamp
+          : (typeof leadId === 'object' && leadId?.createdAt)
+            ? leadId.createdAt
             : null;
 
         return {
-          id: card._id,
+          id: (card as any)._id || Math.random().toString(),
           title: `${leadName}${companyName}`,
           date: rawDate 
             ? new Date(rawDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
             : 'Mar 5'
         };
-      })
+      }).filter(Boolean)
     : [
         { id: '1', title: 'Zubair Talib - Celara', date: 'Mar 5' },
         { id: '2', title: 'Blair Gatchel - Breva', date: 'Mar 5' },
@@ -133,7 +136,7 @@ export const AdminDashboard = () => {
         >
           {/* Badge & Title */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.8, sm: 1.2 } }}>
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -168,11 +171,12 @@ export const AdminDashboard = () => {
                 background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
                 color: '#fff',
                 fontWeight: 700,
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
                 borderRadius: '16px',
-                px: 2.2,
-                py: 0.8,
+                px: { xs: 1.5, sm: 2.2 },
+                py: { xs: 0.6, sm: 0.8 },
                 textTransform: 'none',
+                whiteSpace: 'nowrap',
                 gap: 1.2,
                 boxShadow: '0 4px 10px rgba(255, 127, 17, 0.12)',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -205,11 +209,12 @@ export const AdminDashboard = () => {
                 borderColor: tokens.surface.border,
                 color: tokens.text.primary,
                 fontWeight: 700,
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
                 borderRadius: '16px',
-                px: 2.2,
-                py: 0.8,
+                px: { xs: 1.5, sm: 2.2 },
+                py: { xs: 0.6, sm: 0.8 },
                 textTransform: 'none',
+                whiteSpace: 'nowrap',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
                   bgcolor: 'rgba(0,0,0,0.015)',
@@ -277,7 +282,7 @@ export const AdminDashboard = () => {
                 </Typography>
                 <Typography 
                   sx={{ 
-                    fontSize: '1.8rem', 
+                    fontSize: { xs: '1.4rem', sm: '1.8rem' }, 
                     fontWeight: 850, 
                     color: tokens.text.primary,
                     lineHeight: 1,
@@ -520,8 +525,8 @@ export const AdminDashboard = () => {
           }
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, letterSpacing: '-0.01em' }}>
             Team Analysis · this week
           </Typography>
           <Button 
@@ -626,8 +631,8 @@ export const AdminDashboard = () => {
               }
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
                 <CheckCircleOutlinedIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} />
                 Team Tasks Overview
               </Typography>
@@ -657,7 +662,7 @@ export const AdminDashboard = () => {
 
             {/* Task list entries */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
-              {tasksList.map((task) => (
+              {tasksList.map((task) => task && (
                 <Box
                   key={task.id}
                   sx={{

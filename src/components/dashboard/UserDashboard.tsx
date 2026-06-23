@@ -135,7 +135,7 @@ export const UserDashboard = () => {
         >
           {/* Badge & Title */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.8, sm: 1.2 } }}>
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -170,11 +170,12 @@ export const UserDashboard = () => {
                 background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
                 color: '#fff',
                 fontWeight: 700,
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
                 borderRadius: '16px',
-                px: 2.2,
-                py: 0.8,
+                px: { xs: 1.5, sm: 2.2 },
+                py: { xs: 0.6, sm: 0.8 },
                 textTransform: 'none',
+                whiteSpace: 'nowrap',
                 gap: 1.2,
                 boxShadow: '0 4px 10px rgba(255, 127, 17, 0.12)',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -207,11 +208,12 @@ export const UserDashboard = () => {
                 borderColor: tokens.surface.border,
                 color: tokens.text.primary,
                 fontWeight: 700,
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
                 borderRadius: '16px',
-                px: 2.2,
-                py: 0.8,
+                px: { xs: 1.5, sm: 2.2 },
+                py: { xs: 0.6, sm: 0.8 },
                 textTransform: 'none',
+                whiteSpace: 'nowrap',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
                   bgcolor: 'rgba(0,0,0,0.015)',
@@ -279,7 +281,7 @@ export const UserDashboard = () => {
                 </Typography>
                 <Typography 
                   sx={{ 
-                    fontSize: '1.8rem', 
+                    fontSize: { xs: '1.4rem', sm: '1.8rem' }, 
                     fontWeight: 850, 
                     color: tokens.text.primary,
                     lineHeight: 1,
@@ -522,8 +524,8 @@ export const UserDashboard = () => {
           }
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, letterSpacing: '-0.01em' }}>
             Team Analysis · this week
           </Typography>
           <Button 
@@ -628,8 +630,8 @@ export const UserDashboard = () => {
               }
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
                 <CheckCircleOutlinedIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} />
                 My Tasks
               </Typography>

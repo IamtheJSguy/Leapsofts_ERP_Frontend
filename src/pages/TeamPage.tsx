@@ -303,7 +303,7 @@ const TeamPage = () => {
         </Box>
 
         {/* User Summary Card */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
           <Avatar
             sx={{
               width: 80,
@@ -348,7 +348,7 @@ const TeamPage = () => {
             p: 3,
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box
                 sx={{
@@ -529,7 +529,7 @@ const TeamPage = () => {
         </Card>
 
         {/* Multi-column Projects & Secondary Metadata details */}
-        <Grid container spacing={4} sx={{ mb: 4.5 }}>
+        <Grid container spacing={{ xs: 2, md: 4 }} sx={{ mb: 4.5 }}>
           {/* Column 1: Projects list card */}
           <Grid item xs={12} md={8}>
             <Card
@@ -932,7 +932,7 @@ const TeamPage = () => {
                       }}
                     />
                     <Box sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                         <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
                           <Box component="span" sx={{ color: item.isCreate ? '#3B82F6' : '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
                             {item.isCreate ? 'CREATED' : 'MOVED'}
@@ -945,7 +945,7 @@ const TeamPage = () => {
                       </Box>
 
                       {item.isAction && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                           <Chip
                             label={item.from}
                             size="small"
@@ -1007,7 +1007,7 @@ const TeamPage = () => {
                       }}
                     />
                     <Box sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                         <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
                           <Box component="span" sx={{ color: '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
                             MOVED
@@ -1019,7 +1019,7 @@ const TeamPage = () => {
                         </Typography>
                       </Box>
 
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                         <Chip
                           label={item.from}
                           size="small"
@@ -1318,7 +1318,7 @@ const TeamPage = () => {
                       {member.jobTitle || 'Team Representative'}
                     </Typography>
 
-                    <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
                       <Chip
                         label={member.department || 'Staff'}
                         size="small"
@@ -1348,6 +1348,8 @@ const TeamPage = () => {
                       sx={{
                         display: 'flex',
                         justifyContent: 'space-around',
+                        flexWrap: 'wrap',
+                        gap: 1,
                         width: '100%',
                         mt: 3,
                         py: 1.25,
@@ -1467,7 +1469,7 @@ const TeamPage = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <Chip
                     label={member.department || 'Staff'}
                     size="small"

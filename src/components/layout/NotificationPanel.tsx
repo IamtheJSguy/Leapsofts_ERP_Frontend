@@ -60,8 +60,8 @@ export const NotificationPanel = () => {
         {/* Header Area */}
         <Box 
           sx={{ 
-            p: 3, 
-            pt: 4,
+            p: { xs: 2, sm: 3 }, 
+            pt: { xs: 3, sm: 4 },
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
@@ -73,8 +73,8 @@ export const NotificationPanel = () => {
             backdropFilter: 'blur(12px)',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: '-0.03em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 } }}>
+            <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' }, fontWeight: 850, letterSpacing: '-0.03em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
               Notifications
             </Typography>
             {unreadCount > 0 && (
@@ -99,7 +99,7 @@ export const NotificationPanel = () => {
               </Box>
             )}
           </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
             {notifications.length > 0 && (
               <Button 
                 size="small" 
@@ -141,7 +141,7 @@ export const NotificationPanel = () => {
         </Box>
 
         {/* Content Area */}
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 1.5, sm: 3 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
           {isLoading ? (
             // Skeleton Loading State
             Array.from(new Array(4)).map((_, i) => (
@@ -193,10 +193,10 @@ export const NotificationPanel = () => {
                   onClick={() => !n.isRead && markAsRead.mutate(n._id)}
                   sx={{
                     position: 'relative',
-                    p: 2.5,
+                    p: { xs: 2, sm: 2.5 },
                     borderRadius: '20px',
                     display: 'flex',
-                    gap: 2.5,
+                    gap: { xs: 1.5, sm: 2.5 },
                     cursor: n.isRead ? 'default' : 'pointer',
                     bgcolor: !n.isRead 
                       ? (isDarkMode ? alpha(tokens.brand.primary, 0.06) : alpha(tokens.brand.primary, 0.03)) 

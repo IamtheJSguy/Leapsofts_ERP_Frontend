@@ -4,12 +4,15 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
 import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
+import { useChatStore } from '@/store/useChatStore';
 
 const ChatPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [driveOpen, setDriveOpen] = useState(false);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
 
   return (
     <Box
@@ -38,8 +41,12 @@ const ChatPage = () => {
           minHeight: 0,
         }}
       >
-        <ChatSidebar />
-        <ChatWindow onSearchOpen={() => setSearchOpen(true)} onDriveOpen={() => setDriveOpen(true)} />
+        <Box sx={{ display: { xs: activeConversationId ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
+          <ChatSidebar />
+        </Box>
+        <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
+          <ChatWindow onSearchOpen={() => setSearchOpen(true)} onDriveOpen={() => setDriveOpen(true)} />
+        </Box>
       </Card>
 
       <ChatSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

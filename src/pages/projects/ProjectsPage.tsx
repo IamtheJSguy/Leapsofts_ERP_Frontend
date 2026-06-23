@@ -174,7 +174,7 @@ const ProjectsPage = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<UploadFileIcon />}
@@ -225,7 +225,7 @@ const ProjectsPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
-              width: 260,
+              width: { xs: '100%', sm: 260 },
               transition: 'transform 0.2s ease-in-out',
               '&:focus-within': {
                 transform: 'scale(1.015)',
@@ -261,6 +261,7 @@ const ProjectsPage = () => {
             sx={{
               display: 'flex',
               alignItems: 'center',
+              flexWrap: 'wrap',
               gap: 0.5,
               p: 0.5,
               borderRadius: '30px',
@@ -319,6 +320,7 @@ const ProjectsPage = () => {
             sx={{
               display: 'flex',
               alignItems: 'center',
+              flexWrap: 'wrap',
               gap: 0.5,
               p: 0.5,
               borderRadius: '30px',
@@ -396,7 +398,7 @@ const ProjectsPage = () => {
           <CircularProgress sx={{ color: tokens.brand.primary }} />
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(320px, 1fr))' }, gap: 3 }}>
           {filteredProjects.length === 0 && (
             <Box sx={{ gridColumn: '1 / -1', py: 8, textAlign: 'center' }}>
               <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
