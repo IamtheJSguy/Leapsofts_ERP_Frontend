@@ -30,6 +30,20 @@ export const shiftApi = {
   getToday: () => api.get<{ success: boolean; data: Shift }>('/shifts/today'),
   getHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/history', { params }),
+  getTeamHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+    api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/team-history', { params }),
+  getTeamStatus: () =>
+    api.get<{
+      success: boolean;
+      data: {
+        totalUsers: number;
+        checkedIn: number;
+        checkedOut: number;
+        onlineMembers: any[];
+        punctualityRate: number;
+        totalMinutesWorkedToday: number;
+      };
+    }>('/shifts/team-status'),
   
   // Daily KPIs
   getDailyKpis: (params?: { date?: string }) => api.get<{ success: boolean; data: DailyKPIEntry[] }>('/shifts/daily-kpis', { params }),
@@ -44,10 +58,22 @@ export const useTodayShift = () =>
     queryFn: () => shiftApi.getToday().then((r) => r.data.data),
   });
 
-export const useShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+export const useShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number; userId?: string }) =>
   useQuery({
     queryKey: ['shifts', 'history', params],
     queryFn: () => shiftApi.getHistory(params).then((r) => r.data.data),
+  });
+
+export const useTeamShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+  useQuery({
+    queryKey: ['shifts', 'teamHistory', params],
+    queryFn: () => shiftApi.getTeamHistory(params).then((r) => r.data.data),
+  });
+
+export const useTeamAttendanceSummary = () =>
+  useQuery({
+    queryKey: ['shifts', 'teamStatus'],
+    queryFn: () => shiftApi.getTeamStatus().then((r) => r.data.data),
   });
 
 export const useCheckIn = () => {

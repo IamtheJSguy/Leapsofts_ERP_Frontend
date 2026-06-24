@@ -200,6 +200,9 @@ export interface KanbanCard {
   columnId: string;
   position: number;
   title?: string;
+  description?: string;
+  priority?: string;
+  dueDate?: string;
   members?: string[] | User[];
   comments?: KanbanComment[];
   activityLog?: ActivityLogEntry[];
