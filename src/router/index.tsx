@@ -9,7 +9,6 @@ import {
   LoginPage,
   DashboardPage,
   TasksPage,
-  LeadsPage,
   KPIPage,
   ReportsPage,
   MeetingsPage,
@@ -51,14 +50,6 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
             <TasksPage />
-          </ProtectedRoute>,
-        ),
-      },
-      {
-        path: 'leads',
-        element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <LeadsPage />
           </ProtectedRoute>,
         ),
       },

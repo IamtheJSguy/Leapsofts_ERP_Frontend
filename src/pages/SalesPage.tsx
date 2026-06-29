@@ -226,7 +226,7 @@ export const SalesPage = () => {
   }, []);
 
   // Fetch actual prospects/leads from the API
-  const { data: leadsData, isLoading: isLeadsLoading } = useLeads({ limit: 100 });
+  const { data: leadsData, isLoading: isLeadsLoading } = useLeads({ limit: 10 });
 
   // State Management
   const [prospects, setProspects] = useState<any[]>([]);
