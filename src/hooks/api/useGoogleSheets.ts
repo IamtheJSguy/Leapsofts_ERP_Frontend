@@ -16,6 +16,7 @@ export const useSyncGoogleSheet = () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };
@@ -28,6 +29,7 @@ export const useSyncMySheet = () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };
