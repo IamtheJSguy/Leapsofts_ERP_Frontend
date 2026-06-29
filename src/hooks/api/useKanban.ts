@@ -29,6 +29,8 @@ const kanbanApi = {
     api.patch(`/kanban/boards/${boardId}/columns/reorder`, { columnIds }),
   createCard: (data: { boardId: string; columnId: string; title: string; assignedTo?: string[]; profileSections?: Array<{ title: string; content: string }> }) =>
     api.post('/kanban/cards', data),
+  assignCard: ({ cardId, data }: { cardId: string; data: { assignedTo: string[]; dueDate?: string; kpiEndDate?: string } }) =>
+    api.patch(`/kanban/cards/${cardId}/assign`, data),
   updateCard: ({ cardId, data }: { cardId: string; data: Partial<KanbanCard> & { assignedTo?: string[] } }) =>
     api.patch(`/kanban/cards/${cardId}`, data),
   deleteCard: (cardId: string) =>
@@ -189,6 +191,18 @@ export const useCreateCard = (boardId?: string) => {
     mutationFn: kanbanApi.createCard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+    },
+  });
+};
+
+export const useAssignCard = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.assignCard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiSummary'] });
     },
   });
 };
