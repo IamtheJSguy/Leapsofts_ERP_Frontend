@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { Lead, LeadFilters, PaginatedResponse, ValidationResult } from '@/types';
+import type { Lead, LeadFilters, LeadsListResponse, PaginatedResponse, ValidationResult } from '@/types';
 
 const leadApi = {
   getLeads: (params: LeadFilters) =>
@@ -24,8 +24,20 @@ const leadApi = {
 export const useLeads = (filters: LeadFilters = {}) =>
   useQuery({
     queryKey: ['leads', filters],
-    queryFn: () => leadApi.getLeads(filters).then((r) => r.data),
+    queryFn: async (): Promise<LeadsListResponse> => {
+      const response = await leadApi.getLeads(filters);
+      const body = response.data;
+      return {
+        data: Array.isArray(body.data) ? body.data : [],
+        meta: body.meta ?? {
+          page: filters.page ?? 1,
+          limit: filters.limit ?? 20,
+          total: Array.isArray(body.data) ? body.data.length : 0,
+        },
+      };
+    },
     staleTime: 1000 * 60,
+    placeholderData: (previous) => previous,
   });
 
 export const useLead = (id: string | undefined) =>
