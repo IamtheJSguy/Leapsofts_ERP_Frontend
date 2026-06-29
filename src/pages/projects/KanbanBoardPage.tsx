@@ -47,6 +47,7 @@ import {
 } from '@/hooks/api/useKanban';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
@@ -913,6 +914,10 @@ export const KanbanBoardPage = () => {
   const actualBoard = useMemo(() => (board as any)?.board || board, [board]);
   const cardsList = useMemo(() => (board as any)?.cards || [], [board]);
 
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === 'admin';
+  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isAdmin;
+
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
     const owner = allUsers.find((u: any) => u._id === actualBoard.ownerId);
@@ -957,6 +962,10 @@ export const KanbanBoardPage = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedUserToShare, setSelectedUserToShare] = useState<string>('');
   const shareBoardMutation = useShareBoard();
+
+  // Share Confirmation Dialog State
+  const [confirmShareOpen, setConfirmShareOpen] = useState(false);
+  const [pendingShareUserId, setPendingShareUserId] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1138,17 +1147,32 @@ export const KanbanBoardPage = () => {
     }
   };
 
+  // Stage share then show confirmation dialog
   const handleShareSubmit = () => {
     if (activeBoardId && selectedUserToShare) {
+      setPendingShareUserId(selectedUserToShare);
+      setIsShareDialogOpen(false);
+      setConfirmShareOpen(true);
+    }
+  };
+
+  // Executes actual share mutation after confirmation
+  const handleConfirmShare = () => {
+    if (activeBoardId && pendingShareUserId) {
       const currentShared = Array.isArray(actualBoard?.sharedWith) ? actualBoard.sharedWith : [];
-      const updatedShared = [...currentShared, selectedUserToShare];
+      const updatedShared = [...currentShared, pendingShareUserId];
       shareBoardMutation.mutate({
         boardId: activeBoardId,
         userIds: updatedShared
       }, {
         onSuccess: () => {
           setSelectedUserToShare('');
-          setIsShareDialogOpen(false);
+          setPendingShareUserId('');
+          setConfirmShareOpen(false);
+        },
+        onError: () => {
+          setPendingShareUserId('');
+          setConfirmShareOpen(false);
         }
       });
     }
@@ -1278,7 +1302,9 @@ export const KanbanBoardPage = () => {
           >
             <FilterListIcon fontSize="small" />
           </IconButton>
-          <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+          {canManageTeam && (
+            <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+          )}
         </Box>
       </Box>
 
@@ -1690,6 +1716,30 @@ export const KanbanBoardPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Share Board Confirmation Dialog */}
+      {(() => {
+        const pendingUser = allUsers.find((u: any) => u._id === pendingShareUserId);
+        const pendingUserName = pendingUser
+          ? (`${pendingUser.firstName || ''} ${pendingUser.lastName || ''}`.trim() || pendingUser.email)
+          : 'this team member';
+        return (
+          <ConfirmDialog
+            open={confirmShareOpen}
+            title="Add Team Member"
+            message={`Are you sure you want to add ${pendingUserName} to this board? They will be able to view and interact with all cards on this board.`}
+            confirmLabel="Add Member"
+            cancelLabel="Cancel"
+            isPending={shareBoardMutation.isPending}
+            onConfirm={handleConfirmShare}
+            onCancel={() => {
+              setConfirmShareOpen(false);
+              setPendingShareUserId('');
+              setSelectedUserToShare('');
+            }}
+          />
+        );
+      })()}
     </Box>
   );
 };
