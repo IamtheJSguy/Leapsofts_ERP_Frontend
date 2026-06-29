@@ -41,6 +41,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads, useQualifyLead } from '@/hooks/api/useLeads';
+import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
@@ -53,92 +54,6 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useUpdateMe, useMe } from '@/hooks/api/useUsers';
 
-// High-fidelity synced prospects mock database
-const mockSyncedProspects = [
-  {
-    _id: 'prospect-1',
-    name: 'Ali Rohaan',
-    company: 'Leapsofts',
-    title: 'Full Stack Developer',
-    location: 'Pakistan',
-    status: 'connection accepted',
-    email: 'aliroohan321@gmail.com',
-  },
-  {
-    _id: 'prospect-2',
-    name: 'Sarah Chen',
-    company: 'Design Studio',
-    title: 'Product Designer',
-    location: 'USA',
-    status: 'meeting',
-    email: 'sarah@designstudio.io',
-  },
-  {
-    _id: 'prospect-3',
-    name: 'Alex Rivera',
-    company: 'SaaS Corp',
-    title: 'VP of Growth',
-    location: 'Canada',
-    status: 'new',
-    email: 'alex@saascorp.co',
-  },
-  {
-    _id: 'prospect-4',
-    name: 'John Doe',
-    company: 'Innovate LLC',
-    title: 'Founder',
-    location: 'UK',
-    status: 'connection sent',
-    email: 'john@innovatellc.com',
-  },
-  {
-    _id: 'prospect-5',
-    name: 'Marcus Brody',
-    company: 'Nexus Tech',
-    title: 'Head of Sales',
-    location: 'USA',
-    status: 'messaged',
-    email: 'marcus@nexustech.com',
-  },
-  {
-    _id: 'prospect-6',
-    name: 'Emma Watson',
-    company: 'Creative Media',
-    title: 'Marketing Director',
-    location: 'UK',
-    status: 'replied',
-    email: 'emma@creativemedia.co.uk',
-  },
-  {
-    _id: 'prospect-7',
-    name: 'Daniel Craig',
-    company: 'MI6 Holdings',
-    title: 'Operations Manager',
-    location: 'Canada',
-    status: 'proposal sent',
-    email: 'daniel@mi6holdings.ca',
-  },
-  {
-    _id: 'prospect-8',
-    name: 'Robert Downey',
-    company: 'Stark Industries',
-    title: 'CEO',
-    location: 'USA',
-    status: 'closed won',
-    email: 'tony@starkindustries.com',
-  },
-  {
-    _id: 'prospect-9',
-    name: 'Chris Evans',
-    company: 'Shield Logistics',
-    title: 'Security Director',
-    location: 'USA',
-    status: 'closed lost',
-    email: 'steve@shieldlogistics.gov',
-  },
-];
-
-
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
   const muiTheme = useTheme();
@@ -150,7 +65,7 @@ export const SalesPage = () => {
 
   const getCardTheme = (label: string) => {
     switch (label) {
-      case 'CONNECTIONS SENT':
+      case 'TOTAL PROSPECTS': 
         return {
           icon: <SendIcon sx={{ fontSize: 20 }} />,
           color: tokens.brand.primary,
@@ -164,33 +79,33 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
           hoverBorder: tokens.brand.accent,
         };
-      case 'REPLIED':
+      case 'IN CONVERSATION':
         return {
           icon: <ForumIcon sx={{ fontSize: 20 }} />,
           color: '#3B82F6',
           bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
           hoverBorder: '#3B82F6',
         };
-      case 'MEETING':
-        return {
-          icon: <EventIcon sx={{ fontSize: 20 }} />,
-          color: '#EC4899',
-          bgcolor: isDarkMode ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.08)',
-          hoverBorder: '#EC4899',
-        };
-      case 'PROPOSAL SENT':
-        return {
-          icon: <DescriptionIcon sx={{ fontSize: 20 }} />,
-          color: '#F59E0B',
-          bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
-          hoverBorder: '#F59E0B',
-        };
-      case 'CLOSED WON':
+      case 'QUALIFIED':
         return {
           icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,
           color: tokens.semantic.success,
           bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
           hoverBorder: tokens.semantic.success,
+        };
+      case 'PENDING':
+        return {
+          icon: <EventIcon sx={{ fontSize: 20 }} />,
+          color: '#F59E0B',
+          bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
+          hoverBorder: '#F59E0B',
+        };
+      case 'NO RESPONSE':
+        return {
+          icon: <DescriptionIcon sx={{ fontSize: 20 }} />,
+          color: '#EC4899',
+          bgcolor: isDarkMode ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.08)',
+          hoverBorder: '#EC4899',
         };
       default:
         return {
@@ -226,7 +141,8 @@ export const SalesPage = () => {
   }, []);
 
   // Fetch actual prospects/leads from the API
-  const { data: leadsData, isLoading: isLeadsLoading } = useLeads({ limit: 10 });
+  const { data: leadsData, isLoading: isLeadsLoading } = useLeads({ limit: 100 });
+  const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats();
 
   // State Management
   const [prospects, setProspects] = useState<any[]>([]);
@@ -389,8 +305,6 @@ export const SalesPage = () => {
                   setProspects(response.data.data);
                 } else if (response?.data && Array.isArray(response.data)) {
                   setProspects(response.data);
-                } else {
-                  setProspects(mockSyncedProspects);
                 }
               }, 600);
             },
@@ -418,69 +332,31 @@ export const SalesPage = () => {
   };
 
 
-  // Calculate dynamic sales stats derived from prospects
   const stats = useMemo(() => {
-    const total = prospects.length;
-    if (total === 0) {
+    const pct = (value: number) => `${value}%`;
+
+    if (!pipelineStats) {
       return [
-        { label: 'CONNECTIONS SENT', value: '0', percent: null },
+        { label: 'TOTAL PROSPECTS', value: '0', percent: null },
         { label: 'ACCEPTED', value: '0', percent: '0%' },
-        { label: 'REPLIED', value: '0', percent: '0%' },
-        { label: 'MEETING', value: '0', percent: '0%' },
-        { label: 'PROPOSAL SENT', value: '0', percent: '0%' },
-        { label: 'CLOSED WON', value: '0', percent: '0%' },
+        { label: 'IN CONVERSATION', value: '0', percent: '0%' },
+        { label: 'QUALIFIED', value: '0', percent: '0%' },
+        { label: 'PENDING', value: '0', percent: '0%' },
+        { label: 'NO RESPONSE', value: '0', percent: '0%' },
       ];
     }
 
-    const getStatusCount = (type: 'connectionsSent' | 'accepted' | 'replied' | 'meeting' | 'proposalSent' | 'closedWon') => {
-      return prospects.filter((p) => {
-        const conn = p.connectionStatus || p.status;
-        const msg = p.messageStatus || p.status;
-        const lead = (p.leadStatus || p.status || '').toLowerCase();
-
-        if (type === 'connectionsSent') {
-          return conn && conn !== 'not_sent' && conn !== 'new' && conn !== 'pending';
-        }
-        if (type === 'accepted') {
-          return conn === 'accepted' || lead === 'accepted' || lead === 'meeting' || lead === 'proposal sent' || lead === 'closed won';
-        }
-        if (type === 'replied') {
-          return msg === 'replied' || lead === 'replied' || lead === 'meeting' || lead === 'proposal sent' || lead === 'closed won';
-        }
-        if (type === 'meeting') {
-          return lead === 'meeting';
-        }
-        if (type === 'proposalSent') {
-          return lead === 'proposal sent' || lead === 'proposal';
-        }
-        if (type === 'closedWon') {
-          return lead === 'closed won' || lead === 'closed_won';
-        }
-        return false;
-      }).length;
-    };
-
-    const connectionsSent = getStatusCount('connectionsSent');
-    const accepted = getStatusCount('accepted');
-    const replied = getStatusCount('replied');
-    const meeting = getStatusCount('meeting');
-    const proposalSent = getStatusCount('proposalSent');
-    const closedWon = getStatusCount('closedWon');
-
-    const ratioPercent = (val: number, base: number) => {
-      if (base === 0) return '0%';
-      return `${Math.round((val / base) * 100)}%`;
-    };
+    const { conversionRates } = pipelineStats;
 
     return [
-      { label: 'CONNECTIONS SENT', value: String(connectionsSent), percent: null },
-      { label: 'ACCEPTED', value: String(accepted), percent: ratioPercent(accepted, connectionsSent || 1) },
-      { label: 'REPLIED', value: String(replied), percent: ratioPercent(replied, accepted || 1) },
-      { label: 'MEETING', value: String(meeting), percent: ratioPercent(meeting, replied || 1) },
-      { label: 'PROPOSAL SENT', value: String(proposalSent), percent: ratioPercent(proposalSent, meeting || 1) },
-      { label: 'CLOSED WON', value: String(closedWon), percent: ratioPercent(closedWon, connectionsSent || 1) },
+      { label: 'TOTAL PROSPECTS', value: String(pipelineStats.totalProspects), percent: null },
+      { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
+      { label: 'IN CONVERSATION', value: String(pipelineStats.inConversation), percent: pct(conversionRates.conversationRate) },
+      { label: 'QUALIFIED', value: String(pipelineStats.qualified), percent: pct(conversionRates.qualifiedRate) },
+      { label: 'PENDING', value: String(pipelineStats.pending), percent: pct(Math.round((pipelineStats.pending / (pipelineStats.totalProspects || 1)) * 100)) },
+      { label: 'NO RESPONSE', value: String(pipelineStats.noResponse + pipelineStats.declined), percent: pct(Math.round(((pipelineStats.noResponse + pipelineStats.declined) / (pipelineStats.totalProspects || 1)) * 100)) },
     ];
-  }, [prospects]);
+  }, [pipelineStats]);
 
   // Filters search query evaluation
   const filteredProspects = useMemo(() => {
@@ -597,6 +473,11 @@ export const SalesPage = () => {
       </Box>
 
       {/* Stats Counter Row */}
+      {isPipelineLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, mb: 4.5 }}>
+          <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
+        </Box>
+      ) : (
       <Grid container spacing={2} sx={{ mb: 4.5 }}>
         {stats.map((item, idx) => {
           const theme = getCardTheme(item.label);
@@ -680,6 +561,7 @@ export const SalesPage = () => {
           );
         })}
       </Grid>
+      )}
 
       {/* Sub-Navigation Tabs Row */}
       <Box
