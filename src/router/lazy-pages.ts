@@ -3,7 +3,6 @@ import { lazy } from 'react';
 export const LoginPage = lazy(() => import('@/pages/LoginPage'));
 export const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 export const TasksPage = lazy(() => import('@/pages/TasksPage'));
-export const KPIPage = lazy(() => import('@/pages/KPIPage'));
 export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 export const MeetingsPage = lazy(() => import('@/pages/MeetingsPage'));
 export const ChatPage = lazy(() => import('@/pages/ChatPage'));
@@ -17,5 +16,6 @@ export const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'));
 export const ProjectDetailsPage = lazy(() => import('@/pages/projects/ProjectDetailsPage'));
 export const KanbanBoardPage = lazy(() => import('@/pages/projects/KanbanBoardPage'));
 export const AttendancePage = lazy(() => import('@/pages/AttendancePage'));
+export const MemberProgressPage = lazy(() => import('@/pages/MemberProgressPage'));
 
 

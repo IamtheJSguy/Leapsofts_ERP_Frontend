@@ -22,7 +22,16 @@ const kpiApi = {
     decision: 'approved' | 'rejected';
   }) => api.post(`/kpis/${id}/approve-change`, { requestId, decision }),
   getChangeRequests: () => api.get<{ data: ChangeRequest[] }>('/kpis/change-requests'),
+  getDailyEntries: (params: { date: string; userId?: string }) =>
+    api.get<{ data: any[] }>('/kpis/daily-entries', { params }),
 };
+
+export const useDailyKpiEntries = (params: { date: string; userId?: string }) =>
+  useQuery({
+    queryKey: ['dailyKpiEntries', params],
+    queryFn: () => kpiApi.getDailyEntries(params).then((r) => r.data.data),
+    enabled: !!params.date,
+  });
 
 export const useKPIs = () =>
   useQuery({

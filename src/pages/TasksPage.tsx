@@ -47,6 +47,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useKPITemplates, useCreateKPITemplate, useUpdateKPITemplate, useDeleteKPITemplate, useAssignKPITemplate, useMyAssignments, useKPITemplateAssignments, useUnassignKPITemplate } from '@/hooks/api/usekpiTemplate';
 import { UserDailyKpisView } from '@/components/dashboard/UserDailyKpisView';
+import { DailyTeamProgress } from '@/components/admin/DailyTeamProgress';
 import api from '@/lib/axios';
 import type { User } from '@/types';
 
@@ -2056,23 +2057,34 @@ const TasksPage = () => {
       </Grid>
 
       {/* Navigation Sub-Tabs */}
-      {/* Hidden for Admin to consolidate active assignments inside KPI Templates details view */}
+      {isAdmin && viewMode === 'list' && (
+        <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content' }}>
+          <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
+          <Button onClick={() => setDashboardTab('daily_progress' as any)} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' as any ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' as any ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Daily Progress</Button>
+        </Box>
+      )}
+
+      {/* SUB-TAB 3: DAILY PROGRESS LIST */}
+      {dashboardTab === 'daily_progress' as any && isAdmin && viewMode === 'list' && (
+        <DailyTeamProgress />
+      )}
 
       {/* Control filters bar */}
-      <Box
-        sx={{
-          mb: 4,
-          p: 2,
-          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.45)',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-          borderRadius: '24px',
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-          alignItems: { xs: 'stretch', sm: 'center' },
-        }}
-      >
-        <TextField
+      {dashboardTab !== 'daily_progress' as any && (
+        <Box
+          sx={{
+            mb: 4,
+            p: 2,
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+            borderRadius: '24px',
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
+        >
+          <TextField
           size="small"
           placeholder="Search performance targets..."
           value={searchQuery}
@@ -2157,6 +2169,7 @@ const TasksPage = () => {
           </ToggleButtonGroup>
         </Box>
       </Box>
+      )}
 
       {/* SUB-TAB 1: TEMPLATE CARDS LIST */}
       {dashboardTab === 'templates' && (
