@@ -20,6 +20,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   useTheme,
   alpha,
   Paper,
@@ -142,24 +143,6 @@ export const SalesPage = () => {
     };
   }, []);
 
-  // Fetch actual prospects/leads from the API
-  const { data: leadsData, isLoading: isLeadsLoading } = useLeads({ limit: 100 });
-  const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats();
-
-  // State Management
-  const [prospects, setProspects] = useState<any[]>([]);
-
-  useEffect(() => {
-    const leadsDataAny = leadsData as any;
-    if (leadsDataAny?.data && Array.isArray(leadsDataAny.data)) {
-      setProspects(leadsDataAny.data);
-    } else if (leadsData && Array.isArray(leadsData)) {
-      setProspects(leadsData);
-    } else if (leadsDataAny?.data?.data && Array.isArray(leadsDataAny.data.data)) {
-      setProspects(leadsDataAny.data.data);
-    }
-  }, [leadsData]);
-
   const getLinkedinMsgStyle = (msg?: string) => {
     if (!msg) return { color: 'text.secondary', bg: 'transparent', border: 'none' };
     const m = msg.toLowerCase();
@@ -219,6 +202,35 @@ export const SalesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('Industry (ICP)');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedIndustry, selectedStatus]);
+
+  const leadFilters = useMemo(() => ({
+    page,
+    limit: rowsPerPage,
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...(selectedIndustry !== 'Industry (ICP)' && selectedIndustry !== 'All Industries'
+      ? { industry: selectedIndustry }
+      : {}),
+    ...(selectedStatus !== 'All statuses' ? { connectionStatus: selectedStatus } : {}),
+  }), [page, rowsPerPage, debouncedSearch, selectedIndustry, selectedStatus]);
+
+  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
+  const prospects = leadsResponse?.data ?? [];
+  const totalProspects = leadsResponse?.meta.total ?? 0;
+  const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats();
 
   // Google Sheet Dialog and Sync Loading state
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
@@ -295,19 +307,13 @@ export const SalesPage = () => {
       {
         onSuccess: () => {
           syncMySheet.mutate(undefined, {
-            onSuccess: (response) => {
+            onSuccess: () => {
               clearInterval(progressInterval);
               setSyncProgress(100);
               setSyncStageText('Import complete!');
               setTimeout(() => {
                 setIsSyncing(false);
                 setGoogleSheetLink(fullInput);
-                // Load updated prospects list from server response if available, or fall back to mock synced data
-                if (response?.data?.data && Array.isArray(response.data.data)) {
-                  setProspects(response.data.data);
-                } else if (response?.data && Array.isArray(response.data)) {
-                  setProspects(response.data);
-                }
               }, 600);
             },
             onError: (err: any) => {
@@ -359,41 +365,6 @@ export const SalesPage = () => {
       { label: 'NO RESPONSE', value: String(pipelineStats.noResponse + pipelineStats.declined), percent: pct(Math.round(((pipelineStats.noResponse + pipelineStats.declined) / (pipelineStats.totalProspects || 1)) * 100)) },
     ];
   }, [pipelineStats]);
-
-  // Filters search query evaluation
-  const filteredProspects = useMemo(() => {
-    return prospects.filter((p) => {
-      const name = (p.prospectName || `${p.firstName || ''} ${p.lastName || ''}`).toLowerCase();
-      const company = (p.company || '').toLowerCase();
-      const title = (p.title || '').toLowerCase();
-      const profile = (p.profile || '').toLowerCase();
-      const icp = (p.icp || '').toLowerCase();
-      const industry = (p.industry || '').toLowerCase();
-      const query = searchQuery.toLowerCase();
-
-      const matchesSearch =
-        name.includes(query) ||
-        company.includes(query) ||
-        title.includes(query) ||
-        profile.includes(query) ||
-        icp.includes(query) ||
-        industry.includes(query);
-
-      const matchesICP =
-        selectedIndustry === 'Industry (ICP)' ||
-        selectedIndustry === 'All Industries' ||
-        icp.includes(selectedIndustry.toLowerCase()) ||
-        industry.includes(selectedIndustry.toLowerCase());
-
-      const matchesStatus =
-        selectedStatus === 'All statuses' ||
-        (p.connectionStatus && p.connectionStatus === selectedStatus) ||
-        (p.leadStatus && p.leadStatus.toLowerCase() === selectedStatus.toLowerCase()) ||
-        (p.status && p.status === selectedStatus);
-
-      return matchesSearch && matchesICP && matchesStatus;
-    });
-  }, [prospects, searchQuery, selectedIndustry, selectedStatus]);
 
   // Styles for input selects
   const filterSelectSx = {
@@ -734,15 +705,10 @@ export const SalesPage = () => {
                 input={<OutlinedInput />}
               >
                 <MenuItem value="All statuses">All statuses</MenuItem>
-                <MenuItem value="new">new</MenuItem>
-                <MenuItem value="connection sent">connection sent</MenuItem>
-                <MenuItem value="connection accepted">connection accepted</MenuItem>
-                <MenuItem value="messaged">messaged</MenuItem>
-                <MenuItem value="replied">replied</MenuItem>
-                <MenuItem value="meeting">meeting</MenuItem>
-                <MenuItem value="proposal sent">proposal sent</MenuItem>
-                <MenuItem value="closed won">closed won</MenuItem>
-                <MenuItem value="closed lost">closed lost</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="accepted">Accepted</MenuItem>
+                <MenuItem value="declined">Declined</MenuItem>
+                <MenuItem value="no_response">No response</MenuItem>
               </Select>
             </FormControl>
 
@@ -772,7 +738,7 @@ export const SalesPage = () => {
             </Button>
           </Box>
 
-          {isLeadsLoading ? (
+          {isLeadsLoading && !leadsResponse ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
               <CircularProgress sx={{ color: tokens.brand.primary }} />
             </Box>
@@ -892,7 +858,7 @@ export const SalesPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredProspects.map((prospect) => {
+                  {prospects.map((prospect) => {
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1022,7 +988,7 @@ export const SalesPage = () => {
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {prospect.isQualified || prospect.status === 'connection accepted' || prospect.status === 'qualified' ? (
+                            {prospect.isQualified || prospect.connectionStatus === 'accepted' ? (
                               <Chip
                                 icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
                                 label="Qualified"
@@ -1078,6 +1044,34 @@ export const SalesPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+          )}
+
+          {totalProspects > 0 && (
+            <TablePagination
+              component="div"
+              count={totalProspects}
+              page={page - 1}
+              onPageChange={(_, newPage) => setPage(newPage + 1)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setRowsPerPage(parseInt(event.target.value, 10));
+                setPage(1);
+              }}
+              rowsPerPageOptions={[10, 20, 50, 100]}
+              sx={{
+                mt: 1,
+                borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                color: 'text.secondary',
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                },
+              }}
+            />
+          )}
+
+          {isLeadsFetching && leadsResponse && (
+            <LinearProgress sx={{ mt: -0.5, borderRadius: '0 0 12px 12px' }} />
           )}
         </Box>
       )}
@@ -1277,10 +1271,7 @@ export const SalesPage = () => {
                 <em>Choose a prospect...</em>
               </MenuItem>
               {prospects
-                .filter((p) => {
-                  const isActive = p.isQualified || p.status === 'qualified' || p.status === 'connection accepted' || p.status === 'replied' || p.status === 'meeting' || p.status === 'proposal sent' || p.status === 'messaged' || p.status === 'closed won' || p.status === 'closed lost';
-                  return !isActive;
-                })
+                .filter((p) => !p.isQualified && p.connectionStatus !== 'accepted')
                 .map((p) => (
                   <MenuItem key={p._id} value={p._id}>
                     {getLeadName(p)} {p.company ? `- ${p.company}` : ''}

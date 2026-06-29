@@ -27,7 +27,16 @@ const kanbanApi = {
     api.delete(`/kanban/boards/${boardId}/columns/${columnId}`),
   reorderColumns: ({ boardId, columnIds }: { boardId: string; columnIds: string[] }) =>
     api.patch(`/kanban/boards/${boardId}/columns/reorder`, { columnIds }),
-  createCard: (data: { boardId: string; columnId: string; title: string; assignedTo?: string[]; profileSections?: Array<{ title: string; content: string }> }) =>
+  createCard: (data: {
+    boardId: string;
+    columnId: string;
+    title: string;
+    description?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    dueDate?: string;
+    assignedTo?: string[];
+    profileSections?: Array<{ title: string; content: string }>;
+  }) =>
     api.post('/kanban/cards', data),
   assignCard: ({ cardId, data }: { cardId: string; data: { assignedTo: string[]; dueDate?: string; kpiEndDate?: string } }) =>
     api.patch(`/kanban/cards/${cardId}/assign`, data),

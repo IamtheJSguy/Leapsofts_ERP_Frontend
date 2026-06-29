@@ -1117,9 +1117,6 @@ export const KanbanBoardPage = () => {
         description: newCardDescription.trim() || undefined,
         priority: newCardPriority,
         dueDate: newCardDueDate || undefined,
-        assignedTo: newCardAssignees,
-      } as any, {
-        onSuccess: () => {
       }, {
         onSuccess: (response) => {
           const createdCard = response?.data?.data;

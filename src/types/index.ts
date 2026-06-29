@@ -100,6 +100,11 @@ export interface PaginatedResponse<T> {
   meta?: { page: number; limit: number; total: number };
 }
 
+export interface LeadsListResponse {
+  data: Lead[];
+  meta: { page: number; limit: number; total: number };
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -293,11 +298,14 @@ export interface LeadValidationResult {
 }
 
 export interface LeadFilters {
+  connectionStatus?: string;
+  messageStatus?: string;
   status?: string;
   location?: string;
   industry?: string;
   companySize?: string;
   assignedTo?: string;
+  isQualified?: boolean;
   page?: number;
   limit?: number;
   sortBy?: string;
