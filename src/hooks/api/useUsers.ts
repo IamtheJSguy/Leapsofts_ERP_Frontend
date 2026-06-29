@@ -34,6 +34,29 @@ export const useUser = (id: string | undefined) =>
     enabled: !!id,
   });
 
+export const useUserSummary = (userId: string | undefined) =>
+  useQuery({
+    queryKey: ['userSummary', userId],
+    queryFn: () => api.get<{ data: any }>(`/users/${userId}/summary`).then((r) => r.data.data),
+    enabled: !!userId,
+  });
+
+export const useUserAttendanceSummary = (
+  userId: string | undefined,
+  startDate: string,
+  endDate: string
+) =>
+  useQuery({
+    queryKey: ['userAttendanceSummary', userId, startDate, endDate],
+    queryFn: () =>
+      api
+        .get<{ data: any }>(`/users/${userId}/attendance-summary`, {
+          params: { startDate, endDate },
+        })
+        .then((r) => r.data.data),
+    enabled: !!userId && !!startDate && !!endDate,
+  });
+
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
   return useMutation({

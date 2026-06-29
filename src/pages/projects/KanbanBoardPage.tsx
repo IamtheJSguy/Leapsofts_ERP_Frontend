@@ -4,7 +4,7 @@ import {
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle, 
   DialogContent, DialogActions, Drawer, CircularProgress, 
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl, 
-  InputLabel, Select, OutlinedInput
+  InputLabel, Select, OutlinedInput, Tooltip, Divider
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -24,6 +24,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import CheckIcon from '@mui/icons-material/Check';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import FlagIcon from '@mui/icons-material/Flag';
 import { tokens } from '@/styles/tokens';
 
 import {
@@ -97,41 +99,147 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
   );
 };
 
+const PRIORITY_CONFIG = {
+  low:    { label: 'Low',    color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  dot: '#3b82f6', border: 'rgba(96,165,250,0.2)' },
+  medium: { label: 'Medium', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', dot: '#d97706', border: 'rgba(251,191,36,0.2)' },
+  high:   { label: 'High',   color: '#fb923c', bg: 'rgba(251,146,60,0.08)', dot: '#ea580c', border: 'rgba(251,146,60,0.2)' },
+  urgent: { label: 'Urgent', color: '#f87171', bg: 'rgba(248,113,113,0.08)', dot: '#dc2626', border: 'rgba(248,113,113,0.2)' },
+};
+
 const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
-  const companyName = task.lead?.company || 'Lead Prospect';
+  const companyName = task.lead?.company || (task.lead ? 'Lead Prospect' : null);
+  const priority = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.medium;
+  const hasDueDate = task.dueDate;
+  const commentsCount = Array.isArray(task.rawCard?.comments)
+    ? task.rawCard.comments.filter((c: any) => c.isActive !== false).length
+    : (task.comments || 0);
+
+  const formatDue = (d: string) => {
+    const date = new Date(d);
+    const now = new Date();
+    // Normalize times for accurate calendar comparison
+    now.setHours(0,0,0,0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0,0,0,0);
+    const isPast = compareDate < now;
+    return { label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), isPast };
+  };
+
   return (
     <Box
       onClick={onClick}
       sx={{
         bgcolor: isDarkMode ? '#1E1B24' : '#fff',
-        borderRadius: '12px',
-        p: 2,
+        borderRadius: '16px',
+        p: 2.25,
         cursor: 'pointer',
-        boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-        transition: 'all 0.2s ease',
+        boxShadow: isDarkMode 
+          ? '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)' 
+          : '0 4px 16px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.01)',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+        position: 'relative',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.08)',
-          borderColor: tokens.brand.primaryMuted,
+          boxShadow: isDarkMode 
+            ? `0 12px 24px rgba(0,0,0,0.45), 0 0 1px ${priority.color}` 
+            : `0 12px 24px rgba(0,0,0,0.04), 0 0 1px ${priority.color}`,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
         }
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-        <Chip label={companyName} size="small" sx={{ bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
-        <IconButton size="small" sx={{ color: 'text.secondary', p: 0 }}>
-          <MoreHorizIcon fontSize="small" />
-        </IconButton>
+      {/* Top row: label chips + priority pill */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.75, gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+          {companyName ? (
+            <Chip 
+              label={companyName} 
+              size="small" 
+              sx={{ 
+                bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)', 
+                color: isDarkMode ? '#a78bfa' : tokens.brand.primary, 
+                fontWeight: 750, 
+                fontSize: '0.68rem', 
+                height: 22,
+                border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.15)' : 'rgba(93,26,137,0.1)'}`
+              }} 
+            />
+          ) : (
+            <Chip 
+              label="Custom Task" 
+              size="small" 
+              sx={{ 
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', 
+                color: 'text.secondary', 
+                fontWeight: 700, 
+                fontSize: '0.68rem', 
+                height: 22 
+              }} 
+            />
+          )}
+        </Box>
+
+        {/* Priority Badge */}
+        <Chip 
+          label={priority.label}
+          size="small"
+          sx={{
+            bgcolor: priority.bg,
+            color: priority.dot,
+            fontWeight: 800,
+            fontSize: '0.65rem',
+            height: 18,
+            px: 0.5,
+            border: `1px solid ${priority.border}`,
+            '& .MuiChip-label': { px: 1 }
+          }}
+        />
       </Box>
-      <Typography variant="body2" sx={{ fontWeight: 650, color: 'text.primary', mb: 2, lineHeight: 1.4 }}>
+
+      {/* Title */}
+      <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', mb: task.description ? 1 : 2, lineHeight: 1.45, letterSpacing: '-0.01em' }}>
         {task.title}
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', gap: 1.5, color: 'text.secondary' }}>
-          {task.comments > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><ChatBubbleOutlineIcon sx={{ fontSize: 14 }} /><Typography variant="caption" sx={{ fontWeight: 600 }}>{task.comments}</Typography></Box>}
-          {task.attachments > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><AttachFileIcon sx={{ fontSize: 14 }} /><Typography variant="caption" sx={{ fontWeight: 600 }}>{task.attachments}</Typography></Box>}
+
+      {/* Description preview */}
+      {task.description && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 2, lineHeight: 1.5, fontWeight: 500 }}>
+          {task.description}
+        </Typography>
+      )}
+
+      {/* Bottom row */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
+        <Box sx={{ display: 'flex', gap: 1.25, color: 'text.secondary', alignItems: 'center' }}>
+          {commentsCount > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <ChatBubbleOutlineIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
+              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem', color: 'text.secondary' }}>{commentsCount}</Typography>
+            </Box>
+          )}
+          {hasDueDate && (() => {
+            const { label, isPast } = formatDue(hasDueDate);
+            return (
+              <Chip
+                icon={<CalendarTodayIcon sx={{ fontSize: '11px !important', color: isPast ? '#ef4444 !important' : 'inherit' }} />}
+                label={label}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  bgcolor: isPast 
+                    ? 'rgba(239,68,68,0.1)' 
+                    : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                  color: isPast ? '#f87171' : 'text.secondary',
+                  border: isPast ? '1px solid rgba(239,68,68,0.15)' : 'none',
+                  '& .MuiChip-label': { pl: 0.5, pr: 1 }
+                }}
+              />
+            );
+          })()}
         </Box>
-        <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.65rem', fontWeight: 700, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
+        <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.65rem', fontWeight: 800, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
           {task.assignedUsers?.map((u: any, idx: number) => {
             const initial = (u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase();
             return <Avatar key={idx} sx={{ bgcolor: tokens.brand.primary }}>{initial}</Avatar>;
@@ -141,6 +249,9 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
     </Box>
   );
 };
+
+
+
 
 const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -189,6 +300,25 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [editDesc, setEditDesc] = useState('');
+
+  const startEditingDesc = () => {
+    setEditDesc(task.description || '');
+    setIsEditingDesc(true);
+  };
+
+  const handleDescSubmit = () => {
+    updateCardMutation.mutate({
+      cardId: task.id,
+      data: { description: editDesc.trim() }
+    }, {
+      onSuccess: () => {
+        setIsEditingDesc(false);
+      }
+    });
+  };
 
   // Confirmation Dialog States
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -349,10 +479,25 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         <Box sx={{ p: 3, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-              <Chip label={lead?.company || 'Lead Prospect'} size="small" sx={{ bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+              {lead ? (
+                <Chip label={lead.company || 'Lead Prospect'} size="small" sx={{ bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+              ) : (
+                <Chip label="Custom Task" size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+              )}
               {lead?.isQualified && (
                 <Chip label="Qualified" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: tokens.semantic.success, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
               )}
+              {(() => {
+                const p = (task.rawCard?.priority || 'medium') as keyof typeof PRIORITY_CONFIG;
+                const cfg = PRIORITY_CONFIG[p] || PRIORITY_CONFIG.medium;
+                return (
+                  <Chip
+                    label={cfg.label}
+                    size="small"
+                    sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: '0.7rem', height: 22, border: `1px solid ${cfg.color}40` }}
+                  />
+                );
+              })()}
             </Box>
             {isEditingTitle ? (
               <TextField
@@ -392,7 +537,102 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         </Box>
 
         {/* Drawer Content Area */}
-        <Box sx={{ p: 3, overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ p: 3, overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+          {/* Description Section */}
+          <Box sx={{ 
+            p: 2.5, 
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 
+            borderRadius: '16px', 
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` 
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DescriptionOutlinedIcon fontSize="small" />
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
+              </Box>
+              {!isEditingDesc && (
+                <IconButton size="small" onClick={startEditingDesc} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                  <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </Box>
+            
+            {isEditingDesc ? (
+              <Box sx={{ mt: 1 }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  placeholder="Add a detailed description..."
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  autoFocus
+                  sx={{
+                    mb: 1.5,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                      bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                    }
+                  }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Button 
+                    size="small" 
+                    onClick={() => setIsEditingDesc(false)} 
+                    sx={{ textTransform: 'none', borderRadius: '18px', fontWeight: 600, color: 'text.secondary' }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="small" 
+                    variant="contained" 
+                    onClick={handleDescSubmit} 
+                    disableElevation
+                    sx={{ 
+                      textTransform: 'none', 
+                      borderRadius: '18px', 
+                      fontWeight: 700, 
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      '&:hover': { bgcolor: tokens.brand.primary }
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Typography 
+                variant="body2" 
+                onClick={startEditingDesc}
+                sx={{ 
+                  color: task.description ? 'text.secondary' : 'text.disabled', 
+                  lineHeight: 1.7, 
+                  whiteSpace: 'pre-wrap',
+                  cursor: 'pointer',
+                  minHeight: 24,
+                  fontStyle: task.description ? 'normal' : 'italic',
+                  '&:hover': {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    borderRadius: '4px',
+                  }
+                }}
+              >
+                {task.description || 'Click to add a description...'}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Due Date */}
+          {task.dueDate && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <CalendarTodayIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </Typography>
+            </Box>
+          )}
           
           {/* Assignees Section */}
           <Box sx={{ p: 2.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
@@ -699,6 +939,9 @@ export const KanbanBoardPage = () => {
   const [isCardDialogOpen, setIsCardDialogOpen] = useState(false);
   const [cardTargetColumnId, setCardTargetColumnId] = useState<string>('');
   const [newCardTitle, setNewCardTitle] = useState('');
+  const [newCardDescription, setNewCardDescription] = useState('');
+  const [newCardPriority, setNewCardPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [newCardDueDate, setNewCardDueDate] = useState('');
   const [newCardAssignees, setNewCardAssignees] = useState<string[]>([]);
 
   // Page Confirm Dialog State
@@ -706,6 +949,9 @@ export const KanbanBoardPage = () => {
 
   // Search Filter State
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterMenuAnchor, setFilterMenuAnchor] = useState<null | HTMLElement>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string>('All');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('All');
 
   // Share Board Dialog State
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -744,29 +990,50 @@ export const KanbanBoardPage = () => {
         columnId: card.columnId,
         title: card.title || (assignedLead ? `${assignedLead.firstName || ''} ${assignedLead.lastName || ''}`.trim() : 'Untitled Card'),
         lead: assignedLead,
-        comments: card.comments?.length || 0,
+        description: card.description,
+        priority: card.priority || 'medium',
+        dueDate: card.dueDate,
+        comments: card.comments?.filter((c: any) => c.isActive !== false).length || 0,
         attachments: 0,
         assignedUsers: cardAssignees,
         rawCard: card,
-        position: card.position || 0,
+        position: card.order ?? card.position ?? 0,
       });
     });
     
     return tList.sort((a, b) => a.position - b.position);
   }, [actualBoard, cardsList, allUsers]);
 
-  // Filter tasks based on searchQuery
+  // Filter tasks based on searchQuery, priority, and assignee
   const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
-    const query = searchQuery.toLowerCase();
-    return tasks.filter((t) => {
-      const titleMatch = t.title?.toLowerCase().includes(query);
-      const companyMatch = t.lead?.company?.toLowerCase().includes(query);
-      const emailMatch = t.lead?.email?.toLowerCase().includes(query);
-      const nameMatch = `${t.lead?.firstName || ''} ${t.lead?.lastName || ''}`.toLowerCase().includes(query);
-      return titleMatch || companyMatch || emailMatch || nameMatch;
-    });
-  }, [tasks, searchQuery]);
+    let result = tasks;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((t) => {
+        const titleMatch = t.title?.toLowerCase().includes(query);
+        const companyMatch = t.lead?.company?.toLowerCase().includes(query);
+        const emailMatch = t.lead?.email?.toLowerCase().includes(query);
+        const nameMatch = `${t.lead?.firstName || ''} ${t.lead?.lastName || ''}`.toLowerCase().includes(query);
+        return titleMatch || companyMatch || emailMatch || nameMatch;
+      });
+    }
+
+    if (priorityFilter !== 'All') {
+      result = result.filter(t => (t.priority || 'medium').toLowerCase() === priorityFilter.toLowerCase());
+    }
+
+    if (assigneeFilter !== 'All') {
+      result = result.filter(t => {
+        const ids = Array.isArray(t.rawCard?.assignedTo)
+          ? t.rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
+          : [];
+        return ids.includes(assigneeFilter);
+      });
+    }
+
+    return result;
+  }, [tasks, searchQuery, priorityFilter, assigneeFilter]);
 
   const drawerTask = useMemo(() => {
     if (!drawerTaskId || !tasks.length) return null;
@@ -847,6 +1114,12 @@ export const KanbanBoardPage = () => {
         boardId: activeBoardId,
         columnId: cardTargetColumnId,
         title: newCardTitle.trim(),
+        description: newCardDescription.trim() || undefined,
+        priority: newCardPriority,
+        dueDate: newCardDueDate || undefined,
+        assignedTo: newCardAssignees,
+      } as any, {
+        onSuccess: () => {
       }, {
         onSuccess: (response) => {
           const createdCard = response?.data?.data;
@@ -858,6 +1131,9 @@ export const KanbanBoardPage = () => {
             });
           }
           setNewCardTitle('');
+          setNewCardDescription('');
+          setNewCardPriority('medium');
+          setNewCardDueDate('');
           setNewCardAssignees([]);
           setIsCardDialogOpen(false);
         },
@@ -952,7 +1228,7 @@ export const KanbanBoardPage = () => {
   }
 
   return (
-    <Box className="animate-fade-in-up" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box className="animate-fade-in-up" sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '100%' }}>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -971,9 +1247,20 @@ export const KanbanBoardPage = () => {
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
           <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
             {boardMembers.map((member: any, idx: number) => {
-              const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'U';
-              const initial = name.charAt(0).toUpperCase();
-              return <Avatar key={member._id || idx} sx={{ bgcolor: tokens.brand.primary }}>{initial}</Avatar>;
+              const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
+              const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
+              const tooltipText = (
+                <Box sx={{ p: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{name}</Typography>
+                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)' }}>{member.email}</Typography>
+                  {member.jobTitle && <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{member.jobTitle}</Typography>}
+                </Box>
+              );
+              return (
+                <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
+                  <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                </Tooltip>
+              );
             })}
           </AvatarGroup>
           <TextField 
@@ -984,8 +1271,16 @@ export const KanbanBoardPage = () => {
             sx={{ width: { xs: '100%', sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff', '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } }} 
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> }} 
           />
-          <IconButton sx={{ border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: '50%' }}><FilterListIcon fontSize="small" /></IconButton>
-          <IconButton sx={{ border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: '50%' }}><GroupIcon fontSize="small" /></IconButton>
+          <IconButton 
+            onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
+            sx={{ 
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, 
+              borderRadius: '50%',
+              bgcolor: (priorityFilter !== 'All' || assigneeFilter !== 'All') ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
+            }}
+          >
+            <FilterListIcon fontSize="small" />
+          </IconButton>
           <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
         </Box>
       </Box>
@@ -1068,11 +1363,99 @@ export const KanbanBoardPage = () => {
         </MenuItem>
       </Menu>
 
+      {/* Board Filter Menu */}
+      <Menu
+        anchorEl={filterMenuAnchor}
+        open={Boolean(filterMenuAnchor)}
+        onClose={() => setFilterMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            minWidth: 220,
+            borderRadius: '16px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            p: 1
+          }
+        }}
+      >
+        <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Filter by Priority
+        </Typography>
+        {['All', 'Low', 'Medium', 'High', 'Urgent'].map((opt) => (
+          <MenuItem 
+            key={opt} 
+            selected={priorityFilter === opt} 
+            onClick={() => {
+              setPriorityFilter(opt);
+              setFilterMenuAnchor(null);
+            }}
+            sx={{ borderRadius: '8px', mx: 1 }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: priorityFilter === opt ? 700 : 500 }}>
+              {opt}
+            </Typography>
+          </MenuItem>
+        ))}
+
+        <Divider sx={{ my: 1 }} />
+
+        <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Filter by Assignee
+        </Typography>
+        <MenuItem 
+          selected={assigneeFilter === 'All'} 
+          onClick={() => {
+            setAssigneeFilter('All');
+            setFilterMenuAnchor(null);
+          }}
+          sx={{ borderRadius: '8px', mx: 1 }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: assigneeFilter === 'All' ? 700 : 500 }}>
+            All Assignees
+          </Typography>
+        </MenuItem>
+        {boardMembers.map((m: any) => {
+          const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+          return (
+            <MenuItem 
+              key={m._id} 
+              selected={assigneeFilter === m._id} 
+              onClick={() => {
+                setAssigneeFilter(m._id);
+                setFilterMenuAnchor(null);
+              }}
+              sx={{ borderRadius: '8px', mx: 1 }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: assigneeFilter === m._id ? 700 : 500 }}>
+                {name}
+              </Typography>
+            </MenuItem>
+          );
+        })}
+
+        {(priorityFilter !== 'All' || assigneeFilter !== 'All') && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <MenuItem 
+              onClick={() => {
+                setPriorityFilter('All');
+                setAssigneeFilter('All');
+                setFilterMenuAnchor(null);
+              }}
+              sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                Clear Filters
+              </Typography>
+            </MenuItem>
+          </>
+        )}
+      </Menu>
+
       {/* Add Column Dialog */}
       <Dialog open={isColumnDialogOpen} onClose={() => setIsColumnDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>New Column</DialogTitle>
-        <DialogContent>
-          <TextField autoFocus fullWidth label="Column Name" variant="outlined" size="small" value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} sx={{ mt: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); }} />
+        <DialogContent sx={{ overflow: 'visible' }}>
+          <TextField autoFocus fullWidth label="Column Name" variant="outlined" size="small" value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} sx={{ mt: 1.5 }} onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); }} />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setIsColumnDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
@@ -1083,8 +1466,8 @@ export const KanbanBoardPage = () => {
       {/* Rename Column Dialog */}
       <Dialog open={isRenameColumnOpen} onClose={() => setIsRenameColumnOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Rename Column</DialogTitle>
-        <DialogContent>
-          <TextField autoFocus fullWidth label="Column Name" variant="outlined" size="small" value={renameColumnText} onChange={(e) => setRenameColumnText(e.target.value)} sx={{ mt: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumnSubmit(); }} />
+        <DialogContent sx={{ overflow: 'visible' }}>
+          <TextField autoFocus fullWidth label="Column Name" variant="outlined" size="small" value={renameColumnText} onChange={(e) => setRenameColumnText(e.target.value)} sx={{ mt: 1.5 }} onKeyDown={(e) => { if (e.key === 'Enter') handleRenameColumnSubmit(); }} />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setIsRenameColumnOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
@@ -1092,19 +1475,107 @@ export const KanbanBoardPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Direct Card Creation Dialog */}
-      <Dialog open={isCardDialogOpen} onClose={() => setIsCardDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Create New Task</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-          <TextField 
-            autoFocus 
-            fullWidth 
-            label="Task Title" 
-            variant="outlined" 
-            size="small" 
-            value={newCardTitle} 
-            onChange={(e) => setNewCardTitle(e.target.value)} 
+      {/* ── Rich Card Creation Dialog ── */}
+      <Dialog
+        open={isCardDialogOpen}
+        onClose={() => setIsCardDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            p: 1.5,
+            bgcolor: isDarkMode ? '#1E1B24' : '#fff',
+            backgroundImage: 'none',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            overflow: 'visible',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Create New Card</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>Add a custom task to this column</Typography>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 3.5, pb: 3, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible' }}>
+          {/* Title */}
+          <TextField
+            autoFocus
+            fullWidth
+            label="Card Title"
+            placeholder="e.g. Follow up with client..."
+            variant="outlined"
+            value={newCardTitle}
+            onChange={(e) => setNewCardTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleCreateCardSubmit(); }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                fontWeight: 650,
+              }
+            }}
           />
+
+          {/* Description */}
+          <TextField
+            fullWidth
+            label="Description"
+            placeholder="Add more details about this task..."
+            variant="outlined"
+            multiline
+            rows={3}
+            value={newCardDescription}
+            onChange={(e) => setNewCardDescription(e.target.value)}
+            sx={{
+              '& .MuiOutlinedInput-root': { borderRadius: '14px' }
+            }}
+          />
+
+          {/* Priority + Due Date row */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* Priority */}
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <InputLabel id="priority-label">Priority</InputLabel>
+              <Select
+                labelId="priority-label"
+                value={newCardPriority}
+                onChange={(e) => setNewCardPriority(e.target.value as any)}
+                label="Priority"
+                sx={{ borderRadius: '14px' }}
+                renderValue={(val) => {
+                  const p = PRIORITY_CONFIG[val as keyof typeof PRIORITY_CONFIG];
+                  return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.dot }} />
+                      <Typography variant="body2" sx={{ fontWeight: 650 }}>{p.label}</Typography>
+                    </Box>
+                  );
+                }}
+              >
+                {(Object.entries(PRIORITY_CONFIG) as [string, any][]).map(([key, cfg]) => (
+                  <MenuItem key={key} value={key}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: cfg.dot }} />
+                      <Typography variant="body2" sx={{ fontWeight: 650 }}>{cfg.label}</Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Due Date */}
+            <TextField
+              type="date"
+              label="Due Date"
+              size="small"
+              value={newCardDueDate}
+              onChange={(e) => setNewCardDueDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
+            />
+          </Box>
+
+          {/* Assignees */}
           <FormControl fullWidth size="small">
             <InputLabel id="new-card-assign-label">Assign Members</InputLabel>
             <Select
@@ -1113,26 +1584,63 @@ export const KanbanBoardPage = () => {
               value={newCardAssignees}
               onChange={(e) => setNewCardAssignees(e.target.value as string[])}
               input={<OutlinedInput label="Assign Members" />}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '14px' }, borderRadius: '14px' }}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map((val) => {
                     const match = allUsers.find((u: any) => u._id === val);
-                    return <Chip key={val} label={match ? `${match.firstName || ''} ${match.lastName || ''}`.trim() : val} size="small" />;
+                    return <Chip key={val} label={match ? `${match.firstName || ''} ${match.lastName || ''}`.trim() : val} size="small" sx={{ height: 22, fontSize: '0.72rem' }} />;
                   })}
                 </Box>
               )}
             >
               {allUsers.map((u: any) => (
                 <MenuItem key={u._id} value={u._id}>
-                  {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
+                      {(u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase()}
+                    </Avatar>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                    </Typography>
+                  </Box>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setIsCardDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
-          <Button onClick={handleCreateCardSubmit} disabled={!newCardTitle.trim() || createCardMutation.isPending} variant="contained" sx={{ bgcolor: '#FF5733', borderRadius: '24px', '&:hover': { bgcolor: '#E04A2A' } }}>Create</Button>
+
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1.5 }}>
+          <Button
+            onClick={() => {
+              setIsCardDialogOpen(false);
+              setNewCardTitle('');
+              setNewCardDescription('');
+              setNewCardPriority('medium');
+              setNewCardDueDate('');
+              setNewCardAssignees([]);
+            }}
+            sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 3 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreateCardSubmit}
+            disabled={!newCardTitle.trim() || createCardMutation.isPending}
+            variant="contained"
+            sx={{
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: '24px',
+              textTransform: 'none',
+              px: 4,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' },
+            }}
+          >
+            {createCardMutation.isPending ? 'Creating...' : 'Create Card'}
+          </Button>
         </DialogActions>
       </Dialog>
 

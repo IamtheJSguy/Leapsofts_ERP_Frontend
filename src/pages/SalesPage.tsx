@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -147,6 +148,7 @@ export const SalesPage = () => {
   const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
+  const navigate = useNavigate();
 
   const getCardTheme = (label: string) => {
     switch (label) {
@@ -1160,8 +1162,10 @@ export const SalesPage = () => {
                                   qualifyLead.mutate(
                                     { id: prospect._id },
                                     {
-                                      onSuccess: () => {
-                                        addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
+                                      onSuccess: (res: any) => {
+                                        const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
+                                        addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
+                                        if (boardId) navigate(`/board/${boardId}`);
                                       },
                                     }
                                   );
@@ -1427,11 +1431,12 @@ export const SalesPage = () => {
                 qualifyLead.mutate(
                   { id: selectedLeadToQualify },
                   {
-                    onSuccess: () => {
-                      addToast({ message: 'Lead successfully qualified!', severity: 'success' });
+                    onSuccess: (res: any) => {
+                      const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
+                      addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
                       setIsQualifyModalOpen(false);
                       setSelectedLeadToQualify('');
-                      // The queryClient invalidation in useQualifyLead will auto-refresh the prospects
+                      if (boardId) navigate(`/board/${boardId}`);
                     },
                   }
                 );
