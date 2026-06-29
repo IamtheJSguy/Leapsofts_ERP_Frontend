@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -69,6 +70,20 @@ const TeamPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // Selected user for details page sub-view
   const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const userIdFromUrl = searchParams.get('userId');
+
+  useEffect(() => {
+    if (userIdFromUrl && teamList.length > 0) {
+      const matched = teamList.find((u: any) => u._id === userIdFromUrl);
+      if (matched && (!selectedUser || selectedUser._id !== userIdFromUrl)) {
+        setSelectedUser(matched);
+      }
+    } else if (!userIdFromUrl && selectedUser) {
+      setSelectedUser(null);
+    }
+  }, [userIdFromUrl, teamList, selectedUser]);
 
   // Dialog State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -168,6 +183,7 @@ const TeamPage = () => {
         addToast({ message: 'User deleted successfully!', severity: 'success' });
         setIsDeleteConfirmOpen(false);
         setSelectedUser(null);
+        setSearchParams({});
       },
       onError: (err: any) => {
         addToast({
@@ -259,7 +275,10 @@ const TeamPage = () => {
         >
           <Button
             startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
-            onClick={() => setSelectedUser(null)}
+            onClick={() => {
+              setSelectedUser(null);
+              setSearchParams({});
+            }}
             sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : tokens.text.secondary,
               fontWeight: 700,
@@ -1251,7 +1270,10 @@ const TeamPage = () => {
             return (
               <Grid item xs={12} sm={6} md={4} key={member._id}>
                 <Card
-                  onClick={() => setSelectedUser(member)}
+                  onClick={() => {
+                    setSelectedUser(member);
+                    setSearchParams({ userId: member._id });
+                  }}
                   sx={{
                     height: '100%',
                     bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : tokens.surface.card,
@@ -1387,7 +1409,10 @@ const TeamPage = () => {
             return (
               <Box
                 key={member._id}
-                onClick={() => setSelectedUser(member)}
+                onClick={() => {
+                  setSelectedUser(member);
+                  setSearchParams({ userId: member._id });
+                }}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',

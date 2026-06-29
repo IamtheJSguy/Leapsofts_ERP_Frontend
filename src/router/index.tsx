@@ -9,7 +9,6 @@ import {
   LoginPage,
   DashboardPage,
   TasksPage,
-  KPIPage,
   ReportsPage,
   MeetingsPage,
   ChatPage,
@@ -74,14 +73,6 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
             <KanbanBoardPage />
-          </ProtectedRoute>,
-        ),
-      },
-      {
-        path: 'kpis',
-        element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <KPIPage />
           </ProtectedRoute>,
         ),
       },
