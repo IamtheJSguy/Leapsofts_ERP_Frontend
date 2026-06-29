@@ -42,7 +42,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
-  useCreateCard, useUpdateCard, useDeleteCard,
+  useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
   useEditComment, useDeleteComment, useShareBoard
 } from '@/hooks/api/useKanban';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -330,11 +330,14 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   // Assignee Confirmation State
   const [assigneeConfirmOpen, setAssigneeConfirmOpen] = useState(false);
   const [pendingAssignees, setPendingAssignees] = useState<string[]>([]);
+  const [pendingDueDate, setPendingDueDate] = useState('');
+  const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
 
   const addCommentMutation = useAddComment();
   const editCommentMutation = useEditComment();
   const deleteCommentMutation = useDeleteComment();
   const updateCardMutation = useUpdateCard(boardId);
+  const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -427,13 +430,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   };
 
   const handleAssigneeConfirm = () => {
-    updateCardMutation.mutate({
+    assignCardMutation.mutate({
       cardId: task.id,
-      data: { assignedTo: pendingAssignees }
+      data: {
+        assignedTo: pendingAssignees,
+        ...(pendingDueDate ? { dueDate: pendingDueDate } : {}),
+        ...(pendingKpiEndDate ? { kpiEndDate: pendingKpiEndDate } : {}),
+      },
     }, {
       onSuccess: () => {
         setAssigneeConfirmOpen(false);
-      }
+      },
     });
   };
 
@@ -634,6 +641,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assignees</Typography>
             </Box>
             {isAdminOrOwner ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <FormControl fullWidth size="small">
                 <InputLabel id="assign-member-label">Assign Team Members</InputLabel>
                 <Select
@@ -659,6 +667,26 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   ))}
                 </Select>
               </FormControl>
+              <TextField
+                label="Due Date"
+                type="date"
+                size="small"
+                value={pendingDueDate || (rawCard?.dueDate ? new Date(rawCard.dueDate).toISOString().slice(0, 10) : '')}
+                onChange={(e) => setPendingDueDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label="KPI tracking end date"
+                type="date"
+                size="small"
+                value={pendingKpiEndDate || (rawCard?.kpiEndDate ? new Date(rawCard.kpiEndDate).toISOString().slice(0, 10) : '')}
+                onChange={(e) => setPendingKpiEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="How long this task shows in daily KPIs (defaults to due date or 7 days)"
+                fullWidth
+              />
+              </Box>
             ) : (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {assignedToIds.map((value: any) => {
@@ -855,11 +883,11 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       />
       <ModernConfirmDialog
         open={assigneeConfirmOpen}
-        title="Update Team Members"
-        description="Are you sure you want to update the assigned team members for this lead?"
+        title="Assign Team Members"
+        description="Assigning will create daily KPI tasks for each member until the task is completed or the tracking period ends."
         onConfirm={handleAssigneeConfirm}
         onCancel={() => setAssigneeConfirmOpen(false)}
-        confirmText="Yes, Update"
+        confirmText="Assign & Create KPIs"
       />
     </>
   );
@@ -880,6 +908,7 @@ export const KanbanBoardPage = () => {
   const deleteColumnMutation = useDeleteColumn();
   const reorderColumnsMutation = useReorderColumns();
   const createCardMutation = useCreateCard(activeBoardId);
+  const assignCardMutation = useAssignCard(activeBoardId);
 
   const actualBoard = useMemo(() => (board as any)?.board || board, [board]);
   const cardsList = useMemo(() => (board as any)?.cards || [], [board]);
@@ -1091,13 +1120,23 @@ export const KanbanBoardPage = () => {
         assignedTo: newCardAssignees,
       } as any, {
         onSuccess: () => {
+      }, {
+        onSuccess: (response) => {
+          const createdCard = response?.data?.data;
+          const cardId = createdCard?._id;
+          if (cardId && newCardAssignees.length > 0) {
+            assignCardMutation.mutate({
+              cardId,
+              data: { assignedTo: newCardAssignees },
+            });
+          }
           setNewCardTitle('');
           setNewCardDescription('');
           setNewCardPriority('medium');
           setNewCardDueDate('');
           setNewCardAssignees([]);
           setIsCardDialogOpen(false);
-        }
+        },
       });
     }
   };

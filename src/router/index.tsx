@@ -9,8 +9,6 @@ import {
   LoginPage,
   DashboardPage,
   TasksPage,
-  LeadsPage,
-  KPIPage,
   ReportsPage,
   MeetingsPage,
   ChatPage,
@@ -56,14 +54,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'leads',
-        element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <LeadsPage />
-          </ProtectedRoute>,
-        ),
-      },
-      {
         path: 'board',
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
@@ -84,14 +74,6 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
             <KanbanBoardPage />
-          </ProtectedRoute>,
-        ),
-      },
-      {
-        path: 'kpis',
-        element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
-            <KPIPage />
           </ProtectedRoute>,
         ),
       },

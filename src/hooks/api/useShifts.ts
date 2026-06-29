@@ -8,6 +8,7 @@ export interface DailyKPIEntry {
   kpiId?: { _id: string; name: string; description?: string; targetValue: number; timeFrame: string };
   assignmentId?: any;
   assignmentItemId?: string;
+  kanbanCardId?: { _id: string; title: string; dueDate?: string; kpiEndDate?: string; boardId?: string };
   name: string;
   description?: string;
   targetValue: number;
