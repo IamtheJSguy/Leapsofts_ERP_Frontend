@@ -19,7 +19,7 @@ export const parseDisplayToStorage = (text: string, users: User[]): string => {
   let result = text;
   for (const user of sortedUsers) {
     const label = `@${getDisplayName(user)}`;
-    const token = `@\[${user._id}\]`;
+    const token = `@[${user._id}]`;
     result = result.split(label).join(token);
   }
 
