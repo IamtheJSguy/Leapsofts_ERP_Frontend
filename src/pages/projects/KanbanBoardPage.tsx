@@ -855,14 +855,24 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               </FormControl>
               <ModernDatePicker
                 label="Due Date"
-                value={(pendingDueDate || rawCard?.dueDate) ? new Date(pendingDueDate || rawCard.dueDate) : null}
-                onChange={(date) => setPendingDueDate(date.toISOString().slice(0, 10))}
+                value={(pendingDueDate || rawCard?.dueDate) ? new Date((pendingDueDate || rawCard.dueDate).split('T')[0] + 'T00:00:00') : null}
+                onChange={(date) => {
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, '0');
+                  const d = String(date.getDate()).padStart(2, '0');
+                  setPendingDueDate(`${y}-${m}-${d}`);
+                }}
               />
               <Box>
                 <ModernDatePicker
                   label="KPI tracking end date"
-                  value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date(pendingKpiEndDate || rawCard.kpiEndDate) : null}
-                  onChange={(date) => setPendingKpiEndDate(date.toISOString().slice(0, 10))}
+                  value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date((pendingKpiEndDate || rawCard.kpiEndDate).split('T')[0] + 'T00:00:00') : null}
+                  onChange={(date) => {
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    setPendingKpiEndDate(`${y}-${m}-${d}`);
+                  }}
                 />
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                   How long this task shows in daily KPIs (defaults to due date or 7 days)
@@ -1774,14 +1784,16 @@ export const KanbanBoardPage = () => {
           {/* Priority + Due Date row */}
           <Box sx={{ display: 'flex', gap: 2 }}>
             {/* Priority */}
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <InputLabel id="priority-label">Priority</InputLabel>
-              <Select
-                labelId="priority-label"
-                value={newCardPriority}
-                onChange={(e) => setNewCardPriority(e.target.value as any)}
-                label="Priority"
-                sx={{ borderRadius: '14px' }}
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+                Priority
+              </Typography>
+              <FormControl size="small" fullWidth>
+                <Select
+                  value={newCardPriority}
+                  onChange={(e) => setNewCardPriority(e.target.value as any)}
+                  displayEmpty
+                  sx={{ borderRadius: '14px', '& .MuiSelect-select': { py: 1.25 } }}
                 renderValue={(val) => {
                   const p = PRIORITY_CONFIG[val as keyof typeof PRIORITY_CONFIG];
                   return (
@@ -1801,14 +1813,20 @@ export const KanbanBoardPage = () => {
                   </MenuItem>
                 ))}
               </Select>
-            </FormControl>
+              </FormControl>
+            </Box>
 
             {/* Due Date */}
             <Box sx={{ flex: 1 }}>
               <ModernDatePicker
                 label="Due Date"
-                value={newCardDueDate ? new Date(newCardDueDate) : null}
-                onChange={(date) => setNewCardDueDate(date.toISOString().slice(0, 10))}
+                value={newCardDueDate ? new Date(newCardDueDate.split('T')[0] + 'T00:00:00') : null}
+                onChange={(date) => {
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, '0');
+                  const d = String(date.getDate()).padStart(2, '0');
+                  setNewCardDueDate(`${y}-${m}-${d}`);
+                }}
               />
             </Box>
           </Box>
