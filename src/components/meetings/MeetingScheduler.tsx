@@ -35,6 +35,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useAuth } from '@/hooks/useAuth';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -61,6 +62,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const isDarkMode = theme.palette.mode === 'dark';
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
   // Filter meetings to only show those the current user is a participant of
   const myMeetings = meetings.filter((m: Meeting) => {
@@ -91,7 +93,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
     return creatorId === currentUser._id;
   };
 
-  const { register, handleSubmit, reset, setValue, control } = useForm<MeetingFormData>({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
   });
 
@@ -143,15 +145,23 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
   const handleDelete = () => {
     if (editingMeeting) {
-      if (window.confirm("Are you sure you want to cancel this meeting?")) {
-        deleteMeeting.mutate(editingMeeting._id, {
-          onSuccess: () => {
-            addToast({ message: 'Meeting canceled successfully', severity: 'success' });
-            handleClose();
-          }
-        });
-      }
+      setConfirmDeleteOpen(true);
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!editingMeeting) return;
+    deleteMeeting.mutate(editingMeeting._id, {
+      onSuccess: () => {
+        addToast({ message: 'Meeting canceled successfully', severity: 'success' });
+        setConfirmDeleteOpen(false);
+        handleClose();
+      },
+      onError: () => {
+        setConfirmDeleteOpen(false);
+        addToast({ message: 'Failed to cancel meeting.', severity: 'error' });
+      }
+    });
   };
 
   const onSubmit = (data: MeetingFormData) => {
@@ -380,12 +390,14 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           <DialogContent sx={{ px: 3, pb: 1, pt: 0, overflowX: 'hidden' }}>
             <TextField
               {...register('title')}
-              label="Meeting Title"
+              label="Meeting Title *"
               placeholder="e.g. Sales Weekly Sync"
               fullWidth
+              error={!!errors.title}
+              helperText={errors.title?.message}
               sx={{
                 mt: 1,
-                mb: 3,
+                mb: errors.title ? 1.5 : 3,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '16px',
                 }
@@ -415,11 +427,13 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             />
             <TextField
               {...register('meetingLink')}
-              label="Meeting Link (URL)"
+              label="Meeting Link (URL) *"
               placeholder="https://meet.google.com/..."
               fullWidth
+              error={!!errors.meetingLink}
+              helperText={errors.meetingLink?.message}
               sx={{
-                mb: 3,
+                mb: errors.meetingLink ? 1.5 : 3,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '16px',
                 }
@@ -436,7 +450,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             <Controller
               name="participants"
               control={control}
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <Autocomplete
                   multiple
                   options={dbUsers}
@@ -451,10 +465,12 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Participants"
+                      label="Participants *"
                       placeholder="Search team members..."
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
                       sx={{
-                        mb: 3,
+                        mb: fieldState.error ? 1.5 : 3,
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '16px',
                         }
@@ -508,10 +524,12 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
             <TextField
               {...register('scheduledAt')}
-              label="Date & Time"
+              label="Date & Time *"
               type="datetime-local"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              error={!!errors.scheduledAt}
+              helperText={errors.scheduledAt?.message}
               sx={{
                 mb: 1,
                 '& .MuiOutlinedInput-root': {
@@ -909,6 +927,18 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           </>
         )}
       </Dialog>
+
+      {/* Delete Meeting Confirmation */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Cancel Meeting"
+        message={`Are you sure you want to cancel "${editingMeeting?.title}"? This action cannot be undone.`}
+        confirmLabel="Yes, Cancel Meeting"
+        cancelLabel="Keep Meeting"
+        isPending={deleteMeeting.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </Box>
   );
 };

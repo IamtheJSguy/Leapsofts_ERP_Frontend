@@ -48,6 +48,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -65,6 +66,34 @@ export const SalesPage = () => {
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+
+  const handleOpenQualifyConfirm = (leadId: string) => {
+    setLeadIdToQualify(leadId);
+    setConfirmQualifyOpen(true);
+  };
+
+  const handleConfirmQualify = () => {
+    if (!leadIdToQualify) return;
+    qualifyLead.mutate(
+      { id: leadIdToQualify },
+      {
+        onSuccess: (res: any) => {
+          const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
+          addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
+          setConfirmQualifyOpen(false);
+          setLeadIdToQualify('');
+          if (boardId) navigate(`/board/${boardId}`);
+        },
+        onError: (err: any) => {
+          setConfirmQualifyOpen(false);
+          addToast({
+            message: err?.response?.data?.message || 'Failed to qualify lead.',
+            severity: 'error',
+          });
+        }
+      }
+    );
+  };
 
   const getCardTheme = (label: string) => {
     switch (label) {
@@ -243,6 +272,10 @@ export const SalesPage = () => {
   // Qualify Lead Modal state
   const [isQualifyModalOpen, setIsQualifyModalOpen] = useState(false);
   const [selectedLeadToQualify, setSelectedLeadToQualify] = useState<string>('');
+
+  // Qualify Confirmation Dialog state
+  const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
+  const [leadIdToQualify, setLeadIdToQualify] = useState<string>('');
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
@@ -1006,18 +1039,7 @@ export const SalesPage = () => {
                                 variant="outlined"
                                 size="small"
                                 startIcon={<StarIcon sx={{ fontSize: '14px !important' }} />}
-                                onClick={() => {
-                                  qualifyLead.mutate(
-                                    { id: prospect._id },
-                                    {
-                                      onSuccess: (res: any) => {
-                                        const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
-                                        addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
-                                        if (boardId) navigate(`/board/${boardId}`);
-                                      },
-                                    }
-                                  );
-                                }}
+                                onClick={() => handleOpenQualifyConfirm(prospect._id)}
                                 disabled={qualifyLead.isPending}
                                 sx={{
                                   borderRadius: '20px',
@@ -1301,18 +1323,10 @@ export const SalesPage = () => {
             disabled={!selectedLeadToQualify || qualifyLead.isPending}
             onClick={() => {
               if (selectedLeadToQualify) {
-                qualifyLead.mutate(
-                  { id: selectedLeadToQualify },
-                  {
-                    onSuccess: (res: any) => {
-                      const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
-                      addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
-                      setIsQualifyModalOpen(false);
-                      setSelectedLeadToQualify('');
-                      if (boardId) navigate(`/board/${boardId}`);
-                    },
-                  }
-                );
+                const leadId = selectedLeadToQualify;
+                setIsQualifyModalOpen(false);
+                setSelectedLeadToQualify('');
+                handleOpenQualifyConfirm(leadId);
               }
             }}
             sx={{
@@ -1329,6 +1343,21 @@ export const SalesPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Qualify Lead Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmQualifyOpen}
+        title="Qualify Lead"
+        message="Are you sure you want to qualify this lead? This will create a Kanban board for this lead."
+        confirmLabel="Qualify"
+        cancelLabel="Cancel"
+        isPending={qualifyLead.isPending}
+        onConfirm={handleConfirmQualify}
+        onCancel={() => {
+          setConfirmQualifyOpen(false);
+          setLeadIdToQualify('');
+        }}
+      />
     </Box>
   );
 };

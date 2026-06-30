@@ -114,10 +114,16 @@ export const ProjectDetailsPage = () => {
   const [selectedUserVal, setSelectedUserVal] = useState<any | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Confirmation state for adding member
+  const [confirmAddOpen, setConfirmAddOpen] = useState(false);
+  const [pendingAddUser, setPendingAddUser] = useState<any | null>(null);
 
   // Derived data
   const actualBoard = useMemo(() => (boardData as any)?.board || boardData, [boardData]);
   const isBoardOwner = useMemo(() => actualBoard?.ownerId === currentUser?._id, [actualBoard, currentUser]);
+  const canManageTeam = isBoardOwner || isAdmin;
   const cards = useMemo(() => (boardData as any)?.cards || [], [boardData]);
 
   // Lead: pick the first card's leadId (populated object)
@@ -168,13 +174,28 @@ export const ProjectDetailsPage = () => {
   const connToken = connStatusConfig[leadInfo?.connectionStatus || 'not_sent'] || connStatusConfig.not_sent;
   const msgToken = msgStatusConfig[leadInfo?.messageStatus || 'not_sent'] || msgStatusConfig.not_sent;
 
+  // Stage user and open confirmation
   const handleAddMember = () => {
-    if (selectedUserToAdd && projectId && boardMeta) {
-      const updatedShared = [...boardMeta.sharedUserIds, selectedUserToAdd];
+    if (selectedUserToAdd && projectId && boardMeta && selectedUserVal) {
+      setPendingAddUser(selectedUserVal);
+      setConfirmAddOpen(true);
+    }
+  };
+
+  // Execute actual share mutation after confirmation
+  const handleConfirmAddMember = () => {
+    if (pendingAddUser && projectId && boardMeta) {
+      const updatedShared = [...boardMeta.sharedUserIds, pendingAddUser._id];
       shareBoardMutation.mutate({ boardId: projectId, userIds: updatedShared }, {
         onSuccess: () => {
           setSelectedUserToAdd('');
           setSelectedUserVal(null);
+          setPendingAddUser(null);
+          setConfirmAddOpen(false);
+        },
+        onError: () => {
+          setPendingAddUser(null);
+          setConfirmAddOpen(false);
         },
       });
     }
@@ -203,7 +224,7 @@ export const ProjectDetailsPage = () => {
       </Button>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
           {/* Lead Avatar */}
           <Avatar
@@ -239,6 +260,32 @@ export const ProjectDetailsPage = () => {
             )}
           </Box>
         </Box>
+
+        {/* Top-Right High Priority Call To Action */}
+        <Button
+          variant="contained"
+          onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
+          startIcon={<DashboardCustomizeIcon sx={{ fontSize: 18 }} />}
+          sx={{
+            bgcolor: tokens.brand.primary,
+            color: '#fff',
+            fontWeight: 750,
+            borderRadius: '24px',
+            textTransform: 'none',
+            px: 3.5,
+            py: 1.25,
+            boxShadow: 'none',
+            fontSize: '0.86rem',
+            transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+            '&:hover': {
+              bgcolor: tokens.brand.primaryLight,
+              boxShadow: tokens.shadow.cardHover,
+              transform: 'translateY(-2px)'
+            },
+          }}
+        >
+          Open Kanban Board
+        </Button>
       </Box>
 
       {/* Tabs */}
@@ -407,28 +454,6 @@ export const ProjectDetailsPage = () => {
                 iconBg="rgba(16,185,129,0.1)"
                 onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
               />
-
-              {/* Open Board CTA */}
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
-                sx={{
-                  bgcolor: tokens.brand.primary,
-                  color: '#fff',
-                  fontWeight: 700,
-                  borderRadius: '20px',
-                  textTransform: 'none',
-                  py: 1.75,
-                  boxShadow: 'none',
-                  mt: 0.5,
-                  fontSize: '0.9rem',
-                  transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
-                  '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none', transform: 'translateY(-2px)' },
-                }}
-              >
-                Open Kanban Board →
-              </Button>
             </Box>
           </Box>
         )}
@@ -442,7 +467,7 @@ export const ProjectDetailsPage = () => {
           return (
             <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {/* Add Member */}
-              {isBoardOwner ? (
+              {canManageTeam ? (
                 <Box
                   sx={{
                     bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
@@ -605,6 +630,21 @@ export const ProjectDetailsPage = () => {
                 isPending={shareBoardMutation.isPending}
                 onConfirm={confirmRemoveMember}
                 onCancel={() => setMemberToRemove(null)}
+              />
+
+              {/* Add Member Confirmation */}
+              <ConfirmDialog
+                open={confirmAddOpen}
+                title="Add Team Member"
+                message={`Are you sure you want to add ${pendingAddUser ? (`${pendingAddUser.firstName || ''} ${pendingAddUser.lastName || ''}`.trim() || pendingAddUser.email) : 'this member'} to this board? They will be able to view and interact with all cards.`}
+                confirmLabel="Add Member"
+                cancelLabel="Cancel"
+                isPending={shareBoardMutation.isPending}
+                onConfirm={handleConfirmAddMember}
+                onCancel={() => {
+                  setConfirmAddOpen(false);
+                  setPendingAddUser(null);
+                }}
               />
             </Box>
           );

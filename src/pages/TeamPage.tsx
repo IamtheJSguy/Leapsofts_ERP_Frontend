@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -48,10 +48,12 @@ import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary } from '@/hooks/api/useUsers';
+import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { getSocket } from '@/lib/socket';
 
 const TeamPage = () => {
+  const navigate = useNavigate();
   const { isAdmin } = usePermissions();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
@@ -70,6 +72,28 @@ const TeamPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // Selected user for details page sub-view
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [activityPage, setActivityPage] = useState(1);
+
+  // Load summary for the selected user if one is active
+  const { data: userSummary } = useUserSummary(selectedUser?._id);
+
+  // Fetch kanban boards to resolve actual projects/boards for this user
+  const { data: boards = [] } = useKanbanBoards();
+
+  const userProjects = useMemo(() => {
+    if (!selectedUser) return [];
+    return boards.filter((b: any) => {
+      const isOwner = b.ownerId === selectedUser._id || (typeof b.ownerId === 'object' && b.ownerId?._id === selectedUser._id);
+      const isShared = Array.isArray(b.sharedWith) && b.sharedWith.some((id: any) => {
+        return id === selectedUser._id || (typeof id === 'object' && id?._id === selectedUser._id);
+      });
+      return isOwner || isShared;
+    });
+  }, [boards, selectedUser]);
+
+  useEffect(() => {
+    setActivityPage(1);
+  }, [selectedUser]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const userIdFromUrl = searchParams.get('userId');
@@ -411,10 +435,10 @@ const TeamPage = () => {
           {/* Metric cards grid */}
           <Grid container spacing={2}>
             {[
-              { label: 'Open Tasks', value: '1', color: '#2563EB' },
-              { label: 'Completed', value: '0', color: '#10B981' },
-              { label: 'Overdue', value: '0', color: '#6B7280' },
-              { label: 'Avg Cycle', value: '—', color: '#8B5CF6' },
+              { label: 'Open Tasks', value: userSummary?.metrics?.pendingTasks ?? 0, color: '#2563EB' },
+              { label: 'Completed', value: userSummary?.metrics?.completedTasks ?? 0, color: '#10B981' },
+              { label: 'Overdue', value: userSummary?.metrics?.overdueTasks ?? 0, color: '#6B7280' },
+              { label: 'Completed KPIs', value: userSummary?.metrics?.completedKpis ?? 0, color: '#8B5CF6' },
             ].map((stat, idx) => (
               <Grid item xs={12} sm={6} md={3} key={idx}>
                 <Box
@@ -548,16 +572,18 @@ const TeamPage = () => {
         </Card>
 
         {/* Multi-column Projects & Secondary Metadata details */}
-        <Grid container spacing={{ xs: 2, md: 4 }} sx={{ mb: 4.5 }}>
+        <Grid container spacing={{ xs: 2, md: 4 }} sx={{ mb: 4.5, alignItems: 'stretch' }}>
           {/* Column 1: Projects list card */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={8} sx={{ display: 'flex' }}>
             <Card
               sx={{
                 borderRadius: '24px',
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                 p: 3,
-                height: '100%',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
@@ -566,58 +592,96 @@ const TeamPage = () => {
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    bgcolor: '#EFF6FF',
+                    bgcolor: 'rgba(139, 92, 246, 0.1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <FolderIcon sx={{ color: '#3B82F6', fontSize: 16 }} />
+                  <AssignmentIcon sx={{ color: '#8B5CF6', fontSize: 16 }} />
                 </Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                  Projects (1)
+                  Tasks ({userSummary?.tasksList?.length ?? 0})
                 </Typography>
               </Box>
 
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  p: 2,
-                  bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#F9F8F7',
-                  borderRadius: '16px',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'}`,
-                }}
-              >
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-                    Berger App
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                    Internal · MEMBER
-                  </Typography>
-                </Box>
-                <Typography variant="caption" sx={{ color: '#2563EB', fontWeight: 750, letterSpacing: '0.04em' }}>
-                  IN DEVELOPMENT
+              {(!userSummary?.tasksList || userSummary.tasksList.length === 0) ? (
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1 }}>
+                  No active tasks assigned.
                 </Typography>
-              </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
+                  {userSummary.tasksList.map((task: any) => {
+                    return (
+                      <Box
+                        key={task.id}
+                        onClick={() => navigate(`/board/${task.boardId}/boards/${task.boardId}`)}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          p: 2,
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
+                          borderRadius: '16px',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.04)',
+                            borderColor: tokens.brand.primary,
+                            transform: 'translateY(-2px)'
+                          }
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                            {task.title}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                            Board: {task.boardName || 'General'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          {task.dueDate && (
+                            <Typography variant="caption" sx={{ color: task.isOverdue ? '#EF4444' : 'text.secondary', fontWeight: 700 }}>
+                              {task.isOverdue ? 'Overdue: ' : 'Due: '}{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </Typography>
+                          )}
+                          <Chip
+                            label={task.columnName || 'Active'}
+                            size="small"
+                            sx={{
+                              bgcolor: task.isDone ? 'rgba(16, 185, 129, 0.1)' : (task.isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                              color: task.isDone ? '#10B981' : (task.isOverdue ? '#EF4444' : '#3B82F6'),
+                              fontWeight: 800,
+                              fontSize: '0.72rem',
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
             </Card>
           </Grid>
 
-          {/* Column 2: Department Meta Info & Active Tasks */}
-          <Grid item xs={12} md={4}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Department Meta */}
-              <Card
-                sx={{
-                  borderRadius: '24px',
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                  p: 3,
-                }}
-              >
-                <Grid container spacing={2}>
+          {/* Column 2: Department Meta Info */}
+          <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+            <Card
+              sx={{
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                p: 3,
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              }}
+            >
+              <Grid container spacing={2}>
                   {[
                     { label: 'Department', value: selectedUser.department || 'Engineering' },
                     { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : 'EMPLOYEE' },
@@ -655,50 +719,8 @@ const TeamPage = () => {
                   ))}
                 </Grid>
               </Card>
-
-              {/* Tasks Card */}
-              <Card
-                sx={{
-                  borderRadius: '24px',
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                  p: 3,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3.5 }}>
-                  <Box
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      bgcolor: '#FEF2F2',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <AssignmentIcon sx={{ color: '#EF4444', fontSize: 16 }} />
-                  </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                    Tasks
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#F59E0B' }} />
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.88rem', lineHeight: 1.2 }}>
-                      otp test
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
-                      Resolved
-                    </Typography>
-                  </Box>
-                </Box>
-              </Card>
-            </Box>
+            </Grid>
           </Grid>
-        </Grid>
 
         {/* Edit User Dialog */}
         <Dialog 
@@ -886,192 +908,211 @@ const TeamPage = () => {
         </Dialog>
 
         {/* Activity Log Card */}
-        <Card
-          sx={{
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-            p: 3,
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Box
-                sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  bgcolor: '#EFF6FF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <TimelineIcon sx={{ color: '#3B82F6', fontSize: 16 }} />
-              </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                Activity log
-              </Typography>
-            </Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-              8 events
-            </Typography>
-          </Box>
+        {(() => {
+          const allMockActivities = [
+            // June 4
+            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Problem Cards to Resolved', time: '5:18 PM', from: 'Problem Cards', to: 'Resolved', isAction: true },
+            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from InQA to Problem Cards', time: '5:18 PM', from: 'InQA', to: 'Problem Cards', isAction: true },
+            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Resolved to InQA', time: '5:18 PM', from: 'Resolved', to: 'InQA', isAction: true },
+            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Resolved', time: '5:17 PM', from: 'Customer side', to: 'Resolved', isAction: true },
+            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Doing', time: '5:17 PM', from: 'Customer side', to: 'Doing', isAction: true },
+            { date: 'THU, JUN 4 · 2026', desc: 'CREATED task "otp test" in Berger App', time: '5:16 PM', isCreate: true },
+            
+            // June 3
+            { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Pin location icon should be working in map" from Customer side to Service provider', time: '8:10 PM', from: 'Customer side', to: 'Service provider', isAction: true },
+            { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Complete UI fixes for this screen" from Service provider to Customer side', time: '8:05 PM', from: 'Service provider', to: 'Customer side', isAction: true },
+            { date: 'WED, JUN 3 · 2026', desc: 'CREATED task "Map integration" in Berger App', time: '11:30 AM', isCreate: true },
+            { date: 'WED, JUN 3 · 2026', desc: 'CREATED task "Complete UI fixes for this screen" in Berger App', time: '10:00 AM', isCreate: true },
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4.5 }}>
-            {/* THU, JUN 4 · 2026 */}
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, pb: 1, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}` }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  THU, JUN 4 · 2026
-                </Typography>
+            // June 2
+            { date: 'TUE, JUN 2 · 2026', desc: 'MOVED task "User auth token check" from Doing to InQA', time: '6:00 PM', from: 'Doing', to: 'InQA', isAction: true },
+            { date: 'TUE, JUN 2 · 2026', desc: 'MOVED task "User auth token check" from Todo to Doing', time: '2:15 PM', from: 'Todo', to: 'Doing', isAction: true },
+            { date: 'TUE, JUN 2 · 2026', desc: 'CREATED task "User auth token check" in Auth Microservice', time: '9:00 AM', isCreate: true },
+
+            // June 1
+            { date: 'MON, JUN 1 · 2026', desc: 'MOVED task "Setup CI/CD pipeline" from Doing to Resolved', time: '7:45 PM', from: 'Doing', to: 'Resolved', isAction: true },
+            { date: 'MON, JUN 1 · 2026', desc: 'MOVED task "Setup CI/CD pipeline" from Todo to Doing', time: '1:00 PM', from: 'Todo', to: 'Doing', isAction: true },
+            { date: 'MON, JUN 1 · 2026', desc: 'CREATED task "Setup CI/CD pipeline" in Devops Project', time: '10:30 AM', isCreate: true },
+
+            // May 31
+            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from InQA to Resolved', time: '10:00 PM', from: 'InQA', to: 'Resolved', isAction: true },
+            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from Doing to InQA', time: '6:30 PM', from: 'Doing', to: 'InQA', isAction: true },
+            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from Todo to Doing', time: '11:00 AM', from: 'Todo', to: 'Doing', isAction: true },
+
+            // May 30
+            { date: 'SAT, MAY 30 · 2026', desc: 'CREATED task "Database replication setup" in DB Cluster', time: '5:00 PM', isCreate: true },
+            { date: 'SAT, MAY 30 · 2026', desc: 'MOVED task "UI landing page draft" from Doing to Resolved', time: '4:20 PM', from: 'Doing', to: 'Resolved', isAction: true },
+            { date: 'SAT, MAY 30 · 2026', desc: 'MOVED task "UI landing page draft" from Todo to Doing', time: '1:00 PM', from: 'Todo', to: 'Doing', isAction: true },
+            { date: 'SAT, MAY 30 · 2026', desc: 'CREATED task "UI landing page draft" in Berger App', time: '10:00 AM', isCreate: true },
+
+            // May 29
+            { date: 'FRI, MAY 29 · 2026', desc: 'MOVED task "API Gateway Routing Setup" from Doing to Resolved', time: '6:15 PM', from: 'Doing', to: 'Resolved', isAction: true },
+            { date: 'FRI, MAY 29 · 2026', desc: 'MOVED task "API Gateway Routing Setup" from Todo to Doing', time: '2:00 PM', from: 'Todo', to: 'Doing', isAction: true },
+            { date: 'FRI, MAY 29 · 2026', desc: 'CREATED task "API Gateway Routing Setup" in Gateway Dev', time: '11:00 AM', isCreate: true },
+          ];
+
+          const pageSize = 20;
+          const totalPages = Math.ceil(allMockActivities.length / pageSize);
+          const paginatedActivities = allMockActivities.slice((activityPage - 1) * pageSize, activityPage * pageSize);
+
+          // Group paginated activities by date
+          const groupedActivities: Record<string, typeof allMockActivities> = {};
+          paginatedActivities.forEach((activity) => {
+            if (!groupedActivities[activity.date]) {
+              groupedActivities[activity.date] = [];
+            }
+            groupedActivities[activity.date].push(activity);
+          });
+
+          return (
+            <Card
+              sx={{
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                p: 3,
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      bgcolor: '#EFF6FF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <TimelineIcon sx={{ color: '#3B82F6', fontSize: 16 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+                    Activity log
+                  </Typography>
+                </Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                  6
+                  {allMockActivities.length} events
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                {[
-                  { desc: 'MOVED task "otp test" from Problem Cards to Resolved', time: '5:18 PM', from: 'Problem Cards', to: 'Resolved', isAction: true },
-                  { desc: 'MOVED task "otp test" from InQA to Problem Cards', time: '5:18 PM', from: 'InQA', to: 'Problem Cards', isAction: true },
-                  { desc: 'MOVED task "otp test" from Resolved to InQA', time: '5:18 PM', from: 'Resolved', to: 'InQA', isAction: true },
-                  { desc: 'MOVED task "otp test" from Customer side to Resolved', time: '5:17 PM', from: 'Customer side', to: 'Resolved', isAction: true },
-                  { desc: 'MOVED task "otp test" from Customer side to Doing', time: '5:17 PM', from: 'Customer side', to: 'Doing', isAction: true },
-                  { desc: 'CREATED task "otp test" in Berger App', time: '5:16 PM', isCreate: true },
-                ].map((item, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', position: 'relative' }}>
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        bgcolor: item.isCreate ? '#3B82F6' : '#EF4444',
-                        mt: 0.75,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                        <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
-                          <Box component="span" sx={{ color: item.isCreate ? '#3B82F6' : '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
-                            {item.isCreate ? 'CREATED' : 'MOVED'}
-                          </Box>
-                          {item.desc.replace(/^(CREATED|MOVED)\s/, '')}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
-                          {item.time}
-                        </Typography>
-                      </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4.5 }}>
+                {Object.keys(groupedActivities).map((dateKey) => (
+                  <Box key={dateKey}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, pb: 1, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}` }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: '0.04em' }}>
+                        {dateKey}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
+                        {groupedActivities[dateKey].length}
+                      </Typography>
+                    </Box>
 
-                      {item.isAction && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={item.from}
-                            size="small"
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                      {groupedActivities[dateKey].map((item, idx) => (
+                        <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', position: 'relative' }}>
+                          <Box
                             sx={{
-                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                              color: 'text.secondary',
-                              fontSize: '0.66rem',
-                              height: 18,
-                              fontWeight: 650,
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor: item.isCreate ? '#3B82F6' : '#EF4444',
+                              mt: 0.75,
+                              flexShrink: 0,
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                            →
-                          </Typography>
-                          <Chip
-                            label={item.to}
-                            size="small"
-                            sx={{
-                              bgcolor: item.to === 'Resolved' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                              color: item.to === 'Resolved' ? '#10B981' : '#EF4444',
-                              fontSize: '0.66rem',
-                              height: 18,
-                              fontWeight: 750,
-                            }}
-                          />
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+                              <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
+                                <Box component="span" sx={{ color: item.isCreate ? '#3B82F6' : '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
+                                  {item.isCreate ? 'CREATED' : 'MOVED'}
+                                </Box>
+                                {item.desc.replace(/^(CREATED|MOVED)\s/, '')}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                                {item.time}
+                              </Typography>
+                            </Box>
+
+                            {item.isAction && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                <Chip
+                                  label={item.from}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                                    color: 'text.secondary',
+                                    fontSize: '0.66rem',
+                                    height: 18,
+                                    fontWeight: 650,
+                                  }}
+                                />
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                  →
+                                </Typography>
+                                <Chip
+                                  label={item.to}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: item.to === 'Resolved' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                    color: item.to === 'Resolved' ? '#10B981' : '#EF4444',
+                                    fontSize: '0.66rem',
+                                    height: 18,
+                                    fontWeight: 750,
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </Box>
                         </Box>
-                      )}
+                      ))}
                     </Box>
                   </Box>
                 ))}
               </Box>
-            </Box>
 
-            {/* WED, JUN 3 · 2026 */}
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, pb: 1, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}` }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  WED, JUN 3 · 2026
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                  2
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                {[
-                  { desc: 'MOVED task "Pin location icon should be working in map" from Customer side to Service provider', time: '8:10 PM', from: 'Customer side', to: 'Service provider' },
-                  { desc: 'MOVED task "Complete UI fixes for this screen" from Service provider to Customer side', time: '8:10 PM', from: 'Service provider', to: 'Customer side' },
-                ].map((item, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        bgcolor: '#EF4444',
-                        mt: 0.75,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                        <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
-                          <Box component="span" sx={{ color: '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
-                            MOVED
-                          </Box>
-                          {item.desc.replace(/^MOVED\s/, '')}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
-                          {item.time}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                        <Chip
-                          label={item.from}
-                          size="small"
-                          sx={{
-                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                            color: 'text.secondary',
-                            fontSize: '0.66rem',
-                            height: 18,
-                            fontWeight: 650,
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                          →
-                        </Typography>
-                        <Chip
-                          label={item.to}
-                          size="small"
-                          sx={{
-                            bgcolor: 'rgba(239, 68, 68, 0.08)',
-                            color: '#EF4444',
-                            fontSize: '0.66rem',
-                            height: 18,
-                            fontWeight: 750,
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          </Box>
-        </Card>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mt: 4, pt: 2, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+                  <Button
+                    variant="outlined"
+                    disabled={activityPage === 1}
+                    onClick={() => setActivityPage((prev) => Math.max(prev - 1, 1))}
+                    sx={{
+                      borderRadius: '16px',
+                      textTransform: 'none',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      fontWeight: 650,
+                      fontSize: '0.78rem',
+                    }}
+                  >
+                    Previous
+                  </Button>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 650 }}>
+                    Page {activityPage} of {totalPages}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    disabled={activityPage === totalPages}
+                    onClick={() => setActivityPage((prev) => Math.min(prev + 1, totalPages))}
+                    sx={{
+                      borderRadius: '16px',
+                      textTransform: 'none',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      fontWeight: 650,
+                      fontSize: '0.78rem',
+                    }}
+                  >
+                    Next
+                  </Button>
+                </Box>
+              )}
+            </Card>
+          );
+        })()}
       </Box>
     );
   }
