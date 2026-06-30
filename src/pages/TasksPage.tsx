@@ -11,6 +11,7 @@ import {
   TextField,
   Autocomplete,
   InputAdornment,
+  MenuItem,
   ToggleButton,
   ToggleButtonGroup,
   Divider,
@@ -45,9 +46,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
-import { useKPITemplates, useCreateKPITemplate, useUpdateKPITemplate, useDeleteKPITemplate, useAssignKPITemplate, useMyAssignments, useKPITemplateAssignments, useUnassignKPITemplate } from '@/hooks/api/usekpiTemplate';
+import { useKPITemplates, useCreateKPITemplate, useUpdateKPITemplate, useDeleteKPITemplate, useAssignKPITemplate, useMyAssignments, useKPITemplateAssignments, useUnassignKPITemplate, useRemoveAssignmentItem } from '@/hooks/api/usekpiTemplate';
 import { UserDailyKpisView } from '@/components/dashboard/UserDailyKpisView';
 import { DailyTeamProgress } from '@/components/admin/DailyTeamProgress';
+import { PriorityBadge } from '@/components/kpi/PriorityBadge';
+import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
+import { ChangeRequestQueue } from '@/components/kpi/ChangeRequestQueue';
+import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
+import { StandaloneKPIForm } from '@/components/kpi/StandaloneKPIForm';
+import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
+import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
+import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
+import type { KpiPriority, KPI } from '@/types';
 import api from '@/lib/axios';
 import type { User } from '@/types';
 
@@ -68,10 +78,13 @@ interface UIKPITemplate {
 }
 
 interface ActiveAssignmentItem {
+  _id?: string;
+  itemId?: string;
   name: string;
   description: string;
   targetValue: number;
   timeFrame: string;
+  priority?: KpiPriority;
   assignedTo: string[];
   completed: boolean;
 }
@@ -105,6 +118,11 @@ const TasksPage = () => {
   const deleteTemplateMutation = useDeleteKPITemplate();
   const assignTemplateMutation = useAssignKPITemplate();
   const unassignTemplateMutation = useUnassignKPITemplate();
+  const removeAssignmentItemMutation = useRemoveAssignmentItem();
+  const { data: standaloneKpis = [] } = useKPIs({ enabled: isAdmin });
+  const deleteKpiMutation = useDeleteKPI();
+  const { data: pendingChangeRequests = [] } = usePendingKPIChangeRequests({ enabled: isAdmin });
+  const { data: myChangeRequests = [] } = useMyKPIChangeRequests();
 
   // State to track if we are editing an existing template
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -146,10 +164,13 @@ const TasksPage = () => {
 
       // Mapped KPIs
       const kpis = (a.kpis || a.items || []).map((k: any) => ({
+        _id: k._id,
+        itemId: k._id || k.templateItemId,
         name: k.name,
         description: k.description || '',
         targetValue: k.targetValue || k.defaultTargetValue || 0,
         timeFrame: k.timeFrame || 'daily',
+        priority: k.priority || 'medium',
         assignedTo: k.assignedTo || assignedTo,
         completed: k.completed || false,
       }));
@@ -252,13 +273,19 @@ const TasksPage = () => {
   }, [activeAssignments, dbUsers]);
 
   // Tabs navigation
-  const [dashboardTab, setDashboardTab] = useState<'templates' | 'assignments'>('templates');
+  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'change_requests' | 'daily_progress';
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('templates');
 
   // Set default tab to assignments for non-admin users
   useEffect(() => {
     if (!isAdmin) {
       setDashboardTab('assignments');
     }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'change_requests' && isAdmin) setDashboardTab('change_requests');
   }, [isAdmin]);
 
   // Active assignment sub-filtering for agents/users
@@ -338,10 +365,23 @@ const TasksPage = () => {
 
   // Confirm dialog state for assign template
   const [confirmAssignOpen, setConfirmAssignOpen] = useState(false);
+  const [assignItemOverrides, setAssignItemOverrides] = useState<Record<number, { targetValue?: number; priority?: KpiPriority }>>({});
+  const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
+  const [standaloneFormOpen, setStandaloneFormOpen] = useState(false);
+  const [editingStandaloneKpi, setEditingStandaloneKpi] = useState<KPI | null>(null);
+
+  const pendingItemKeys = useMemo(() => {
+    const keys = new Set<string>();
+    myChangeRequests.filter((r) => r.status === 'pending').forEach((r) => {
+      if (r.assignmentId && r.assignmentItemId) keys.add(`${r.assignmentId}:${r.assignmentItemId}`);
+    });
+    return keys;
+  }, [myChangeRequests]);
 
   const handleOpenAssignModal = (template: UIKPITemplate) => {
     setAssigningTemplate(template);
     setSelectedUserId(null);
+    setAssignItemOverrides({});
     setIsAssignOpen(true);
   };
 
@@ -536,10 +576,17 @@ const TasksPage = () => {
   const handleConfirmAssign = () => {
     if (!assigningTemplate || !selectedUserId) return;
 
+    const overridesList = assigningTemplate.kpis.map((k, itemIndex) => ({
+      itemIndex,
+      targetValue: assignItemOverrides[itemIndex]?.targetValue ?? k.targetValue,
+      priority: assignItemOverrides[itemIndex]?.priority ?? ('medium' as KpiPriority),
+    }));
+
     assignTemplateMutation.mutate(
       {
         id: assigningTemplate._id,
         userIds: [selectedUserId],
+        overrides: { [selectedUserId]: overridesList },
       },
       {
         onSuccess: () => {
@@ -1657,16 +1704,30 @@ const TasksPage = () => {
 
               {/* Checklist Cards */}
               <Card sx={{ p: 4, borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 3.5, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.015em' }}>
-                  KPI Goals Checklist
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3.5 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.015em' }}>
+                    KPI Goals Checklist
+                  </Typography>
+                  {!isAdmin && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setChangeModal({ sourceType: 'assignment', type: 'add', assignmentId: selectedAssignment._id })}
+                      sx={{ textTransform: 'none', borderRadius: '10px' }}
+                    >
+                      Request Add KPI
+                    </Button>
+                  )}
+                </Box>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                   {visibleKpis.map((kpi, idx) => {
                     const isChecked = kpi.completed;
+                    const itemKey = kpi.itemId || kpi._id;
+                    const isPending = itemKey ? pendingItemKeys.has(`${selectedAssignment._id}:${itemKey}`) : false;
                     return (
                       <Box
-                        key={idx}
+                        key={kpi.itemId || kpi._id || idx}
                         onClick={isAdmin ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
                         sx={{
                           p: 3,
@@ -1711,38 +1772,96 @@ const TasksPage = () => {
                           onChange={isAdmin ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
                         />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{
-                              fontWeight: 800,
-                              color: isChecked
-                                ? tokens.semantic.success
-                                : isDarkMode ? '#fff' : tokens.text.primary,
-                              fontSize: '0.9rem',
-                              textDecoration: isChecked ? 'line-through' : 'none',
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            {kpi.name} — Target: {kpi.targetValue} (Daily)
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: 'text.secondary',
-                              lineHeight: 1.5,
-                              fontWeight: 500,
-                              fontSize: '0.84rem',
-                              mt: 0.5,
-                              opacity: isChecked ? 0.72 : 1,
-                            }}
-                          >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                fontWeight: 800,
+                                color: isChecked ? tokens.semantic.success : isDarkMode ? '#fff' : tokens.text.primary,
+                                fontSize: '0.9rem',
+                                textDecoration: isChecked ? 'line-through' : 'none',
+                              }}
+                            >
+                              {kpi.name} — Target: {kpi.targetValue} ({kpi.timeFrame || 'daily'})
+                            </Typography>
+                            <PriorityBadge priority={kpi.priority} />
+                            {isPending && <Chip label="Pending review" size="small" color="warning" />}
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}>
                             {kpi.description}
                           </Typography>
                         </Box>
+                        {!isAdmin && (kpi.itemId || kpi._id) && (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="small"
+                              variant="text"
+                              sx={{ textTransform: 'none', fontSize: '0.72rem' }}
+                              onClick={() => setChangeModal({
+                                sourceType: 'assignment',
+                                type: 'modify',
+                                assignmentId: selectedAssignment._id,
+                                assignmentItemId: (kpi.itemId || kpi._id)!,
+                                kpiName: kpi.name,
+                                currentTargetValue: kpi.targetValue,
+                                currentTimeFrame: (kpi.timeFrame || 'daily') as import('@/types').KpiTimeframe,
+                                currentPriority: kpi.priority,
+                              })}
+                            >
+                              Request Change
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="error"
+                              sx={{ textTransform: 'none', fontSize: '0.72rem' }}
+                              onClick={() => setChangeModal({
+                                sourceType: 'assignment',
+                                type: 'remove',
+                                assignmentId: selectedAssignment._id,
+                                assignmentItemId: (kpi.itemId || kpi._id)!,
+                                kpiName: kpi.name,
+                              })}
+                            >
+                              Request Remove
+                            </Button>
+                          </Box>
+                        )}
+                        {isAdmin && (kpi.itemId || kpi._id) && selectedAssignment.assignedTo[0] && (
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            sx={{ textTransform: 'none', fontSize: '0.72rem' }}
+                            disabled={removeAssignmentItemMutation.isPending || visibleKpis.length <= 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeAssignmentItemMutation.mutate({
+                                templateId: selectedAssignment.templateId,
+                                userId: selectedAssignment.assignedTo[0],
+                                assignmentItemId: (kpi.itemId || kpi._id)!,
+                              }, {
+                                onSuccess: () => {
+                                  addToast({ message: 'KPI removed from assignment.', severity: 'success' });
+                                  setSelectedAssignment((prev) => prev ? {
+                                    ...prev,
+                                    kpis: prev.kpis.filter((k) => (k.itemId || k._id) !== (kpi.itemId || kpi._id)),
+                                  } : null);
+                                },
+                                onError: (err: any) => {
+                                  addToast({ message: err?.response?.data?.message || 'Failed to remove KPI.', severity: 'error' });
+                                },
+                              });
+                            }}
+                          >
+                            Remove KPI
+                          </Button>
+                        )}
                       </Box>
                     );
                   })}
                 </Box>
+                {!isAdmin && <MyChangeRequestsPanel assignmentId={selectedAssignment._id} />}
               </Card>
             </Grid>
 
@@ -2069,19 +2188,57 @@ const TasksPage = () => {
 
       {/* Navigation Sub-Tabs */}
       {isAdmin && viewMode === 'list' && (
-        <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content' }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
-          <Button onClick={() => setDashboardTab('daily_progress' as any)} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' as any ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' as any ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Daily Progress</Button>
+          <Button onClick={() => setDashboardTab('assignments')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'assignments' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'assignments' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Assignments</Button>
+          <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
+          <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
+            Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
+          </Button>
+          <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Daily Progress</Button>
         </Box>
       )}
 
-      {/* SUB-TAB 3: DAILY PROGRESS LIST */}
-      {dashboardTab === 'daily_progress' as any && isAdmin && viewMode === 'list' && (
+      {dashboardTab === 'daily_progress' && isAdmin && viewMode === 'list' && (
         <DailyTeamProgress />
       )}
 
+      {dashboardTab === 'change_requests' && isAdmin && viewMode === 'list' && (
+        <ChangeRequestQueue />
+      )}
+
+      {dashboardTab === 'standalone_kpis' && isAdmin && viewMode === 'list' && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditingStandaloneKpi(null); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none', borderRadius: '12px' }}>
+              Create KPI
+            </Button>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {standaloneKpis.map((kpi) => (
+              <Card key={kpi._id} sx={{ p: 2, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{kpi.name}</Typography>
+                    <PriorityBadge priority={kpi.priority} />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">Target: {kpi.targetValue} · {kpi.timeFrame}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" onClick={() => { setEditingStandaloneKpi(kpi); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none' }}>Edit</Button>
+                  <Button size="small" color="error" onClick={() => deleteKpiMutation.mutate(kpi._id)} sx={{ textTransform: 'none' }}>Delete</Button>
+                </Box>
+              </Card>
+            ))}
+            {standaloneKpis.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No standalone KPIs yet.</Typography>
+            )}
+          </Box>
+        </Box>
+      )}
+
       {/* Control filters bar */}
-      {dashboardTab !== 'daily_progress' as any && (
+      {(['templates', 'assignments'] as DashboardTab[]).includes(dashboardTab) && (
         <Box
           sx={{
             mb: 4,
@@ -3031,38 +3188,48 @@ return (
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', mb: 1 }}>
               KPI Targets Included ({assigningTemplate?.kpis.length || 0})
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {assigningTemplate?.kpis.map((kpi, idx) => (
                 <Box
                   key={idx}
                   sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    py: 0.75,
-                    borderBottom: idx === assigningTemplate.kpis.length - 1 ? 'none' : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                    p: 1.5,
+                    borderRadius: '12px',
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   }}
                 >
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
-                      {kpi.name}
-                    </Typography>
-                    {kpi.description && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
-                        {kpi.description}
-                      </Typography>
-                    )}
+                  <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem', mb: 1 }}>
+                    {kpi.name}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <TextField
+                      size="small"
+                      label="Target"
+                      type="number"
+                      defaultValue={kpi.targetValue}
+                      onChange={(e) => setAssignItemOverrides((prev) => ({
+                        ...prev,
+                        [idx]: { ...prev[idx], targetValue: Number(e.target.value) },
+                      }))}
+                      sx={{ width: 100 }}
+                    />
+                    <TextField
+                      select
+                      size="small"
+                      label="Priority"
+                      defaultValue="medium"
+                      onChange={(e) => setAssignItemOverrides((prev) => ({
+                        ...prev,
+                        [idx]: { ...prev[idx], priority: e.target.value as KpiPriority },
+                      }))}
+                      sx={{ width: 120 }}
+                    >
+                      {KPI_PRIORITY_OPTIONS.map((p) => (
+                        <MenuItem key={p} value={p}>{p}</MenuItem>
+                      ))}
+                    </TextField>
                   </Box>
-                  <Chip
-                    label={`${kpi.targetValue} (${kpi.timeFrame || 'daily'})`}
-                    size="small"
-                    sx={{
-                      bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)',
-                      color: tokens.brand.primary,
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                    }}
-                  />
                 </Box>
               ))}
             </Box>
@@ -3221,6 +3388,9 @@ return (
         onConfirm={handleConfirmAssign}
         onCancel={() => setConfirmAssignOpen(false)}
       />
+
+      <KPIChangeRequestModal open={!!changeModal} mode={changeModal} onClose={() => setChangeModal(null)} />
+      <StandaloneKPIForm open={standaloneFormOpen} onClose={() => setStandaloneFormOpen(false)} kpi={editingStandaloneKpi} />
     </Box>
   );
 };

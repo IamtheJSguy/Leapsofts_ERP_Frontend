@@ -18,6 +18,14 @@ export type MessageStatus =
 
 export type KpiTimeframe = 'daily' | 'weekly' | 'monthly';
 
+export type KpiPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export type KpiChangeSource = 'assignment' | 'standalone';
+
+export type KpiChangeType = 'modify' | 'add' | 'remove';
+
+export type ChangeEffectiveWhen = 'immediate' | 'next_day';
+
 export type NotificationType =
   | 'kpi_miss'
   | 'follow_up'
@@ -116,9 +124,51 @@ export interface KPI {
   description?: string;
   targetValue: number;
   timeFrame: KpiTimeframe;
+  priority?: KpiPriority;
   metricType?: 'count' | 'ratio' | 'time' | 'duration';
   assignedTo?: string[] | User[];
-  changeRequests?: ChangeRequest[];
+}
+
+export interface KPIAssignmentItem {
+  _id?: string;
+  templateItemId?: string;
+  name: string;
+  description?: string;
+  targetValue: number;
+  timeFrame: KpiTimeframe | string;
+  priority?: KpiPriority;
+}
+
+export interface KPIChangeRequest {
+  _id: string;
+  sourceType: KpiChangeSource;
+  userId: string | User;
+  type: KpiChangeType;
+  assignmentId?: string;
+  templateId?: string | KPITemplate;
+  assignmentItemId?: string;
+  kpiId?: string | KPI;
+  kpiName?: string;
+  currentTargetValue?: number;
+  currentTimeFrame?: KpiTimeframe;
+  currentPriority?: KpiPriority;
+  requestedTargetValue?: number;
+  requestedTimeFrame?: KpiTimeframe;
+  requestedPriority?: KpiPriority;
+  proposedItem?: {
+    name: string;
+    description?: string;
+    targetValue: number;
+    timeFrame: KpiTimeframe;
+    priority?: KpiPriority;
+  };
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  effectiveWhen?: ChangeEffectiveWhen;
+  adminNote?: string;
+  reviewedBy?: string | User;
+  reviewedAt?: string;
+  createdAt?: string;
 }
 
 export interface KPITemplateItem {
@@ -144,7 +194,7 @@ export interface KPITemplate {
 export interface ChangeRequest {
   _id: string;
   userId: string | User;
-  proposedTarget: number;
+  requestedValue: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;

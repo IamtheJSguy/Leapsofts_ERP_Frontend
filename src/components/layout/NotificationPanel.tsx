@@ -13,6 +13,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import DoneAllOutlinedIcon from '@mui/icons-material/DoneAllOutlined';
 import CircleIcon from '@mui/icons-material/Circle';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/api/useNotifications';
 import { useUIStore } from '@/store/useUIStore';
 import { formatDateTime } from '@/utils/formatters';
@@ -20,6 +21,7 @@ import { tokens } from '@/styles/tokens';
 import { NOTIFICATION_TYPE } from '@/lib/constants';
 
 export const NotificationPanel = () => {
+  const navigate = useNavigate();
   const { notificationPanelOpen, setNotificationPanelOpen } = useUIStore();
   const { data: notifications = [], isLoading } = useNotifications();
   const markAsRead = useMarkAsRead();
@@ -193,7 +195,13 @@ export const NotificationPanel = () => {
             notifications.map((n, index) => (
               <Fade in={true} timeout={300 + (index * 100)} key={n._id}>
                 <Box
-                  onClick={() => !n.isRead && markAsRead.mutate(n._id)}
+                  onClick={() => {
+                    if (!n.isRead) markAsRead.mutate(n._id);
+                    if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
+                      setNotificationPanelOpen(false);
+                      navigate('/tasks?tab=change_requests');
+                    }
+                  }}
                   sx={{
                     position: 'relative',
                     p: { xs: 2, sm: 2.5 },

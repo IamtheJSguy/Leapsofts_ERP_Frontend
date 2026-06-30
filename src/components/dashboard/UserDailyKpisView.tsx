@@ -1,64 +1,185 @@
 import { useState, useMemo } from 'react';
-import { Box, Typography, CircularProgress, useTheme, Chip } from '@mui/material';
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  useTheme,
+  Chip,
+  IconButton,
+  Button,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import AddIcon from '@mui/icons-material/Add';
 import { useDailyKpis, useMarkDailyKpiComplete, useMarkDailyKpiIncomplete } from '@/hooks/api/useShifts';
+import { useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
+import { useMyAssignments } from '@/hooks/api/usekpiTemplate';
+import { PriorityBadge } from '@/components/kpi/PriorityBadge';
+import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
+import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
+import { sortByPriority } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
+import type { KpiTimeframe } from '@/types';
+
+const isHighPriority = (priority?: string) =>
+  priority === 'urgent' || priority === 'high';
 
 export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  
+
   const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done'>('active');
+  const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuKpi, setMenuKpi] = useState<any>(null);
 
   const { data: allKpis = [], isLoading } = useDailyKpis();
+  const { data: myRequests = [] } = useMyKPIChangeRequests();
+  const { data: myAssignments = [] } = useMyAssignments();
 
   const markComplete = useMarkDailyKpiComplete();
   const markIncomplete = useMarkDailyKpiIncomplete();
-  
+
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+
+  const pendingKeys = useMemo(() => {
+    const keys = new Set<string>();
+    myRequests.filter((r) => r.status === 'pending').forEach((r) => {
+      if (r.assignmentId && r.assignmentItemId) {
+        keys.add(`${r.assignmentId}:${r.assignmentItemId}`);
+      }
+      if (r.kpiId) {
+        const id = typeof r.kpiId === 'string' ? r.kpiId : r.kpiId._id;
+        keys.add(`k:${id}`);
+      }
+    });
+    return keys;
+  }, [myRequests]);
+
+  const primaryAssignmentId = myAssignments[0]?._id as string | undefined;
 
   const handleToggle = (id: string, isCompleted: boolean) => {
     setLoadingIds((prev) => new Set(prev).add(id));
     if (isCompleted) {
       markIncomplete.mutate(id, {
-        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; })
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
       });
     } else {
       markComplete.mutate({ id }, {
-        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; })
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
       });
     }
   };
 
+  const sortedKpis = useMemo(() => {
+    return [...allKpis].sort((a: any, b: any) => {
+      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+      return sortByPriority(a, b);
+    });
+  }, [allKpis]);
+
   const filteredKpis = useMemo(() => {
-    return allKpis.filter((kpi: any) => {
+    return sortedKpis.filter((kpi: any) => {
       const isCompleted = kpi.isCompleted;
       const dueDate = new Date(kpi.date || new Date().toISOString());
-      const now = new Date();
-      const isPast = dueDate.setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
-      
+      const isPast = dueDate.setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+
       if (filter === 'done') return isCompleted;
       if (isCompleted) return false;
       if (filter === 'overdue') return isPast;
-      if (filter === 'high') return isPast || (dueDate.getTime() - now.getTime() <= 172800000);
+      if (filter === 'high') return isHighPriority(kpi.priority);
       if (filter === 'active') return !isPast;
       return true;
     });
-  }, [allKpis, filter]);
+  }, [sortedKpis, filter]);
 
   const completedCount = allKpis.filter((k: any) => k.isCompleted).length;
 
   const filters = [
-    { id: 'active', label: 'Active', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0)).length },
-    { id: 'overdue', label: 'Overdue', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)).length },
-    { id: 'high', label: 'High priority', count: allKpis.filter((k: any) => !k.isCompleted && (new Date(k.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) || (new Date(k.date || new Date()).getTime() - new Date().getTime() <= 172800000))).length },
+    { id: 'active', label: 'Active', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0)).length },
+    { id: 'overdue', label: 'Overdue', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)).length },
+    { id: 'high', label: 'High priority', count: allKpis.filter((k: any) => !k.isCompleted && isHighPriority(k.priority)).length },
     { id: 'done', label: 'Done', count: completedCount },
   ];
+
+  const openModifyModal = (kpi: any) => {
+    const name = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'KPI';
+    const target = kpi.targetValue ?? kpi.kpiId?.targetValue ?? 0;
+    const timeFrame = (kpi.kpiId?.timeFrame || 'daily') as KpiTimeframe;
+    const priority = kpi.priority || kpi.kpiId?.priority || 'medium';
+
+    if (kpi.assignmentId) {
+      const assignmentId = typeof kpi.assignmentId === 'string' ? kpi.assignmentId : kpi.assignmentId._id;
+      setChangeModal({
+        sourceType: 'assignment',
+        type: 'modify',
+        assignmentId,
+        assignmentItemId: kpi.assignmentItemId,
+        kpiName: name,
+        currentTargetValue: target,
+        currentTimeFrame: timeFrame,
+        currentPriority: priority,
+      });
+    } else if (kpi.kpiId) {
+      const kpiId = typeof kpi.kpiId === 'string' ? kpi.kpiId : kpi.kpiId._id;
+      setChangeModal({
+        sourceType: 'standalone',
+        type: 'modify',
+        kpiId,
+        kpiName: name,
+        currentTargetValue: target,
+        currentTimeFrame: timeFrame,
+        currentPriority: priority,
+      });
+    }
+  };
+
+  const openRemoveModal = (kpi: any) => {
+    if (!kpi.assignmentId || !kpi.assignmentItemId) return;
+    const assignmentId = typeof kpi.assignmentId === 'string' ? kpi.assignmentId : kpi.assignmentId._id;
+    const name = kpi.kpiName || kpi.name || 'KPI';
+    setChangeModal({
+      sourceType: 'assignment',
+      type: 'remove',
+      assignmentId,
+      assignmentItemId: kpi.assignmentItemId,
+      kpiName: name,
+    });
+  };
+
+  const openMenu = (e: React.MouseEvent<HTMLElement>, kpi: any) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
+    setMenuKpi(kpi);
+  };
+
+  const closeMenu = () => {
+    setMenuAnchor(null);
+    setMenuKpi(null);
+  };
+
+  const hasPending = (kpi: any) => {
+    if (kpi.assignmentId && kpi.assignmentItemId) {
+      const assignmentId = typeof kpi.assignmentId === 'string' ? kpi.assignmentId : kpi.assignmentId._id;
+      return pendingKeys.has(`${assignmentId}:${kpi.assignmentItemId}`);
+    }
+    if (kpi.kpiId) {
+      const id = typeof kpi.kpiId === 'string' ? kpi.kpiId : kpi.kpiId._id;
+      return pendingKeys.has(`k:${id}`);
+    }
+    return false;
+  };
 
   if (isLoading) {
     return (
@@ -70,225 +191,111 @@ export const UserDailyKpisView = () => {
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 800,
-            color: isDarkMode ? '#fff' : tokens.text.primary,
-            letterSpacing: '-0.025em',
-            mb: 0.5,
-          }}
-        >
-          My Tasks
-        </Typography>
-        <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.55)' : tokens.text.secondary, fontWeight: 500 }}>
-          Everything assigned to you across projects, tailored to your workflow.
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.025em', mb: 0.5 }}>
+            My Tasks
+          </Typography>
+          <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.55)' : tokens.text.secondary, fontWeight: 500 }}>
+            Everything assigned to you across projects, tailored to your workflow.
+          </Typography>
+        </Box>
+        {primaryAssignmentId && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setChangeModal({ sourceType: 'assignment', type: 'add', assignmentId: primaryAssignmentId })}
+            sx={{ textTransform: 'none', borderRadius: '12px' }}
+          >
+            Request Add KPI
+          </Button>
+        )}
       </Box>
 
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          gap: 1.5, 
-          mb: 4, 
-          p: 1, 
-          borderRadius: '24px', 
-          bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', 
-          backdropFilter: 'blur(20px)',
-          border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'}`,
-          overflowX: 'auto',
-          '&::-webkit-scrollbar': { display: 'none' }
-        }}
-      >
-        {filters.map(f => (
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 4, p: 1, borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+        {filters.map((f) => (
           <Chip
             key={f.id}
             label={`${f.label} ${f.count}`}
-            onClick={() => setFilter(f.id as any)}
+            onClick={() => setFilter(f.id as typeof filter)}
             sx={{
-              px: 1,
-              height: 38,
-              borderRadius: '12px',
-              fontWeight: filter === f.id ? 800 : 600,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              border: filter === f.id && f.id === 'overdue' 
-                ? `1px solid rgba(239, 68, 68, 0.3)` 
-                : filter === f.id
-                  ? `1px solid ${tokens.brand.primaryLight}`
-                  : `1px solid transparent`,
-              bgcolor: filter === f.id 
-                ? f.id === 'overdue' ? 'rgba(239, 68, 68, 0.08)' : isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)'
-                : 'transparent',
-              color: filter === f.id 
-                ? f.id === 'overdue' ? tokens.semantic.error : tokens.brand.primary
-                : isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: filter === f.id 
-                  ? f.id === 'overdue' ? 'rgba(239, 68, 68, 0.12)' : isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)'
-                  : isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              }
+              px: 1, height: 38, borderRadius: '12px', fontWeight: filter === f.id ? 800 : 600, fontSize: '0.9rem', cursor: 'pointer',
+              bgcolor: filter === f.id ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)') : 'transparent',
+              color: filter === f.id ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary),
             }}
           />
         ))}
       </Box>
 
+      <MyChangeRequestsPanel />
+
       {filteredKpis.length === 0 ? (
-        <Box
-          sx={{
-            p: 6,
-            textAlign: 'center',
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'transparent',
-            border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-            boxShadow: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            py: 8,
-            gap: 2,
-          }}
-        >
-          <Box sx={{ 
-            width: 64, 
-            height: 64, 
-            borderRadius: '50%', 
-            bgcolor: 'rgba(16, 185, 129, 0.1)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            mb: 1
-          }}>
-            <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success }} />
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-            All caught up
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-            Nothing on your plate that matches this filter.
-          </Typography>
+        <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, py: 8 }}>
+          <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success, mb: 2 }} />
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>All caught up</Typography>
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           {filteredKpis.map((kpi: any) => {
             const isChecked = kpi.isCompleted;
             const isKpiLoading = loadingIds.has(kpi._id);
-            const isOverdue = new Date(kpi.date || new Date()).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && !isChecked;
+            const isOverdue = new Date(kpi.date || new Date()).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0) && !isChecked;
+            const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
 
             return (
               <Box
                 key={kpi._id}
                 onClick={() => !isKpiLoading && handleToggle(kpi._id, isChecked)}
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: { xs: 1.5, sm: 3 },
-                  p: 1.75,
-                  px: { xs: 1.5, sm: 2.5 },
-                  cursor: 'pointer',
-                  borderRadius: '16px',
+                  display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 3 }, p: 1.75, cursor: 'pointer', borderRadius: '16px',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-3px)',
-                    boxShadow: tokens.shadow.cardHover,
-                    borderColor: tokens.brand.primary,
-                  }
+                  '&:hover': { borderColor: tokens.brand.primary },
                 }}
               >
-                <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isKpiLoading ? (
-                    <CircularProgress size={24} thickness={4} sx={{ color: tokens.brand.primary }} />
+                    <CircularProgress size={24} />
                   ) : isChecked ? (
-                    <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success, transition: 'transform 0.2s ease', '&:hover': { transform: 'scale(1.1)' } }} />
+                    <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success }} />
                   ) : (
-                    <RadioButtonUncheckedIcon sx={{ fontSize: 26, color: isOverdue ? tokens.semantic.error : isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', transition: 'all 0.2s ease', '&:hover': { color: tokens.brand.primary, transform: 'scale(1.1)' } }} />
+                    <RadioButtonUncheckedIcon sx={{ fontSize: 26, color: isOverdue ? tokens.semantic.error : 'text.disabled' }} />
                   )}
                 </Box>
 
-                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      fontSize: '1rem',
-                      color: isChecked 
-                        ? isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' 
-                        : isDarkMode ? '#fff' : tokens.text.primary,
-                      textDecoration: isChecked ? 'line-through' : 'none',
-                      transition: 'color 0.2s ease'
-                    }}
-                  >
-                    {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: { xs: 1, sm: 1.5 }, mt: 0.5 }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : 'text.primary' }}>
+                      {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
+                    </Typography>
+                    <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
+                    {hasPending(kpi) && <Chip label="Pending review" size="small" color="warning" />}
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
                     {kpi.targetValue !== undefined && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)', px: 1.25, py: 0.5, borderRadius: '6px', border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.3)' : 'rgba(93, 26, 137, 0.1)'}`, opacity: isChecked ? 0.6 : 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, letterSpacing: '0.02em' }}>
-                          Target: {kpi.targetValue}
-                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>Target: {kpi.targetValue}</Typography>
                       </Box>
                     )}
-                    
                     {kpi.date && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', px: 1.25, py: 0.5, borderRadius: '6px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, opacity: isChecked ? 0.6 : 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: '0.02em' }}>
-                          {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Typography>
                       </Box>
                     )}
                   </Box>
-
-                  {(kpi.description || kpi.kpiId?.description) && (
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: isChecked ? isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' : 'text.secondary',
-                        fontWeight: 500,
-                        fontSize: '0.85rem',
-                        mt: 0.5
-                      }}
-                    >
-                      {kpi.description || kpi.kpiId?.description}
-                    </Typography>
-                  )}
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-end', sm: 'center' }, gap: 1 }}>
-                  {isOverdue && (
-                    <Chip 
-                      icon={<WarningRoundedIcon sx={{ fontSize: '14px !important' }} />} 
-                      label="Overdue" 
-                      size="small" 
-                      sx={{ 
-                        bgcolor: 'rgba(239, 68, 68, 0.1)', 
-                        color: tokens.semantic.error, 
-                        fontWeight: 700, 
-                        fontSize: '0.7rem',
-                        borderRadius: '8px' 
-                      }} 
-                    />
-                  )}
-                  {isChecked && (
-                    <Chip 
-                      label="Done" 
-                      size="small" 
-                      sx={{ 
-                        bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
-                        color: tokens.semantic.success, 
-                        fontWeight: 700, 
-                        fontSize: '0.7rem',
-                        borderRadius: '8px' 
-                      }} 
-                    />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
+                  {isOverdue && <Chip icon={<WarningRoundedIcon />} label="Overdue" size="small" color="error" variant="outlined" />}
+                  {canRequestChange && !isChecked && (
+                    <IconButton size="small" onClick={(e) => openMenu(e, kpi)} title="KPI options">
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
                   )}
                 </Box>
               </Box>
@@ -296,6 +303,21 @@ export const UserDailyKpisView = () => {
           })}
         </Box>
       )}
+
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
+        <MenuItem onClick={() => { if (menuKpi) openModifyModal(menuKpi); closeMenu(); }}>
+          <ListItemIcon><EditNoteIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Request Change</ListItemText>
+        </MenuItem>
+        {menuKpi?.assignmentId && menuKpi?.assignmentItemId && (
+          <MenuItem onClick={() => { openRemoveModal(menuKpi); closeMenu(); }}>
+            <ListItemIcon><RemoveCircleOutlineIcon fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText sx={{ color: 'error.main' }}>Request Remove</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
+
+      <KPIChangeRequestModal open={!!changeModal} mode={changeModal} onClose={() => setChangeModal(null)} />
     </Box>
   );
 };

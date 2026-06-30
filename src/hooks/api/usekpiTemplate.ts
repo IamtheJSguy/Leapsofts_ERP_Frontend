@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KPITemplate } from '@/types';
+import type { KPITemplate, KpiPriority } from '@/types';
+
+type ItemOverride = { itemIndex: number; targetValue?: number; priority?: KpiPriority };
 
 const kpiTemplateApi = {
   getKPITemplates: () => api.get<{ data: KPITemplate[] }>('/kpi-templates'),
@@ -8,12 +10,32 @@ const kpiTemplateApi = {
   updateKPITemplate: ({ id, data }: { id: string; data: Partial<KPITemplate> }) =>
     api.put<{ data: KPITemplate }>(`/kpi-templates/${id}`, data),
   deleteKPITemplate: (id: string) => api.delete<{ success: boolean }>(`/kpi-templates/${id}`),
-  assignKPITemplate: ({ id, userIds }: { id: string; userIds: string[] }) =>
-    api.post<{ success: boolean }>(`/kpi-templates/${id}/assign`, { userIds }),
+  assignKPITemplate: ({
+    id,
+    userIds,
+    overrides,
+  }: {
+    id: string;
+    userIds: string[];
+    overrides?: Record<string, ItemOverride[]>;
+  }) => api.post<{ success: boolean }>(`/kpi-templates/${id}/assign`, { userIds, overrides }),
   getMyAssignments: () => api.get<{ data: any[] }>('/kpi-templates/my-assignments'),
   getKPITemplateAssignments: () => api.get<{ data: any[] }>('/kpi-templates/assignments'),
   unassignKPITemplate: ({ id, userId }: { id: string; userId: string }) =>
     api.post<{ success: boolean }>(`/kpi-templates/${id}/unassign`, { userIds: [userId] }),
+  removeAssignmentItem: ({
+    templateId,
+    userId,
+    assignmentItemId,
+  }: {
+    templateId: string;
+    userId: string;
+    assignmentItemId: string;
+  }) =>
+    api.post<{ success: boolean }>(`/kpi-templates/${templateId}/assignment/remove-item`, {
+      userId,
+      assignmentItemId,
+    }),
 };
 
 export const useKPITemplates = (options?: { enabled?: boolean }) =>
@@ -91,6 +113,20 @@ export const useUnassignKPITemplate = () => {
       queryClient.invalidateQueries({ queryKey: ['kpiRecords'] });
       queryClient.invalidateQueries({ queryKey: ['myAssignments'] });
       queryClient.invalidateQueries({ queryKey: ['kpiTemplateAssignments'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-kpis'] });
+    },
+  });
+};
+
+export const useRemoveAssignmentItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kpiTemplateApi.removeAssignmentItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myAssignments'] });
+      queryClient.invalidateQueries({ queryKey: ['kpiTemplateAssignments'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
     },
   });
 };

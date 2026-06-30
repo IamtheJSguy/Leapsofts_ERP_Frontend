@@ -12,6 +12,7 @@ export interface DailyKPIEntry {
   name: string;
   description?: string;
   targetValue: number;
+  priority?: string;
   date: string;
   isCompleted: boolean;
   completedAt?: string;
