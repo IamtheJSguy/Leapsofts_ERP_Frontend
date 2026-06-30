@@ -50,6 +50,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary } from '@/hooks/api/useUsers';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { formatDate } from '@/utils/formatters';
 import { getSocket } from '@/lib/socket';
 
 const TeamPage = () => {
@@ -73,9 +75,15 @@ const TeamPage = () => {
   // Selected user for details page sub-view
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [activityPage, setActivityPage] = useState(1);
+  const [summaryDate, setSummaryDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+
+  const parseSummaryDate = (value: string) => {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
 
   // Load summary for the selected user if one is active
-  const { data: userSummary } = useUserSummary(selectedUser?._id);
+  const { data: userSummary } = useUserSummary(selectedUser?._id, summaryDate);
 
   // Fetch kanban boards to resolve actual projects/boards for this user
   const { data: boards = [] } = useKanbanBoards();
@@ -392,7 +400,7 @@ const TeamPage = () => {
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
               <Box
                 sx={{
                   width: 32,
@@ -407,28 +415,16 @@ const TeamPage = () => {
                 <TimelineIcon sx={{ color: '#FF4E3A', fontSize: 16 }} />
               </Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                Personal stats · this week
+                Personal stats · {formatDate(parseSummaryDate(summaryDate), 'MMM d, yyyy')}
               </Typography>
             </Box>
 
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.8,
-                bgcolor: isDarkMode ? 'rgba(217, 119, 6, 0.1)' : '#FFF8EE',
-                color: '#D97706',
-                px: 1.5,
-                py: 0.4,
-                borderRadius: '12px',
-                fontSize: '0.72rem',
-                fontWeight: 750,
-                textTransform: 'uppercase',
-                letterSpacing: '0.02em',
-              }}
-            >
-              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#D97706' }} />
-              stalled
+            <Box sx={{ minWidth: 220 }}>
+              <ModernDatePicker
+                value={parseSummaryDate(summaryDate)}
+                onChange={(date) => setSummaryDate(date.toLocaleDateString('en-CA'))}
+                placeholder="Select date"
+              />
             </Box>
           </Box>
 

@@ -241,9 +241,10 @@ interface UserProgressCardProps {
     totalCount: number;
   };
   isDarkMode: boolean;
+  date: string;
 }
 
-const UserProgressCard = ({ group, isDarkMode }: UserProgressCardProps) => {
+const UserProgressCard = ({ group, isDarkMode, date }: UserProgressCardProps) => {
   const navigate = useNavigate();
   
   const name = group.user ? `${group.user.firstName || ''} ${group.user.lastName || ''}`.trim() : 'Unknown User';
@@ -258,7 +259,7 @@ const UserProgressCard = ({ group, isDarkMode }: UserProgressCardProps) => {
 
   return (
     <Card
-      onClick={() => group.user?._id && navigate(`/team/member/${group.user._id}`)}
+      onClick={() => group.user?._id && navigate(`/team/member/${group.user._id}?date=${date}`)}
       sx={{
         borderRadius: '24px',
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.85)',
@@ -363,7 +364,7 @@ export const DailyTeamProgress = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const { data: entries = [], isLoading } = useDailyKpiEntries({ date });
@@ -433,6 +434,8 @@ export const DailyTeamProgress = () => {
         }}
       >
 
+        <GlassDatePicker value={date} onChange={setDate} isDarkMode={isDarkMode} />
+
         <TextField
           size="small"
           placeholder="Search team member..."
@@ -498,7 +501,7 @@ export const DailyTeamProgress = () => {
         <Grid container spacing={3.5}>
           {filteredGroupedEntries.map((group, idx) => (
             <Grid item xs={12} lg={6} key={group.user?._id || idx}>
-              <UserProgressCard group={group} isDarkMode={isDarkMode} />
+              <UserProgressCard group={group} isDarkMode={isDarkMode} date={date} />
             </Grid>
           ))}
         </Grid>

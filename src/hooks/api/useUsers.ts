@@ -34,10 +34,15 @@ export const useUser = (id: string | undefined) =>
     enabled: !!id,
   });
 
-export const useUserSummary = (userId: string | undefined) =>
+export const useUserSummary = (userId: string | undefined, date?: string) =>
   useQuery({
-    queryKey: ['userSummary', userId],
-    queryFn: () => api.get<{ data: any }>(`/users/${userId}/summary`).then((r) => r.data.data),
+    queryKey: ['userSummary', userId, date],
+    queryFn: () =>
+      api
+        .get<{ data: any }>(`/users/${userId}/summary`, {
+          params: date ? { date } : undefined,
+        })
+        .then((r) => r.data.data),
     enabled: !!userId,
   });
 
