@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import {
   Box,
@@ -38,8 +38,9 @@ import {
 } from 'recharts';
 
 import { useUserSummary, useUserAttendanceSummary } from '@/hooks/api/useUsers';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { tokens } from '@/styles/tokens';
-import { getDisplayName } from '@/utils/formatters';
+import { formatDate, getDisplayName } from '@/utils/formatters';
 
 const formatHoursToTimeStr = (hoursDecimal: number | undefined) => {
   if (hoursDecimal === undefined || hoursDecimal === null) return '0 min';
@@ -53,11 +54,22 @@ const formatHoursToTimeStr = (hoursDecimal: number | undefined) => {
   return `${hrs} hr ${mins} min`;
 };
 
+const parseApiDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const toApiDateString = (date: Date) => date.toLocaleDateString('en-CA');
+
 export default function MemberProgressPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  const summaryDate = searchParams.get('date') || toApiDateString(new Date());
+  const selectedSummaryDate = parseApiDate(summaryDate);
 
   const [timeframe, setTimeframe] = useState<'weekly' | 'monthly'>('weekly');
   const [detailTab, setDetailTab] = useState<'tasks' | 'kpis'>('tasks');
@@ -84,7 +96,7 @@ export default function MemberProgressPage() {
     };
   }, [timeframe]);
 
-  const { data: summary, isLoading: isSummaryLoading } = useUserSummary(userId);
+  const { data: summary, isLoading: isSummaryLoading } = useUserSummary(userId, summaryDate);
   const { data: attendanceData, isLoading: isAttendanceLoading } = useUserAttendanceSummary(
     userId,
     dateRange.startDate,
@@ -149,9 +161,20 @@ export default function MemberProgressPage() {
           Back to Progress
         </Button>
 
-        <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Teammate Analytics
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ minWidth: 220 }}>
+            <ModernDatePicker
+              value={selectedSummaryDate}
+              onChange={(date) => {
+                setSearchParams({ date: toApiDateString(date) }, { replace: true });
+              }}
+              placeholder="Select date"
+            />
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Teammate Analytics
+          </Typography>
+        </Box>
       </Box>
 
       {/* 2. Luxury User Banner */}
@@ -342,7 +365,7 @@ export default function MemberProgressPage() {
             }}
           >
             <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, letterSpacing: '-0.01em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-              Task Completion Trend (Last 7 Days)
+              Task Completion Trend (7 days ending {formatDate(selectedSummaryDate, 'MMM d')})
             </Typography>
             <Box sx={{ width: '100%', height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -382,7 +405,7 @@ export default function MemberProgressPage() {
             }}
           >
             <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, letterSpacing: '-0.01em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-              Daily KPI Achievements vs. Targets
+              Daily KPI Achievements · {formatDate(selectedSummaryDate, 'MMM d, yyyy')}
             </Typography>
             <Box sx={{ width: '100%', height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -422,7 +445,9 @@ export default function MemberProgressPage() {
       >
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-            {detailTab === 'tasks' ? `Assigned Project Tasks (${tasksList.length})` : `Daily KPI Targets (Today) (${dailyKpis.length})`}
+            {detailTab === 'tasks'
+              ? `Assigned Project Tasks (${tasksList.length})`
+              : `Daily KPI Targets (${formatDate(selectedSummaryDate, 'MMM d, yyyy')}) (${dailyKpis.length})`}
           </Typography>
 
           {/* Translucent Tab Switcher Capsule */}
