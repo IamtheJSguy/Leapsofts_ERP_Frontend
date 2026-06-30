@@ -18,6 +18,7 @@ import { useUpdateUser } from '@/hooks/api/useUsers';
 import { ROLES } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import type { User } from '@/types';
 
 interface RoleAssignmentModalProps {
@@ -31,6 +32,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
   const [googleSheetId, setGoogleSheetId] = useState('');
   const updateUser = useUpdateUser();
   const addToast = useUIStore((s) => s.addToast);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -51,6 +53,12 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
 
   const handleSave = () => {
     if (!user) return;
+    // Stage and open confirm dialog
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (!user) return;
     updateUser.mutate(
       {
         id: user._id,
@@ -59,9 +67,11 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
       {
         onSuccess: () => {
           addToast({ message: 'User updated successfully', severity: 'success' });
+          setConfirmOpen(false);
           onClose();
         },
         onError: (err: any) => {
+          setConfirmOpen(false);
           addToast({
             message: err.response?.data?.message || 'Failed to update user',
             severity: 'error',
@@ -72,6 +82,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
   };
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -234,5 +245,17 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
         </Button>
       </DialogActions>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmOpen}
+      title="Update User Settings"
+      message={`Are you sure you want to change ${user?.email}'s role to "${role === ROLES.ADMIN ? 'Admin' : 'User'}"? This will affect their access permissions immediately.`}
+      confirmLabel="Save Changes"
+      cancelLabel="Cancel"
+      isPending={updateUser.isPending}
+      onConfirm={handleConfirmSave}
+      onCancel={() => setConfirmOpen(false)}
+    />
+  </>
   );
 };

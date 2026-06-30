@@ -99,7 +99,7 @@ const TasksPage = () => {
   const { data: dbUsers = [] } = useUsers();
 
   // Fetch actual templates from the API
-  const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates();
+  const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isAdmin });
   const createTemplateMutation = useCreateKPITemplate();
   const updateTemplateMutation = useUpdateKPITemplate();
   const deleteTemplateMutation = useDeleteKPITemplate();
@@ -336,6 +336,9 @@ const TasksPage = () => {
   // Confirm dialog state for delete template
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  // Confirm dialog state for assign template
+  const [confirmAssignOpen, setConfirmAssignOpen] = useState(false);
+
   const handleOpenAssignModal = (template: UIKPITemplate) => {
     setAssigningTemplate(template);
     setSelectedUserId(null);
@@ -527,6 +530,12 @@ const TasksPage = () => {
       return;
     }
 
+    setConfirmAssignOpen(true);
+  };
+
+  const handleConfirmAssign = () => {
+    if (!assigningTemplate || !selectedUserId) return;
+
     assignTemplateMutation.mutate(
       {
         id: assigningTemplate._id,
@@ -561,11 +570,13 @@ const TasksPage = () => {
             severity: 'success',
           });
           setIsAssignOpen(false);
+          setConfirmAssignOpen(false);
           if (!isAdmin) {
             setDashboardTab('assignments');
           }
         },
         onError: (err: any) => {
+          setConfirmAssignOpen(false);
           addToast({
             message: err?.response?.data?.message || 'Failed to assign KPI Template.',
             severity: 'error',
@@ -3197,6 +3208,18 @@ return (
         isPending={deleteTemplateMutation.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Assign Template Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmAssignOpen}
+        title="Assign KPI Template"
+        message={`Are you sure you want to assign the template "${assigningTemplate?.name || ''}" to the selected user?`}
+        confirmLabel="Assign"
+        cancelLabel="Cancel"
+        isPending={assignTemplateMutation.isPending}
+        onConfirm={handleConfirmAssign}
+        onCancel={() => setConfirmAssignOpen(false)}
       />
     </Box>
   );

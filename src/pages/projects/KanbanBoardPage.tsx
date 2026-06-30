@@ -27,12 +27,13 @@ import CheckIcon from '@mui/icons-material/Check';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FlagIcon from '@mui/icons-material/Flag';
 import { tokens } from '@/styles/tokens';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 
 import {
   DndContext, DragOverlay, closestCorners, KeyboardSensor,
   PointerSensor, useSensor, useSensors, type DragStartEvent,
   type DragEndEvent,
-  useDroppable,
+  useDroppable, MeasuringStrategy
 } from '@dnd-kit/core';
 import {
   SortableContext, sortableKeyboardCoordinates,
@@ -47,6 +48,7 @@ import {
 } from '@/hooks/api/useKanban';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
@@ -260,9 +262,9 @@ const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
   });
 
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
     cursor: isDragging ? 'grabbing' : 'grab',
   };
 
@@ -304,18 +306,33 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState('');
 
+  const [confirmTitleOpen, setConfirmTitleOpen] = useState(false);
+  const [confirmDescOpen, setConfirmDescOpen] = useState(false);
+  const [confirmPriorityOpen, setConfirmPriorityOpen] = useState(false);
+  const [pendingPriority, setPendingPriority] = useState<string | null>(null);
+  const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
+
   const startEditingDesc = () => {
     setEditDesc(task.description || '');
     setIsEditingDesc(true);
   };
 
   const handleDescSubmit = () => {
+    if (editDesc.trim() !== (task.description || '').trim()) {
+      setConfirmDescOpen(true);
+    } else {
+      setIsEditingDesc(false);
+    }
+  };
+
+  const confirmDescEdit = () => {
     updateCardMutation.mutate({
       cardId: task.id,
       data: { description: editDesc.trim() }
     }, {
       onSuccess: () => {
         setIsEditingDesc(false);
+        setConfirmDescOpen(false);
       }
     });
   };
@@ -415,12 +432,47 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const handleTitleSubmit = () => {
     if (editTitle.trim() && editTitle.trim() !== task.title) {
+      setConfirmTitleOpen(true);
+    } else {
+      setIsEditingTitle(false);
+    }
+  };
+
+  const confirmTitleEdit = () => {
+    updateCardMutation.mutate({
+      cardId: task.id,
+      data: { title: editTitle.trim() }
+    }, {
+      onSuccess: () => {
+        setIsEditingTitle(false);
+        setConfirmTitleOpen(false);
+      }
+    });
+  };
+
+  const handlePriorityClick = (e: any) => setPriorityMenuAnchor(e.currentTarget);
+  const handlePriorityClose = () => setPriorityMenuAnchor(null);
+  
+  const handlePriorityChange = (newPriority: string) => {
+    if (newPriority !== (task.rawCard?.priority || 'medium')) {
+       setPendingPriority(newPriority);
+       setConfirmPriorityOpen(true);
+    }
+    handlePriorityClose();
+  };
+
+  const confirmPriorityEdit = () => {
+    if (pendingPriority) {
       updateCardMutation.mutate({
         cardId: task.id,
-        data: { title: editTitle.trim() }
+        data: { priority: pendingPriority }
+      }, {
+        onSuccess: () => {
+          setConfirmPriorityOpen(false);
+          setPendingPriority(null);
+        }
       });
     }
-    setIsEditingTitle(false);
   };
 
   const handleAssigneeChange = (event: any) => {
@@ -478,7 +530,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         {/* Drawer Header */}
         <Box sx={{ p: 3, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
               {lead ? (
                 <Chip label={lead.company || 'Lead Prospect'} size="small" sx={{ bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
               ) : (
@@ -491,11 +543,45 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 const p = (task.rawCard?.priority || 'medium') as keyof typeof PRIORITY_CONFIG;
                 const cfg = PRIORITY_CONFIG[p] || PRIORITY_CONFIG.medium;
                 return (
-                  <Chip
-                    label={cfg.label}
-                    size="small"
-                    sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: '0.7rem', height: 22, border: `1px solid ${cfg.color}40` }}
-                  />
+                  <Box>
+                    <Chip
+                      label={cfg.label}
+                      size="small"
+                      onClick={handlePriorityClick}
+                      sx={{ 
+                        bgcolor: cfg.bg, color: cfg.color, fontWeight: 750, fontSize: '0.7rem', height: 24, 
+                        border: `1px solid ${cfg.color}30`, cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } 
+                      }}
+                    />
+                    <Menu
+                      anchorEl={priorityMenuAnchor}
+                      open={Boolean(priorityMenuAnchor)}
+                      onClose={handlePriorityClose}
+                      PaperProps={{
+                        sx: {
+                          mt: 1, borderRadius: '16px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.12)', bgcolor: isDarkMode ? '#1e1b24' : '#fff', minWidth: 160
+                        }
+                      }}
+                    >
+                      {Object.entries(PRIORITY_CONFIG).map(([key, item]: any) => (
+                        <MenuItem 
+                          key={key} 
+                          onClick={() => handlePriorityChange(key)} 
+                          sx={{ 
+                            display: 'flex', alignItems: 'center', gap: 1.5, py: 1, px: 2, 
+                            borderRadius: '8px', mx: 1, my: 0.25, transition: 'all 0.15s',
+                            bgcolor: key === p ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'transparent',
+                            '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }
+                          }}
+                        >
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+                          <Typography variant="body2" sx={{ fontWeight: 650 }}>{item.label}</Typography>
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </Box>
                 );
               })()}
             </Box>
@@ -505,10 +591,33 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 size="small"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                onBlur={handleTitleSubmit}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSubmit(); }}
                 autoFocus
-                sx={{ '& .MuiOutlinedInput-root': { fontWeight: 800 } }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { 
+                    fontWeight: 800,
+                    pr: 0.5,
+                    borderRadius: '12px'
+                  } 
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton 
+                        size="small" 
+                        onClick={handleTitleSubmit}
+                        sx={{ 
+                          bgcolor: tokens.brand.primary, color: '#fff', 
+                          '&:hover': { bgcolor: tokens.brand.primaryDark }, 
+                          width: 28, height: 28, borderRadius: '8px',
+                          boxShadow: '0 2px 8px rgba(93, 26, 137, 0.3)'
+                        }}
+                      >
+                        <CheckIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -667,25 +776,21 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   ))}
                 </Select>
               </FormControl>
-              <TextField
+              <ModernDatePicker
                 label="Due Date"
-                type="date"
-                size="small"
-                value={pendingDueDate || (rawCard?.dueDate ? new Date(rawCard.dueDate).toISOString().slice(0, 10) : '')}
-                onChange={(e) => setPendingDueDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
+                value={(pendingDueDate || rawCard?.dueDate) ? new Date(pendingDueDate || rawCard.dueDate) : null}
+                onChange={(date) => setPendingDueDate(date.toISOString().slice(0, 10))}
               />
-              <TextField
-                label="KPI tracking end date"
-                type="date"
-                size="small"
-                value={pendingKpiEndDate || (rawCard?.kpiEndDate ? new Date(rawCard.kpiEndDate).toISOString().slice(0, 10) : '')}
-                onChange={(e) => setPendingKpiEndDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                helperText="How long this task shows in daily KPIs (defaults to due date or 7 days)"
-                fullWidth
-              />
+              <Box>
+                <ModernDatePicker
+                  label="KPI tracking end date"
+                  value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date(pendingKpiEndDate || rawCard.kpiEndDate) : null}
+                  onChange={(date) => setPendingKpiEndDate(date.toISOString().slice(0, 10))}
+                />
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                  How long this task shows in daily KPIs (defaults to due date or 7 days)
+                </Typography>
+              </Box>
               </Box>
             ) : (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -874,20 +979,45 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       </Drawer>
 
       {/* Local confirm dialogue inside Drawer */}
-      <ModernConfirmDialog
+      <ConfirmDialog
         open={confirmOpen}
         title={confirmTitle}
-        description={confirmDesc}
+        message={confirmDesc}
         onConfirm={handleConfirmAction}
         onCancel={() => { setConfirmOpen(false); setConfirmAction(null); setTargetCommentId(null); }}
+        confirmLabel="Confirm Action"
       />
-      <ModernConfirmDialog
+      <ConfirmDialog
         open={assigneeConfirmOpen}
         title="Assign Team Members"
-        description="Assigning will create daily KPI tasks for each member until the task is completed or the tracking period ends."
+        message="Assigning will create daily KPI tasks for each member until the task is completed or the tracking period ends."
         onConfirm={handleAssigneeConfirm}
         onCancel={() => setAssigneeConfirmOpen(false)}
-        confirmText="Assign & Create KPIs"
+        confirmLabel="Assign & Create KPIs"
+      />
+      <ConfirmDialog
+        open={confirmTitleOpen}
+        title="Update Task Name"
+        message={`Are you sure you want to change the task name to "${editTitle.trim()}"?`}
+        onConfirm={confirmTitleEdit}
+        onCancel={() => { setConfirmTitleOpen(false); setIsEditingTitle(false); setEditTitle(task.title); }}
+        confirmLabel="Save Name"
+      />
+      <ConfirmDialog
+        open={confirmDescOpen}
+        title="Update Task Description"
+        message="Are you sure you want to update this task's description?"
+        onConfirm={confirmDescEdit}
+        onCancel={() => { setConfirmDescOpen(false); setIsEditingDesc(false); setEditDesc(task.description || ''); }}
+        confirmLabel="Save Description"
+      />
+      <ConfirmDialog
+        open={confirmPriorityOpen}
+        title="Update Priority"
+        message={`Are you sure you want to change the task priority?`}
+        onConfirm={confirmPriorityEdit}
+        onCancel={() => { setConfirmPriorityOpen(false); setPendingPriority(null); }}
+        confirmLabel="Save Priority"
       />
     </>
   );
@@ -912,6 +1042,10 @@ export const KanbanBoardPage = () => {
 
   const actualBoard = useMemo(() => (board as any)?.board || board, [board]);
   const cardsList = useMemo(() => (board as any)?.cards || [], [board]);
+
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === 'admin';
+  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isAdmin;
 
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
@@ -957,6 +1091,10 @@ export const KanbanBoardPage = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedUserToShare, setSelectedUserToShare] = useState<string>('');
   const shareBoardMutation = useShareBoard();
+
+  // Share Confirmation Dialog State
+  const [confirmShareOpen, setConfirmShareOpen] = useState(false);
+  const [pendingShareUserId, setPendingShareUserId] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1138,17 +1276,32 @@ export const KanbanBoardPage = () => {
     }
   };
 
+  // Stage share then show confirmation dialog
   const handleShareSubmit = () => {
     if (activeBoardId && selectedUserToShare) {
+      setPendingShareUserId(selectedUserToShare);
+      setIsShareDialogOpen(false);
+      setConfirmShareOpen(true);
+    }
+  };
+
+  // Executes actual share mutation after confirmation
+  const handleConfirmShare = () => {
+    if (activeBoardId && pendingShareUserId) {
       const currentShared = Array.isArray(actualBoard?.sharedWith) ? actualBoard.sharedWith : [];
-      const updatedShared = [...currentShared, selectedUserToShare];
+      const updatedShared = [...currentShared, pendingShareUserId];
       shareBoardMutation.mutate({
         boardId: activeBoardId,
         userIds: updatedShared
       }, {
         onSuccess: () => {
           setSelectedUserToShare('');
-          setIsShareDialogOpen(false);
+          setPendingShareUserId('');
+          setConfirmShareOpen(false);
+        },
+        onError: () => {
+          setPendingShareUserId('');
+          setConfirmShareOpen(false);
         }
       });
     }
@@ -1278,12 +1431,24 @@ export const KanbanBoardPage = () => {
           >
             <FilterListIcon fontSize="small" />
           </IconButton>
-          <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+          {canManageTeam && (
+            <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+          )}
         </Box>
       </Box>
 
       <Box sx={{ flexGrow: 1, display: 'flex', gap: 3, overflowX: 'auto', pb: 2, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }, '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={closestCorners} 
+          onDragStart={handleDragStart} 
+          onDragEnd={handleDragEnd}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            }
+          }}
+        >
           {columns.map((col: any) => {
             const colTasks = filteredTasks.filter(t => t.columnId === col.id);
             return (
@@ -1322,11 +1487,14 @@ export const KanbanBoardPage = () => {
             );
           })}
 
-          <DragOverlay>
+          <DragOverlay dropAnimation={{
+            duration: 250,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}>
             {activeTask ? (
-              <div style={{ transform: 'rotate(2deg) scale(1.02)', boxShadow: tokens.shadow.cardHover, cursor: 'grabbing', width: 296 }}>
+              <Box sx={{ width: '100%', height: '100%', transform: 'rotate(2deg) scale(1.02)', transformOrigin: 'top left', cursor: 'grabbing' }}>
                 <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
-              </div>
+              </Box>
             ) : null}
           </DragOverlay>
         </DndContext>
@@ -1561,15 +1729,13 @@ export const KanbanBoardPage = () => {
             </FormControl>
 
             {/* Due Date */}
-            <TextField
-              type="date"
-              label="Due Date"
-              size="small"
-              value={newCardDueDate}
-              onChange={(e) => setNewCardDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
-            />
+            <Box sx={{ flex: 1 }}>
+              <ModernDatePicker
+                label="Due Date"
+                value={newCardDueDate ? new Date(newCardDueDate) : null}
+                onChange={(date) => setNewCardDueDate(date.toISOString().slice(0, 10))}
+              />
+            </Box>
           </Box>
 
           {/* Assignees */}
@@ -1690,6 +1856,30 @@ export const KanbanBoardPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Share Board Confirmation Dialog */}
+      {(() => {
+        const pendingUser = allUsers.find((u: any) => u._id === pendingShareUserId);
+        const pendingUserName = pendingUser
+          ? (`${pendingUser.firstName || ''} ${pendingUser.lastName || ''}`.trim() || pendingUser.email)
+          : 'this team member';
+        return (
+          <ConfirmDialog
+            open={confirmShareOpen}
+            title="Add Team Member"
+            message={`Are you sure you want to add ${pendingUserName} to this board? They will be able to view and interact with all cards on this board.`}
+            confirmLabel="Add Member"
+            cancelLabel="Cancel"
+            isPending={shareBoardMutation.isPending}
+            onConfirm={handleConfirmShare}
+            onCancel={() => {
+              setConfirmShareOpen(false);
+              setPendingShareUserId('');
+              setSelectedUserToShare('');
+            }}
+          />
+        );
+      })()}
     </Box>
   );
 };

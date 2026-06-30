@@ -17,6 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import { enrichmentSchema } from '@/utils/validators';
 import { useQualifyLead } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useState } from 'react';
 import type { Lead } from '@/types';
 
 interface ProfileEnrichmentModalProps {
@@ -29,6 +31,7 @@ export const ProfileEnrichmentModal = ({ lead, open, onClose }: ProfileEnrichmen
   const navigate = useNavigate();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { register, control, handleSubmit } = useForm({
     resolver: zodResolver(enrichmentSchema),
@@ -44,17 +47,24 @@ export const ProfileEnrichmentModal = ({ lead, open, onClose }: ProfileEnrichmen
 
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
 
-  const onSubmit = () => {
+  // Intercept submit — show confirm first
+  const onSubmit = () => setConfirmOpen(true);
+
+  const handleConfirmedQualify = () => {
     if (!lead) return;
     qualifyLead.mutate(
       { id: lead._id },
       {
         onSuccess: () => {
           addToast({ message: 'Lead qualified', severity: 'success' });
+          setConfirmOpen(false);
           onClose();
           navigate('/kanban');
         },
-        onError: () => addToast({ message: 'Qualification failed', severity: 'error' }),
+        onError: () => {
+          setConfirmOpen(false);
+          addToast({ message: 'Qualification failed', severity: 'error' });
+        },
       },
     );
   };
@@ -95,6 +105,17 @@ export const ProfileEnrichmentModal = ({ lead, open, onClose }: ProfileEnrichmen
           </Button>
         </DialogActions>
       </form>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Qualify & Push to Kanban"
+        message="Are you sure you want to qualify this lead? They will be moved to a new Kanban board."
+        confirmLabel="Qualify & Push"
+        cancelLabel="Cancel"
+        isPending={qualifyLead.isPending}
+        onConfirm={handleConfirmedQualify}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </Dialog>
   );
 };

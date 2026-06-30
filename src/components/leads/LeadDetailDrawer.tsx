@@ -15,6 +15,8 @@ import { useLeadHistory, useQualifyLead } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useState } from 'react';
 import type { Lead } from '@/types';
 
 interface LeadDetailDrawerProps {
@@ -35,6 +37,25 @@ export const LeadDetailDrawer = ({
   const { data: history = [] } = useLeadHistory(lead?._id);
   const qualifyLeadMutation = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
+  const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
+
+  const handleConfirmQualify = () => {
+    if (!lead) return;
+    qualifyLeadMutation.mutate(
+      { id: lead._id },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
+          setConfirmQualifyOpen(false);
+          onClose();
+        },
+        onError: () => {
+          setConfirmQualifyOpen(false);
+          addToast({ message: 'Failed to qualify lead.', severity: 'error' });
+        },
+      }
+    );
+  };
 
   if (!lead) return null;
 
@@ -73,16 +94,7 @@ export const LeadDetailDrawer = ({
             <Button
               variant="contained"
               startIcon={<StarIcon />}
-              onClick={() => {
-                qualifyLeadMutation.mutate(
-                  { id: lead._id },
-                  {
-                    onSuccess: () => {
-                      addToast({ message: 'Lead successfully qualified and moved to Kanban!', severity: 'success' });
-                    },
-                  }
-                );
-              }}
+              onClick={() => setConfirmQualifyOpen(true)}
               disabled={qualifyLeadMutation.isPending}
               sx={{ bgcolor: '#FF5733', '&:hover': { bgcolor: '#E04A2A' } }}
             >
@@ -103,6 +115,17 @@ export const LeadDetailDrawer = ({
           ))}
         </List>
       </Box>
+
+      <ConfirmDialog
+        open={confirmQualifyOpen}
+        title="Qualify Lead"
+        message={`Are you sure you want to qualify ${getLeadDisplayName(lead)}? This will create a Kanban board for this lead.`}
+        confirmLabel="Qualify"
+        cancelLabel="Cancel"
+        isPending={qualifyLeadMutation.isPending}
+        onConfirm={handleConfirmQualify}
+        onCancel={() => setConfirmQualifyOpen(false)}
+      />
     </Drawer>
   );
 };

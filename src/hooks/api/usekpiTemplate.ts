@@ -16,10 +16,11 @@ const kpiTemplateApi = {
     api.post<{ success: boolean }>(`/kpi-templates/${id}/unassign`, { userIds: [userId] }),
 };
 
-export const useKPITemplates = () =>
+export const useKPITemplates = (options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['kpiTemplates'],
     queryFn: () => kpiTemplateApi.getKPITemplates().then((r) => r.data.data),
+    enabled: options?.enabled,
   });
 
 export const useCreateKPITemplate = () => {
