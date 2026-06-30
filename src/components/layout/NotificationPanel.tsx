@@ -10,12 +10,14 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import DoneAllOutlinedIcon from '@mui/icons-material/DoneAllOutlined';
 import CircleIcon from '@mui/icons-material/Circle';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/api/useNotifications';
 import { useUIStore } from '@/store/useUIStore';
 import { formatDateTime } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import { NOTIFICATION_TYPE } from '@/lib/constants';
 
 export const NotificationPanel = () => {
   const { notificationPanelOpen, setNotificationPanelOpen } = useUIStore();
@@ -34,9 +36,10 @@ export const NotificationPanel = () => {
     }
   };
 
-  const getNotificationIcon = (_title: string) => {
-    // Basic heuristic to assign icons if needed, or fallback to generic
-    // In a real app with notification types, we'd use `n.type`
+  const getNotificationIcon = (notification: { title: string; type?: string }) => {
+    if (notification.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION) {
+      return <AlternateEmailIcon sx={{ fontSize: 20 }} />;
+    }
     return <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />;
   };
 
@@ -249,7 +252,7 @@ export const NotificationPanel = () => {
                         : (isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.04)),
                     }}
                   >
-                    {getNotificationIcon(n.title)}
+                    {getNotificationIcon(n)}
                   </Box>
 
                   {/* Content */}
