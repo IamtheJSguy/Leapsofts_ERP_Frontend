@@ -32,9 +32,12 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { tokens } from '@/styles/tokens';
-import { isPast, format } from 'date-fns';
+import { isPast, isFuture, isToday, format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import ViewListIcon from '@mui/icons-material/ViewList';
 import type { Meeting } from '@/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,14 +63,50 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  // Filter meetings to only show those where the current user is a participant
-  const myMeetings = meetings.filter((m: Meeting) => {
-    if (!currentUser) return false;
-    const participantIds = (m.participants || []).map((p: any) =>
-      typeof p === 'string' ? p : p._id
-    );
-    return participantIds.includes(currentUser._id);
-  });
+  const myMeetings = useMemo(() => {
+    return meetings.filter((m: Meeting) => {
+      if (!currentUser) return false;
+      const participantIds = (m.participants || []).map((p: any) =>
+        typeof p === 'string' ? p : p._id
+      );
+      return participantIds.includes(currentUser._id);
+    });
+  }, [meetings, currentUser]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'today' | 'upcoming'>('all');
+
+  useEffect(() => {
+    const meetingId = searchParams.get('meetingId');
+    if (meetingId && myMeetings.length > 0) {
+      const found = myMeetings.find(m => m._id === meetingId);
+      if (found && (!selectedMeeting || selectedMeeting._id !== found._id)) {
+        setSelectedMeeting(found);
+      }
+    } else if (!meetingId && selectedMeeting) {
+      setSelectedMeeting(null);
+    }
+  }, [searchParams, myMeetings]);
+
+  const handleOpenMeeting = (meeting: Meeting) => {
+    setSearchParams({ meetingId: meeting._id });
+  };
+
+  const handleCloseMeeting = () => {
+    setSearchParams(new URLSearchParams());
+    setSelectedMeeting(null);
+  };
+
+  const filteredMeetings = useMemo(() => {
+    return myMeetings.filter((m) => {
+      const date = new Date(m.scheduledAt);
+      if (timeFilter === 'past') return isPast(date) && !isToday(date);
+      if (timeFilter === 'today') return isToday(date);
+      if (timeFilter === 'upcoming') return isFuture(date) && !isToday(date);
+      return true;
+    }).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }, [myMeetings, timeFilter]);
 
   const getParticipantDetails = (participant: string | any) => {
     const id = typeof participant === 'string' ? participant : participant._id;
@@ -121,23 +160,101 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
 
   return (
     <>
-      <Grid container spacing={3}>
-        {myMeetings.map((meeting) => {
-          const isMeetingPast = isPast(new Date(meeting.scheduledAt));
+      {/* Controls Row: Time Filter & View Toggle */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 4, gap: 2 }}>
+        {/* iOS style segmented control for Time Filter */}
+        <Box
+          sx={{
+            display: 'inline-flex',
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+            borderRadius: '20px',
+            p: 0.5,
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+          }}
+        >
+          {['all', 'past', 'today', 'upcoming'].map((filter) => (
+            <Button
+              key={filter}
+              onClick={() => setTimeFilter(filter as any)}
+              sx={{
+                px: 3, py: 0.75,
+                borderRadius: '16px',
+                textTransform: 'capitalize',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: timeFilter === filter 
+                  ? (isDarkMode ? '#fff' : tokens.brand.primary) 
+                  : 'text.secondary',
+                bgcolor: timeFilter === filter 
+                  ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') 
+                  : 'transparent',
+                boxShadow: timeFilter === filter && !isDarkMode ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  bgcolor: timeFilter === filter 
+                    ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff') 
+                    : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+                }
+              }}
+            >
+              {filter}
+            </Button>
+          ))}
+        </Box>
 
-          return (
-            <Grid item xs={12} sm={6} md={4} key={meeting._id}>
+        {/* View Toggle */}
+        <Box sx={{ display: 'flex', gap: 0.5, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)', p: 0.5, borderRadius: '12px' }}>
+          <IconButton 
+            onClick={() => setViewMode('grid')}
+            sx={{ 
+              bgcolor: viewMode === 'grid' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
+              color: viewMode === 'grid' ? tokens.brand.primaryLight : 'text.secondary',
+              boxShadow: viewMode === 'grid' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+              borderRadius: '10px'
+            }}
+          >
+            <ViewModuleIcon fontSize="small" />
+          </IconButton>
+          <IconButton 
+            onClick={() => setViewMode('list')}
+            sx={{ 
+              bgcolor: viewMode === 'list' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
+              color: viewMode === 'list' ? tokens.brand.primaryLight : 'text.secondary',
+              boxShadow: viewMode === 'list' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+              borderRadius: '10px'
+            }}
+          >
+            <ViewListIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
+
+      {filteredMeetings.length === 0 ? (
+        <EmptyState
+          title={`No ${timeFilter !== 'all' ? timeFilter : ''} meetings found`}
+          description="Try changing your filters or schedule a new meeting."
+          actionLabel="Schedule Meeting"
+          onAction={onScheduleTrigger}
+        />
+      ) : (
+        <Grid container spacing={3}>
+          {filteredMeetings.map((meeting) => {
+            const isMeetingPast = isPast(new Date(meeting.scheduledAt));
+
+            return (
+              <Grid item xs={12} sm={viewMode === 'grid' ? 6 : 12} md={viewMode === 'grid' ? 4 : 12} key={meeting._id}>
               <Card
-                onClick={() => setSelectedMeeting(meeting)}
+                onClick={() => handleOpenMeeting(meeting)}
                 sx={{
-                  borderRadius: '24px',
+                  borderRadius: viewMode === 'grid' ? '24px' : '16px',
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   boxShadow: tokens.shadow.card,
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   opacity: isMeetingPast ? 0.75 : 1,
                   display: 'flex',
-                  flexDirection: 'column',
+                  flexDirection: viewMode === 'grid' ? 'column' : { xs: 'column', sm: 'row' },
+                  alignItems: viewMode === 'grid' ? 'stretch' : 'center',
                   height: '100%',
                   position: 'relative',
                   overflow: 'hidden',
@@ -161,8 +278,8 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       aria-label="Delete meeting"
                       sx={{
                         position: 'absolute',
-                        top: 18,
-                        right: 16,
+                        top: viewMode === 'list' ? 12 : 18,
+                        right: viewMode === 'list' ? 12 : 16,
                         color: isDarkMode ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)',
                         bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
                         transition: 'all 0.2s',
@@ -178,95 +295,149 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Tooltip>
                 )}
 
-                <Box sx={{ p: 3, pt: 3.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', alignItems: viewMode === 'grid' ? 'stretch' : 'center', width: '100%' }}>
                   {/* Top Row: Category Icon Box & Badge */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, pr: 4 }}>
-                    <Box
+                  {viewMode === 'grid' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, pr: 4 }}>
+                      <Box
+                        sx={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: '14px',
+                          bgcolor: isMeetingPast
+                            ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+                            : (isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)'),
+                          color: isMeetingPast
+                            ? 'text.disabled'
+                            : tokens.brand.primaryLight,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <VideocamIcon sx={{ fontSize: 22 }} />
+                      </Box>
+                      <MeetingReminderBadge scheduledAt={meeting.scheduledAt} />
+                    </Box>
+                  )}
+
+                  {viewMode === 'list' && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 3, minWidth: 200 }}>
+                      <Box
+                        sx={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: '14px',
+                          bgcolor: isMeetingPast
+                            ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+                            : (isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)'),
+                          color: isMeetingPast
+                            ? 'text.disabled'
+                            : tokens.brand.primaryLight,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <VideocamIcon sx={{ fontSize: 22 }} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '1rem',
+                            lineHeight: 1.3,
+                            color: isMeetingPast ? (isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)') : 'text.primary',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {meeting.title}
+                        </Typography>
+                        <Box sx={{ mt: 0.5 }}><MeetingReminderBadge scheduledAt={meeting.scheduledAt} /></Box>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Title for Grid View */}
+                  {viewMode === 'grid' && (
+                    <Typography
+                      variant="h6"
                       sx={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: '14px',
-                        bgcolor: isMeetingPast
-                          ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
-                          : (isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)'),
+                        fontWeight: 800,
+                        fontSize: '1.08rem',
+                        lineHeight: 1.4,
+                        mb: 2.5,
                         color: isMeetingPast
-                          ? 'text.disabled'
-                          : tokens.brand.primaryLight,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                          ? (isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')
+                          : 'text.primary',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        height: '3rem',
                       }}
                     >
-                      <VideocamIcon sx={{ fontSize: 22 }} />
-                    </Box>
-                    <MeetingReminderBadge scheduledAt={meeting.scheduledAt} />
-                  </Box>
-
-                  {/* Title */}
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: '1.08rem',
-                      lineHeight: 1.4,
-                      mb: 2.5,
-                      color: isMeetingPast
-                        ? (isDarkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')
-                        : 'text.primary',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      height: '3rem',
-                    }}
-                  >
-                    {meeting.title}
-                  </Typography>
+                      {meeting.title}
+                    </Typography>
+                  )}
 
                   {/* Date & Time display blocks */}
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
+                      gridTemplateColumns: viewMode === 'grid' ? '1fr 1fr' : '1fr',
                       gap: 1.5,
-                      mb: 3,
+                      mb: viewMode === 'grid' ? 3 : 0,
                       p: 1.5,
                       bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
                       borderRadius: '16px',
                       border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}`,
+                      flexGrow: viewMode === 'list' ? 1 : 0,
+                      mr: viewMode === 'list' ? 3 : 0,
+                      flexDirection: viewMode === 'list' ? 'row' : 'column',
                     }}
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
-                        Date
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        <CalendarTodayIcon sx={{ fontSize: 13, color: tokens.brand.primaryLight, opacity: 0.8 }} />
-                        <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '0.82rem', color: 'text.primary' }}>
-                          {format(new Date(meeting.scheduledAt), 'MMM d, yyyy')}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
+                          Date
                         </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <CalendarTodayIcon sx={{ fontSize: 13, color: tokens.brand.primaryLight, opacity: 0.8 }} />
+                          <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '0.82rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+                            {format(new Date(meeting.scheduledAt), 'MMM d, yyyy')}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </Box>
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
-                        Time
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        <AccessTimeIcon sx={{ fontSize: 13, color: tokens.brand.primaryLight, opacity: 0.8 }} />
-                        <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '0.82rem', color: 'text.primary' }}>
-                          {format(new Date(meeting.scheduledAt), 'h:mm a')}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
+                          Time
                         </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <AccessTimeIcon sx={{ fontSize: 13, color: tokens.brand.primaryLight, opacity: 0.8 }} />
+                          <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '0.82rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+                            {format(new Date(meeting.scheduledAt), 'h:mm a')}
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
                   </Box>
 
                   {/* Participants Avatars stacked list */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto', pt: 1 }}>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
-                      Participants
-                    </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: viewMode === 'grid' ? 'space-between' : 'flex-end', mt: viewMode === 'grid' ? 'auto' : 0, pt: viewMode === 'grid' ? 1 : 0, minWidth: viewMode === 'list' ? 150 : 'auto', pr: viewMode === 'list' ? 6 : 0 }}>
+                    {viewMode === 'grid' && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
+                        Participants
+                      </Typography>
+                    )}
 
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       {(!meeting.participants || meeting.participants.length === 0) ? (
@@ -287,8 +458,8 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                                     width: 26,
                                     height: 26,
                                     borderRadius: '50%',
-                                    bgcolor: 'secondary.light',
-                                    color: 'secondary.contrastText',
+                                    bgcolor: tokens.brand.primary,
+                                    color: '#fff',
                                     border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
                                     fontSize: '0.65rem',
                                     fontWeight: 800,
@@ -316,7 +487,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                 </Box>
 
                 {/* Bottom button / action panel */}
-                {(meeting.meetingLink || meeting.link) && (
+                {(meeting.meetingLink || meeting.link) && viewMode === 'grid' && (
                   <Box
                     sx={{
                       p: 2.5,
@@ -369,11 +540,12 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
           );
         })}
       </Grid>
+      )}
 
       {/* Details Dialog */}
       <Dialog
         open={!!selectedMeeting}
-        onClose={() => setSelectedMeeting(null)}
+        onClose={handleCloseMeeting}
         maxWidth="md"
         fullWidth
         PaperProps={{
@@ -393,7 +565,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
             <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                 <MeetingReminderBadge scheduledAt={selectedMeeting.scheduledAt} />
-                <IconButton onClick={() => setSelectedMeeting(null)} size="small" sx={{ color: 'text.secondary' }}>
+                <IconButton onClick={handleCloseMeeting} size="small" sx={{ color: 'text.secondary' }}>
                   <CloseIcon />
                 </IconButton>
               </Box>
@@ -657,7 +829,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                 <Button
                   variant="outlined"
-                  onClick={() => setSelectedMeeting(null)}
+                  onClick={handleCloseMeeting}
                   sx={{
                     flex: 1,
                     py: 1,
@@ -676,7 +848,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                     variant="outlined"
                     onClick={() => {
                       setEditMeeting(selectedMeeting);
-                      setSelectedMeeting(null);
+                      handleCloseMeeting();
                     }}
                     sx={{
                       flex: 1,

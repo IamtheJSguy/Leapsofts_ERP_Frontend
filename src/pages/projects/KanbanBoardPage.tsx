@@ -353,6 +353,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [pendingDueDate, setPendingDueDate] = useState('');
   const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
 
+  // Tabs State
+  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+
   const addCommentMutation = useAddComment();
   const editCommentMutation = useEditComment();
   const deleteCommentMutation = useDeleteComment();
@@ -569,16 +572,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     <Chip
                       label={cfg.label}
                       size="small"
-                      onClick={handlePriorityClick}
+                      onClick={isAdminOrOwner ? handlePriorityClick : undefined}
                       sx={{ 
                         bgcolor: cfg.bg, color: cfg.color, fontWeight: 750, fontSize: '0.7rem', height: 24, 
-                        border: `1px solid ${cfg.color}30`, cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } 
+                        border: `1px solid ${cfg.color}30`, cursor: isAdminOrOwner ? 'pointer' : 'default', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': isAdminOrOwner ? { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } : {} 
                       }}
                     />
-                    <Menu
-                      anchorEl={priorityMenuAnchor}
-                      open={Boolean(priorityMenuAnchor)}
+                    {isAdminOrOwner && (
+                      <Menu
+                        anchorEl={priorityMenuAnchor}
+                        open={Boolean(priorityMenuAnchor)}
                       onClose={handlePriorityClose}
                       PaperProps={{
                         sx: {
@@ -603,6 +607,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         </MenuItem>
                       ))}
                     </Menu>
+                    )}
                   </Box>
                 );
               })()}
@@ -645,32 +650,82 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography 
                   variant="h5" 
-                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3, cursor: 'pointer' }} 
-                  onClick={() => { setEditTitle(task.title); setIsEditingTitle(true); }}
+                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3, cursor: isAdminOrOwner ? 'pointer' : 'default' }} 
+                  onClick={() => { if(isAdminOrOwner) { setEditTitle(task.title); setIsEditingTitle(true); } }}
                   noWrap
                 >
                   {task.title}
                 </Typography>
-                <IconButton size="small" onClick={() => { setEditTitle(task.title); setIsEditingTitle(true); }}>
-                  <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
-                </IconButton>
+                {isAdminOrOwner && (
+                  <IconButton size="small" onClick={() => { setEditTitle(task.title); setIsEditingTitle(true); }}>
+                    <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
+                  </IconButton>
+                )}
               </Box>
             )}
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
-            <IconButton onClick={triggerDeleteCardConfirm} sx={{ color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)' } }}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
+            {isAdminOrOwner && (
+              <IconButton onClick={triggerDeleteCardConfirm} sx={{ color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)' } }}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            )}
             <IconButton onClick={onClose} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
         </Box>
 
+        {/* Tabs Control */}
+        <Box sx={{ px: 3, pt: 3, pb: 1 }}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+              borderRadius: '20px',
+              p: 0.5,
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+            }}
+          >
+            {[
+              { id: 'details', label: 'Details & Assignees' },
+              { id: 'comments', label: 'Comments' }
+            ].map((tab) => (
+              <Button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'details' | 'comments')}
+                sx={{
+                  px: 3, py: 0.75,
+                  borderRadius: '16px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  color: activeTab === tab.id 
+                    ? (isDarkMode ? '#fff' : tokens.brand.primary) 
+                    : 'text.secondary',
+                  bgcolor: activeTab === tab.id 
+                    ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') 
+                    : 'transparent',
+                  boxShadow: activeTab === tab.id && !isDarkMode ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    bgcolor: activeTab === tab.id 
+                      ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff') 
+                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+                  }
+                }}
+              >
+                {tab.label}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+
         {/* Drawer Content Area */}
         <Box sx={{ p: 3, overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-
-          {/* Description Section */}
+          {activeTab === 'details' && (
+            <>
+              {/* Description Section */}
           <Box sx={{ 
             p: 2.5, 
             bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 
@@ -682,7 +737,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 <DescriptionOutlinedIcon fontSize="small" />
                 <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
               </Box>
-              {!isEditingDesc && (
+              {!isEditingDesc && isAdminOrOwner && (
                 <IconButton size="small" onClick={startEditingDesc} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
                   <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
                 </IconButton>
@@ -736,12 +791,12 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             ) : (
               <Typography 
                 variant="body2" 
-                onClick={startEditingDesc}
+                onClick={() => { if (isAdminOrOwner) startEditingDesc(); }}
                 sx={{ 
                   color: task.description ? 'text.secondary' : 'text.disabled', 
                   lineHeight: 1.7, 
                   whiteSpace: 'pre-wrap',
-                  cursor: 'pointer',
+                  cursor: isAdminOrOwner ? 'pointer' : 'default',
                   minHeight: 24,
                   fontStyle: task.description ? 'normal' : 'italic',
                   '&:hover': {
@@ -873,9 +928,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               </Box>
             </Box>
           )}
+            </>
+          )}
 
-          {/* Comments Feed Section */}
-          <Box sx={{ flexGrow: 1 }}>
+          {activeTab === 'comments' && (
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+              {/* Comments Feed Section */}
+              <Box sx={{ flexGrow: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary' }}>
               <ChatBubbleOutlineIcon fontSize="small" />
               <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comments ({commentsList.length})</Typography>
@@ -964,9 +1023,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               )}
             </Box>
           </Box>
-        </Box>
-
-        <Box sx={{ p: 2.5, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)' }}>
+          <Box sx={{ borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)', mx: -3, px: 3, pt: 3, pb: 1, mt: 2 }}>
           <MentionInput
             value={commentText}
             onChange={setCommentText}
@@ -990,6 +1047,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               },
             }}
           />
+        </Box>
+            </Box>
+          )}
         </Box>
       </Drawer>
 
