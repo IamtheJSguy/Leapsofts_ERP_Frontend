@@ -29,6 +29,10 @@ export const NOTIFICATION_TYPE = {
   DATA_SYNC: 'data_sync',
   APPROVAL_REQUIRED: 'approval_required',
   SYSTEM: 'system',
+  SHIFT_REMINDER: 'shift_reminder',
+  KPI_END_OF_SHIFT: 'kpi_end_of_shift',
+  SHEET_UPDATE_REMINDER: 'sheet_update_reminder',
+  KANBAN_COMMENT_MENTION: 'kanban_comment_mention',
 } as const;
 
 export const ROLES = {

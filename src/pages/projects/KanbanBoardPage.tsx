@@ -47,8 +47,10 @@ import {
   useEditComment, useDeleteComment, useShareBoard
 } from '@/hooks/api/useKanban';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { CommentText } from '@/components/kanban/CommentText';
+import { MentionInput } from '@/components/kanban/MentionInput';
 
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
@@ -295,7 +297,7 @@ const DroppableColumn = ({ col, isDarkMode, children }: any) => {
   );
 };
 
-const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardId, actualBoard }: any) => {
+const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard }: any) => {
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -357,6 +359,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
   const currentUser = useAuthStore((s) => s.user);
+  const addToast = useUIStore((s) => s.addToast);
+
+  const mentionableUsers = useMemo(() => {
+    const memberIds = new Set(boardMembers.map((user: any) => user._id));
+    const admins = allUsers.filter((user: any) => user.role === 'admin' && !memberIds.has(user._id));
+    return [...boardMembers, ...admins];
+  }, [boardMembers, allUsers]);
 
   const isAdminOrOwner = currentUser?.role === 'admin' || actualBoard?.ownerId === currentUser?._id;
 
@@ -377,7 +386,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       }, {
         onSuccess: () => {
           setCommentText('');
-        }
+        },
+        onError: (err: any) => {
+          addToast({
+            message: err.response?.data?.message || 'Failed to add comment',
+            severity: 'error',
+          });
+        },
       });
     }
   };
@@ -392,7 +407,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         onSuccess: () => {
           setEditingCommentId(null);
           setEditCommentText('');
-        }
+        },
+        onError: (err: any) => {
+          addToast({
+            message: err.response?.data?.message || 'Failed to update comment',
+            severity: 'error',
+          });
+        },
       });
     }
   };
@@ -892,12 +913,12 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         </Typography>
                       </Box>
                       {editingCommentId === comm._id ? (
-                        <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
+                        <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                          <MentionInput
                             value={editCommentText}
-                            onChange={(e) => setEditCommentText(e.target.value)}
+                            onChange={setEditCommentText}
+                            mentionableUsers={mentionableUsers}
+                            placeholder="Edit comment..."
                           />
                           <IconButton size="small" onClick={() => handleSaveCommentEdit(comm._id)}>
                             <CheckIcon fontSize="small" />
@@ -908,9 +929,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         </Box>
                       ) : (
                         <Box sx={{ position: 'relative' }}>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block', maxWidth: '100%', wordBreak: 'break-word' }}>
-                            {comm.text}
-                          </Typography>
+                          <Box sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block', maxWidth: '100%' }}>
+                            <CommentText text={comm.text} users={allUsers} />
+                          </Box>
                           {isCommentAuthor && (
                             <Box 
                               className="comment-actions" 
@@ -945,27 +966,20 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         </Box>
 
         <Box sx={{ p: 2.5, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)' }}>
-          <TextField
-            fullWidth
-            placeholder="Write a comment..."
-            size="small"
+          <MentionInput
             value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSendComment();
-              }
-            }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton sx={{ color: tokens.brand.primary }} size="small" onClick={handleSendComment} disabled={addCommentMutation.isPending || !commentText.trim()}>
-                    <SendIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
+            onChange={setCommentText}
+            mentionableUsers={mentionableUsers}
+            placeholder="Write a comment... Use @ to mention someone"
+            disabled={addCommentMutation.isPending}
+            onSubmit={handleSendComment}
+            endAdornment={
+              <InputAdornment position="end">
+                <IconButton sx={{ color: tokens.brand.primary }} size="small" onClick={handleSendComment} disabled={addCommentMutation.isPending || !commentText.trim()}>
+                  <SendIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            }
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '24px',
@@ -1814,6 +1828,7 @@ export const KanbanBoardPage = () => {
         onClose={() => setDrawerTaskId(null)}
         isDarkMode={isDarkMode}
         allUsers={allUsers}
+        boardMembers={boardMembers}
         boardId={activeBoardId}
         actualBoard={actualBoard}
       />
