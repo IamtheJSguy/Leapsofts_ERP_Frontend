@@ -5,18 +5,35 @@ import type { Shift } from '@/types';
 export interface DailyKPIEntry {
   _id: string;
   userId: string;
-  kpiId?: { _id: string; name: string; description?: string; targetValue: number; timeFrame: string };
+  kpiId?: { _id: string; name: string; description?: string; targetValue: number; timeFrame: string; priority?: string };
   assignmentId?: any;
   assignmentItemId?: string;
   kanbanCardId?: { _id: string; title: string; dueDate?: string; kpiEndDate?: string; boardId?: string };
-  name: string;
+  kpiName?: string;
+  name?: string;
   description?: string;
   targetValue: number;
   priority?: string;
+  timeFrame?: string;
+  periodStart?: string;
+  periodEnd?: string;
   date: string;
   isCompleted: boolean;
   completedAt?: string;
   notes?: string;
+}
+
+export interface GroupedDailyKpis {
+  active: DailyKPIEntry[];
+  overdue: DailyKPIEntry[];
+  done: DailyKPIEntry[];
+  highPriority: DailyKPIEntry[];
+  counts: {
+    active: number;
+    overdue: number;
+    done: number;
+    highPriority: number;
+  };
 }
 
 export interface DailyKpiSummary {
@@ -24,6 +41,7 @@ export interface DailyKpiSummary {
   completed: number;
   pending: number;
   date: string;
+  counts?: GroupedDailyKpis['counts'];
 }
 
 export const shiftApi = {
@@ -48,7 +66,7 @@ export const shiftApi = {
     }>('/shifts/team-status'),
   
   // Daily KPIs
-  getDailyKpis: (params?: { date?: string }) => api.get<{ success: boolean; data: DailyKPIEntry[] }>('/shifts/daily-kpis', { params }),
+  getDailyKpis: (params?: { date?: string }) => api.get<{ success: boolean; data: GroupedDailyKpis }>('/shifts/daily-kpis', { params }),
   getDailyKpiSummary: (params?: { date?: string }) => api.get<{ success: boolean; data: DailyKpiSummary }>('/shifts/daily-kpis/summary', { params }),
   markDailyKpiComplete: (id: string, notes?: string) => api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/complete`, { notes }),
   markDailyKpiIncomplete: (id: string) => api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/incomplete`),
