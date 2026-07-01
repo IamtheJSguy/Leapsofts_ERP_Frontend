@@ -32,8 +32,19 @@ import { sortByPriority } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
 import type { KpiTimeframe } from '@/types';
 
-const isHighPriority = (priority?: string) =>
-  priority === 'urgent' || priority === 'high';
+const EMPTY_GROUPED = {
+  active: [],
+  overdue: [],
+  done: [],
+  highPriority: [],
+  counts: { active: 0, overdue: 0, done: 0, highPriority: 0 },
+};
+
+const formatDateRange = (start?: string, end?: string) => {
+  if (!start || !end) return null;
+  const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${fmt(start)} – ${fmt(end)}`;
+};
 
 export const UserDailyKpisView = () => {
   const theme = useTheme();
@@ -44,7 +55,7 @@ export const UserDailyKpisView = () => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
 
-  const { data: allKpis = [], isLoading } = useDailyKpis();
+  const { data: grouped = EMPTY_GROUPED, isLoading } = useDailyKpis();
   const { data: myRequests = [] } = useMyKPIChangeRequests();
   const { data: myAssignments = [] } = useMyAssignments();
 
@@ -82,42 +93,32 @@ export const UserDailyKpisView = () => {
     }
   };
 
-  const sortedKpis = useMemo(() => {
-    return [...allKpis].sort((a: any, b: any) => {
+  const filteredKpis = useMemo(() => {
+    const bucket =
+      filter === 'active' ? grouped.active
+      : filter === 'overdue' ? grouped.overdue
+      : filter === 'high' ? grouped.highPriority
+      : filter === 'done' ? grouped.done
+      : [];
+
+    return [...bucket].sort((a: any, b: any) => {
       if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
       return sortByPriority(a, b);
     });
-  }, [allKpis]);
-
-  const filteredKpis = useMemo(() => {
-    return sortedKpis.filter((kpi: any) => {
-      const isCompleted = kpi.isCompleted;
-      const dueDate = new Date(kpi.date || new Date().toISOString());
-      const isPast = dueDate.setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
-
-      if (filter === 'done') return isCompleted;
-      if (isCompleted) return false;
-      if (filter === 'overdue') return isPast;
-      if (filter === 'high') return isHighPriority(kpi.priority);
-      if (filter === 'active') return !isPast;
-      return true;
-    });
-  }, [sortedKpis, filter]);
-
-  const completedCount = allKpis.filter((k: any) => k.isCompleted).length;
+  }, [grouped, filter]);
 
   const filters = [
-    { id: 'active', label: 'Active', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0)).length },
-    { id: 'overdue', label: 'Overdue', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)).length },
-    { id: 'high', label: 'High priority', count: allKpis.filter((k: any) => !k.isCompleted && isHighPriority(k.priority)).length },
-    { id: 'done', label: 'Done', count: completedCount },
+    { id: 'active', label: 'Active', count: grouped.counts.active },
+    { id: 'overdue', label: 'Overdue', count: grouped.counts.overdue },
+    { id: 'high', label: 'High priority', count: grouped.counts.highPriority },
+    { id: 'done', label: 'Done', count: grouped.counts.done },
     { id: 'requests', label: 'Requests', count: myRequests.length },
   ];
 
   const openModifyModal = (kpi: any) => {
     const name = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'KPI';
     const target = kpi.targetValue ?? kpi.kpiId?.targetValue ?? 0;
-    const timeFrame = (kpi.kpiId?.timeFrame || 'daily') as KpiTimeframe;
+    const timeFrame = (kpi.timeFrame || kpi.kpiId?.timeFrame || 'daily') as KpiTimeframe;
     const priority = kpi.priority || kpi.kpiId?.priority || 'medium';
 
     if (kpi.assignmentId) {
@@ -241,8 +242,10 @@ export const UserDailyKpisView = () => {
           {filteredKpis.map((kpi: any) => {
             const isChecked = kpi.isCompleted;
             const isKpiLoading = loadingIds.has(kpi._id);
-            const isOverdue = new Date(kpi.date || new Date()).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0) && !isChecked;
+            const isOverdue = filter === 'overdue' || grouped.overdue.some((o: any) => o._id === kpi._id);
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
+            const periodRange = formatDateRange(kpi.periodStart, kpi.periodEnd);
+            const timeFrame = kpi.timeFrame || kpi.kpiId?.timeFrame;
 
             return (
               <Box
@@ -280,14 +283,22 @@ export const UserDailyKpisView = () => {
                         <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>Target: {kpi.targetValue}</Typography>
                       </Box>
                     )}
-                    {kpi.date && (
+                    {periodRange ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {periodRange}
+                          {timeFrame && timeFrame !== 'daily' ? ` · ${timeFrame}` : ''}
+                        </Typography>
+                      </Box>
+                    ) : kpi.date ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
                           {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Typography>
                       </Box>
-                    )}
+                    ) : null}
                   </Box>
                 </Box>
 
