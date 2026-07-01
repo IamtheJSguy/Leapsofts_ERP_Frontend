@@ -193,6 +193,7 @@ export const UserDashboard = () => {
       </Box>
 
       {/* 2. Secondary Widgets Grid */}
+      {false && (
       <Grid container spacing={3.5}>
         {/* Active Projects */}
         <Grid item xs={12} sm={6} md={3}>
@@ -404,6 +405,7 @@ export const UserDashboard = () => {
           </Box>
         </Grid>
       </Grid>
+      )}
 
       {/* 3. Team Analysis & Warnings Section */}
       <Box
