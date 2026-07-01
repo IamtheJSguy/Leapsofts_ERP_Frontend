@@ -39,6 +39,7 @@ export const useConversations = () =>
       const data = r.data.data || [];
       return data;
     }),
+    refetchInterval: 3000,
   });
 
 export const useMessages = (conversationId: string | null, params: Record<string, string> = {}) =>
@@ -46,6 +47,7 @@ export const useMessages = (conversationId: string | null, params: Record<string
     queryKey: ['messages', conversationId, params],
     queryFn: () => chatApi.getMessages(conversationId!, params).then((r) => r.data.data),
     enabled: !!conversationId,
+    refetchInterval: 3000,
   });
 
 export const useSendMessage = () => {
