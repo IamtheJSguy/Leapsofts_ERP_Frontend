@@ -315,14 +315,29 @@ export interface Shift {
   updatedAt: string;
 }
 
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType?: string;
+  webViewLink?: string;
+  iconLink?: string;
+  thumbnailLink?: string;
+  modifiedTime?: string;
+  size?: string;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
   sender: string | User;
   content: string;
-  type: 'text' | 'file' | 'drive_link';
+  type: 'text' | 'file' | 'drive_file';
   fileUrl?: string;
   driveFileId?: string;
+  driveFileName?: string;
+  driveMimeType?: string;
+  driveWebViewLink?: string;
+  driveIconLink?: string;
   createdAt: string;
 }
 
