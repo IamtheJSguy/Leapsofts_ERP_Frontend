@@ -200,6 +200,13 @@ export const NotificationPanel = () => {
                     if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
                       setNotificationPanelOpen(false);
                       navigate('/tasks?tab=change_requests');
+                    } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {
+                      setNotificationPanelOpen(false);
+                      navigate(`/meetings?meetingId=${(n as any).metadata.meetingId}`);
+                    } else if (n.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION && (n as any).metadata?.boardId) {
+                      setNotificationPanelOpen(false);
+                      const m = (n as any).metadata;
+                      navigate(`/board/${m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
                     }
                   }}
                   sx={{

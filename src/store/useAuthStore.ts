@@ -22,6 +22,24 @@ export const useAuthStore = create<AuthState>()(
           user: state.user ? { ...state.user, ...updates } : null,
         })),
     }),
-    { name: 'auth-storage', partialize: (state) => ({ user: state.user }) },
+    { name: 'auth-storage', partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }) },
   ),
 );
+
+// Cross-tab synchronization
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'auth-storage') {
+      try {
+        const newValue = event.newValue ? JSON.parse(event.newValue) : null;
+        if (newValue?.state?.user) {
+          useAuthStore.getState().setAuth(newValue.state.user);
+        } else {
+          useAuthStore.getState().clearAuth();
+        }
+      } catch (err) {
+        console.error('Failed to sync auth state across tabs', err);
+      }
+    }
+  });
+}

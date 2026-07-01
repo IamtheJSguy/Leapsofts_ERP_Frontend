@@ -8,8 +8,11 @@ import {
   CircularProgress,
   Paper,
   useTheme,
+  alpha,
+  Divider,
 } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/api/useSettings';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
@@ -18,7 +21,6 @@ export const SystemSettingsPanel = () => {
   const { data: settings, isLoading } = useSystemSettings();
   const updateSettings = useUpdateSystemSettings();
   const addToast = useUIStore((s) => s.addToast);
-  const [sheetUrl, setSheetUrl] = useState('');
   const [retentionMonths, setRetentionMonths] = useState('12');
 
   const theme = useTheme();
@@ -26,7 +28,6 @@ export const SystemSettingsPanel = () => {
 
   useEffect(() => {
     if (settings) {
-      setSheetUrl(settings.referenceSheetUrl || '');
       setRetentionMonths(String(settings.chatRetentionMonths ?? 12));
     }
   }, [settings]);
@@ -42,7 +43,6 @@ export const SystemSettingsPanel = () => {
   const handleSave = () => {
     updateSettings.mutate(
       {
-        referenceSheetUrl: sheetUrl,
         chatRetentionMonths: Number(retentionMonths) || 12,
       },
       {
@@ -52,164 +52,165 @@ export const SystemSettingsPanel = () => {
     );
   };
 
-  const textFieldSx = {
-    mb: 1.5,
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '16px',
-      bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#F9F8F7',
-      fontSize: '0.88rem',
-      transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-      '& fieldset': {
-        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-      },
-      '&:hover fieldset': {
-        borderColor: tokens.brand.primaryMuted,
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: tokens.brand.primary,
-        borderWidth: '1px',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: '0.88rem',
-      color: 'text.secondary',
-      '&.Mui-focused': {
-        color: tokens.brand.primary,
-      },
-    },
-  };
-
   return (
     <Paper
       elevation={0}
       sx={{
-        p: 4,
-        borderRadius: '24px',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : tokens.surface.border}`,
-        bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.01)',
+        p: { xs: 3, md: 5 },
+        borderRadius: '28px',
+        border: `1px solid ${isDarkMode ? alpha('#fff', 0.05) : alpha(tokens.brand.primary, 0.05)}`,
+        bgcolor: isDarkMode ? alpha('#121212', 0.6) : '#ffffff',
+        backdropFilter: 'blur(20px)',
+        boxShadow: isDarkMode 
+          ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+          : '0 12px 40px rgba(93, 26, 137, 0.04)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <Typography
-        variant="h6"
+      {/* Background gradient decorative blob */}
+      <Box 
         sx={{
-          fontWeight: 800,
-          letterSpacing: '-0.015em',
-          mb: 1,
-          color: isDarkMode ? '#fff' : tokens.text.primary,
+          position: 'absolute',
+          top: -100,
+          right: -100,
+          width: 300,
+          height: 300,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${alpha(tokens.brand.primary, 0.12)} 0%, transparent 70%)`,
+          zIndex: 0,
+          pointerEvents: 'none',
         }}
-      >
-        System Configuration
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          color: 'text.secondary',
-          mb: 4,
-          fontSize: '0.86rem',
-        }}
-      >
-        Maintain master data synchronization links, security policy durations, and sync tasks.
-      </Typography>
-
-      {/* Info Alert Box for Google Sheet Synchronization */}
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          p: 2.5,
-          mb: 4,
-          borderRadius: '16px',
-          bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.08)' : 'rgba(93, 26, 137, 0.03)',
-          border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.1)'}`,
-        }}
-      >
-        <InfoOutlinedIcon sx={{ color: isDarkMode ? tokens.brand.primaryMuted : tokens.brand.primary, mt: 0.25, fontSize: 20 }} />
-        <Box>
-          <Typography
-            sx={{
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              color: isDarkMode ? '#fff' : tokens.text.primary,
-              mb: 0.5,
-            }}
-          >
-            Twice-Daily Automated Sync
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '0.78rem',
-              color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
-              lineHeight: 1.5,
-            }}
-          >
-            The sales automation engine pulls representative targets and database structures from your connected Google Sheet twice daily (06:00 and 18:00 UTC). Make sure the sheet permissions are set to public or accessible via link.
-          </Typography>
-        </Box>
-      </Box>
+      />
       
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <TextField
-            label="Reference Sheet URL"
-            fullWidth
-            value={sheetUrl}
-            onChange={(e) => setSheetUrl(e.target.value)}
-            helperText="Google Sheets URL for representative data and operations templates"
-            FormHelperTextProps={{
-              sx: {
-                color: isDarkMode ? 'rgba(255,255,255,0.45)' : 'text.secondary',
-                mt: 1,
-                fontSize: '0.74rem',
-                fontWeight: 500,
-              }
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, mb: 1.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 52,
+              height: 52,
+              borderRadius: '16px',
+              bgcolor: isDarkMode ? alpha(tokens.brand.primary, 0.15) : alpha(tokens.brand.primary, 0.08),
+              color: tokens.brand.primary,
+              boxShadow: `inset 0 2px 10px ${alpha(tokens.brand.primary, 0.1)}`,
             }}
-            sx={textFieldSx}
-          />
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 26 }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: isDarkMode ? '#fff' : tokens.text.primary,
+                mb: 0.25,
+              }}
+            >
+              System Configuration
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            >
+              Manage security policies and data retention settings.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 4, borderColor: isDarkMode ? alpha('#fff', 0.05) : alpha('#000', 0.05) }} />
+
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
+                Chat Retention Duration
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
+                Set the number of months to keep chat history across the application before it is automatically deleted.
+              </Typography>
+              
+              <TextField
+                label="Months"
+                type="number"
+                fullWidth
+                value={retentionMonths}
+                onChange={(e) => setRetentionMonths(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '16px',
+                    bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02),
+                    fontSize: '0.95rem',
+                    transition: 'all 0.2s ease',
+                    '& fieldset': {
+                      borderColor: 'transparent',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(tokens.brand.primary, 0.3),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: tokens.brand.primary,
+                      borderWidth: '2px',
+                    },
+                    '&.Mui-focused': {
+                      bgcolor: isDarkMode ? alpha(tokens.brand.primary, 0.05) : '#fff',
+                      boxShadow: `0 4px 20px ${alpha(tokens.brand.primary, 0.1)}`,
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'text.secondary',
+                    '&.Mui-focused': {
+                      color: tokens.brand.primary,
+                    }
+                  }
+                }}
+              />
+            </Box>
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Chat Retention (months)"
-            type="number"
-            fullWidth
-            value={retentionMonths}
-            onChange={(e) => setRetentionMonths(e.target.value)}
-            sx={textFieldSx}
-          />
-        </Grid>
-        <Grid item xs={12} sx={{ mt: 1 }}>
+
+        <Box sx={{ mt: 5, display: 'flex', justifyContent: 'flex-start' }}>
           <Button
             variant="contained"
             onClick={handleSave}
             disabled={updateSettings.isPending}
+            startIcon={updateSettings.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveOutlinedIcon />}
             sx={{
-              bgcolor: '#d95236',
+              bgcolor: tokens.brand.primary,
               color: '#fff',
               fontWeight: 700,
-              fontSize: '0.86rem',
+              fontSize: '0.92rem',
               px: 4.5,
-              py: 1.25,
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(217, 82, 54, 0.2)',
+              py: 1.5,
+              borderRadius: '16px',
               textTransform: 'none',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: `0 8px 24px ${alpha(tokens.brand.primary, 0.25)}`,
+              transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: '#c7452b',
-                boxShadow: '0 6px 16px rgba(217, 82, 54, 0.3)',
+                bgcolor: tokens.brand.primaryDark,
+                transform: 'translateY(-2px)',
+                boxShadow: `0 12px 30px ${alpha(tokens.brand.primary, 0.35)}`,
               },
               '&:active': {
-                transform: 'translateY(1px)',
+                transform: 'translateY(0)',
               },
               '&.Mui-disabled': {
-                bgcolor: 'rgba(217, 82, 54, 0.3)',
-                color: 'rgba(255, 255, 255, 0.5)',
+                bgcolor: alpha(tokens.brand.primary, 0.5),
+                color: alpha('#fff', 0.7),
               }
             }}
           >
-            {updateSettings.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Save Settings'}
+            {updateSettings.isPending ? 'Saving...' : 'Save Configuration'}
           </Button>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Paper>
   );
 };

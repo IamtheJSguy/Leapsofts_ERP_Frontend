@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box, Typography, Button, useTheme, IconButton, InputAdornment,
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
@@ -6,7 +6,7 @@ import {
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
   InputLabel, Select, OutlinedInput, Tooltip, Divider
 } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -314,6 +314,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [confirmPriorityOpen, setConfirmPriorityOpen] = useState(false);
   const [pendingPriority, setPendingPriority] = useState<string | null>(null);
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    if (open && searchParams.get('comment')) {
+      setActiveTab('comments');
+    }
+  }, [open, searchParams]);
 
   const startEditingDesc = () => {
     setEditDesc(task.description || '');
@@ -1110,6 +1117,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
 export const KanbanBoardPage = () => {
   const { projectId, boardId } = useParams<{ projectId: string; boardId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeBoardId = boardId || projectId;
   const navigate = useNavigate();
   const theme = useTheme();
@@ -1226,6 +1234,15 @@ export const KanbanBoardPage = () => {
 
     return tList.sort((a, b) => a.position - b.position);
   }, [actualBoard, cardsList, allUsers]);
+
+  useEffect(() => {
+    const cardId = searchParams.get('card');
+    if (cardId && tasks.length > 0) {
+      if (drawerTaskId !== cardId) {
+        setDrawerTaskId(cardId);
+      }
+    }
+  }, [searchParams, tasks, drawerTaskId]);
 
   // Filter tasks based on searchQuery, priority, and assignee
   const filteredTasks = useMemo(() => {
@@ -1904,7 +1921,14 @@ export const KanbanBoardPage = () => {
       <TaskDetailDrawer
         task={drawerTask}
         open={Boolean(drawerTask)}
-        onClose={() => setDrawerTaskId(null)}
+        onClose={() => {
+          setDrawerTaskId(null);
+          setSearchParams((prev) => {
+            prev.delete('card');
+            prev.delete('comment');
+            return prev;
+          });
+        }}
         isDarkMode={isDarkMode}
         allUsers={allUsers}
         boardMembers={boardMembers}

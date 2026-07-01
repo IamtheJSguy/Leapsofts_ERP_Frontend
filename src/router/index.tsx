@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
+import { GuestRoute } from './GuestRoute';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PageLoader } from '@/components/common/PageLoader';
 import { ROLES } from '@/lib/constants';
@@ -34,7 +35,11 @@ const wrap = (element: React.ReactNode) => (
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: wrap(<LoginPage />),
+    element: wrap(
+      <GuestRoute>
+        <LoginPage />
+      </GuestRoute>
+    ),
   },
   {
     path: '/',
