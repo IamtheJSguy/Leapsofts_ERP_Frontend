@@ -12,6 +12,10 @@ const chatApi = {
     type?: string;
     fileUrl?: string;
     driveFileId?: string;
+    driveFileName?: string;
+    driveMimeType?: string;
+    driveWebViewLink?: string;
+    driveIconLink?: string;
   }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
   createConversation: (data: { participantId?: string; isGroup?: boolean; name?: string; description?: string; participantIds?: string[] }) => {
     if (data.isGroup) {

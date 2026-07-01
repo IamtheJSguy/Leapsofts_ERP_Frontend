@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Box,
   TextField,
@@ -11,12 +11,6 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Button,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SearchIcon from '@mui/icons-material/Search';
@@ -34,9 +28,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
 import { GroupSettingsModal } from './GroupSettingsModal';
+import { DriveFilePicker } from './DriveFilePicker';
 import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
-import { useMemo } from 'react';
 
 interface ChatWindowProps {
   onSearchOpen?: () => void;
@@ -66,9 +60,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [attachAnchorEl, setAttachAnchorEl] = useState<null | HTMLElement>(null);
   const isAttachMenuOpen = Boolean(attachAnchorEl);
 
-  // Drive Dialog State
-  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
-  const [driveLink, setDriveLink] = useState('');
+  // Drive File Picker State
+  const [drivePickerOpen, setDrivePickerOpen] = useState(false);
 
   // Group Settings State
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -480,7 +473,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               </ListItemIcon>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>Media</Typography>
             </MenuItem>
-            <MenuItem onClick={() => { setAttachAnchorEl(null); setDriveDialogOpen(true); }} sx={{ py: 1.5, px: 2 }}>
+            <MenuItem onClick={() => { setAttachAnchorEl(null); setDrivePickerOpen(true); }} sx={{ py: 1.5, px: 2 }}>
               <ListItemIcon>
                 <AddToDriveIcon fontSize="small" sx={{ color: '#0F9D58' }} />
               </ListItemIcon>
@@ -557,71 +550,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         </Box>
       </Box>
 
-      {/* Google Drive Link Dialog */}
-      <Dialog
-        open={driveDialogOpen}
-        onClose={() => setDriveDialogOpen(false)}
-        PaperProps={{
-          sx: {
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? '#1e1b24' : '#fff',
-            backgroundImage: 'none',
-            boxShadow: tokens.shadow.card,
-            width: '100%',
-            maxWidth: 400,
-          }
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 800 }}>Connect to Drive</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Enter the Google Drive link to attach it to this conversation.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            fullWidth
-            placeholder="https://drive.google.com/..."
-            value={driveLink}
-            onChange={(e) => setDriveLink(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-                bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button
-            onClick={() => { setDriveDialogOpen(false); setDriveLink(''); }}
-            sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              if (driveLink) {
-                // Pre-fill chat with link or immediately send it
-                setText(prev => prev ? `${prev} ${driveLink}` : driveLink);
-                setDriveDialogOpen(false);
-                setDriveLink('');
-              }
-            }}
-            disabled={!driveLink.trim()}
-            variant="contained"
-            sx={{
-              bgcolor: tokens.brand.primary,
-              borderRadius: '12px',
-              fontWeight: 700,
-              textTransform: 'none',
-              boxShadow: 'none',
-              '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' }
-            }}
-          >
-            Connect
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Google Drive File Picker */}
+      <DriveFilePicker open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
 
       {/* Group Settings Modal */}
       {conversations.find((c) => c._id === activeConversationId) && (
