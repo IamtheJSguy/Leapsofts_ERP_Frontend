@@ -51,6 +51,7 @@ export const UserDailyKpisView = () => {
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done' | 'requests'>('active');
+  const [expandedKpiId, setExpandedKpiId] = useState<string | null>(null);
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
@@ -250,31 +251,44 @@ export const UserDailyKpisView = () => {
             return (
               <Box
                 key={kpi._id}
-                onClick={() => !isKpiLoading && handleToggle(kpi._id, isChecked)}
                 sx={{
-                  display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 3 }, p: 1.75, cursor: 'pointer', borderRadius: '16px',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  display: 'flex', flexDirection: 'column', borderRadius: '20px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  '&:hover': { borderColor: tokens.brand.primary },
+                  boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.02)',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    borderColor: expandedKpiId === kpi._id ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'),
+                    transform: expandedKpiId === kpi._id ? 'none' : 'translateY(-2px)',
+                    boxShadow: isDarkMode ? '0 8px 30px rgba(0,0,0,0.3)' : '0 8px 30px rgba(0,0,0,0.04)'
+                  },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isKpiLoading ? (
-                    <CircularProgress size={24} />
-                  ) : isChecked ? (
-                    <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success }} />
-                  ) : (
-                    <RadioButtonUncheckedIcon sx={{ fontSize: 26, color: isOverdue ? tokens.semantic.error : 'text.disabled' }} />
-                  )}
-                </Box>
+                {/* Summary Section */}
+                <Box
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2.5 }, p: 2, pb: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isKpiLoading ? (
+                      <CircularProgress size={24} />
+                    ) : isChecked ? (
+                      <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success }} />
+                    ) : (
+                      <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'rgba(255, 127, 17, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                         <TrackChangesIcon sx={{ fontSize: 20, color: tokens.brand.primary }} />
+                      </Box>
+                    )}
+                  </Box>
 
-                <Box sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : 'text.primary' }}>
+                  <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
                       {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
                     </Typography>
                     <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
-                    {hasPending(kpi) && <Chip label="Pending review" size="small" color="warning" />}
+                    {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
                     {kpi.targetValue !== undefined && (
@@ -300,15 +314,69 @@ export const UserDailyKpisView = () => {
                       </Box>
                     ) : null}
                   </Box>
-                </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
-                  {isOverdue && <Chip icon={<WarningRoundedIcon />} label="Overdue" size="small" color="error" variant="outlined" />}
-                  {canRequestChange && !isChecked && (
-                    <IconButton size="small" onClick={(e) => openMenu(e, kpi)} title="KPI options">
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                  )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
+                    {isOverdue && <Chip icon={<WarningRoundedIcon />} label="Overdue" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(239, 68, 68, 0.1)', color: tokens.semantic.error, border: 'none' }} />}
+                    {canRequestChange && !isChecked && (
+                      <IconButton size="small" onClick={(e) => openMenu(e, kpi)} sx={{ color: tokens.text.muted, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}>
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Box>
+                {/* Details Section */}
+                <Box
+                  sx={{
+                    bgcolor: 'transparent'
+                  }}
+                >
+                  <Box sx={{ p: 2, px: { xs: 2, sm: 8.5 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
+                    
+                    <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                      {kpi.targetValue !== undefined && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target</Typography>
+                          <Typography sx={{ fontWeight: 800, color: tokens.brand.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <TrackChangesIcon sx={{ fontSize: 16 }} /> {kpi.targetValue}
+                          </Typography>
+                        </Box>
+                      )}
+                      {kpi.date && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deadline</Typography>
+                          <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <EventNoteIcon sx={{ fontSize: 16 }} /> {new Date(kpi.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+
+                    <Button
+                      variant={isChecked ? "outlined" : "contained"}
+                      color={isChecked ? "inherit" : "primary"}
+                      disableElevation
+                      startIcon={isChecked ? <RadioButtonUncheckedIcon /> : <CheckCircleIcon />}
+                      disabled={isKpiLoading}
+                      onClick={() => handleToggle(kpi._id, isChecked)}
+                      sx={{
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        px: 3,
+                        py: 1,
+                        background: isChecked ? 'transparent' : `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
+                        borderColor: isChecked ? tokens.surface.border : 'transparent',
+                        color: isChecked ? tokens.text.secondary : '#fff',
+                        boxShadow: isChecked ? 'none' : '0 4px 14px rgba(255, 127, 17, 0.25)',
+                        '&:hover': {
+                          background: isChecked ? 'rgba(0,0,0,0.03)' : `linear-gradient(135deg, ${tokens.brand.accentDark} 0%, ${tokens.brand.accent} 100%)`,
+                          boxShadow: isChecked ? 'none' : '0 6px 20px rgba(255, 127, 17, 0.35)',
+                        }
+                      }}
+                    >
+                      {isChecked ? 'Mark as Pending' : 'Mark as Done'}
+                    </Button>
+                  </Box>
                 </Box>
               </Box>
             );

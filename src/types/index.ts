@@ -32,7 +32,11 @@ export type NotificationType =
   | 'meeting_reminder'
   | 'data_sync'
   | 'approval_required'
-  | 'system';
+  | 'system'
+  | 'shift_reminder'
+  | 'kpi_end_of_shift'
+  | 'sheet_update_reminder'
+  | 'kanban_comment_mention';
 
 export interface User {
   _id: string;

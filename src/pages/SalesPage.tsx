@@ -23,6 +23,7 @@ import {
   TablePagination,
   useTheme,
   alpha,
+  Autocomplete,
   Paper,
   Dialog,
   DialogTitle,
@@ -45,6 +46,7 @@ import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads, useQualifyLead } from '@/hooks/api/useLeads';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -55,17 +57,30 @@ import ForumIcon from '@mui/icons-material/Forum';
 import EventIcon from '@mui/icons-material/Event';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { useUpdateMe, useMe } from '@/hooks/api/useUsers';
+import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
+  const { isAdmin } = usePermissions();
   const syncMySheet = useSyncMySheet();
   const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+
+  const handleAdminSync = () => {
+    syncMySheet.mutate(undefined, {
+      onSuccess: () => {
+        addToast({ message: 'Sync triggered successfully.', severity: 'success' });
+      },
+      onError: () => {
+        addToast({ message: 'Sync failed.', severity: 'error' });
+      }
+    });
+  };
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadIdToQualify(leadId);
@@ -229,8 +244,11 @@ export const SalesPage = () => {
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIndustry, setSelectedIndustry] = useState('Industry (ICP)');
+  const [selectedUserId, setSelectedUserId] = useState('All Users');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
+
+  const { data: usersData } = useUsers();
+  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -244,21 +262,24 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedIndustry, selectedStatus]);
+  }, [debouncedSearch, selectedUserId, selectedStatus]);
 
   const leadFilters = useMemo(() => ({
     page,
     limit: rowsPerPage,
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    ...(selectedIndustry !== 'Industry (ICP)' && selectedIndustry !== 'All Industries'
-      ? { industry: selectedIndustry }
-      : {}),
+    ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
     ...(selectedStatus !== 'All statuses' ? { connectionStatus: selectedStatus } : {}),
-  }), [page, rowsPerPage, debouncedSearch, selectedIndustry, selectedStatus]);
+  }), [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
-  const prospects = leadsResponse?.data ?? [];
-  const totalProspects = leadsResponse?.meta.total ?? 0;
+  let prospects = leadsResponse?.data ?? [];
+  if (selectedUserId !== 'All Users') {
+    prospects = prospects.filter((p: any) => 
+      p.assignedTo === selectedUserId || p.assignedTo?._id === selectedUserId
+    );
+  }
+  const totalProspects = selectedUserId !== 'All Users' ? prospects.length : (leadsResponse?.meta.total ?? 0);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats();
 
   // Google Sheet Dialog and Sync Loading state
@@ -715,20 +736,66 @@ export const SalesPage = () => {
 
 
 
-            {/* Industry ICP Select Dropdown */}
-            <FormControl sx={filterSelectSx}>
-              <Select
-                value={selectedIndustry}
-                onChange={(e) => setSelectedIndustry(e.target.value)}
-                input={<OutlinedInput />}
-              >
-                <MenuItem value="Industry (ICP)">Industry (ICP)</MenuItem>
-                <MenuItem value="All Industries">All Industries</MenuItem>
-                <MenuItem value="Software">Software</MenuItem>
-                <MenuItem value="Design">Design</MenuItem>
-                <MenuItem value="Marketing">Marketing</MenuItem>
-              </Select>
-            </FormControl>
+            {/* User Search Autocomplete - Admin Only */}
+            {isAdmin && (
+              <Autocomplete
+                options={[{ _id: 'All Users', label: 'All Users' }, ...usersList.map((u: any) => ({ _id: u._id, label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email }))]}
+                getOptionLabel={(option) => option.label || ''}
+                value={
+                  selectedUserId === 'All Users' 
+                    ? { _id: 'All Users', label: 'All Users' } 
+                    : { _id: selectedUserId, label: (() => {
+                        const user = usersList.find((u: any) => u._id === selectedUserId);
+                        return user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown User';
+                      })() }
+                }
+                onChange={(e, newValue) => setSelectedUserId(newValue ? newValue._id : 'All Users')}
+                disableClearable
+                sx={{
+                  flexGrow: 1,
+                  minWidth: { xs: '100%', sm: 220 },
+                  maxWidth: { sm: 260 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '20px',
+                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                    height: 42,
+                    p: '0 12px',
+                    fontSize: '0.84rem',
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                  },
+                  '& .MuiAutocomplete-input': {
+                    p: '0 !important',
+                  },
+                  '& .MuiAutocomplete-endAdornment': {
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    placeholder="Search user..."
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <PersonOutlineIcon sx={{ color: 'text.secondary', fontSize: 18, mr: 0.5, ml: 0.5 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+              />
+            )}
 
             {/* Status Select Dropdown */}
             <FormControl sx={filterSelectSx}>
@@ -748,8 +815,14 @@ export const SalesPage = () => {
             {/* Add Prospect Action Button */}
             <Button
               variant="contained"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setIsLinkDialogOpen(true)}
+              startIcon={isAdmin ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
+              onClick={() => {
+                if (isAdmin) {
+                  handleAdminSync();
+                } else {
+                  setIsLinkDialogOpen(true);
+                }
+              }}
               sx={{
                 bgcolor: tokens.brand.primary,
                 color: '#fff',
@@ -767,7 +840,7 @@ export const SalesPage = () => {
                 },
               }}
             >
-              Connect and sync
+              {isAdmin ? 'Sync Now' : 'Connect and sync'}
             </Button>
           </Box>
 
