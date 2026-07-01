@@ -413,69 +413,7 @@ const LoginPage = () => {
 
 
 
-          {/* OAuth Single Sign On */}
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.68 1.54 14.98 1 12 1 7.35 1 3.37 3.68 1.4 7.57l3.79 2.94C6.1 7.6 8.84 5.04 12 5.04z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.76 2.91c2.2-2.03 3.67-5.02 3.67-8.64z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.19 14.77c-.24-.73-.38-1.52-.38-2.33s.14-1.6.38-2.33L1.4 7.17C.51 8.95 0 10.92 0 13s.51 4.05 1.4 5.83l3.79-3.06z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.76-2.91c-1.11.75-2.53 1.2-4.2 1.2-3.16 0-5.9-2.56-6.81-5.47L1.4 15.97C3.37 19.86 7.35 23 12 23z"
-                />
-              </svg>
-            }
-            onClick={() => alert("Google SSO is configured for enterprise domains. Please contact admin.")}
-            sx={{
-              py: 1.2,
-              borderRadius: 2.5,
-              borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
-              color: isDarkMode ? '#fff' : tokens.text.primary,
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'transparent',
-              fontWeight: 600,
-              fontSize: { xs: '0.8rem', sm: '0.88rem' },
-              textTransform: 'none',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': {
-                borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                transform: 'translateY(-0.5px)',
-              },
-            }}
-          >
-            Sign in with Google
-          </Button>
-
-          {/* Separator */}
-          <Box sx={{ display: 'flex', alignItems: 'center', my: 3 }}>
-            <Box sx={{ flex: 1, height: '1px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
-            <Typography
-              variant="caption"
-              sx={{
-                px: 2,
-                color: isDarkMode ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.38)',
-                fontWeight: 500,
-                fontSize: '0.75rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
-              or continue with email
-            </Typography>
-            <Box sx={{ flex: 1, height: '1px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
-          </Box>
+          {/* Authentication Form */}
 
           <Box
             component="form"

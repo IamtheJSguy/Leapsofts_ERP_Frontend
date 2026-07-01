@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { 
-  Box, Typography, Button, useTheme, IconButton, InputAdornment, 
-  TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Drawer, CircularProgress, 
-  Menu, MenuItem, ListItemIcon, ListItemText, FormControl, 
+import {
+  Box, Typography, Button, useTheme, IconButton, InputAdornment,
+  TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
+  DialogContent, DialogActions, Drawer, CircularProgress,
+  Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
   InputLabel, Select, OutlinedInput, Tooltip, Divider
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -40,7 +40,7 @@ import {
   verticalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { 
+import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
@@ -56,10 +56,10 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
   return (
-    <Dialog 
-      open={open} 
-      onClose={onCancel} 
-      maxWidth="xs" 
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      maxWidth="xs"
       fullWidth
       PaperProps={{
         sx: {
@@ -77,24 +77,24 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, gap: 1 }}>
-        <Button 
-          onClick={onCancel} 
+        <Button
+          onClick={onCancel}
           sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 2.5 }}
         >
           {cancelText}
         </Button>
-        <Button 
-          onClick={onConfirm} 
-          variant="contained" 
+        <Button
+          onClick={onConfirm}
+          variant="contained"
           disableElevation
-          sx={{ 
-            bgcolor: '#ef4444', 
+          sx={{
+            bgcolor: '#ef4444',
             color: '#fff',
-            fontWeight: 700, 
-            borderRadius: '24px', 
+            fontWeight: 700,
+            borderRadius: '24px',
             textTransform: 'none',
             px: 3,
-            '&:hover': { bgcolor: '#dc2626' } 
+            '&:hover': { bgcolor: '#dc2626' }
           }}
         >
           {confirmText}
@@ -105,9 +105,9 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
 };
 
 const PRIORITY_CONFIG = {
-  low:    { label: 'Low',    color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  dot: '#3b82f6', border: 'rgba(96,165,250,0.2)' },
+  low: { label: 'Low', color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', dot: '#3b82f6', border: 'rgba(96,165,250,0.2)' },
   medium: { label: 'Medium', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', dot: '#d97706', border: 'rgba(251,191,36,0.2)' },
-  high:   { label: 'High',   color: '#fb923c', bg: 'rgba(251,146,60,0.08)', dot: '#ea580c', border: 'rgba(251,146,60,0.2)' },
+  high: { label: 'High', color: '#fb923c', bg: 'rgba(251,146,60,0.08)', dot: '#ea580c', border: 'rgba(251,146,60,0.2)' },
   urgent: { label: 'Urgent', color: '#f87171', bg: 'rgba(248,113,113,0.08)', dot: '#dc2626', border: 'rgba(248,113,113,0.2)' },
 };
 
@@ -123,9 +123,9 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
     const date = new Date(d);
     const now = new Date();
     // Normalize times for accurate calendar comparison
-    now.setHours(0,0,0,0);
+    now.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
-    compareDate.setHours(0,0,0,0);
+    compareDate.setHours(0, 0, 0, 0);
     const isPast = compareDate < now;
     return { label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), isPast };
   };
@@ -138,16 +138,16 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
         borderRadius: '16px',
         p: 2.25,
         cursor: 'pointer',
-        boxShadow: isDarkMode 
-          ? '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)' 
+        boxShadow: isDarkMode
+          ? '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)'
           : '0 4px 16px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.01)',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
         position: 'relative',
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: isDarkMode 
-            ? `0 12px 24px rgba(0,0,0,0.45), 0 0 1px ${priority.color}` 
+          boxShadow: isDarkMode
+            ? `0 12px 24px rgba(0,0,0,0.45), 0 0 1px ${priority.color}`
             : `0 12px 24px rgba(0,0,0,0.04), 0 0 1px ${priority.color}`,
           borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
         }
@@ -157,35 +157,35 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.75, gap: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
           {companyName ? (
-            <Chip 
-              label={companyName} 
-              size="small" 
-              sx={{ 
-                bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)', 
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary, 
-                fontWeight: 750, 
-                fontSize: '0.68rem', 
+            <Chip
+              label={companyName}
+              size="small"
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
+                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                fontWeight: 750,
+                fontSize: '0.68rem',
                 height: 22,
                 border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.15)' : 'rgba(93,26,137,0.1)'}`
-              }} 
+              }}
             />
           ) : (
-            <Chip 
-              label="Custom Task" 
-              size="small" 
-              sx={{ 
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', 
-                color: 'text.secondary', 
-                fontWeight: 700, 
-                fontSize: '0.68rem', 
-                height: 22 
-              }} 
+            <Chip
+              label="Custom Task"
+              size="small"
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                color: 'text.secondary',
+                fontWeight: 700,
+                fontSize: '0.68rem',
+                height: 22
+              }}
             />
           )}
         </Box>
 
         {/* Priority Badge */}
-        <Chip 
+        <Chip
           label={priority.label}
           size="small"
           sx={{
@@ -233,8 +233,8 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
                   height: 20,
                   fontSize: '0.65rem',
                   fontWeight: 700,
-                  bgcolor: isPast 
-                    ? 'rgba(239,68,68,0.1)' 
+                  bgcolor: isPast
+                    ? 'rgba(239,68,68,0.1)'
                     : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
                   color: isPast ? '#f87171' : 'text.secondary',
                   border: isPast ? '1px solid rgba(239,68,68,0.15)' : 'none',
@@ -302,7 +302,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
-  
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
 
@@ -378,7 +378,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const lead = task.lead;
   const rawCard = task.rawCard;
   const commentsList = rawCard?.comments || [];
-  const assignedToIds = Array.isArray(rawCard?.assignedTo) 
+  const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
     : [];
 
@@ -477,11 +477,11 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const handlePriorityClick = (e: any) => setPriorityMenuAnchor(e.currentTarget);
   const handlePriorityClose = () => setPriorityMenuAnchor(null);
-  
+
   const handlePriorityChange = (newPriority: string) => {
     if (newPriority !== (task.rawCard?.priority || 'medium')) {
-       setPendingPriority(newPriority);
-       setConfirmPriorityOpen(true);
+      setPendingPriority(newPriority);
+      setConfirmPriorityOpen(true);
     }
     handlePriorityClose();
   };
@@ -573,40 +573,40 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                       label={cfg.label}
                       size="small"
                       onClick={isAdminOrOwner ? handlePriorityClick : undefined}
-                      sx={{ 
-                        bgcolor: cfg.bg, color: cfg.color, fontWeight: 750, fontSize: '0.7rem', height: 24, 
+                      sx={{
+                        bgcolor: cfg.bg, color: cfg.color, fontWeight: 750, fontSize: '0.7rem', height: 24,
                         border: `1px solid ${cfg.color}30`, cursor: isAdminOrOwner ? 'pointer' : 'default', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': isAdminOrOwner ? { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } : {} 
+                        '&:hover': isAdminOrOwner ? { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } : {}
                       }}
                     />
                     {isAdminOrOwner && (
                       <Menu
                         anchorEl={priorityMenuAnchor}
                         open={Boolean(priorityMenuAnchor)}
-                      onClose={handlePriorityClose}
-                      PaperProps={{
-                        sx: {
-                          mt: 1, borderRadius: '16px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.12)', bgcolor: isDarkMode ? '#1e1b24' : '#fff', minWidth: 160
-                        }
-                      }}
-                    >
-                      {Object.entries(PRIORITY_CONFIG).map(([key, item]: any) => (
-                        <MenuItem 
-                          key={key} 
-                          onClick={() => handlePriorityChange(key)} 
-                          sx={{ 
-                            display: 'flex', alignItems: 'center', gap: 1.5, py: 1, px: 2, 
-                            borderRadius: '8px', mx: 1, my: 0.25, transition: 'all 0.15s',
-                            bgcolor: key === p ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'transparent',
-                            '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }
-                          }}
-                        >
-                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
-                          <Typography variant="body2" sx={{ fontWeight: 650 }}>{item.label}</Typography>
-                        </MenuItem>
-                      ))}
-                    </Menu>
+                        onClose={handlePriorityClose}
+                        PaperProps={{
+                          sx: {
+                            mt: 1, borderRadius: '16px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', bgcolor: isDarkMode ? '#1e1b24' : '#fff', minWidth: 160
+                          }
+                        }}
+                      >
+                        {Object.entries(PRIORITY_CONFIG).map(([key, item]: any) => (
+                          <MenuItem
+                            key={key}
+                            onClick={() => handlePriorityChange(key)}
+                            sx={{
+                              display: 'flex', alignItems: 'center', gap: 1.5, py: 1, px: 2,
+                              borderRadius: '8px', mx: 1, my: 0.25, transition: 'all 0.15s',
+                              bgcolor: key === p ? (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)') : 'transparent',
+                              '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }
+                            }}
+                          >
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+                            <Typography variant="body2" sx={{ fontWeight: 650 }}>{item.label}</Typography>
+                          </MenuItem>
+                        ))}
+                      </Menu>
                     )}
                   </Box>
                 );
@@ -620,22 +620,22 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 onChange={(e) => setEditTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSubmit(); }}
                 autoFocus
-                sx={{ 
-                  '& .MuiOutlinedInput-root': { 
+                sx={{
+                  '& .MuiOutlinedInput-root': {
                     fontWeight: 800,
                     pr: 0.5,
                     borderRadius: '12px'
-                  } 
+                  }
                 }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         onClick={handleTitleSubmit}
-                        sx={{ 
-                          bgcolor: tokens.brand.primary, color: '#fff', 
-                          '&:hover': { bgcolor: tokens.brand.primaryDark }, 
+                        sx={{
+                          bgcolor: tokens.brand.primary, color: '#fff',
+                          '&:hover': { bgcolor: tokens.brand.primaryDark },
                           width: 28, height: 28, borderRadius: '8px',
                           boxShadow: '0 2px 8px rgba(93, 26, 137, 0.3)'
                         }}
@@ -648,10 +648,10 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               />
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography 
-                  variant="h5" 
-                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3, cursor: isAdminOrOwner ? 'pointer' : 'default' }} 
-                  onClick={() => { if(isAdminOrOwner) { setEditTitle(task.title); setIsEditingTitle(true); } }}
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3, cursor: isAdminOrOwner ? 'pointer' : 'default' }}
+                  onClick={() => { if (isAdminOrOwner) { setEditTitle(task.title); setIsEditingTitle(true); } }}
                   noWrap
                 >
                   {task.title}
@@ -700,17 +700,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   textTransform: 'none',
                   fontWeight: 700,
                   fontSize: '0.85rem',
-                  color: activeTab === tab.id 
-                    ? (isDarkMode ? '#fff' : tokens.brand.primary) 
+                  color: activeTab === tab.id
+                    ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
-                  bgcolor: activeTab === tab.id 
-                    ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') 
+                  bgcolor: activeTab === tab.id
+                    ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff')
                     : 'transparent',
                   boxShadow: activeTab === tab.id && !isDarkMode ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   transition: 'all 0.2s',
                   '&:hover': {
-                    bgcolor: activeTab === tab.id 
-                      ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff') 
+                    bgcolor: activeTab === tab.id
+                      ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
                       : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
                   }
                 }}
@@ -726,218 +726,218 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           {activeTab === 'details' && (
             <>
               {/* Description Section */}
-          <Box sx={{ 
-            p: 2.5, 
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 
-            borderRadius: '16px', 
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` 
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <DescriptionOutlinedIcon fontSize="small" />
-                <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
-              </Box>
-              {!isEditingDesc && isAdminOrOwner && (
-                <IconButton size="small" onClick={startEditingDesc} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
-                  <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
-                </IconButton>
-              )}
-            </Box>
-            
-            {isEditingDesc ? (
-              <Box sx={{ mt: 1 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  placeholder="Add a detailed description..."
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                  autoFocus
-                  sx={{
-                    mb: 1.5,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
-                    }
-                  }}
-                />
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                  <Button 
-                    size="small" 
-                    onClick={() => setIsEditingDesc(false)} 
-                    sx={{ textTransform: 'none', borderRadius: '18px', fontWeight: 600, color: 'text.secondary' }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="small" 
-                    variant="contained" 
-                    onClick={handleDescSubmit} 
-                    disableElevation
-                    sx={{ 
-                      textTransform: 'none', 
-                      borderRadius: '18px', 
-                      fontWeight: 700, 
-                      bgcolor: tokens.brand.primary,
-                      color: '#fff',
-                      '&:hover': { bgcolor: tokens.brand.primary }
+              <Box sx={{
+                p: 2.5,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                borderRadius: '16px',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DescriptionOutlinedIcon fontSize="small" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
+                  </Box>
+                  {!isEditingDesc && isAdminOrOwner && (
+                    <IconButton size="small" onClick={startEditingDesc} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
+                      <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  )}
+                </Box>
+
+                {isEditingDesc ? (
+                  <Box sx={{ mt: 1 }}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      placeholder="Add a detailed description..."
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      autoFocus
+                      sx={{
+                        mb: 1.5,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                          bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                        }
+                      }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Button
+                        size="small"
+                        onClick={() => setIsEditingDesc(false)}
+                        sx={{ textTransform: 'none', borderRadius: '18px', fontWeight: 600, color: 'text.secondary' }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={handleDescSubmit}
+                        disableElevation
+                        sx={{
+                          textTransform: 'none',
+                          borderRadius: '18px',
+                          fontWeight: 700,
+                          bgcolor: tokens.brand.primary,
+                          color: '#fff',
+                          '&:hover': { bgcolor: tokens.brand.primary }
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography
+                    variant="body2"
+                    onClick={() => { if (isAdminOrOwner) startEditingDesc(); }}
+                    sx={{
+                      color: task.description ? 'text.secondary' : 'text.disabled',
+                      lineHeight: 1.7,
+                      whiteSpace: 'pre-wrap',
+                      cursor: isAdminOrOwner ? 'pointer' : 'default',
+                      minHeight: 24,
+                      fontStyle: task.description ? 'normal' : 'italic',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: '4px',
+                      }
                     }}
                   >
-                    Save
-                  </Button>
-                </Box>
-              </Box>
-            ) : (
-              <Typography 
-                variant="body2" 
-                onClick={() => { if (isAdminOrOwner) startEditingDesc(); }}
-                sx={{ 
-                  color: task.description ? 'text.secondary' : 'text.disabled', 
-                  lineHeight: 1.7, 
-                  whiteSpace: 'pre-wrap',
-                  cursor: isAdminOrOwner ? 'pointer' : 'default',
-                  minHeight: 24,
-                  fontStyle: task.description ? 'normal' : 'italic',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                    borderRadius: '4px',
-                  }
-                }}
-              >
-                {task.description || 'Click to add a description...'}
-              </Typography>
-            )}
-          </Box>
-
-          {/* Due Date */}
-          {task.dueDate && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <CalendarTodayIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </Typography>
-            </Box>
-          )}
-          
-          {/* Assignees Section */}
-          <Box sx={{ p: 2.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
-              <GroupIcon fontSize="small" />
-              <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assignees</Typography>
-            </Box>
-            {isAdminOrOwner ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="assign-member-label">Assign Team Members</InputLabel>
-                <Select
-                  labelId="assign-member-label"
-                  multiple
-                  value={assignedToIds}
-                  onChange={handleAssigneeChange}
-                  input={<OutlinedInput label="Assign Team Members" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value: any) => {
-                        const matched = allUsers.find((u: any) => u._id === value);
-                        const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
-                        return <Chip key={value} label={name} size="small" />;
-                      })}
-                    </Box>
-                  )}
-                >
-                  {allUsers.map((u: any) => (
-                    <MenuItem key={u._id} value={u._id}>
-                      {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <ModernDatePicker
-                label="Due Date"
-                value={(pendingDueDate || rawCard?.dueDate) ? new Date((pendingDueDate || rawCard.dueDate).split('T')[0] + 'T00:00:00') : null}
-                onChange={(date) => {
-                  const y = date.getFullYear();
-                  const m = String(date.getMonth() + 1).padStart(2, '0');
-                  const d = String(date.getDate()).padStart(2, '0');
-                  setPendingDueDate(`${y}-${m}-${d}`);
-                }}
-              />
-              <Box>
-                <ModernDatePicker
-                  label="KPI tracking end date"
-                  value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date((pendingKpiEndDate || rawCard.kpiEndDate).split('T')[0] + 'T00:00:00') : null}
-                  onChange={(date) => {
-                    const y = date.getFullYear();
-                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                    const d = String(date.getDate()).padStart(2, '0');
-                    setPendingKpiEndDate(`${y}-${m}-${d}`);
-                  }}
-                />
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  How long this task shows in daily KPIs (defaults to due date or 7 days)
-                </Typography>
-              </Box>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {assignedToIds.map((value: any) => {
-                  const matched = allUsers.find((u: any) => u._id === value);
-                  const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
-                  return <Chip key={value} label={name} size="small" />;
-                })}
-                {assignedToIds.length === 0 && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>No assignees</Typography>
+                    {task.description || 'Click to add a description...'}
+                  </Typography>
                 )}
               </Box>
-            )}
-          </Box>
 
-          {/* Description Section */}
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
-              <DescriptionOutlinedIcon fontSize="small" />
-              <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prospect Details</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                Name: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{authorName}</Box>
-              </Typography>
-              {lead?.email && (
-                <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                  Email: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.email}</Box>
-                </Typography>
+              {/* Due Date */}
+              {task.dueDate && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <CalendarTodayIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </Typography>
+                </Box>
               )}
-              {lead?.title && (
-                <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                  Title: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.title}</Box>
-                </Typography>
-              )}
-              {lead?.location && (
-                <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                  Location: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.location}</Box>
-                </Typography>
-              )}
-            </Box>
-          </Box>
 
-          {/* Enrichment Profiles */}
-          {rawCard?.enrichment && rawCard.enrichment.length > 0 && (
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
-                <FormatListBulletedIcon fontSize="small" />
-                <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profile Notes</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {rawCard.enrichment.map((sec: any, idx: number) => (
-                  <Box key={idx} sx={{ p: 1.75, borderRadius: '12px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: tokens.brand.primary }}>{sec.title}</Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{sec.content}</Typography>
+              {/* Assignees Section */}
+              <Box sx={{ p: 2.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+                  <GroupIcon fontSize="small" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assignees</Typography>
+                </Box>
+                {isAdminOrOwner ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="assign-member-label">Assign Team Members</InputLabel>
+                      <Select
+                        labelId="assign-member-label"
+                        multiple
+                        value={assignedToIds}
+                        onChange={handleAssigneeChange}
+                        input={<OutlinedInput label="Assign Team Members" />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value: any) => {
+                              const matched = allUsers.find((u: any) => u._id === value);
+                              const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
+                              return <Chip key={value} label={name} size="small" />;
+                            })}
+                          </Box>
+                        )}
+                      >
+                        {allUsers.map((u: any) => (
+                          <MenuItem key={u._id} value={u._id}>
+                            {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <ModernDatePicker
+                      label="Due Date"
+                      value={(pendingDueDate || rawCard?.dueDate) ? new Date((pendingDueDate || rawCard.dueDate).split('T')[0] + 'T00:00:00') : null}
+                      onChange={(date) => {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        setPendingDueDate(`${y}-${m}-${d}`);
+                      }}
+                    />
+                    <Box>
+                      <ModernDatePicker
+                        label="KPI tracking end date"
+                        value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date((pendingKpiEndDate || rawCard.kpiEndDate).split('T')[0] + 'T00:00:00') : null}
+                        onChange={(date) => {
+                          const y = date.getFullYear();
+                          const m = String(date.getMonth() + 1).padStart(2, '0');
+                          const d = String(date.getDate()).padStart(2, '0');
+                          setPendingKpiEndDate(`${y}-${m}-${d}`);
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                        How long this task shows in daily KPIs (defaults to due date or 7 days)
+                      </Typography>
+                    </Box>
                   </Box>
-                ))}
+                ) : (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {assignedToIds.map((value: any) => {
+                      const matched = allUsers.find((u: any) => u._id === value);
+                      const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
+                      return <Chip key={value} label={name} size="small" />;
+                    })}
+                    {assignedToIds.length === 0 && (
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>No assignees</Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
-            </Box>
-          )}
+
+              {/* Description Section */}
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+                  <DescriptionOutlinedIcon fontSize="small" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prospect Details</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                    Name: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{authorName}</Box>
+                  </Typography>
+                  {lead?.email && (
+                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                      Email: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.email}</Box>
+                    </Typography>
+                  )}
+                  {lead?.title && (
+                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                      Title: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.title}</Box>
+                    </Typography>
+                  )}
+                  {lead?.location && (
+                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                      Location: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.location}</Box>
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Enrichment Profiles */}
+              {rawCard?.enrichment && rawCard.enrichment.length > 0 && (
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+                    <FormatListBulletedIcon fontSize="small" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profile Notes</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {rawCard.enrichment.map((sec: any, idx: number) => (
+                      <Box key={idx} sx={{ p: 1.75, borderRadius: '12px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: tokens.brand.primary }}>{sec.title}</Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{sec.content}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              )}
             </>
           )}
 
@@ -945,119 +945,119 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
               {/* Comments Feed Section */}
               <Box sx={{ flexGrow: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary' }}>
-              <ChatBubbleOutlineIcon fontSize="small" />
-              <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comments ({commentsList.length})</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {commentsList.map((comm: any, idx: number) => {
-                const commentUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
-                const isCommentAuthor = currentUser && currentUser._id === commentUserId;
-                
-                let matchingUser: any = null;
-                if (typeof comm.author === 'object' && comm.author?.firstName) {
-                  matchingUser = comm.author;
-                }
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary' }}>
+                  <ChatBubbleOutlineIcon fontSize="small" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comments ({commentsList.length})</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {commentsList.map((comm: any, idx: number) => {
+                    const commentUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
+                    const isCommentAuthor = currentUser && currentUser._id === commentUserId;
 
-                if (!matchingUser && commentUserId) {
-                  matchingUser = (allUsers as any[]).find((u: any) => u._id === commentUserId) || null;
-                }
+                    let matchingUser: any = null;
+                    if (typeof comm.author === 'object' && comm.author?.firstName) {
+                      matchingUser = comm.author;
+                    }
 
-                if (!matchingUser && currentUser && currentUser._id === commentUserId) {
-                  matchingUser = currentUser;
-                }
+                    if (!matchingUser && commentUserId) {
+                      matchingUser = (allUsers as any[]).find((u: any) => u._id === commentUserId) || null;
+                    }
 
-                const name = matchingUser
-                  ? `${matchingUser.firstName || ''} ${matchingUser.lastName || ''}`.trim() || matchingUser.email || 'User'
-                  : 'Unknown User';
-                const initial = name.charAt(0).toUpperCase() || 'U';
+                    if (!matchingUser && currentUser && currentUser._id === commentUserId) {
+                      matchingUser = currentUser;
+                    }
 
-                return (
-                  <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
-                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 750 }} noWrap>{name}</Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', flexShrink: 0 }}>
-                          {comm.createdAt ? new Date(comm.createdAt).toLocaleDateString() : 'Just now'}
-                        </Typography>
-                      </Box>
-                      {editingCommentId === comm._id ? (
-                        <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                          <MentionInput
-                            value={editCommentText}
-                            onChange={setEditCommentText}
-                            mentionableUsers={mentionableUsers}
-                            placeholder="Edit comment..."
-                          />
-                          <IconButton size="small" onClick={() => handleSaveCommentEdit(comm._id)}>
-                            <CheckIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => setEditingCommentId(null)}>
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      ) : (
-                        <Box sx={{ position: 'relative' }}>
-                          <Box sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block', maxWidth: '100%' }}>
-                            <CommentText text={comm.text} users={allUsers} />
+                    const name = matchingUser
+                      ? `${matchingUser.firstName || ''} ${matchingUser.lastName || ''}`.trim() || matchingUser.email || 'User'
+                      : 'Unknown User';
+                    const initial = name.charAt(0).toUpperCase() || 'U';
+
+                    return (
+                      <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
+                        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 750 }} noWrap>{name}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', flexShrink: 0 }}>
+                              {comm.createdAt ? new Date(comm.createdAt).toLocaleDateString() : 'Just now'}
+                            </Typography>
                           </Box>
-                          {isCommentAuthor && (
-                            <Box 
-                              className="comment-actions" 
-                              sx={{ 
-                                opacity: 0, transition: 'opacity 0.2s', 
-                                position: 'absolute', right: 8, top: 4, 
-                                display: 'flex', gap: 0.5, bgcolor: isDarkMode ? '#1E1B24' : '#fff',
-                                borderRadius: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
-                              }}
-                            >
-                              <IconButton size="small" onClick={() => { setEditingCommentId(comm._id); setEditCommentText(comm.text); }}>
-                                <EditIcon sx={{ fontSize: 13 }} />
+                          {editingCommentId === comm._id ? (
+                            <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                              <MentionInput
+                                value={editCommentText}
+                                onChange={setEditCommentText}
+                                mentionableUsers={mentionableUsers}
+                                placeholder="Edit comment..."
+                              />
+                              <IconButton size="small" onClick={() => handleSaveCommentEdit(comm._id)}>
+                                <CheckIcon fontSize="small" />
                               </IconButton>
-                              <IconButton size="small" onClick={() => triggerDeleteCommentConfirm(comm._id)}>
-                                <DeleteIcon sx={{ fontSize: 13, color: 'error.main' }} />
+                              <IconButton size="small" onClick={() => setEditingCommentId(null)}>
+                                <CloseIcon fontSize="small" />
                               </IconButton>
+                            </Box>
+                          ) : (
+                            <Box sx={{ position: 'relative' }}>
+                              <Box sx={{ color: 'text.secondary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', p: 1.5, borderRadius: '0 12px 12px 12px', display: 'inline-block', maxWidth: '100%' }}>
+                                <CommentText text={comm.text} users={allUsers} />
+                              </Box>
+                              {isCommentAuthor && (
+                                <Box
+                                  className="comment-actions"
+                                  sx={{
+                                    opacity: 0, transition: 'opacity 0.2s',
+                                    position: 'absolute', right: 8, top: 4,
+                                    display: 'flex', gap: 0.5, bgcolor: isDarkMode ? '#1E1B24' : '#fff',
+                                    borderRadius: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+                                  }}
+                                >
+                                  <IconButton size="small" onClick={() => { setEditingCommentId(comm._id); setEditCommentText(comm.text); }}>
+                                    <EditIcon sx={{ fontSize: 13 }} />
+                                  </IconButton>
+                                  <IconButton size="small" onClick={() => triggerDeleteCommentConfirm(comm._id)}>
+                                    <DeleteIcon sx={{ fontSize: 13, color: 'error.main' }} />
+                                  </IconButton>
+                                </Box>
+                              )}
                             </Box>
                           )}
                         </Box>
-                      )}
-                    </Box>
-                  </Box>
-                );
-              })}
-              {commentsList.length === 0 && (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', py: 2 }}>
-                  No comments posted yet.
-                </Typography>
-              )}
-            </Box>
-          </Box>
-          <Box sx={{ borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)', mx: -3, px: 3, pt: 3, pb: 1, mt: 2 }}>
-          <MentionInput
-            value={commentText}
-            onChange={setCommentText}
-            mentionableUsers={mentionableUsers}
-            placeholder="Write a comment... Use @ to mention someone"
-            disabled={addCommentMutation.isPending}
-            onSubmit={handleSendComment}
-            endAdornment={
-              <InputAdornment position="end">
-                <IconButton sx={{ color: tokens.brand.primary }} size="small" onClick={handleSendComment} disabled={addCommentMutation.isPending || !commentText.trim()}>
-                  <SendIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            }
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '24px',
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
-                '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
-                '&:hover fieldset': { borderColor: tokens.brand.primary },
-              },
-            }}
-          />
-        </Box>
+                      </Box>
+                    );
+                  })}
+                  {commentsList.length === 0 && (
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                      No comments posted yet.
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)', mx: -3, px: 3, pt: 3, pb: 1, mt: 2 }}>
+                <MentionInput
+                  value={commentText}
+                  onChange={setCommentText}
+                  mentionableUsers={mentionableUsers}
+                  placeholder="Write a comment... Use @ to mention someone"
+                  disabled={addCommentMutation.isPending}
+                  onSubmit={handleSendComment}
+                  endAdornment={
+                    <InputAdornment position="end">
+                      <IconButton sx={{ color: tokens.brand.primary }} size="small" onClick={handleSendComment} disabled={addCommentMutation.isPending || !commentText.trim()}>
+                        <SendIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '24px',
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
+                      '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
+                      '&:hover fieldset': { borderColor: tokens.brand.primary },
+                    },
+                  }}
+                />
+              </Box>
             </Box>
           )}
         </Box>
@@ -1200,11 +1200,11 @@ export const KanbanBoardPage = () => {
   const tasks = useMemo(() => {
     if (!actualBoard || !actualBoard.columns) return [];
     const tList: any[] = [];
-    
+
     cardsList.forEach((card: any) => {
       const lead = typeof card.leadId === 'object' ? card.leadId : null;
       const assignedLead = lead as any;
-      const cardAssignees = Array.isArray(card.assignedTo) 
+      const cardAssignees = Array.isArray(card.assignedTo)
         ? card.assignedTo.map((u: any) => typeof u === 'object' ? u : allUsers.find((au: any) => au._id === u)).filter(Boolean)
         : [];
 
@@ -1223,7 +1223,7 @@ export const KanbanBoardPage = () => {
         position: card.order ?? card.position ?? 0,
       });
     });
-    
+
     return tList.sort((a, b) => a.position - b.position);
   }, [actualBoard, cardsList, allUsers]);
 
@@ -1426,7 +1426,7 @@ export const KanbanBoardPage = () => {
       const targetColumnId = targetCardMatch.columnId;
       const targetColumnCards = tasks.filter(t => t.columnId === targetColumnId).sort((a, b) => a.position - b.position);
       const targetIndex = targetColumnCards.findIndex(t => t.id === targetCardMatch.id);
-      
+
       let newPos = targetIndex;
       if (activeTaskMatch.columnId === targetColumnId) {
         const oldIndex = targetColumnCards.findIndex(t => t.id === activeId);
@@ -1434,7 +1434,7 @@ export const KanbanBoardPage = () => {
           newPos = targetIndex;
         }
       }
-      
+
       moveCardMutation.mutate({
         cardId: activeId,
         data: {
@@ -1498,18 +1498,18 @@ export const KanbanBoardPage = () => {
               );
             })}
           </AvatarGroup>
-          <TextField 
-            placeholder="Search cards..." 
-            size="small" 
+          <TextField
+            placeholder="Search cards..."
+            size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff', '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } }} 
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> }} 
+            sx={{ width: { xs: '100%', sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff', '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> }}
           />
-          <IconButton 
+          <IconButton
             onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
-            sx={{ 
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, 
+            sx={{
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               borderRadius: '50%',
               bgcolor: (priorityFilter !== 'All' || assigneeFilter !== 'All') ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
             }}
@@ -1523,10 +1523,10 @@ export const KanbanBoardPage = () => {
       </Box>
 
       <Box sx={{ flexGrow: 1, display: 'flex', gap: 3, overflowX: 'auto', pb: 2, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }, '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
-        <DndContext 
-          sensors={sensors} 
-          collisionDetection={closestCorners} 
-          onDragStart={handleDragStart} 
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           measuring={{
             droppable: {
@@ -1547,9 +1547,9 @@ export const KanbanBoardPage = () => {
                     <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={() => { setCardTargetColumnId(col.id); setIsCardDialogOpen(true); }}>
                       <AddIcon fontSize="small" />
                     </IconButton>
-                    <IconButton 
-                      size="small" 
-                      sx={{ color: 'text.secondary' }} 
+                    <IconButton
+                      size="small"
+                      sx={{ color: 'text.secondary' }}
                       onClick={(e) => {
                         setColumnMenuAnchor(e.currentTarget);
                         setMenuTargetColumnId(col.id);
@@ -1631,9 +1631,9 @@ export const KanbanBoardPage = () => {
           Filter by Priority
         </Typography>
         {['All', 'Low', 'Medium', 'High', 'Urgent'].map((opt) => (
-          <MenuItem 
-            key={opt} 
-            selected={priorityFilter === opt} 
+          <MenuItem
+            key={opt}
+            selected={priorityFilter === opt}
             onClick={() => {
               setPriorityFilter(opt);
               setFilterMenuAnchor(null);
@@ -1651,8 +1651,8 @@ export const KanbanBoardPage = () => {
         <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Filter by Assignee
         </Typography>
-        <MenuItem 
-          selected={assigneeFilter === 'All'} 
+        <MenuItem
+          selected={assigneeFilter === 'All'}
           onClick={() => {
             setAssigneeFilter('All');
             setFilterMenuAnchor(null);
@@ -1666,9 +1666,9 @@ export const KanbanBoardPage = () => {
         {boardMembers.map((m: any) => {
           const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
           return (
-            <MenuItem 
-              key={m._id} 
-              selected={assigneeFilter === m._id} 
+            <MenuItem
+              key={m._id}
+              selected={assigneeFilter === m._id}
               onClick={() => {
                 setAssigneeFilter(m._id);
                 setFilterMenuAnchor(null);
@@ -1685,7 +1685,7 @@ export const KanbanBoardPage = () => {
         {(priorityFilter !== 'All' || assigneeFilter !== 'All') && (
           <>
             <Divider sx={{ my: 1 }} />
-            <MenuItem 
+            <MenuItem
               onClick={() => {
                 setPriorityFilter('All');
                 setAssigneeFilter('All');
@@ -1794,25 +1794,25 @@ export const KanbanBoardPage = () => {
                   onChange={(e) => setNewCardPriority(e.target.value as any)}
                   displayEmpty
                   sx={{ borderRadius: '14px', '& .MuiSelect-select': { py: 1.25 } }}
-                renderValue={(val) => {
-                  const p = PRIORITY_CONFIG[val as keyof typeof PRIORITY_CONFIG];
-                  return (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.dot }} />
-                      <Typography variant="body2" sx={{ fontWeight: 650 }}>{p.label}</Typography>
-                    </Box>
-                  );
-                }}
-              >
-                {(Object.entries(PRIORITY_CONFIG) as [string, any][]).map(([key, cfg]) => (
-                  <MenuItem key={key} value={key}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: cfg.dot }} />
-                      <Typography variant="body2" sx={{ fontWeight: 650 }}>{cfg.label}</Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
+                  renderValue={(val) => {
+                    const p = PRIORITY_CONFIG[val as keyof typeof PRIORITY_CONFIG];
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.dot }} />
+                        <Typography variant="body2" sx={{ fontWeight: 650 }}>{p.label}</Typography>
+                      </Box>
+                    );
+                  }}
+                >
+                  {(Object.entries(PRIORITY_CONFIG) as [string, any][]).map(([key, cfg]) => (
+                    <MenuItem key={key} value={key}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: cfg.dot }} />
+                        <Typography variant="body2" sx={{ fontWeight: 650 }}>{cfg.label}</Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
               </FormControl>
             </Box>
 
