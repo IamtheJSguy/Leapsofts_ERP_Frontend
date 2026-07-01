@@ -51,6 +51,7 @@ import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -87,27 +88,11 @@ export const SalesPage = () => {
     setConfirmQualifyOpen(true);
   };
 
-  const handleConfirmQualify = () => {
-    if (!leadIdToQualify) return;
-    qualifyLead.mutate(
-      { id: leadIdToQualify },
-      {
-        onSuccess: (res: any) => {
-          const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
-          addToast({ message: 'Lead qualified! Board created.', severity: 'success' });
-          setConfirmQualifyOpen(false);
-          setLeadIdToQualify('');
-          if (boardId) navigate(`/board/${boardId}`);
-        },
-        onError: (err: any) => {
-          setConfirmQualifyOpen(false);
-          addToast({
-            message: err?.response?.data?.message || 'Failed to qualify lead.',
-            severity: 'error',
-          });
-        }
-      }
-    );
+  const handleQualifySuccess = (boardId?: string) => {
+    addToast({ message: 'Lead qualified successfully! Board created.', severity: 'success' });
+    setConfirmQualifyOpen(false);
+    setLeadIdToQualify('');
+    if (boardId) navigate(`/board/${boardId}`);
   };
 
   const getCardTheme = (label: string) => {
@@ -1417,16 +1402,12 @@ export const SalesPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Qualify Lead Confirmation Dialog */}
-      <ConfirmDialog
+      {/* Qualify Lead Enrichment Modal */}
+      <QualifyEnrichModal
         open={confirmQualifyOpen}
-        title="Qualify Lead"
-        message="Are you sure you want to qualify this lead? This will create a Kanban board for this lead."
-        confirmLabel="Qualify"
-        cancelLabel="Cancel"
-        isPending={qualifyLead.isPending}
-        onConfirm={handleConfirmQualify}
-        onCancel={() => {
+        leadId={leadIdToQualify}
+        onSuccess={handleQualifySuccess}
+        onClose={() => {
           setConfirmQualifyOpen(false);
           setLeadIdToQualify('');
         }}
