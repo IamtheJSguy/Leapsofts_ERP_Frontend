@@ -323,15 +323,33 @@ export interface Message {
 }
 
 export interface DashboardStats {
-  connectionsSent: number;
-  connectionsAccepted: number;
+  connectionsSent?: number;
+  connectionsAccepted?: number;
   acceptanceRate?: number;
-  messagesSent: number;
-  meetingsScheduled: number;
+  messagesSent?: number;
+  meetingsScheduled?: number;
   leadsAdded?: number;
-  weeklyActivity: { date: string; connections: number; messages: number }[];
-  connectionRatios: { label: string; value: number }[];
-  kpiSummary: { name: string; current: number; target: number }[];
+  weeklyActivity?: { date: string; connections: number; messages: number }[];
+  connectionRatios?: { label: string; value: number }[];
+  kpiSummary?: { name: string; current: number; target: number }[];
+  metrics?: {
+    completedTasks: number;
+    pendingTasks: number;
+    overdueTasks: number;
+    completedKpis: number;
+  };
+  kpiChartData?: { name: string; Achieved: number }[];
+  dailyKpis?: any[];
+  tasksList?: {
+    id: string;
+    title: string;
+    boardId: string;
+    boardName: string;
+    columnName: string;
+    dueDate: string;
+    isDone: boolean;
+    isOverdue: boolean;
+  }[];
 }
 
 export interface SystemSettings {

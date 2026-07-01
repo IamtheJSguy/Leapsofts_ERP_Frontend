@@ -369,6 +369,8 @@ const TasksPage = () => {
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [standaloneFormOpen, setStandaloneFormOpen] = useState(false);
   const [editingStandaloneKpi, setEditingStandaloneKpi] = useState<KPI | null>(null);
+  const [confirmDeleteStandaloneOpen, setConfirmDeleteStandaloneOpen] = useState(false);
+  const [standaloneKpiToDelete, setStandaloneKpiToDelete] = useState<string | null>(null);
 
   const pendingItemKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -2190,7 +2192,6 @@ const TasksPage = () => {
       {isAdmin && viewMode === 'list' && (
         <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
-          <Button onClick={() => setDashboardTab('assignments')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'assignments' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'assignments' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Assignments</Button>
           <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
           <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
@@ -2214,24 +2215,47 @@ const TasksPage = () => {
               Create KPI
             </Button>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {standaloneKpis.map((kpi) => (
-              <Card key={kpi._id} sx={{ p: 2, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+              <Card 
+                key={kpi._id} 
+                sx={{ 
+                  p: 2.5, 
+                  borderRadius: '20px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  gap: 2,
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  boxShadow: 'none',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: isDarkMode ? '0 10px 30px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.04)',
+                    borderColor: tokens.brand.primary
+                  }
+                }}
+              >
                 <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{kpi.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>{kpi.name}</Typography>
                     <PriorityBadge priority={kpi.priority} />
                   </Box>
-                  <Typography variant="caption" color="text.secondary">Target: {kpi.targetValue} · {kpi.timeFrame}</Typography>
+                  <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
+                    Target: {kpi.targetValue} · <span style={{ textTransform: 'capitalize' }}>{kpi.timeFrame}</span>
+                  </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button size="small" onClick={() => { setEditingStandaloneKpi(kpi); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none' }}>Edit</Button>
-                  <Button size="small" color="error" onClick={() => deleteKpiMutation.mutate(kpi._id)} sx={{ textTransform: 'none' }}>Delete</Button>
+                  <Button size="small" onClick={() => { setEditingStandaloneKpi(kpi); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', color: tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}>Edit</Button>
+                  <Button size="small" color="error" onClick={() => { setStandaloneKpiToDelete(kpi._id); setConfirmDeleteStandaloneOpen(true); }} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', '&:hover': { bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)' } }}>Delete</Button>
                 </Box>
               </Card>
             ))}
             {standaloneKpis.length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No standalone KPIs yet.</Typography>
+              <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, py: 8 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.disabled' }}>No standalone KPIs yet.</Typography>
+              </Box>
             )}
           </Box>
         </Box>
@@ -2604,8 +2628,8 @@ const TasksPage = () => {
         </>
       )}
 
-      {/* SUB-TAB 2: ACTIVE ASSIGNMENT CARDS LIST */}
-      {dashboardTab === 'assignments' && (
+      {/* SUB-TAB 2: ACTIVE ASSIGNMENT CARDS LIST (Users only) */}
+      {dashboardTab === 'assignments' && !isAdmin && (
         <>
           {!isAdmin && (
             <Box
@@ -3387,6 +3411,30 @@ return (
         isPending={assignTemplateMutation.isPending}
         onConfirm={handleConfirmAssign}
         onCancel={() => setConfirmAssignOpen(false)}
+      />
+
+      {/* Delete Standalone KPI Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmDeleteStandaloneOpen}
+        title="Delete Standalone KPI"
+        message="Are you sure you want to delete this standalone KPI? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isPending={deleteKpiMutation.isPending}
+        onConfirm={() => {
+          if (standaloneKpiToDelete) {
+            deleteKpiMutation.mutate(standaloneKpiToDelete, {
+              onSuccess: () => {
+                setConfirmDeleteStandaloneOpen(false);
+                setStandaloneKpiToDelete(null);
+              }
+            });
+          }
+        }}
+        onCancel={() => {
+          setConfirmDeleteStandaloneOpen(false);
+          setStandaloneKpiToDelete(null);
+        }}
       />
 
       <KPIChangeRequestModal open={!!changeModal} mode={changeModal} onClose={() => setChangeModal(null)} />

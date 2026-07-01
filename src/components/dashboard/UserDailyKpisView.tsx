@@ -39,7 +39,7 @@ export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done'>('active');
+  const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done' | 'requests'>('active');
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
@@ -111,6 +111,7 @@ export const UserDailyKpisView = () => {
     { id: 'overdue', label: 'Overdue', count: allKpis.filter((k: any) => !k.isCompleted && new Date(k.date || new Date()).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)).length },
     { id: 'high', label: 'High priority', count: allKpis.filter((k: any) => !k.isCompleted && isHighPriority(k.priority)).length },
     { id: 'done', label: 'Done', count: completedCount },
+    { id: 'requests', label: 'Requests', count: myRequests.length },
   ];
 
   const openModifyModal = (kpi: any) => {
@@ -228,9 +229,9 @@ export const UserDailyKpisView = () => {
         ))}
       </Box>
 
-      <MyChangeRequestsPanel />
-
-      {filteredKpis.length === 0 ? (
+      {filter === 'requests' ? (
+        <MyChangeRequestsPanel />
+      ) : filteredKpis.length === 0 ? (
         <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, py: 8 }}>
           <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success, mb: 2 }} />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>All caught up</Typography>
@@ -304,15 +305,42 @@ export const UserDailyKpisView = () => {
         </Box>
       )}
 
-      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
-        <MenuItem onClick={() => { if (menuKpi) openModifyModal(menuKpi); closeMenu(); }}>
-          <ListItemIcon><EditNoteIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Request Change</ListItemText>
+      <Menu 
+        anchorEl={menuAnchor} 
+        open={Boolean(menuAnchor)} 
+        onClose={closeMenu}
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            mt: 1,
+            p: 1,
+            borderRadius: '16px',
+            minWidth: 180,
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(24px)',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            boxShadow: isDarkMode 
+              ? '0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)' 
+              : '0 20px 40px rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.04)',
+          }
+        }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem 
+          onClick={() => { if (menuKpi) openModifyModal(menuKpi); closeMenu(); }}
+          sx={{ borderRadius: '10px', py: 1, mb: 0.5, transition: 'all 0.2s', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}
+        >
+          <ListItemIcon sx={{ minWidth: 32 }}><EditNoteIcon fontSize="small" sx={{ color: tokens.text.secondary }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.86rem', fontWeight: 650, color: tokens.text.primary }}>Request Change</ListItemText>
         </MenuItem>
         {menuKpi?.assignmentId && menuKpi?.assignmentItemId && (
-          <MenuItem onClick={() => { openRemoveModal(menuKpi); closeMenu(); }}>
-            <ListItemIcon><RemoveCircleOutlineIcon fontSize="small" color="error" /></ListItemIcon>
-            <ListItemText sx={{ color: 'error.main' }}>Request Remove</ListItemText>
+          <MenuItem 
+            onClick={() => { openRemoveModal(menuKpi); closeMenu(); }}
+            sx={{ borderRadius: '10px', py: 1, transition: 'all 0.2s', '&:hover': { bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)' } }}
+          >
+            <ListItemIcon sx={{ minWidth: 32 }}><RemoveCircleOutlineIcon fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: '0.86rem', fontWeight: 650, color: tokens.semantic.error }}>Request Remove</ListItemText>
           </MenuItem>
         )}
       </Menu>
