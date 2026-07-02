@@ -8,7 +8,14 @@ import {
   MenuItem,
   Grid,
   CircularProgress,
+  ToggleButtonGroup,
+  ToggleButton,
+  Typography,
 } from '@mui/material';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import DateRangeIcon from '@mui/icons-material/DateRange';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import TuneIcon from '@mui/icons-material/Tune';
 import { reportFilterSchema } from '@/utils/validators';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { useGenerateReport } from '@/hooks/api/useReports';
@@ -18,12 +25,17 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
 const REPORT_TYPES = [
-  'user_summary',
-  'admin_summary',
-  'connections',
-  'messages',
-  'meetings',
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'kpi_performance', label: 'KPI Performance' },
+  { value: 'employee_full', label: 'Full Employee Report' },
+  { value: 'team_overview', label: 'Team Overview' },
+  { value: 'user_summary', label: 'User Summary (Legacy)' },
+  { value: 'connections', label: 'Connections' },
+  { value: 'messages', label: 'Messages' },
+  { value: 'meetings', label: 'Meetings' },
 ];
+
+type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 interface ReportBuilderProps {
   onGenerated?: (id: string) => void;
@@ -32,6 +44,26 @@ interface ReportBuilderProps {
   selectedAgentId: string;
   onAgentChange?: (id: string) => void;
 }
+
+/** Returns today's start-of-day and end-of-day in YYYY-MM-DD format. */
+const getDateRangeForPeriod = (period: Period): { start: string; end: string } => {
+  const now = new Date();
+  const end = now.toISOString().split('T')[0];
+
+  if (period === 'daily') {
+    return { start: end, end };
+  }
+  if (period === 'weekly') {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+    return { start: weekStart.toISOString().split('T')[0], end };
+  }
+  if (period === 'monthly') {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start: monthStart.toISOString().split('T')[0], end };
+  }
+  return { start: '', end: '' };
+};
 
 export const ReportBuilder = ({
   onGenerated,
@@ -47,20 +79,29 @@ export const ReportBuilder = ({
 
   const { data: users = [] } = useUsers(
     {},
-    { enabled: isAdmin } // only fetch if user is admin
+    { enabled: isAdmin },
   );
-  
+
   const agents = users.filter((u) => u.role !== 'admin');
 
+  const [period, setPeriod] = useState<Period>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Auto-set date range when period changes
+  useEffect(() => {
+    if (period !== 'custom') {
+      const range = getDateRangeForPeriod(period);
+      setStartDate(range.start);
+      setEndDate(range.end);
+    }
+  }, [period]);
 
   const { register, handleSubmit, setValue } = useForm({
     resolver: zodResolver(reportFilterSchema),
     defaultValues: { type: reportType, userId: selectedAgentId },
   });
 
-  // Sync prop changes into react-hook-form values
   useEffect(() => {
     setValue('type', reportType);
   }, [reportType, setValue]);
@@ -72,9 +113,22 @@ export const ReportBuilder = ({
   const { onChange: typeOnChange, ...typeRegister } = register('type');
   const { onChange: userOnChange, ...userRegister } = register('userId');
 
+  const isTeamReport = reportType === 'team_overview';
+
   const onSubmit = (data: Record<string, string>) => {
-    const payload: Record<string, string> = { ...data, startDate, endDate };
+    const payload: Record<string, string> = {
+      ...data,
+      startDate: startDate || data.startDate || '',
+      endDate: endDate || data.endDate || '',
+      period,
+    };
+    if (isTeamReport) delete payload.userId;
     if (!payload.userId) delete payload.userId;
+
+    if (!payload.startDate || !payload.endDate) {
+      addToast({ message: 'Please select a date range', severity: 'warning' });
+      return;
+    }
 
     generateReport.mutate(payload, {
       onSuccess: (res) => {
@@ -92,7 +146,7 @@ export const ReportBuilder = ({
       component="form"
       onSubmit={handleSubmit(onSubmit)}
       sx={{
-        p: 2.5,
+        p: 3,
         borderRadius: '20px',
         border: `1px solid ${tokens.surface.borderLight}`,
         backgroundColor: '#FFFFFF',
@@ -100,9 +154,60 @@ export const ReportBuilder = ({
         mb: 4,
       }}
     >
+      {/* Period Toggle */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
+        <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+          Period:
+        </Typography>
+        <ToggleButtonGroup
+          value={period}
+          exclusive
+          onChange={(_, val) => val && setPeriod(val)}
+          size="small"
+          sx={{
+            '& .MuiToggleButton-root': {
+              borderRadius: '12px !important',
+              px: 2,
+              py: 0.8,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              border: `1px solid ${tokens.surface.border}`,
+              color: tokens.text.muted,
+              transition: 'all 0.2s ease',
+              '&.Mui-selected': {
+                backgroundColor: tokens.brand.primary,
+                color: '#FFFFFF',
+                borderColor: tokens.brand.primary,
+                '&:hover': {
+                  backgroundColor: tokens.brand.primaryDark,
+                },
+              },
+              '&:hover': {
+                backgroundColor: tokens.brand.primary50,
+              },
+            },
+          }}
+        >
+          <ToggleButton value="daily">
+            <CalendarTodayIcon sx={{ fontSize: 16, mr: 0.5 }} /> Daily
+          </ToggleButton>
+          <ToggleButton value="weekly">
+            <DateRangeIcon sx={{ fontSize: 16, mr: 0.5 }} /> Weekly
+          </ToggleButton>
+          <ToggleButton value="monthly">
+            <CalendarMonthIcon sx={{ fontSize: 16, mr: 0.5 }} /> Monthly
+          </ToggleButton>
+          <ToggleButton value="custom">
+            <TuneIcon sx={{ fontSize: 16, mr: 0.5 }} /> Custom
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      {/* Filters Row */}
       <Grid container spacing={2} alignItems="center">
         {/* Report Type */}
-        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 2.5}>
+        <Grid item xs={12} sm={6} md={isAdmin ? 2.5 : 3}>
           <TextField
             {...typeRegister}
             onChange={(e) => {
@@ -120,15 +225,15 @@ export const ReportBuilder = ({
             }}
           >
             {REPORT_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
-                {t.replace(/_/g, ' ')}
+              <MenuItem key={t.value} value={t.value}>
+                {t.label}
               </MenuItem>
             ))}
           </TextField>
         </Grid>
 
-        {/* User Filter (Admin Only) */}
-        {isAdmin && (
+        {/* User Filter (Admin Only, not shown for team overview) */}
+        {isAdmin && !isTeamReport && (
           <Grid item xs={12} sm={6} md={2.5}>
             <TextField
               {...userRegister}
@@ -136,7 +241,7 @@ export const ReportBuilder = ({
                 userOnChange(e);
                 onAgentChange?.(e.target.value);
               }}
-              label="Select Agent (Optional)"
+              label="Select Employee"
               select
               fullWidth
               size="medium"
@@ -147,7 +252,7 @@ export const ReportBuilder = ({
               }}
             >
               <MenuItem value="">
-                <em>All Agents</em>
+                <em>All Employees</em>
               </MenuItem>
               {agents.map((agent) => (
                 <MenuItem key={agent._id} value={agent._id}>
@@ -158,47 +263,46 @@ export const ReportBuilder = ({
           </Grid>
         )}
 
-        {/* Date Range Selector */}
-        <Grid item xs={12} md={isAdmin ? 3.5 : 4}>
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onStartChange={setStartDate}
-            onEndChange={setEndDate}
-            size="medium"
-          />
-        </Grid>
+        {/* Date Range (only for custom period) */}
+        {period === 'custom' && (
+          <Grid item xs={12} md={3.5}>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onStartChange={setStartDate}
+              onEndChange={setEndDate}
+              size="medium"
+            />
+          </Grid>
+        )}
 
-        {/* Location & Industry Filters */}
-        <Grid item xs={12} sm={6} md={1.5}>
-          <TextField
-            {...register('location')}
-            label="Location"
-            fullWidth
-            size="medium"
-            sx={{
-              '& .MuiOutlinedInput-root': {
+        {/* Date info for non-custom periods */}
+        {period !== 'custom' && startDate && (
+          <Grid item xs={12} sm={6} md={3}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 2,
+                py: 1.5,
                 borderRadius: '12px',
-              },
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={1.5}>
-          <TextField
-            {...register('industry')}
-            label="Industry"
-            fullWidth
-            size="medium"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-              },
-            }}
-          />
-        </Grid>
+                backgroundColor: tokens.brand.primary50,
+                border: `1px solid ${tokens.brand.primary100}`,
+              }}
+            >
+              <CalendarMonthIcon sx={{ color: tokens.brand.primary, fontSize: 18 }} />
+              <Typography variant="body2" color={tokens.brand.primary} fontWeight={500}>
+                {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {' — '}
+                {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </Typography>
+            </Box>
+          </Grid>
+        )}
 
         {/* Submit Button */}
-        <Grid item xs={12} md={isAdmin ? 1 : 1}>
+        <Grid item xs={12} md={isTeamReport ? 2 : 1.5}>
           <Button
             type="submit"
             variant="contained"
@@ -219,7 +323,7 @@ export const ReportBuilder = ({
             {generateReport.isPending ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              'Generate'
+              'Generate Report'
             )}
           </Button>
         </Grid>

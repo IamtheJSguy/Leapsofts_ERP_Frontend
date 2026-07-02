@@ -218,10 +218,112 @@ export interface KPIRecord {
 export interface Report {
   _id: string;
   type: string;
-  status: 'pending' | 'processing' | 'ready' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  period?: string;
+  generatedBy?: string | User;
+  userId?: string | User;
+  dateRange?: { start: string; end: string };
+  comparisonDateRange?: { start: string; end: string };
+  pdfUrl?: string;
+  excelUrl?: string;
+  metrics?: Record<string, unknown>;
+  comparisonMetrics?: Record<string, unknown>;
+  sections?: string[];
+  error?: string;
   fileUrl?: string;
   filters?: Record<string, unknown>;
   createdAt: string;
+}
+
+/* ─── Report Metric Types ─── */
+
+export interface AttendanceDayBreakdown {
+  date: string;
+  status: 'present' | 'absent' | 'late' | 'half_day';
+  checkIn: string | null;
+  checkOut: string | null;
+  totalMinutes: number;
+  scheduledMinutes: number;
+}
+
+export interface AttendanceMetrics {
+  daysPresent: number;
+  daysAbsent: number;
+  expectedDays: number;
+  lateCheckins: number;
+  earlyDepartures: number;
+  totalMinutesWorked: number;
+  averageMinutesPerDay: number;
+  overtimeMinutes: number;
+  attendanceRate: number;
+  dailyBreakdown: AttendanceDayBreakdown[];
+}
+
+export interface KpiPriorityBreakdown {
+  priority: string;
+  total: number;
+  completed: number;
+  rate: number;
+}
+
+export interface KpiTimeframeBreakdown {
+  timeframe: string;
+  total: number;
+  completed: number;
+  rate: number;
+}
+
+export interface KpiDailyTrend {
+  date: string;
+  total: number;
+  completed: number;
+}
+
+export interface KpiPerformanceMetrics {
+  totalAssigned: number;
+  completed: number;
+  missed: number;
+  pending: number;
+  completionRate: number;
+  byPriority: KpiPriorityBreakdown[];
+  byTimeframe: KpiTimeframeBreakdown[];
+  dailyTrend: KpiDailyTrend[];
+}
+
+export interface SalesMetrics {
+  totalLeads: number;
+  qualified: number;
+  connectionsSent: number;
+  connectionsAccepted: number;
+  acceptanceRate: number;
+  messagesSent: number;
+  messagesReplied: number;
+  replyRate: number;
+  meetings: number;
+}
+
+export interface MeetingMetrics {
+  scheduled: number;
+  completed: number;
+  cancelled: number;
+  completionRate: number;
+}
+
+export interface EmployeeFullMetrics {
+  user: { _id: string; name: string; email: string; jobTitle?: string };
+  attendance: AttendanceMetrics;
+  kpiPerformance: KpiPerformanceMetrics;
+  sales: SalesMetrics;
+  meetings: MeetingMetrics;
+}
+
+export interface TeamOverviewMetrics {
+  teamSize: number;
+  members: EmployeeFullMetrics[];
+  topPerformers: { userId: string; name: string; completionRate: number }[];
+  bottomPerformers: { userId: string; name: string; completionRate: number }[];
+  avgAttendanceRate: number;
+  avgKpiCompletionRate: number;
 }
 
 export interface Notification {

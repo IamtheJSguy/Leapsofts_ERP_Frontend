@@ -33,6 +33,12 @@ export const useReport = (id: string | undefined) =>
     queryKey: ['report', id],
     queryFn: () => reportApi.getReport(id!).then((r) => r.data.data),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      // Poll while processing
+      if (status === 'pending' || status === 'processing') return 2000;
+      return false;
+    },
   });
 
 export const useExportReport = () =>
@@ -42,7 +48,7 @@ export const useExportReport = () =>
       const url = window.URL.createObjectURL(blob.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${variables.id}.${variables.format}`;
+      a.download = `report-${variables.id}.${variables.format === 'pdf' ? 'pdf' : 'xlsx'}`;
       a.click();
       window.URL.revokeObjectURL(url);
     },
