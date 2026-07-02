@@ -12,6 +12,7 @@ import {
   TableHead,
   TableRow,
   Chip,
+  useTheme,
 } from '@mui/material';
 import {
   AreaChart,
@@ -81,6 +82,9 @@ const DeltaBadge = ({ current, previous, suffix = '' }: { current: number; previ
 };
 
 export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerformanceViewProps) => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+
   const summaryCards = useMemo(
     () => [
       {
@@ -169,35 +173,60 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={2} mb={3}>
+      <Grid container spacing={3} mb={4.5}>
         {summaryCards.map((card) => (
-          <Grid item xs={6} sm={4} md={2.4} key={card.label}>
+          <Grid item xs={12} sm={6} md={4} lg={2.4} key={card.label}>
             <Paper
               elevation={0}
               sx={{
-                p: 2,
-                borderRadius: '16px',
-                border: `1px solid ${tokens.surface.borderLight}`,
-                backgroundColor: '#FFFFFF',
-                boxShadow: tokens.shadow.card,
-                textAlign: 'center',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                p: 2.5,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: tokens.shadow.cardHover,
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 16px 40px rgba(93, 26, 137, 0.08)',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.1)',
                 },
               }}
             >
-              <Box sx={{ color: card.color, mb: 1 }}>{card.icon}</Box>
-              <Typography variant="h5" fontWeight={700} color={tokens.text.primary}>
-                {card.value}
-              </Typography>
-              {card.delta !== undefined && (
-                <DeltaBadge current={card.delta} previous={0} suffix={card.suffix} />
-              )}
-              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-                {card.label}
-              </Typography>
+              {/* Decorative top gradient line */}
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${card.color} 0%, transparent 100%)`, opacity: 0.8 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isDarkMode ? `${card.color}15` : `${card.color}10`,
+                    color: card.color,
+                  }}
+                >
+                  {card.icon}
+                </Box>
+                {card.delta !== undefined && (
+                  <DeltaBadge current={card.delta} previous={0} suffix={card.suffix} />
+                )}
+              </Box>
+              
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.5 }}>
+                  {card.label}
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  {card.value}
+                </Typography>
+              </Box>
             </Paper>
           </Grid>
         ))}
@@ -207,12 +236,12 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
       <Paper
         elevation={0}
         sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: '20px',
-          border: `1px solid ${tokens.surface.borderLight}`,
-          backgroundColor: '#FFFFFF',
-          boxShadow: tokens.shadow.card,
+          p: 3.5,
+          mb: 4.5,
+          borderRadius: '24px',
+          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -244,17 +273,18 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
       </Paper>
 
       {/* Charts Row */}
-      <Grid container spacing={3} mb={3}>
+      <Grid container spacing={4} mb={4.5}>
         {/* Completion Trend */}
         <Grid item xs={12} md={8}>
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 3.5,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+              height: '100%',
             }}
           >
             <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary} mb={2}>
@@ -314,11 +344,11 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 3.5,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
               height: '100%',
             }}
           >
@@ -352,16 +382,17 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
       </Grid>
 
       {/* Priority Breakdown */}
-      <Grid container spacing={3}>
+      <Grid container spacing={4} mb={4.5}>
         <Grid item xs={12} md={6}>
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 3.5,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+              height: '100%',
             }}
           >
             <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary} mb={2}>
@@ -395,24 +426,26 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
             component={Paper}
             elevation={0}
             sx={{
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+              height: '100%',
+              overflowX: 'auto',
             }}
           >
-            <Box sx={{ p: 3, pb: 1 }}>
-              <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary}>
+            <Box sx={{ p: 3.5, pb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: tokens.text.primary, letterSpacing: '-0.01em' }}>
                 Priority-wise Completion Rates
               </Typography>
             </Box>
-            <Table>
+            <Table sx={{ minWidth: 400 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: tokens.brand.primary50 }}>
-                  <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Priority</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }} align="center">Total</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }} align="center">Done</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }} align="right">Rate</TableCell>
+                <TableRow sx={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(93, 26, 137, 0.02)' }}>
+                  <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Priority</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="center">Total</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="center">Done</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="right">Rate</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -421,7 +454,9 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
                     key={p.priority}
                     sx={{
                       transition: 'background-color 0.2s ease',
-                      '&:hover': { backgroundColor: tokens.brand.primary50 },
+                      '&:hover': { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(93, 26, 137, 0.02)' },
+                      '& td': { borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` },
+                      '&:last-child td': { borderBottom: 'none' },
                     }}
                   >
                     <TableCell>
@@ -431,16 +466,17 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
                         sx={{
                           backgroundColor: PRIORITY_BG[p.priority] || tokens.semantic.neutralBg,
                           color: PRIORITY_COLORS[p.priority] || tokens.semantic.neutral,
-                          fontWeight: 600,
+                          fontWeight: 750,
                           textTransform: 'capitalize',
+                          borderRadius: '8px',
                         }}
                       />
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2">{p.total}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: tokens.text.secondary }}>{p.total}</Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" fontWeight={600} color={tokens.semantic.success}>
+                      <Typography variant="body2" fontWeight={750} color={tokens.semantic.success}>
                         {p.completed}
                       </Typography>
                     </TableCell>

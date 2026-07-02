@@ -8,6 +8,7 @@ import {
   CircularProgress,
   Chip,
   Alert,
+  useTheme,
 } from '@mui/material';
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { ReportTable } from '@/components/reports/ReportTable';
@@ -27,6 +28,8 @@ import type {
 } from '@/types';
 
 const ReportsPage = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -35,7 +38,7 @@ const ReportsPage = () => {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   // Controlled form states
-  const [reportType, setReportType] = useState<string>('attendance');
+  const [reportType, setReportType] = useState<string>('user_summary');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
 
   const { data: users = [] } = useUsers({}, { enabled: isAdmin });
@@ -141,9 +144,68 @@ const ReportsPage = () => {
         const fullMetrics = metrics as unknown as EmployeeFullMetrics;
         return (
           <Box>
-            <Typography variant="h5" fontWeight={700} color={tokens.brand.primary} mb={3}>
-              Full Report — {fullMetrics.user?.name || userName}
-            </Typography>
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary, backgroundImage: `linear-gradient(180deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)` }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  {fullMetrics.user?.name || userName}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.5, display: 'block' }}>
+                  Comprehensive Performance Overview
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Injected User Summary from Full Metrics */}
+            <Box
+              sx={{
+                p: 4,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+                mb: 4,
+              }}
+            >
+              <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ width: 6, height: 24, borderRadius: 3, bgcolor: tokens.brand.accent }} />
+                <Typography variant="h5" sx={{ fontWeight: 800, color: tokens.text.primary, letterSpacing: '-0.02em' }}>
+                  User Summary Data
+                </Typography>
+              </Box>
+              <Grid container spacing={3}>
+                {[
+                  { label: 'Attendance Rate', value: `${Math.round(fullMetrics.attendance?.attendanceRate || 0)}%` },
+                  { label: 'KPI Completion', value: `${Math.round(fullMetrics.kpiPerformance?.completionRate || 0)}%` },
+                  { label: 'Total Leads', value: fullMetrics.sales?.totalLeads || 0 },
+                  { label: 'Meetings Completed', value: fullMetrics.meetings?.completed || 0 },
+                ].map((item) => (
+                  <Grid item xs={12} sm={6} md={3} key={item.label}>
+                    <Box
+                      sx={{
+                        p: 3,
+                        borderRadius: '20px',
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : tokens.brand.primary50,
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.05)'}`,
+                        textAlign: 'center',
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.brand.primary, letterSpacing: '-0.02em', mb: 1 }}>
+                        {item.value}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {item.label}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
             <Box mb={4}>
               <AttendanceReportView
                 metrics={fullMetrics.attendance}
@@ -165,46 +227,73 @@ const ReportsPage = () => {
         // For team overview, render each member as a summary card
         return (
           <Box>
-            <Typography variant="h5" fontWeight={700} color={tokens.brand.primary} mb={3}>
-              Team Overview Report
-            </Typography>
-            <Alert severity="info" sx={{ borderRadius: '16px', mb: 2 }}>
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary, backgroundImage: `linear-gradient(180deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)` }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  Team Overview Report
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.5, display: 'block' }}>
+                  Aggregate Team Metrics
+                </Typography>
+              </Box>
+            </Box>
+            <Alert 
+              severity="info" 
+              sx={{ 
+                borderRadius: '20px', 
+                mb: 4, 
+                py: 1.5,
+                bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                color: isDarkMode ? '#93C5FD' : '#1D4ED8',
+                border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}`,
+              }}
+            >
               Team overview contains combined data for all employees. Use the export button below to download the full report.
             </Alert>
           </Box>
         );
       default:
-        // Legacy report types — show basic metrics
+        // Legacy report types (User Summary) — show metrics dynamically
         return (
           <Box
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 4,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+              mb: 4,
             }}
           >
-            <Typography variant="h6" fontWeight={600} color={tokens.brand.primary} mb={2}>
-              Report Results
-            </Typography>
-            <Grid container spacing={2}>
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ width: 6, height: 24, borderRadius: 3, bgcolor: tokens.brand.accent }} />
+              <Typography variant="h5" sx={{ fontWeight: 800, color: tokens.text.primary, letterSpacing: '-0.02em' }}>
+                User Summary Data
+              </Typography>
+            </Box>
+            <Grid container spacing={3}>
               {Object.entries(metrics)
                 .filter(([, v]) => typeof v === 'number')
                 .map(([key, value]) => (
-                  <Grid item xs={6} sm={4} md={3} key={key}>
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={key}>
                     <Box
                       sx={{
-                        p: 2,
-                        borderRadius: '12px',
-                        backgroundColor: tokens.brand.primary50,
+                        p: 3,
+                        borderRadius: '20px',
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : tokens.brand.primary50,
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.05)'}`,
                         textAlign: 'center',
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                        },
                       }}
                     >
-                      <Typography variant="h5" fontWeight={700} color={tokens.brand.primary}>
+                      <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.brand.primary, letterSpacing: '-0.02em', mb: 1 }}>
                         {value as number}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())}
                       </Typography>
                     </Box>
@@ -229,42 +318,45 @@ const ReportsPage = () => {
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 2,
-          mb: 4,
+          mb: 4.5,
         }}
       >
-        <Typography variant="h4" fontWeight={700} color={tokens.brand.primary}>
+        <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em' }}>
           Reports & Analytics
         </Typography>
 
         <Tabs
           value={activeTab}
           onChange={(_, val) => setActiveTab(val)}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
+          variant="standard"
           sx={{
-            backgroundColor: tokens.brand.primary50,
-            borderRadius: '24px',
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(93, 26, 137, 0.04)',
+            borderRadius: '16px',
             p: 0.5,
+            minHeight: '44px',
             '& .MuiTabs-indicator': {
               backgroundColor: tokens.brand.primary,
-              borderRadius: '20px',
+              borderRadius: '12px',
               height: '100%',
+              boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',
             },
             '& .MuiTab-root': {
               minHeight: 'auto',
-              py: 1,
-              px: 3,
-              borderRadius: '20px',
+              py: 0.8,
+              px: { xs: 2, sm: 3.5 },
+              borderRadius: '12px',
               textTransform: 'none',
-              fontWeight: 600,
+              fontWeight: 750,
               fontSize: '0.9rem',
-              color: tokens.text.muted,
-              transition: 'color 0.2s ease',
+              color: tokens.text.secondary,
+              transition: 'all 0.2s ease',
               '&.Mui-selected': {
                 color: '#FFFFFF',
                 zIndex: 1,
               },
+              '&:hover:not(.Mui-selected)': {
+                color: tokens.text.primary,
+              }
             },
           }}
         >
@@ -304,7 +396,7 @@ const ReportsPage = () => {
                 alignItems: 'center',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <Typography variant="subtitle2" color="text.secondary">
                   Report Ready
                 </Typography>
@@ -332,7 +424,9 @@ const ReportsPage = () => {
                   />
                 )}
               </Box>
-              <ReportExportButton reportId={selectedReport._id} />
+              <Box sx={{ width: { xs: '100%', sm: 'auto' }, display: 'flex' }}>
+                <ReportExportButton reportId={selectedReport._id} />
+              </Box>
             </Box>
           )}
         </Box>

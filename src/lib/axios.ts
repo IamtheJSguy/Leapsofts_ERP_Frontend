@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { queryClient } from './queryClient';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -55,6 +56,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem('accessToken');
+        useAuthStore.getState().clearAuth();
         queryClient.clear();
         window.location.href = '/login';
         return Promise.reject(refreshError);
