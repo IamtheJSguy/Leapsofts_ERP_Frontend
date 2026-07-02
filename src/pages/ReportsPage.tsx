@@ -1,146 +1,223 @@
 import { useState, useMemo } from 'react';
-import { Typography, Box, Tabs, Tab, Grid } from '@mui/material';
+import {
+  Typography,
+  Box,
+  Tabs,
+  Tab,
+  Grid,
+  CircularProgress,
+  Chip,
+  Alert,
+} from '@mui/material';
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { ReportTable } from '@/components/reports/ReportTable';
 import { ReportExportButton } from '@/components/reports/ReportExportButton';
-import { ReportChartView } from '@/components/reports/ReportChartView';
-import { TargetComplianceMatrix } from '@/components/reports/TargetComplianceMatrix';
-import { QuickAccessPresets } from '@/components/reports/QuickAccessPresets';
-import { TeamProgressView } from '@/components/reports/TeamProgressView';
+import { AttendanceReportView } from '@/components/reports/AttendanceReportView';
+import { KpiPerformanceView } from '@/components/reports/KpiPerformanceView';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUsers } from '@/hooks/api/useUsers';
-import { useUIStore } from '@/store/useUIStore';
-import { useExportReport } from '@/hooks/api/useReports';
+import { useReport } from '@/hooks/api/useReports';
 import { tokens } from '@/styles/tokens';
-import type { Report } from '@/types';
+import type {
+  Report,
+  AttendanceMetrics,
+  KpiPerformanceMetrics,
+  EmployeeFullMetrics,
+  User,
+} from '@/types';
 
 const ReportsPage = () => {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
-  const addToast = useUIStore((s) => s.addToast);
-  const exportReport = useExportReport();
 
-  // Toggle state: 'team' or 'individual'
-  const [activeTab, setActiveTab] = useState<'team' | 'individual'>(isAdmin ? 'team' : 'individual');
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  
-  // Controlled form states synced with presets
-  const [reportType, setReportType] = useState<string>('user_summary');
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(currentUser?._id || '');
-  const [activePreset, setActivePreset] = useState<string | null>('agent_performance');
+  // Toggle state: 'generate' or 'history'
+  const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate');
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
-  const { data: users = [] } = useUsers(
-    {},
-    { enabled: isAdmin }
-  );
+  // Controlled form states
+  const [reportType, setReportType] = useState<string>('attendance');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+
+  const { data: users = [] } = useUsers({}, { enabled: isAdmin });
 
   const selectedAgent = useMemo(() => {
-    if (!isAdmin) return currentUser;
-    return users.find((u) => u._id === selectedAgentId) || currentUser;
-  }, [users, selectedAgentId, isAdmin, currentUser]);
+    return users.find((u) => u._id === selectedAgentId) || null;
+  }, [users, selectedAgentId]);
 
   const selectedAgentName = useMemo(() => {
-    if (!selectedAgent) return 'Agent';
+    if (!selectedAgent) return 'All Employees';
     return `${selectedAgent.firstName || ''} ${selectedAgent.lastName || ''}`.trim() || selectedAgent.email;
   }, [selectedAgent]);
 
-  // Handle Preset Select
-  const handlePresetSelect = (presetId: string) => {
-    if (presetId === 'monthly_exports') {
-      if (selectedAgentId) {
-        exportReport.mutate(
-          { id: selectedAgentId, format: 'excel' },
-          {
-            onSuccess: () => {
-              addToast({
-                message: `Monthly Excel report exported for ${selectedAgentName}`,
-                severity: 'success',
-              });
-            },
-            onError: (err) => {
-              addToast({
-                message: `Failed to export Excel: ${err.message}`,
-                severity: 'error',
-              });
-            },
-          }
+  // Fetch the selected report details (with polling while processing)
+  const { data: selectedReport, isLoading: reportLoading } = useReport(selectedReportId ?? undefined);
+
+  /** Handle report generated — switch to viewing the result */
+  const handleReportGenerated = (id: string) => {
+    setSelectedReportId(id);
+  };
+
+  /** Render the report result based on type and metrics */
+  const renderReportResult = () => {
+    if (!selectedReportId) return null;
+
+    if (reportLoading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress color="secondary" />
+        </Box>
+      );
+    }
+
+    if (!selectedReport) return null;
+
+    // Processing state
+    if (selectedReport.status === 'pending' || selectedReport.status === 'processing') {
+      return (
+        <Box
+          sx={{
+            p: 4,
+            borderRadius: '20px',
+            border: `1px solid ${tokens.surface.borderLight}`,
+            backgroundColor: '#FFFFFF',
+            boxShadow: tokens.shadow.card,
+            textAlign: 'center',
+          }}
+        >
+          <CircularProgress color="secondary" sx={{ mb: 2 }} />
+          <Typography variant="h6" color={tokens.brand.primary} fontWeight={600}>
+            Generating Report...
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            Your report is being processed. This page will auto-update when ready.
+          </Typography>
+        </Box>
+      );
+    }
+
+    // Failed state
+    if (selectedReport.status === 'failed') {
+      return (
+        <Alert severity="error" sx={{ borderRadius: '16px' }}>
+          Report generation failed: {selectedReport.error || 'Unknown error'}
+        </Alert>
+      );
+    }
+
+    // Completed — render the actual report view
+    const metrics = selectedReport.metrics;
+    const comparison = selectedReport.comparisonMetrics;
+    const reportUser = selectedReport.userId as User | undefined;
+    const userName = reportUser
+      ? `${reportUser.firstName || ''} ${reportUser.lastName || ''}`.trim() || reportUser.email
+      : selectedAgentName;
+
+    if (!metrics) {
+      return (
+        <Alert severity="info" sx={{ borderRadius: '16px' }}>
+          No data available for the selected period.
+        </Alert>
+      );
+    }
+
+    switch (selectedReport.type) {
+      case 'attendance':
+        return (
+          <AttendanceReportView
+            metrics={metrics as unknown as AttendanceMetrics}
+            comparison={comparison as unknown as AttendanceMetrics | undefined}
+            userName={userName}
+          />
         );
-      } else {
-        addToast({
-          message: 'Please select an agent to export a report.',
-          severity: 'warning',
-        });
+      case 'kpi_performance':
+        return (
+          <KpiPerformanceView
+            metrics={metrics as unknown as KpiPerformanceMetrics}
+            comparison={comparison as unknown as KpiPerformanceMetrics | undefined}
+            userName={userName}
+          />
+        );
+      case 'employee_full': {
+        const fullMetrics = metrics as unknown as EmployeeFullMetrics;
+        return (
+          <Box>
+            <Typography variant="h5" fontWeight={700} color={tokens.brand.primary} mb={3}>
+              Full Report — {fullMetrics.user?.name || userName}
+            </Typography>
+            <Box mb={4}>
+              <AttendanceReportView
+                metrics={fullMetrics.attendance}
+                comparison={(comparison as unknown as EmployeeFullMetrics)?.attendance}
+                userName={fullMetrics.user?.name}
+              />
+            </Box>
+            <Box>
+              <KpiPerformanceView
+                metrics={fullMetrics.kpiPerformance}
+                comparison={(comparison as unknown as EmployeeFullMetrics)?.kpiPerformance}
+                userName={fullMetrics.user?.name}
+              />
+            </Box>
+          </Box>
+        );
       }
-      return;
-    }
-
-    setActivePreset(presetId);
-
-    // Sync reportType form field based on preset selection
-    if (presetId === 'agent_performance') {
-      setReportType('user_summary');
-    } else if (presetId === 'outreach_funnel') {
-      setReportType('connections');
-    } else if (presetId === 'template_sentiment') {
-      setReportType('messages');
+      case 'team_overview':
+        // For team overview, render each member as a summary card
+        return (
+          <Box>
+            <Typography variant="h5" fontWeight={700} color={tokens.brand.primary} mb={3}>
+              Team Overview Report
+            </Typography>
+            <Alert severity="info" sx={{ borderRadius: '16px', mb: 2 }}>
+              Team overview contains combined data for all employees. Use the export button below to download the full report.
+            </Alert>
+          </Box>
+        );
+      default:
+        // Legacy report types — show basic metrics
+        return (
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: '20px',
+              border: `1px solid ${tokens.surface.borderLight}`,
+              backgroundColor: '#FFFFFF',
+              boxShadow: tokens.shadow.card,
+            }}
+          >
+            <Typography variant="h6" fontWeight={600} color={tokens.brand.primary} mb={2}>
+              Report Results
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(metrics)
+                .filter(([, v]) => typeof v === 'number')
+                .map(([key, value]) => (
+                  <Grid item xs={6} sm={4} md={3} key={key}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: '12px',
+                        backgroundColor: tokens.brand.primary50,
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Typography variant="h5" fontWeight={700} color={tokens.brand.primary}>
+                        {value as number}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))}
+            </Grid>
+          </Box>
+        );
     }
   };
 
-  // Sync activePreset if reportType filter is changed manually in the form
-  const handleReportTypeChange = (newType: string) => {
-    setReportType(newType);
-    if (newType === 'user_summary' || newType === 'admin_summary') {
-      setActivePreset('agent_performance');
-    } else if (newType === 'connections') {
-      setActivePreset('outreach_funnel');
-    } else if (newType === 'messages') {
-      setActivePreset('template_sentiment');
-    } else {
-      setActivePreset(null);
-    }
-  };
-
-  // Dynamic seed-based chart data depending on selected preset and agent
-  const chartData = useMemo(() => {
-    const seed = selectedAgent?._id 
-      ? selectedAgent._id.charCodeAt(0) + selectedAgent._id.charCodeAt(selectedAgent._id.length - 1)
-      : 42;
-
-    if (activePreset === 'outreach_funnel') {
-      return [
-        { name: 'Sent Requests', value: Math.round((seed % 40) + 120) },
-        { name: 'Accepted', value: Math.round((seed % 30) + 70) },
-        { name: 'Declined', value: Math.round((seed % 10) + 15) },
-        { name: 'No Response', value: Math.round((seed % 15) + 35) },
-      ];
-    } else if (activePreset === 'template_sentiment') {
-      return [
-        { name: 'Total Messages', value: Math.round((seed % 50) + 180) },
-        { name: 'Replied Messages', value: Math.round((seed % 30) + 90) },
-        { name: 'Positive Reply', value: Math.round((seed % 20) + 60) },
-        { name: 'Negative Reply', value: Math.round((seed % 10) + 30) },
-      ];
-    } else {
-      // Default: agent_performance
-      return [
-        { name: 'Leads Contacted', value: Math.round((seed % 40) + 120) },
-        { name: 'Connection Requests', value: Math.round((seed % 30) + 80) },
-        { name: 'Accepted Requests', value: Math.round((seed % 20) + 45) },
-        { name: 'Replies Received', value: Math.round((seed % 15) + 25) },
-        { name: 'Meetings Scheduled', value: Math.round((seed % 8) + 8) },
-      ];
-    }
-  }, [selectedAgent, activePreset]);
-
-  const chartTitle = useMemo(() => {
-    const suffix = 
-      activePreset === 'outreach_funnel'
-        ? 'Outreach Connections Ratio'
-        : activePreset === 'template_sentiment'
-        ? 'Message Template Sentiment'
-        : 'Outreach Performance Funnel';
-    return `${selectedAgentName}'s ${suffix}`;
-  }, [selectedAgentName, activePreset]);
+  // If not admin, redirect handled by router — this is a safety check
+  if (!isAdmin) return null;
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -159,106 +236,118 @@ const ReportsPage = () => {
           Reports & Analytics
         </Typography>
 
-        {/* View Switcher Tabs (Admin Only) */}
-        {isAdmin && (
-          <Tabs
-            value={activeTab}
-            onChange={(_, val) => setActiveTab(val)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{
-              backgroundColor: tokens.brand.primary50,
-              borderRadius: '24px',
-              p: 0.5,
-              '& .MuiTabs-indicator': {
-                backgroundColor: tokens.brand.primary,
-                borderRadius: '20px',
-                height: '100%',
-              },
-              '& .MuiTab-root': {
-                minHeight: 'auto',
-                py: 1,
-                px: 3,
-                borderRadius: '20px',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                color: tokens.text.muted,
-                transition: 'color 0.2s ease',
-                '&.Mui-selected': {
-                  color: '#FFFFFF',
-                  zIndex: 1,
-                },
-              },
-            }}
-          >
-            <Tab value="team" label="Team Progress" />
-            <Tab value="individual" label="Individual Agent" />
-          </Tabs>
-        )}
-      </Box>
-
-      {/* Render Active View */}
-      {activeTab === 'team' && isAdmin ? (
-        <TeamProgressView />
-      ) : (
-        <Grid container spacing={3}>
-          {/* Top Panel: Presets & Filters (Row Flex Format) */}
-          <Grid item xs={12}>
-            {/* Presets Cards */}
-            <QuickAccessPresets activePreset={activePreset} onSelectPreset={handlePresetSelect} />
-            
-            {/* Unified Horizontal Filters Form */}
-            <ReportBuilder
-              reportType={reportType}
-              onReportTypeChange={handleReportTypeChange}
-              selectedAgentId={selectedAgentId}
-              onAgentChange={setSelectedAgentId}
-              onGenerated={(id) => setSelectedReport({ _id: id } as Report)}
-            />
-          </Grid>
-
-          {/* Target Compliance Heatmap - Full Width in Vertical Layout */}
-          <Grid item xs={12}>
-            <TargetComplianceMatrix mode="individual" selectedAgentId={selectedAgent?._id} selectedAgentName={selectedAgentName} />
-          </Grid>
-
-          {/* Split Column Panel for Area Spline Chart & Reports Table */}
-          <Grid item xs={12} md={7}>
-            <ReportChartView data={chartData} title={chartTitle} />
-          </Grid>
-          
-          <Grid item xs={12} md={5}>
-            <Typography variant="h6" fontWeight={600} color={tokens.brand.primary} gutterBottom>
-              Recent Reports History
-            </Typography>
-            <ReportTable onSelect={setSelectedReport} />
-          </Grid>
-        </Grid>
-      )}
-
-      {/* Selected report export toolbar */}
-      {selectedReport && (
-        <Box
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{
-            mt: 4,
-            p: 3,
-            borderRadius: '20px',
-            border: `1px solid ${tokens.surface.borderLight}`,
-            backgroundColor: '#FFFFFF',
-            boxShadow: tokens.shadow.card,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 2,
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            backgroundColor: tokens.brand.primary50,
+            borderRadius: '24px',
+            p: 0.5,
+            '& .MuiTabs-indicator': {
+              backgroundColor: tokens.brand.primary,
+              borderRadius: '20px',
+              height: '100%',
+            },
+            '& .MuiTab-root': {
+              minHeight: 'auto',
+              py: 1,
+              px: 3,
+              borderRadius: '20px',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              color: tokens.text.muted,
+              transition: 'color 0.2s ease',
+              '&.Mui-selected': {
+                color: '#FFFFFF',
+                zIndex: 1,
+              },
+            },
           }}
         >
-          <Typography variant="subtitle2" color="text.secondary">
-            Active Report Target ID: <strong>{selectedReport._id}</strong>
+          <Tab value="generate" label="Generate Report" />
+          <Tab value="history" label="Report History" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 'generate' ? (
+        <Box>
+          {/* Report Builder */}
+          <ReportBuilder
+            reportType={reportType}
+            onReportTypeChange={setReportType}
+            selectedAgentId={selectedAgentId}
+            onAgentChange={setSelectedAgentId}
+            onGenerated={handleReportGenerated}
+          />
+
+          {/* Report Result View */}
+          {renderReportResult()}
+
+          {/* Export Toolbar */}
+          {selectedReport && selectedReport.status === 'completed' && (
+            <Box
+              sx={{
+                mt: 4,
+                p: 3,
+                borderRadius: '20px',
+                border: `1px solid ${tokens.surface.borderLight}`,
+                backgroundColor: '#FFFFFF',
+                boxShadow: tokens.shadow.card,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Report Ready
+                </Typography>
+                <Chip
+                  label={selectedReport.type.replace(/_/g, ' ')}
+                  size="small"
+                  sx={{
+                    backgroundColor: tokens.brand.primary50,
+                    color: tokens.brand.primary,
+                    fontWeight: 600,
+                    textTransform: 'capitalize',
+                  }}
+                />
+                {selectedReport.period && (
+                  <Chip
+                    label={selectedReport.period}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      borderColor: tokens.brand.accent,
+                      color: tokens.brand.accent,
+                      fontWeight: 600,
+                      textTransform: 'capitalize',
+                    }}
+                  />
+                )}
+              </Box>
+              <ReportExportButton reportId={selectedReport._id} />
+            </Box>
+          )}
+        </Box>
+      ) : (
+        /* History Tab */
+        <Box>
+          <Typography variant="h6" fontWeight={600} color={tokens.brand.primary} gutterBottom>
+            Generated Reports History
           </Typography>
-          <ReportExportButton reportId={selectedReport._id} />
+          <ReportTable
+            onSelect={(report: Report) => {
+              setSelectedReportId(report._id);
+              setActiveTab('generate');
+            }}
+          />
         </Box>
       )}
     </Box>
