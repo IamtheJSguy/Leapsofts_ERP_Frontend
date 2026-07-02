@@ -43,6 +43,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
+import BadgeIcon from '@mui/icons-material/Badge';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
@@ -330,12 +335,7 @@ const TeamPage = () => {
             <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
               Edit
             </Button>
-            <Button startIcon={<LockIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => alert('Resetting password is disabled in preview mode.')}>
-              Reset Password
-            </Button>
-            <Button startIcon={<BlockIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => alert('Deactivation is disabled in preview mode.')}>
-              Deactivate
-            </Button>
+
             <Button
               startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
               sx={{
@@ -567,160 +567,140 @@ const TeamPage = () => {
           </Box>
         </Card>
 
-        {/* Multi-column Projects & Secondary Metadata details */}
-        <Grid container spacing={{ xs: 2, md: 4 }} sx={{ mb: 4.5, alignItems: 'stretch' }}>
-          {/* Column 1: Projects list card */}
-          <Grid item xs={12} md={8} sx={{ display: 'flex' }}>
-            <Card
-              sx={{
-                borderRadius: '24px',
-                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                p: 3,
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                <Box
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    bgcolor: 'rgba(139, 92, 246, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <AssignmentIcon sx={{ color: '#8B5CF6', fontSize: 16 }} />
-                </Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                  Tasks ({userSummary?.tasksList?.length ?? 0})
+        {/* Horizontal Metadata Bar */}
+        <Card
+          sx={{
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+            p: { xs: 2.5, md: 3 },
+            mb: 4.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+          }}
+        >
+          {[
+            { label: 'Department', value: selectedUser.department || 'Engineering', icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
+            { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
+            { label: 'Shift', value: `${formatTime12Hour(selectedUser.shiftStart) || '09:00 AM'} - ${formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM'}`, icon: <AccessTimeIcon sx={{ fontSize: 20, color: '#3B82F6' }} /> },
+            { label: 'Start Date', value: 'Jun 3, 2026', icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
+            { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true, icon: <CheckCircleIcon sx={{ fontSize: 20, color: selectedUser.isActive ? '#10B981' : '#EF4444' }} /> },
+          ].map((meta, idx) => (
+            <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ width: 44, height: 44, borderRadius: '14px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {meta.icon}
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.65rem', display: 'block', mb: 0.2 }}>
+                  {meta.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: meta.isStatus ? (selectedUser.isActive ? '#10B981' : '#EF4444') : (isDarkMode ? '#fff' : tokens.text.primary), fontSize: '0.92rem' }}>
+                  {meta.value}
                 </Typography>
               </Box>
+            </Box>
+          ))}
+        </Card>
 
-              {(!userSummary?.tasksList || userSummary.tasksList.length === 0) ? (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1 }}>
-                  No active tasks assigned.
-                </Typography>
-              ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
-                  {userSummary.tasksList.map((task: any) => {
-                    return (
-                      <Box
-                        key={task.id}
-                        onClick={() => navigate(`/board/${task.boardId}/boards/${task.boardId}`)}
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          p: 2,
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
-                          borderRadius: '16px',
-                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease-in-out',
-                          '&:hover': {
-                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.04)',
-                            borderColor: tokens.brand.primary,
-                            transform: 'translateY(-2px)'
-                          }
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-                            {task.title}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                            Board: {task.boardName || 'General'}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          {task.dueDate && (
-                            <Typography variant="caption" sx={{ color: task.isOverdue ? '#EF4444' : 'text.secondary', fontWeight: 700 }}>
-                              {task.isOverdue ? 'Overdue: ' : 'Due: '}{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </Typography>
-                          )}
-                          <Chip
-                            label={task.columnName || 'Active'}
-                            size="small"
-                            sx={{
-                              bgcolor: task.isDone ? 'rgba(16, 185, 129, 0.1)' : (task.isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
-                              color: task.isDone ? '#10B981' : (task.isOverdue ? '#EF4444' : '#3B82F6'),
-                              fontWeight: 800,
-                              fontSize: '0.72rem',
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
-            </Card>
-          </Grid>
-
-          {/* Column 2: Department Meta Info */}
-          <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-            <Card
+        {/* Projects list card */}
+        <Card
+          sx={{
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+            p: 3,
+            mb: 4.5,
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Box
               sx={{
-                borderRadius: '24px',
-                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                p: 3,
-                width: '100%',
-                height: '100%',
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                bgcolor: 'rgba(139, 92, 246, 0.1)',
                 display: 'flex',
-                flexDirection: 'column',
+                alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Grid container spacing={2}>
-                  {[
-                    { label: 'Department', value: selectedUser.department || 'Engineering' },
-                    { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : 'EMPLOYEE' },
-                    { label: 'Shift Start', value: formatTime12Hour(selectedUser.shiftStart) || '09:00 AM' },
-                    { label: 'Shift End', value: formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM' },
-                    { label: 'Start Date', value: 'Jun 3, 2026' },
-                    { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
-                  ].map((meta, idx) => (
-                    <Grid item xs={6} key={idx} sx={{ mb: 1 }}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: 'text.secondary',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          fontSize: '0.65rem',
-                          display: 'block',
-                          mb: 0.5,
-                        }}
-                      >
-                        {meta.label}
+              <AssignmentIcon sx={{ color: '#8B5CF6', fontSize: 16 }} />
+            </Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+              Tasks ({userSummary?.tasksList?.length ?? 0})
+            </Typography>
+          </Box>
+
+          {(!userSummary?.tasksList || userSummary.tasksList.length === 0) ? (
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1 }}>
+              No active tasks assigned.
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
+              {userSummary.tasksList.map((task: any) => {
+                return (
+                  <Box
+                    key={task.id}
+                    onClick={() => navigate(`/board/${task.boardId}/boards/${task.boardId}`)}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      p: 2,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F8F7',
+                      borderRadius: '16px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease-in-out',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.04)',
+                        borderColor: tokens.brand.primary,
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                        {task.title}
                       </Typography>
-                      <Typography
-                        variant="body2"
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                        Board: {task.boardName || 'General'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      {task.dueDate && (
+                        <Typography variant="caption" sx={{ color: task.isOverdue ? '#EF4444' : 'text.secondary', fontWeight: 700 }}>
+                          {task.isOverdue ? 'Overdue: ' : 'Due: '}{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Typography>
+                      )}
+                      <Chip
+                        label={task.columnName || 'Active'}
+                        size="small"
                         sx={{
+                          bgcolor: task.isDone ? 'rgba(16, 185, 129, 0.1)' : (task.isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                          color: task.isDone ? '#10B981' : (task.isOverdue ? '#EF4444' : '#3B82F6'),
                           fontWeight: 800,
-                          color: meta.isStatus ? '#10B981' : (isDarkMode ? '#fff' : tokens.text.primary),
-                          fontSize: '0.86rem',
+                          fontSize: '0.72rem',
                         }}
-                      >
-                        {meta.value}
-                      </Typography>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Card>
-            </Grid>
-          </Grid>
+                      />
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
+        </Card>
 
         {/* Edit User Dialog */}
-        <Dialog 
-          open={isEditUserOpen} 
+        <Dialog
+          open={isEditUserOpen}
           onClose={() => setIsEditUserOpen(false)}
           PaperProps={{
             sx: {
@@ -816,9 +796,9 @@ const TeamPage = () => {
               </Grid>
             </DialogContent>
             <DialogActions sx={{ p: 3, pt: 1 }}>
-              <Button 
-                onClick={() => setIsEditUserOpen(false)} 
-                sx={{ 
+              <Button
+                onClick={() => setIsEditUserOpen(false)}
+                sx={{
                   color: 'text.secondary',
                   fontWeight: 600,
                   textTransform: 'none'
@@ -826,11 +806,11 @@ const TeamPage = () => {
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                variant="contained" 
+              <Button
+                type="submit"
+                variant="contained"
                 disabled={updateUserMutation.isPending}
-                sx={{ 
+                sx={{
                   bgcolor: tokens.brand.primary,
                   color: '#fff',
                   fontWeight: 700,
@@ -850,8 +830,8 @@ const TeamPage = () => {
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog 
-          open={isDeleteConfirmOpen} 
+        <Dialog
+          open={isDeleteConfirmOpen}
           onClose={() => setIsDeleteConfirmOpen(false)}
           PaperProps={{
             sx: {
@@ -871,9 +851,9 @@ const TeamPage = () => {
             </Typography>
           </DialogContent>
           <DialogActions sx={{ p: 3, pt: 2 }}>
-            <Button 
-              onClick={() => setIsDeleteConfirmOpen(false)} 
-              sx={{ 
+            <Button
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              sx={{
                 color: 'text.secondary',
                 fontWeight: 600,
                 textTransform: 'none'
@@ -881,11 +861,11 @@ const TeamPage = () => {
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleDeleteUser}
-              variant="contained" 
+              variant="contained"
               disabled={deleteUserMutation.isPending}
-              sx={{ 
+              sx={{
                 bgcolor: '#EF4444',
                 color: '#fff',
                 fontWeight: 700,
@@ -913,7 +893,7 @@ const TeamPage = () => {
             { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Resolved', time: '5:17 PM', from: 'Customer side', to: 'Resolved', isAction: true },
             { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Doing', time: '5:17 PM', from: 'Customer side', to: 'Doing', isAction: true },
             { date: 'THU, JUN 4 · 2026', desc: 'CREATED task "otp test" in Berger App', time: '5:16 PM', isCreate: true },
-            
+
             // June 3
             { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Pin location icon should be working in map" from Customer side to Service provider', time: '8:10 PM', from: 'Customer side', to: 'Service provider', isAction: true },
             { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Complete UI fixes for this screen" from Service provider to Customer side', time: '8:05 PM', from: 'Service provider', to: 'Customer side', isAction: true },
