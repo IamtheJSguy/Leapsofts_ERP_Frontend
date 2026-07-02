@@ -12,6 +12,7 @@ import {
   TableRow,
   Chip,
   Tooltip,
+  useTheme,
 } from '@mui/material';
 import {
   BarChart,
@@ -81,6 +82,9 @@ const DeltaBadge = ({ current, previous, suffix = '' }: { current: number; previ
 };
 
 export const AttendanceReportView = ({ metrics, comparison, userName }: AttendanceReportViewProps) => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+
   const summaryCards = useMemo(
     () => [
       {
@@ -167,28 +171,47 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={2} mb={3}>
+      <Grid container spacing={3} mb={4.5}>
         {summaryCards.map((card) => (
-          <Grid item xs={6} sm={4} md={2} key={card.label}>
+          <Grid item xs={12} sm={6} md={4} lg={2} key={card.label}>
             <Paper
               elevation={0}
               sx={{
-                p: 2,
-                borderRadius: '16px',
-                border: `1px solid ${tokens.surface.borderLight}`,
-                backgroundColor: '#FFFFFF',
-                boxShadow: tokens.shadow.card,
-                textAlign: 'center',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                p: 2.5,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: tokens.shadow.cardHover,
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 16px 40px rgba(93, 26, 137, 0.08)',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.1)',
                 },
               }}
             >
-              <Box sx={{ color: card.color, mb: 1 }}>{card.icon}</Box>
-              <Typography variant="h5" fontWeight={700} color={tokens.text.primary}>
-                {card.value}
+              {/* Decorative top gradient line */}
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: `linear-gradient(90deg, ${card.color} 0%, transparent 100%)`, opacity: 0.8 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isDarkMode ? `${card.color}15` : `${card.color}10`,
+                    color: card.color,
+                  }}
+                >
+                  {card.icon}
+                </Box>
                 {card.delta !== undefined && (
                   <DeltaBadge
                     current={card.invertDelta ? -(card.delta) : card.delta}
@@ -196,27 +219,34 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
                     suffix={card.suffix}
                   />
                 )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {card.label}
-              </Typography>
+              </Box>
+              
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.5 }}>
+                  {card.label}
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  {card.value}
+                </Typography>
+              </Box>
             </Paper>
           </Grid>
         ))}
       </Grid>
 
       {/* Charts Row */}
-      <Grid container spacing={3} mb={3}>
+      <Grid container spacing={4} mb={4.5}>
         {/* Daily Hours Bar Chart */}
         <Grid item xs={12} md={8}>
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 3.5,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+              height: '100%',
             }}
           >
             <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary} mb={2}>
@@ -250,11 +280,11 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: '20px',
-              border: `1px solid ${tokens.surface.borderLight}`,
-              backgroundColor: '#FFFFFF',
-              boxShadow: tokens.shadow.card,
+              p: 3.5,
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
               height: '100%',
             }}
           >
@@ -294,26 +324,27 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
         component={Paper}
         elevation={0}
         sx={{
-          borderRadius: '20px',
-          border: `1px solid ${tokens.surface.borderLight}`,
-          backgroundColor: '#FFFFFF',
-          boxShadow: tokens.shadow.card,
+          borderRadius: '24px',
+          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
           overflowX: 'auto',
+          mb: 4,
         }}
       >
-        <Box sx={{ p: 3, pb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary}>
+        <Box sx={{ p: 3.5, pb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: tokens.text.primary, letterSpacing: '-0.01em' }}>
             Daily Attendance Log
           </Typography>
         </Box>
         <Table sx={{ minWidth: 600 }}>
           <TableHead>
-            <TableRow sx={{ backgroundColor: tokens.brand.primary50 }}>
-              <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Date</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Check In</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Check Out</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }} align="right">
+            <TableRow sx={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(93, 26, 137, 0.02)' }}>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Date</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Check In</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Check Out</TableCell>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="right">
                 Hours Worked
               </TableCell>
             </TableRow>
@@ -324,11 +355,13 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
                 key={day.date}
                 sx={{
                   transition: 'background-color 0.2s ease',
-                  '&:hover': { backgroundColor: tokens.brand.primary50 },
+                  '&:hover': { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(93, 26, 137, 0.02)' },
+                  '& td': { borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` },
+                  '&:last-child td': { borderBottom: 'none' },
                 }}
               >
                 <TableCell>
-                  <Typography variant="body2" fontWeight={500}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: tokens.text.primary }}>
                     {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </Typography>
                 </TableCell>
@@ -340,26 +373,27 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
                       sx={{
                         backgroundColor: STATUS_BG[day.status] || tokens.semantic.neutralBg,
                         color: STATUS_COLORS[day.status] || tokens.semantic.neutral,
-                        fontWeight: 600,
+                        fontWeight: 750,
                         fontSize: '0.75rem',
                         textTransform: 'capitalize',
+                        borderRadius: '8px',
                       }}
                     />
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
                     {day.checkIn ? new Date(day.checkIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
                     {day.checkOut ? new Date(day.checkOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2" fontWeight={600} color={tokens.brand.primary}>
-                    {(day.totalMinutes / 60).toFixed(1)}h
+                  <Typography variant="body2" sx={{ fontWeight: 800, color: tokens.text.primary, fontSize: '0.95rem' }}>
+                    {(day.totalMinutes / 60).toFixed(1)}<Typography component="span" sx={{ color: 'text.secondary', fontSize: '0.8rem', ml: 0.5 }}>h</Typography>
                   </Typography>
                 </TableCell>
               </TableRow>

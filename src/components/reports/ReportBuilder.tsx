@@ -11,11 +11,21 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Typography,
+  useTheme,
+  Autocomplete,
 } from '@mui/material';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TuneIcon from '@mui/icons-material/Tune';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import PersonIcon from '@mui/icons-material/Person';
+import GroupIcon from '@mui/icons-material/Group';
+import BadgeIcon from '@mui/icons-material/Badge';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 import { reportFilterSchema } from '@/utils/validators';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { useGenerateReport } from '@/hooks/api/useReports';
@@ -25,14 +35,11 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
 const REPORT_TYPES = [
-  { value: 'attendance', label: 'Attendance' },
-  { value: 'kpi_performance', label: 'KPI Performance' },
-  { value: 'employee_full', label: 'Full Employee Report' },
-  { value: 'team_overview', label: 'Team Overview' },
-  { value: 'user_summary', label: 'User Summary (Legacy)' },
-  { value: 'connections', label: 'Connections' },
-  { value: 'messages', label: 'Messages' },
-  { value: 'meetings', label: 'Meetings' },
+  { value: 'attendance', label: 'Attendance', icon: <AccessTimeIcon fontSize="small" /> },
+  { value: 'kpi_performance', label: 'KPI Performance', icon: <TimelineIcon fontSize="small" /> },
+  { value: 'employee_full', label: 'Full Employee Report', icon: <PersonIcon fontSize="small" /> },
+  { value: 'team_overview', label: 'Team Overview', icon: <GroupIcon fontSize="small" /> },
+  { value: 'user_summary', label: 'User Summary', icon: <BadgeIcon fontSize="small" /> },
 ];
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -81,6 +88,9 @@ export const ReportBuilder = ({
     {},
     { enabled: isAdmin },
   );
+
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
 
   const agents = users.filter((u) => u.role !== 'admin');
 
@@ -146,188 +156,248 @@ export const ReportBuilder = ({
       component="form"
       onSubmit={handleSubmit(onSubmit)}
       sx={{
-        p: 3,
-        borderRadius: '20px',
-        border: `1px solid ${tokens.surface.borderLight}`,
-        backgroundColor: '#FFFFFF',
-        boxShadow: tokens.shadow.card,
-        mb: 4,
+        p: { xs: 3, md: 3.5 },
+        borderRadius: '24px',
+        bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
+        mb: 4.5,
       }}
     >
-      {/* Period Toggle */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-        <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
-          Period:
-        </Typography>
-        <ToggleButtonGroup
-          value={period}
-          exclusive
-          onChange={(_, val) => val && setPeriod(val)}
-          size="small"
-          sx={{
-            '& .MuiToggleButton-root': {
-              borderRadius: '12px !important',
-              px: 2,
-              py: 0.8,
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              border: `1px solid ${tokens.surface.border}`,
-              color: tokens.text.muted,
-              transition: 'all 0.2s ease',
-              '&.Mui-selected': {
-                backgroundColor: tokens.brand.primary,
-                color: '#FFFFFF',
-                borderColor: tokens.brand.primary,
-                '&:hover': {
-                  backgroundColor: tokens.brand.primaryDark,
-                },
-              },
-              '&:hover': {
-                backgroundColor: tokens.brand.primary50,
-              },
-            },
-          }}
-        >
-          <ToggleButton value="daily">
-            <CalendarTodayIcon sx={{ fontSize: 16, mr: 0.5 }} /> Daily
-          </ToggleButton>
-          <ToggleButton value="weekly">
-            <DateRangeIcon sx={{ fontSize: 16, mr: 0.5 }} /> Weekly
-          </ToggleButton>
-          <ToggleButton value="monthly">
-            <CalendarMonthIcon sx={{ fontSize: 16, mr: 0.5 }} /> Monthly
-          </ToggleButton>
-          <ToggleButton value="custom">
-            <TuneIcon sx={{ fontSize: 16, mr: 0.5 }} /> Custom
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
-      {/* Filters Row */}
-      <Grid container spacing={2} alignItems="center">
-        {/* Report Type */}
-        <Grid item xs={12} sm={6} md={isAdmin ? 2.5 : 3}>
-          <TextField
-            {...typeRegister}
-            onChange={(e) => {
-              typeOnChange(e);
-              onReportTypeChange?.(e.target.value);
-            }}
-            label="Report Type"
-            select
-            fullWidth
-            size="medium"
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Top Row: Period Toggles */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Period
+          </Typography>
+          <ToggleButtonGroup
+            value={period}
+            exclusive
+            onChange={(_, val) => val && setPeriod(val)}
+            size="small"
             sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+              p: 0.5,
+              borderRadius: '14px',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+              '& .MuiToggleButton-root': {
+                border: 'none',
+                borderRadius: '10px !important',
+                px: 2.5,
+                py: 0.8,
+                textTransform: 'none',
+                fontWeight: 650,
+                fontSize: '0.85rem',
+                color: tokens.text.muted,
+                transition: 'all 0.2s ease',
+                '&.Mui-selected': {
+                  backgroundColor: tokens.brand.primary,
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',
+                  '&:hover': {
+                    backgroundColor: tokens.brand.primaryDark,
+                  },
+                },
+                '&:hover:not(.Mui-selected)': {
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                },
               },
             }}
           >
-            {REPORT_TYPES.map((t) => (
-              <MenuItem key={t.value} value={t.value}>
-                {t.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
+            <ToggleButton value="daily">Daily</ToggleButton>
+            <ToggleButton value="weekly">Weekly</ToggleButton>
+            <ToggleButton value="monthly">Monthly</ToggleButton>
+            <ToggleButton value="custom">Custom</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
-        {/* User Filter (Admin Only, not shown for team overview) */}
-        {isAdmin && !isTeamReport && (
-          <Grid item xs={12} sm={6} md={2.5}>
+        {/* Bottom Row: Filters & Action */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2.5, flexWrap: 'wrap' }}>
+          
+          {/* Report Type */}
+          <Box sx={{ minWidth: { xs: '100%', sm: 260 }, flexGrow: 1, maxWidth: { sm: 320 } }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+              Report Type
+            </Typography>
             <TextField
-              {...userRegister}
+              {...typeRegister}
+              value={reportType}
               onChange={(e) => {
-                userOnChange(e);
-                onAgentChange?.(e.target.value);
+                typeOnChange(e);
+                onReportTypeChange?.(e.target.value);
               }}
-              label="Select Employee"
               select
               fullWidth
-              size="medium"
+              size="small"
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
+                  borderRadius: '14px',
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
+                  fontWeight: 650,
+                  fontSize: '0.9rem',
+                  height: '42px',
+                },
+                '& .MuiSelect-select': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
                 },
               }}
             >
-              <MenuItem value="">
-                <em>All Employees</em>
-              </MenuItem>
-              {agents.map((agent) => (
-                <MenuItem key={agent._id} value={agent._id}>
-                  {`${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email}
+              {REPORT_TYPES.map((t) => (
+                <MenuItem key={t.value} value={t.value} sx={{ py: 1.5, gap: 1.5, fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', color: tokens.brand.primary, opacity: 0.8 }}>
+                    {t.icon}
+                  </Box>
+                  {t.label}
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
-        )}
+          </Box>
 
-        {/* Date Range (only for custom period) */}
-        {period === 'custom' && (
-          <Grid item xs={12} md={3.5}>
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              onStartChange={setStartDate}
-              onEndChange={setEndDate}
-              size="medium"
-            />
-          </Grid>
-        )}
+          {/* User Filter (Admin Only) */}
+          {isAdmin && !isTeamReport && (
+            <Box sx={{ minWidth: { xs: '100%', sm: 260 }, flexGrow: 1, maxWidth: { sm: 320 } }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+                Select Employee
+              </Typography>
+              <Autocomplete
+                options={[
+                  { _id: '', name: 'All Employees' },
+                  ...agents.map((agent) => ({
+                    _id: agent._id,
+                    name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email,
+                  })),
+                ]}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                value={
+                  selectedAgentId === ''
+                    ? { _id: '', name: 'All Employees' }
+                    : {
+                        _id: selectedAgentId,
+                        name:
+                          agents.find((a) => a._id === selectedAgentId)
+                            ? `${agents.find((a) => a._id === selectedAgentId)?.firstName || ''} ${agents.find((a) => a._id === selectedAgentId)?.lastName || ''}`.trim() || agents.find((a) => a._id === selectedAgentId)?.email || ''
+                            : 'Unknown Employee',
+                      }
+                }
+                onChange={(_, newValue) => {
+                  const val = newValue ? newValue._id : '';
+                  onAgentChange?.(val);
+                }}
+                disableClearable
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '14px',
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
+                        fontWeight: 650,
+                        fontSize: '0.9rem',
+                        height: '42px',
+                        paddingTop: '0px',
+                        paddingBottom: '0px',
+                      },
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <MenuItem {...props} key={option._id} sx={{ fontWeight: 600 }}>
+                    {option.name}
+                  </MenuItem>
+                )}
+              />
+            </Box>
+          )}
 
-        {/* Date info for non-custom periods */}
-        {period !== 'custom' && startDate && (
-          <Grid item xs={12} sm={6} md={3}>
-            <Box
+          {/* Date Info / Range */}
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', width: { xs: '100%', sm: 'auto' } }}>
+            {period === 'custom' ? (
+              <Box sx={{ minWidth: { xs: '100%', sm: 260 } }}>
+                <DateRangePicker
+                  startDate={startDate}
+                  endDate={endDate}
+                  onStartChange={setStartDate}
+                  onEndChange={setEndDate}
+                  size="small"
+                />
+              </Box>
+            ) : startDate ? (
+              <>
+                <Typography variant="caption" sx={{ color: 'transparent', display: { xs: 'none', md: 'block' }, mb: 1 }}>
+                  Date
+                </Typography>
+                <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1.5,
+                  px: 3,
+                  py: '9px',
+                  borderRadius: '14px',
+                  backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(93, 26, 137, 0.04)',
+                  border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(93, 26, 137, 0.08)'}`,
+                  height: '42px',
+                }}
+              >
+                <CalendarMonthIcon sx={{ color: tokens.brand.primary, fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: tokens.brand.primary, fontWeight: 750, letterSpacing: '0.01em' }}>
+                  {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {' — '}
+                  {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Typography>
+              </Box>
+            </>
+            ) : null}
+          </Box>
+
+          {/* Submit Button */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-end', height: '100%', width: { xs: '100%', sm: 'auto' } }}>
+            <Typography variant="caption" sx={{ color: 'transparent', display: { xs: 'none', md: 'block' }, mb: 1 }}>
+              Action
+            </Typography>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={generateReport.isPending}
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                px: 2,
-                py: 1.5,
-                borderRadius: '12px',
-                backgroundColor: tokens.brand.primary50,
-                border: `1px solid ${tokens.brand.primary100}`,
+                width: { xs: '100%', sm: 'auto' },
+                borderRadius: '14px',
+                height: '42px',
+                px: 4,
+                textTransform: 'none',
+                fontWeight: 750,
+                fontSize: '0.9rem',
+                background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
+                boxShadow: '0 8px 24px rgba(93, 26, 137, 0.25)',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 12px 28px rgba(93, 26, 137, 0.35)',
+                },
+                '&:disabled': {
+                  background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                }
               }}
             >
-              <CalendarMonthIcon sx={{ color: tokens.brand.primary, fontSize: 18 }} />
-              <Typography variant="body2" color={tokens.brand.primary} fontWeight={500}>
-                {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                {' — '}
-                {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </Typography>
-            </Box>
-          </Grid>
-        )}
-
-        {/* Submit Button */}
-        <Grid item xs={12} md={isTeamReport ? 2 : 1.5}>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={generateReport.isPending}
-            fullWidth
-            sx={{
-              borderRadius: '12px',
-              py: 1.5,
-              textTransform: 'none',
-              fontWeight: 600,
-              backgroundColor: tokens.brand.primary,
-              minWidth: '110px',
-              '&:hover': {
-                backgroundColor: tokens.brand.primaryDark,
-              },
-            }}
-          >
-            {generateReport.isPending ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              'Generate Report'
-            )}
-          </Button>
-        </Grid>
-      </Grid>
+              {generateReport.isPending ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                'Generate Report'
+              )}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 };
