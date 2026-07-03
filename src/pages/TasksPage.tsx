@@ -431,7 +431,7 @@ const TasksPage = () => {
       name: k.name.trim(),
       description: k.description.trim() || 'No description provided.',
       defaultTargetValue: Number(k.targetValue) || 0,
-      timeFrame: 'daily',
+      timeFrame: k.timeFrame || 'daily',
     }));
 
     if (editingTemplateId) {
@@ -455,7 +455,7 @@ const TasksPage = () => {
                 name: k.name.trim(),
                 description: k.description.trim() || 'No description provided.',
                 targetValue: Number(k.targetValue) || 0,
-                timeFrame: 'daily',
+                timeFrame: k.timeFrame || 'daily',
                 assignedTo: [],
               })),
             });
@@ -1024,7 +1024,7 @@ const TasksPage = () => {
                       </Box>
 
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={8}>
+                        <Grid item xs={12} sm={5}>
                           <TextField
                             label={`KPI #${idx + 1} Name`}
                             placeholder="e.g. Connection Requests"
@@ -1042,7 +1042,7 @@ const TasksPage = () => {
                             }}
                           />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid item xs={12} sm={3}>
                           <TextField
                             label="Target Value"
                             type="number"
@@ -1060,6 +1060,26 @@ const TasksPage = () => {
                               },
                             }}
                           />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <TextField
+                            select
+                            label="Time Frame"
+                            fullWidth
+                            value={kpi.timeFrame || 'daily'}
+                            onChange={(e) => handleKpiFieldChange(idx, 'timeFrame', e.target.value)}
+                            variant="outlined"
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: '12px',
+                                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                              },
+                            }}
+                          >
+                            <MenuItem value="daily">Daily</MenuItem>
+                            <MenuItem value="weekly">Weekly</MenuItem>
+                            <MenuItem value="monthly">Monthly</MenuItem>
+                          </TextField>
                         </Grid>
                       </Grid>
 
@@ -1151,7 +1171,7 @@ const TasksPage = () => {
 
                   <Box>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, display: 'block', mb: 2, fontSize: '0.62rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                      KPI TARGETS LIST (DAILY TIMEFRAME ONLY)
+                      KPI TARGETS LIST
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                       {newKpis.map((kpi, idx) => (
@@ -1170,7 +1190,7 @@ const TasksPage = () => {
                           />
                           <Box>
                             <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 750, fontSize: '0.84rem' }}>
-                              {kpi.name || '(Empty Name)'} — Target: {kpi.targetValue} (Daily)
+                              {kpi.name || '(Empty Name)'} — Target: {kpi.targetValue} ({kpi.timeFrame ? kpi.timeFrame.charAt(0).toUpperCase() + kpi.timeFrame.slice(1) : 'Daily'})
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem', mt: 0.25 }}>
                               {kpi.description || '(Empty Description)'}
@@ -1392,7 +1412,7 @@ const TasksPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                   <ShieldIcon sx={{ color: tokens.brand.primary, fontSize: 24 }} />
                   <Chip
-                    label="Daily Template"
+                    label="KPI Template"
                     size="small"
                     sx={{
                       bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.12)' : 'rgba(93, 26, 137, 0.05)',
@@ -1448,7 +1468,7 @@ const TasksPage = () => {
                           }}
                         />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.9rem' }}>
-                          {kpi.name} — Target: {kpi.targetValue} (Daily)
+                          {kpi.name} — Target: {kpi.targetValue} ({kpi.timeFrame ? kpi.timeFrame.charAt(0).toUpperCase() + kpi.timeFrame.slice(1) : 'Daily'})
                         </Typography>
                       </Box>
                       <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.84rem', pl: 0.5 }}>
@@ -1470,7 +1490,7 @@ const TasksPage = () => {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, fontSize: '0.84rem' }}>Timeframe</Typography>
-                    <Chip label="DAILY" size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.primary100, color: tokens.brand.primary }} />
+                    <Chip label={selectedTemplate.kpis.every(k => k.timeFrame === selectedTemplate.kpis[0]?.timeFrame) ? (selectedTemplate.kpis[0]?.timeFrame?.toUpperCase() || 'DAILY') : 'MIXED'} size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.primary100, color: tokens.brand.primary }} />
                   </Box>
                   <Divider sx={{ opacity: 0.5 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
