@@ -123,6 +123,28 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
         color: tokens.semantic.warning,
         delta: comparison ? metrics.pending - comparison.pending : undefined,
       },
+      ...(metrics.totalTarget != null ? [{
+        label: 'Total Target',
+        value: String(metrics.totalTarget),
+        icon: <AssignmentIcon />,
+        color: tokens.brand.primary,
+        delta: comparison?.totalTarget != null ? metrics.totalTarget - comparison.totalTarget : undefined,
+      }] : []),
+      ...(metrics.totalActual != null ? [{
+        label: 'Total Actual',
+        value: String(metrics.totalActual),
+        icon: <AssignmentTurnedInIcon />,
+        color: tokens.semantic.success,
+        delta: comparison?.totalActual != null ? metrics.totalActual - comparison.totalActual : undefined,
+      }] : []),
+      ...(metrics.overallAttainmentRate != null ? [{
+        label: 'Attainment Rate',
+        value: `${metrics.overallAttainmentRate}%`,
+        icon: <AssignmentTurnedInIcon />,
+        color: metrics.overallAttainmentRate >= 80 ? tokens.semantic.success : metrics.overallAttainmentRate >= 50 ? tokens.semantic.warning : tokens.semantic.error,
+        delta: comparison?.overallAttainmentRate != null ? metrics.overallAttainmentRate - comparison.overallAttainmentRate : undefined,
+        suffix: '%',
+      }] : []),
     ],
     [metrics, comparison],
   );
@@ -508,6 +530,66 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
           </TableContainer>
         </Grid>
       </Grid>
+
+      {metrics.byKpi && metrics.byKpi.length > 0 && (
+        <Grid container spacing={3} mb={4.5}>
+          <Grid item xs={12}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              }}
+            >
+              <Typography variant="h6" fontWeight={700} mb={2}>
+                Actual vs Target by KPI
+              </Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>KPI</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>Target</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>Actual</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>Attainment</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {metrics.byKpi.map((row) => (
+                      <TableRow key={row.kpiName}>
+                        <TableCell>{row.kpiName}</TableCell>
+                        <TableCell align="center">{row.target}</TableCell>
+                        <TableCell align="center">{row.actual}</TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.min(row.attainmentRate, 100)}
+                              sx={{
+                                width: 60,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: tokens.brand.primary100,
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: row.attainmentRate >= 100 ? tokens.semantic.success : tokens.brand.primary,
+                                  borderRadius: 3,
+                                },
+                              }}
+                            />
+                            <Typography variant="body2" fontWeight={600}>{row.attainmentRate}%</Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
     </Box>
   );
 };

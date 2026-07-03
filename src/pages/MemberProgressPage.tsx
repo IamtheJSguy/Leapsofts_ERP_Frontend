@@ -641,17 +641,23 @@ export default function MemberProgressPage() {
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Chip
-                        label={`Target: ${kpi.targetValue}`}
-                        size="small"
-                        sx={{
-                          fontWeight: 750,
-                          fontSize: '0.68rem',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                          color: 'text.secondary',
-                        }}
-                      />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      {kpi.targetValue > 0 && (
+                        <Chip
+                          label={
+                            kpi.isCompleted && kpi.actualValue != null
+                              ? `Actual: ${kpi.actualValue} / ${kpi.targetValue}`
+                              : `Target: ${kpi.targetValue}`
+                          }
+                          size="small"
+                          sx={{
+                            fontWeight: 750,
+                            fontSize: '0.68rem',
+                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                            color: 'text.secondary',
+                          }}
+                        />
+                      )}
                       <Chip
                         label={kpi.isCompleted ? 'Completed' : 'Pending'}
                         size="small"

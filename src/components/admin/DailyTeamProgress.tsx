@@ -250,6 +250,13 @@ const UserProgressCard = ({ group, isDarkMode, date }: UserProgressCardProps) =>
   const name = group.user ? `${group.user.firstName || ''} ${group.user.lastName || ''}`.trim() : 'Unknown User';
   const initial = name.charAt(0).toUpperCase() || '?';
   const percentage = Math.round((group.completedCount / group.totalCount) * 100);
+
+  const entriesWithTarget = group.tasks.filter((t) => t.targetValue != null && t.targetValue > 0);
+  const totalTarget = entriesWithTarget.reduce((sum, t) => sum + (t.targetValue ?? 0), 0);
+  const totalActual = entriesWithTarget
+    .filter((t) => t.isCompleted)
+    .reduce((sum, t) => sum + (t.actualValue ?? 0), 0);
+  const hasTargetRollup = totalTarget > 0;
   
   const ringColor = percentage === 100 
     ? tokens.semantic.success 
@@ -337,6 +344,7 @@ const UserProgressCard = ({ group, isDarkMode, date }: UserProgressCardProps) =>
             </Typography>
             <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}>
               {group.completedCount} of {group.totalCount} completed
+              {hasTargetRollup && ` · Actual ${totalActual} / Target ${totalTarget}`}
             </Typography>
           </Box>
         </Box>

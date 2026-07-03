@@ -11,6 +11,11 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -55,6 +60,9 @@ export const UserDailyKpisView = () => {
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
+  const [completeDialog, setCompleteDialog] = useState<any>(null);
+  const [actualValueInput, setActualValueInput] = useState('');
+  const [notesInput, setNotesInput] = useState('');
 
   const { data: grouped = EMPTY_GROUPED, isLoading } = useDailyKpis();
   const { data: myRequests = [] } = useMyKPIChangeRequests();
@@ -81,17 +89,42 @@ export const UserDailyKpisView = () => {
 
   const primaryAssignmentId = myAssignments[0]?._id as string | undefined;
 
-  const handleToggle = (id: string, isCompleted: boolean) => {
-    setLoadingIds((prev) => new Set(prev).add(id));
+  const handleToggle = (kpi: any, isCompleted: boolean) => {
     if (isCompleted) {
-      markIncomplete.mutate(id, {
-        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
+      setLoadingIds((prev) => new Set(prev).add(kpi._id));
+      markIncomplete.mutate(kpi._id, {
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(kpi._id); return next; }),
       });
-    } else {
-      markComplete.mutate({ id }, {
-        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
-      });
+      return;
     }
+    setActualValueInput('');
+    setNotesInput('');
+    setCompleteDialog(kpi);
+  };
+
+  const handleCompleteSubmit = () => {
+    if (!completeDialog) return;
+    const target = completeDialog.targetValue ?? completeDialog.kpiId?.targetValue ?? 0;
+    const parsedActual = actualValueInput === '' ? undefined : Number(actualValueInput);
+    if (target > 0 && (parsedActual === undefined || Number.isNaN(parsedActual) || parsedActual < 0)) return;
+
+    const id = completeDialog._id;
+    setLoadingIds((prev) => new Set(prev).add(id));
+    setCompleteDialog(null);
+    markComplete.mutate(
+      { id, actualValue: parsedActual, notes: notesInput || undefined },
+      {
+        onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
+      },
+    );
+  };
+
+  const getAttainmentLabel = (kpi: any) => {
+    const target = kpi.targetValue ?? kpi.kpiId?.targetValue ?? 0;
+    const actual = kpi.actualValue ?? 0;
+    if (!kpi.isCompleted || target <= 0) return null;
+    const rate = Math.round((actual / target) * 100);
+    return `${actual} / ${target} (${rate}%)`;
   };
 
   const filteredKpis = useMemo(() => {
@@ -294,7 +327,11 @@ export const UserDailyKpisView = () => {
                     {kpi.targetValue !== undefined && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>Target: {kpi.targetValue}</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>
+                          {isChecked && getAttainmentLabel(kpi)
+                            ? `Actual: ${getAttainmentLabel(kpi)}`
+                            : `Target: ${kpi.targetValue}`}
+                        </Typography>
                       </Box>
                     )}
                     {periodRange ? (
@@ -335,9 +372,14 @@ export const UserDailyKpisView = () => {
                     <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                       {kpi.targetValue !== undefined && (
                         <Box>
-                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target</Typography>
+                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {isChecked ? 'Actual / Target' : 'Target'}
+                          </Typography>
                           <Typography sx={{ fontWeight: 800, color: tokens.brand.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <TrackChangesIcon sx={{ fontSize: 16 }} /> {kpi.targetValue}
+                            <TrackChangesIcon sx={{ fontSize: 16 }} />
+                            {isChecked && kpi.actualValue != null
+                              ? `${kpi.actualValue} / ${kpi.targetValue}`
+                              : kpi.targetValue}
                           </Typography>
                         </Box>
                       )}
@@ -357,7 +399,7 @@ export const UserDailyKpisView = () => {
                       disableElevation
                       startIcon={isChecked ? <RadioButtonUncheckedIcon /> : <CheckCircleIcon />}
                       disabled={isKpiLoading}
-                      onClick={() => handleToggle(kpi._id, isChecked)}
+                      onClick={() => handleToggle(kpi, isChecked)}
                       sx={{
                         borderRadius: '12px',
                         fontWeight: 700,
@@ -425,6 +467,62 @@ export const UserDailyKpisView = () => {
       </Menu>
 
       <KPIChangeRequestModal open={!!changeModal} mode={changeModal} onClose={() => setChangeModal(null)} />
+
+      <Dialog
+        open={!!completeDialog}
+        onClose={() => setCompleteDialog(null)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Mark KPI as Done
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {completeDialog?.kpiName || completeDialog?.name || completeDialog?.kpiId?.name || 'KPI'}
+          </Typography>
+          {(completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue ?? 0) > 0 && (
+            <>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.text.muted }}>
+                Target: {completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue}
+              </Typography>
+              <TextField
+                label="Actual amount achieved"
+                type="number"
+                required
+                inputProps={{ min: 0 }}
+                value={actualValueInput}
+                onChange={(e) => setActualValueInput(e.target.value)}
+                fullWidth
+                autoFocus
+              />
+            </>
+          )}
+          <TextField
+            label="Notes (optional)"
+            value={notesInput}
+            onChange={(e) => setNotesInput(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCompleteDialog(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCompleteSubmit}
+            disabled={
+              (completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue ?? 0) > 0
+              && (actualValueInput === '' || Number.isNaN(Number(actualValueInput)) || Number(actualValueInput) < 0)
+            }
+            sx={{ textTransform: 'none' }}
+          >
+            Complete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
