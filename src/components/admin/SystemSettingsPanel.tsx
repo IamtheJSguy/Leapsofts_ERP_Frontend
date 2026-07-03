@@ -10,6 +10,7 @@ import {
   useTheme,
   alpha,
   Divider,
+  Switch,
 } from '@mui/material';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
@@ -22,6 +23,8 @@ export const SystemSettingsPanel = () => {
   const updateSettings = useUpdateSystemSettings();
   const addToast = useUIStore((s) => s.addToast);
   const [retentionMonths, setRetentionMonths] = useState('12');
+  const [dailyReportEnabled, setDailyReportEnabled] = useState(false);
+  const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -29,6 +32,8 @@ export const SystemSettingsPanel = () => {
   useEffect(() => {
     if (settings) {
       setRetentionMonths(String(settings.chatRetentionMonths ?? 12));
+      setDailyReportEnabled(settings.automatedUserReportSchedule?.daily ?? false);
+      setWeeklyReportEnabled(settings.automatedUserReportSchedule?.weekly ?? true);
     }
   }, [settings]);
 
@@ -44,6 +49,10 @@ export const SystemSettingsPanel = () => {
     updateSettings.mutate(
       {
         chatRetentionMonths: Number(retentionMonths) || 12,
+        automatedUserReportSchedule: {
+          daily: dailyReportEnabled,
+          weekly: weeklyReportEnabled,
+        },
       },
       {
         onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
@@ -172,6 +181,47 @@ export const SystemSettingsPanel = () => {
                   }
                 }}
               />
+            </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1, borderColor: isDarkMode ? alpha('#fff', 0.05) : alpha('#000', 0.05) }} />
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
+                Automated User Reports
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
+                Schedule team user-detail reports delivered at 8:00 AM via in-app notification and email (when enabled in profile settings).
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02) }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Send daily user detail report</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Previous calendar day, every morning at 8 AM.</Typography>
+                  </Box>
+                  <Switch
+                    color="primary"
+                    checked={dailyReportEnabled}
+                    onChange={(e) => setDailyReportEnabled(e.target.checked)}
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02) }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Send weekly user detail report</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Previous 7 days ending yesterday, every Monday at 8 AM.</Typography>
+                  </Box>
+                  <Switch
+                    color="primary"
+                    checked={weeklyReportEnabled}
+                    onChange={(e) => setWeeklyReportEnabled(e.target.checked)}
+                  />
+                </Box>
+              </Box>
             </Box>
           </Grid>
         </Grid>

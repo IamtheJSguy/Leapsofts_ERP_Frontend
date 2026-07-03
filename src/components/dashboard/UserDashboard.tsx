@@ -139,13 +139,16 @@ export const UserDashboard = () => {
 
         {/* Inline statistics counters - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 2.5 }}>
-          {[
-            { label: 'CONNECTIONS', val: stats?.kpiChartData?.find((k: any) => k.name === 'connection')?.Achieved || 0 },
-            { label: 'ACCEPTS', val: 0 },
-            { label: 'MESSAGES', val: 0 },
-            { label: 'REPLIES', val: stats?.kpiChartData?.find((k: any) => k.name === 'response')?.Achieved || 0 },
-            { label: 'MEETINGS', val: stats?.kpiChartData?.find((k: any) => k.name === 'meeting')?.Achieved || 0 }
-          ].map((stat) => (
+          {(stats?.kpiChartData && stats.kpiChartData.length > 0
+            ? stats.kpiChartData.map((kpi) => ({
+                label: kpi.name.toUpperCase(),
+                val: kpi.Achieved,
+                target: kpi.Target,
+              }))
+            : [
+                { label: 'COMPLETED KPIS', val: stats?.metrics?.completedKpis || 0, target: undefined },
+              ]
+          ).map((stat) => (
             <Grid item xs={6} sm={4} md={2.4} key={stat.label}>
               <Box
                 sx={{
@@ -186,6 +189,11 @@ export const UserDashboard = () => {
                 >
                   {stat.val}
                 </Typography>
+                {'target' in stat && stat.target != null && stat.target > 0 && (
+                  <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 600, mt: 0.5, display: 'block' }}>
+                    of {stat.target} target
+                  </Typography>
+                )}
               </Box>
             </Grid>
           ))}

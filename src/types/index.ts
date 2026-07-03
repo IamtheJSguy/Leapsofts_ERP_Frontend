@@ -36,7 +36,8 @@ export type NotificationType =
   | 'shift_reminder'
   | 'kpi_end_of_shift'
   | 'sheet_update_reminder'
-  | 'kanban_comment_mention';
+  | 'kanban_comment_mention'
+  | 'report_ready';
 
 export interface User {
   _id: string;
@@ -279,12 +280,25 @@ export interface KpiDailyTrend {
   completed: number;
 }
 
+export interface KpiTargetActualRow {
+  kpiName: string;
+  target: number;
+  actual: number;
+  attainmentRate: number;
+  entriesTotal: number;
+  entriesCompleted: number;
+}
+
 export interface KpiPerformanceMetrics {
   totalAssigned: number;
   completed: number;
   missed: number;
   pending: number;
   completionRate: number;
+  totalTarget?: number;
+  totalActual?: number;
+  overallAttainmentRate?: number;
+  byKpi?: KpiTargetActualRow[];
   byPriority: KpiPriorityBreakdown[];
   byTimeframe: KpiTimeframeBreakdown[];
   dailyTrend: KpiDailyTrend[];
@@ -459,7 +473,7 @@ export interface DashboardStats {
     overdueTasks: number;
     completedKpis: number;
   };
-  kpiChartData?: { name: string; Achieved: number }[];
+  kpiChartData?: { name: string; Target: number; Achieved: number }[];
   dailyKpis?: any[];
   tasksList?: {
     id: string;
@@ -477,6 +491,7 @@ export interface SystemSettings {
   referenceSheetUrl?: string;
   chatRetentionMonths?: number;
   notificationBroadcast?: boolean;
+  automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
 }
 
 export interface LeadValidationResult {

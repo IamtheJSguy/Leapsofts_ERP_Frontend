@@ -20,6 +20,7 @@ export interface DailyKPIEntry {
   date: string;
   isCompleted: boolean;
   completedAt?: string;
+  actualValue?: number | null;
   notes?: string;
 }
 
@@ -40,6 +41,9 @@ export interface DailyKpiSummary {
   total: number;
   completed: number;
   pending: number;
+  totalTarget?: number;
+  totalActual?: number;
+  attainmentRate?: number;
   date: string;
   counts?: GroupedDailyKpis['counts'];
 }
@@ -68,7 +72,8 @@ export const shiftApi = {
   // Daily KPIs
   getDailyKpis: (params?: { date?: string }) => api.get<{ success: boolean; data: GroupedDailyKpis }>('/shifts/daily-kpis', { params }),
   getDailyKpiSummary: (params?: { date?: string }) => api.get<{ success: boolean; data: DailyKpiSummary }>('/shifts/daily-kpis/summary', { params }),
-  markDailyKpiComplete: (id: string, notes?: string) => api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/complete`, { notes }),
+  markDailyKpiComplete: (id: string, payload?: { notes?: string; actualValue?: number }) =>
+    api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/complete`, payload ?? {}),
   markDailyKpiIncomplete: (id: string) => api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/incomplete`),
 };
 
@@ -137,7 +142,8 @@ export const useDailyKpiSummary = (date?: string) => {
 export const useMarkDailyKpiComplete = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, notes }: { id: string; notes?: string }) => shiftApi.markDailyKpiComplete(id, notes),
+    mutationFn: ({ id, notes, actualValue }: { id: string; notes?: string; actualValue?: number }) =>
+      shiftApi.markDailyKpiComplete(id, { notes, actualValue }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
       queryClient.invalidateQueries({ queryKey: ['dailyKpiSummary'] });
