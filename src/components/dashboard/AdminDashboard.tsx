@@ -29,7 +29,7 @@ import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { data: todaySales, isLoading: isTodaySalesLoading, refetch } = useAdminDashboard();
+  const { data: pipelineOverview, isLoading: isPipelineOverviewLoading, refetch } = useAdminDashboard();
   const { data: teamAnalysis, isLoading: isTeamAnalysisLoading } = useTeamAnalysis('week');
   const { data: allMeetings = [] } = useMeetings();
 
@@ -50,7 +50,7 @@ export const AdminDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  if (isTodaySalesLoading || isTeamAnalysisLoading) {
+  if (isPipelineOverviewLoading || isTeamAnalysisLoading) {
     return (
       <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <ChartSkeleton height={180} />
@@ -88,50 +88,58 @@ export const AdminDashboard = () => {
 
   const attentionCount = teamAnalysis?.metrics.attentionCount ?? 0;
 
-  const todayLabel = new Date().toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  const todaySalesStats = [
+  const pipelineStats = [
     {
-      label: 'NEW LEADS',
-      val: todaySales?.newLeads ?? 0,
-      sub: todaySales?.activeReps ? `${todaySales.activeReps} reps active` : undefined,
-      action: 'scroll' as const,
-      target: 'team-connections-split',
-    },
-    {
-      label: 'CONNECTIONS SENT',
-      val: todaySales?.connectionsSent ?? 0,
-      sub: todaySales?.connectionsAccepted
-        ? `${todaySales.connectionsAccepted} accepted`
+      label: 'TOTAL LEADS',
+      val: pipelineOverview?.totalLeads ?? 0,
+      sub: pipelineOverview?.assignedReps
+        ? `${pipelineOverview.assignedReps} reps assigned`
         : undefined,
       action: 'scroll' as const,
       target: 'team-connections-split',
     },
     {
-      label: 'ACCEPT RATE',
-      val: `${todaySales?.acceptanceRate ?? 0}%`,
-      sub: todaySales?.connectionsSent ? `of ${todaySales.connectionsSent} sent` : undefined,
+      label: 'ACCEPTED',
+      val: pipelineOverview?.connectionsAccepted ?? 0,
+      sub: pipelineOverview?.connectionsSent
+        ? `${pipelineOverview.acceptanceRate}% of ${pipelineOverview.connectionsSent} sent`
+        : undefined,
+      action: 'scroll' as const,
+      target: 'team-connections-split',
     },
     {
-      label: 'MESSAGES SENT',
-      val: todaySales?.messagesSent ?? 0,
-      sub: todaySales?.replies ? `${todaySales.replies} replies` : undefined,
-    },
-    {
-      label: 'REPLY RATE',
-      val: `${todaySales?.replyRate ?? 0}%`,
-      sub: todaySales?.messagesSent ? `${todaySales.messagesSent} outreach` : undefined,
-    },
-    {
-      label: 'MEETINGS TODAY',
-      val: todaySales?.meetingsToday ?? 0,
-      sub: todaySales?.qualified ? `${todaySales.qualified} qualified leads` : undefined,
+      label: 'FOLLOW UPS',
+      val: pipelineOverview?.followUps ?? 0,
+      sub: pipelineOverview?.awaitingReply
+        ? `${pipelineOverview.awaitingReply} awaiting reply`
+        : undefined,
       action: 'navigate' as const,
-      target: '/meetings',
+      target: '/sales',
+    },
+    {
+      label: 'REPLIED',
+      val: (pipelineOverview?.replied ?? 0) + (pipelineOverview?.positive ?? 0),
+      sub: pipelineOverview?.replyRate ? `${pipelineOverview.replyRate}% reply rate` : undefined,
+      action: 'navigate' as const,
+      target: '/sales',
+    },
+    {
+      label: 'NOT SENT',
+      val: pipelineOverview?.notSent ?? 0,
+      sub: pipelineOverview?.totalLeads
+        ? `${Math.round(((pipelineOverview.notSent ?? 0) / pipelineOverview.totalLeads) * 100)}% of pipeline`
+        : undefined,
+      action: 'navigate' as const,
+      target: '/sales',
+    },
+    {
+      label: 'QUALIFIED',
+      val: pipelineOverview?.qualified ?? 0,
+      sub: pipelineOverview?.negative
+        ? `${pipelineOverview.negative} negative responses`
+        : undefined,
+      action: 'navigate' as const,
+      target: '/sales',
     },
   ];
 
@@ -190,11 +198,11 @@ export const AdminDashboard = () => {
               >
                 <FlashOnIcon sx={{ fontSize: 13 }} />
                 <Typography sx={{ fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.08em' }}>
-                  TODAY IN PIPELINE
+                  PIPELINE OVERVIEW
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                Team sales · {todayLabel}
+                Team pipeline · All leads
               </Typography>
             </Box>
           </Box>
@@ -278,14 +286,14 @@ export const AdminDashboard = () => {
             lineHeight: 1.5
           }}
         >
-          {todaySales?.newLeads
-            ? `${todaySales.newLeads} lead${todaySales.newLeads === 1 ? '' : 's'} logged today across ${todaySales.activeReps} rep${todaySales.activeReps === 1 ? '' : 's'}.`
-            : 'No leads logged yet today — open Sales to update the pipeline or use ⌘L to quick-log activity.'}
+          {pipelineOverview?.totalLeads
+            ? `${pipelineOverview.totalLeads} lead${pipelineOverview.totalLeads === 1 ? '' : 's'} in pipeline · ${pipelineOverview.followUps} follow-up${pipelineOverview.followUps === 1 ? '' : 's'} · ${pipelineOverview.qualified} qualified · ${pipelineOverview.notSent} not contacted yet.`
+            : 'No leads in the pipeline yet — open Sales to add prospects or import from your sheet.'}
         </Typography>
 
         {/* Inline statistics counters (Admin stats) - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 3.5 }}>
-          {todaySalesStats.map((stat) => (
+          {pipelineStats.map((stat) => (
             <Grid item xs={6} sm={4} md={2} key={stat.label}>
               <Box
                 onClick={() => {

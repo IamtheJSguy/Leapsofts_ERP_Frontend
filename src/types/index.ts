@@ -533,17 +533,22 @@ export interface TeamAnalysisData {
   deadlines: TeamDeadlineItem[];
 }
 
-export interface TodaySalesSummary {
-  newLeads: number;
+export interface PipelineOverviewSummary {
+  totalLeads: number;
   connectionsSent: number;
   connectionsAccepted: number;
   acceptanceRate: number;
-  messagesSent: number;
-  replies: number;
+  followUps: number;
+  replied: number;
+  positive: number;
   replyRate: number;
+  notSent: number;
+  awaitingReply: number;
   qualified: number;
-  meetingsToday: number;
-  activeReps: number;
+  negative: number;
+  futureLeads: number;
+  assignedReps: number;
+  messageStats: Record<string, number>;
 }
 
 export interface DashboardStats {
