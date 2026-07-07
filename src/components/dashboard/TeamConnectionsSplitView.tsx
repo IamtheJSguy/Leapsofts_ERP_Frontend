@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { tokens } from '@/styles/tokens';
-import { useTeamConnections, useTeamProgress } from '@/hooks/api/useAdminTeamDashboard';
+import { useTeamConnections, useTeamProgress, usePipelineVelocity } from '@/hooks/api/useAdminTeamDashboard';
 import { useNavigate } from 'react-router-dom';
 import { ModernDatePicker } from '../common/ModernDatePicker';
 import {
@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 
 // --- DUMMY CHART DATA ---
-const velocityData = [
+const velocityDataFallback = [
   { date: 'Mon', newLeads: 45, completed: 20 },
   { date: 'Tue', newLeads: 52, completed: 35 },
   { date: 'Wed', newLeads: 38, completed: 42 },
@@ -118,6 +118,13 @@ export const TeamConnectionsSplitView = () => {
       setSelectedTeamMemberIds(teamProgressRows.slice(0, 3).map((member) => member.userId));
     }
   }, [teamProgressRows, selectedTeamMemberIds.length]);
+
+  const {
+    data: pipelineVelocityData,
+    isLoading: velocityLoading,
+  } = usePipelineVelocity(7);
+
+  const velocityData = pipelineVelocityData?.data ?? velocityDataFallback;
 
   const filteredProgressData = useMemo(() => {
     if (selectedTeamMemberIds.length === 0) return teamProgressRows;
@@ -354,10 +361,10 @@ export const TeamConnectionsSplitView = () => {
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
                         <Typography sx={{ fontWeight: 850, color: isDark ? '#fff' : tokens.text.primary, fontSize: '1.1rem' }}>
-                          {user.connections}
+                          {user.totalLeads}
                         </Typography>
                         <Typography sx={{ fontWeight: 700, color: tokens.brand.primary, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Connections
+                          Leads
                         </Typography>
                       </Box>
                     </Box>
@@ -484,7 +491,7 @@ export const TeamConnectionsSplitView = () => {
                   <YAxis {...chartAxisProps} dx={-10} />
                   <Tooltip content={<CustomTooltip isDark={isDark} />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                  <Bar dataKey="leadsContacted" name="Leads Contacted" fill={tokens.brand.primary} radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="totalLeads" name="Total Leads" fill={tokens.brand.primary} radius={[4, 4, 0, 0]} barSize={20} />
                   <Bar dataKey="meetingsBooked" name="Meetings Booked" fill={tokens.brand.accent} radius={[4, 4, 0, 0]} barSize={20} />
                   <Bar dataKey="dealsClosed" name="Deals Closed" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
@@ -511,6 +518,11 @@ export const TeamConnectionsSplitView = () => {
               </Typography>
             </Box>
             <Box sx={{ flexGrow: 1, minHeight: 380, ml: -2 }}>
+              {velocityLoading ? (
+                <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 10, fontWeight: 600 }}>
+                  Loading pipeline velocity...
+                </Typography>
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={velocityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -532,6 +544,7 @@ export const TeamConnectionsSplitView = () => {
                   <Area type="monotone" name="Tasks Completed" dataKey="completed" stroke={tokens.semantic.success} strokeWidth={4} fillOpacity={1} fill="url(#colorComp)" />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </Box>
           </Box>
         </Grid>

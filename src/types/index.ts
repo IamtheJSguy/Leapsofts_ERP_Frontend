@@ -469,15 +469,21 @@ export interface TeamConnectionRow {
   lastName?: string;
   email: string;
   role: string;
-  connections: number;
+  totalLeads: number;
 }
 
 export interface TeamProgressRow {
   userId: string;
   name: string;
-  leadsContacted: number;
+  totalLeads: number;
   meetingsBooked: number;
   dealsClosed: number;
+}
+
+export interface PipelineVelocityPoint {
+  date: string;
+  newLeads: number;
+  completed: number;
 }
 
 export interface DashboardStats {
