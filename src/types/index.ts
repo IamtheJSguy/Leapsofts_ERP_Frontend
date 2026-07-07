@@ -457,6 +457,29 @@ export interface Message {
   createdAt: string;
 }
 
+export interface DashboardDateMeta {
+  period: 'today' | 'week' | 'month' | 'quarter' | 'all' | 'custom';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface TeamConnectionRow {
+  userId: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  role: string;
+  connections: number;
+}
+
+export interface TeamProgressRow {
+  userId: string;
+  name: string;
+  leadsContacted: number;
+  meetingsBooked: number;
+  dealsClosed: number;
+}
+
 export interface DashboardStats {
   connectionsSent?: number;
   connectionsAccepted?: number;

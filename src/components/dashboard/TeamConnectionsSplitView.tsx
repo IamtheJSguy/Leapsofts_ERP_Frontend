@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { tokens } from '@/styles/tokens';
-import { useUsers } from '@/hooks/api/useUsers';
+import { useTeamConnections, useTeamProgress } from '@/hooks/api/useAdminTeamDashboard';
 import { useNavigate } from 'react-router-dom';
 import { ModernDatePicker } from '../common/ModernDatePicker';
 import {
@@ -42,13 +42,9 @@ const velocityData = [
   { date: 'Sun', newLeads: 22, completed: 18 },
 ];
 
-const teamProgressMockData = [
-  { id: '1', name: 'Ali', leadsContacted: 120, meetingsBooked: 24, dealsClosed: 5 },
-  { id: '2', name: 'Zohaib', leadsContacted: 98, meetingsBooked: 18, dealsClosed: 3 },
-  { id: '3', name: 'Huzaifa', leadsContacted: 145, meetingsBooked: 35, dealsClosed: 8 },
-  { id: '4', name: 'Asher', leadsContacted: 85, meetingsBooked: 12, dealsClosed: 2 },
-  { id: '5', name: 'Zubair', leadsContacted: 110, meetingsBooked: 20, dealsClosed: 4 },
-];
+
+const formatDateParam = (date: Date | null) =>
+  date ? date.toISOString().split('T')[0] : undefined;
 
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
   if (active && payload && payload.length) {
@@ -88,42 +84,45 @@ export const TeamConnectionsSplitView = () => {
   const isDark = theme.palette.mode === 'dark';
   
   const navigate = useNavigate();
-  const { data: users = [], isLoading } = useUsers();
-  
+
   // Left side state
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDateFilter, setActiveDateFilter] = useState('This Week');
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
 
+  const {
+    data: teamConnectionsData,
+    isLoading: connectionsLoading,
+  } = useTeamConnections(activeDateFilter, {
+    search: searchQuery,
+    startDate: formatDateParam(customStartDate),
+    endDate: formatDateParam(customEndDate),
+  });
+
+  const teamConnections = teamConnectionsData?.data ?? [];
+
   // Right side state (Team Progress)
-  const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>(['Ali', 'Zohaib', 'Huzaifa']);
+  const [selectedTeamMemberIds, setSelectedTeamMemberIds] = useState<string[]>([]);
   const [progressDateFilter, setProgressDateFilter] = useState('This Month');
 
-  // Generate deterministic mock connection count
-  const getMockCount = (userId: string) => {
-    let hash = 0;
-    for (let i = 0; i < userId.length; i++) {
-      hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const val = Math.abs(hash) % 500;
-    return val < 10 ? val + 20 : val;
-  };
+  const {
+    data: teamProgressData,
+    isLoading: progressLoading,
+  } = useTeamProgress(progressDateFilter, []);
 
-  const filteredUsers = useMemo(() => {
-    return users
-      .filter((u: any) => {
-        const name = `${u.firstName || ''} ${u.lastName || ''}`.trim().toLowerCase() || (u.email ? u.email.toLowerCase() : '');
-        return name.includes(searchQuery.toLowerCase());
-      })
-      .map(u => ({ ...u, mockConnections: getMockCount(u._id) }))
-      .sort((a, b) => b.mockConnections - a.mockConnections);
-  }, [users, searchQuery]);
+  const teamProgressRows = teamProgressData?.data ?? [];
+
+  useEffect(() => {
+    if (teamProgressRows.length > 0 && selectedTeamMemberIds.length === 0) {
+      setSelectedTeamMemberIds(teamProgressRows.slice(0, 3).map((member) => member.userId));
+    }
+  }, [teamProgressRows, selectedTeamMemberIds.length]);
 
   const filteredProgressData = useMemo(() => {
-    if (selectedTeamMembers.length === 0) return teamProgressMockData;
-    return teamProgressMockData.filter(m => selectedTeamMembers.includes(m.name));
-  }, [selectedTeamMembers]);
+    if (selectedTeamMemberIds.length === 0) return teamProgressRows;
+    return teamProgressRows.filter((member) => selectedTeamMemberIds.includes(member.userId));
+  }, [teamProgressRows, selectedTeamMemberIds]);
 
   const cardStyles = {
     p: { xs: 2.5, sm: 3.5 },
@@ -149,7 +148,10 @@ export const TeamConnectionsSplitView = () => {
   };
   const gridColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
 
-  const availableTeamMembers = teamProgressMockData.map(m => m.name);
+  const availableTeamMembers = teamProgressRows.map((member) => ({
+    userId: member.userId,
+    name: member.name,
+  }));
 
   return (
     <Box>
@@ -290,24 +292,24 @@ export const TeamConnectionsSplitView = () => {
               '&::-webkit-scrollbar-track': { background: 'transparent' },
               '&::-webkit-scrollbar-thumb': { background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: '4px' }
             }}>
-              {isLoading ? (
+              {connectionsLoading ? (
                 <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 4, fontWeight: 600 }}>
                   Loading team...
                 </Typography>
-              ) : filteredUsers.length === 0 ? (
+              ) : teamConnections.length === 0 ? (
                 <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 4, fontWeight: 600 }}>
                   No team members found.
                 </Typography>
               ) : (
-                filteredUsers.map((user: any) => {
+                teamConnections.map((user) => {
                   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
                   const initial = (fullName.charAt(0) || (user.email ? user.email.charAt(0) : 'U')).toUpperCase();
 
                   return (
                     <Box
-                      key={user._id}
+                      key={user.userId}
                       onClick={() => {
-                        navigate(`/team/member/${user._id}`);
+                        navigate(`/team/member/${user.userId}`);
                       }}
                       sx={{
                         display: 'flex',
@@ -352,7 +354,7 @@ export const TeamConnectionsSplitView = () => {
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
                         <Typography sx={{ fontWeight: 850, color: isDark ? '#fff' : tokens.text.primary, fontSize: '1.1rem' }}>
-                          {user.mockConnections}
+                          {user.connections}
                         </Typography>
                         <Typography sx={{ fontWeight: 700, color: tokens.brand.primary, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           Connections
@@ -415,10 +417,10 @@ export const TeamConnectionsSplitView = () => {
               <Select
                 multiple
                 displayEmpty
-                value={selectedTeamMembers}
+                value={selectedTeamMemberIds}
                 onChange={(e) => {
                   const { target: { value } } = e;
-                  setSelectedTeamMembers(typeof value === 'string' ? value.split(',') : value);
+                  setSelectedTeamMemberIds(typeof value === 'string' ? value.split(',') : value);
                 }}
                 input={<OutlinedInput />}
                 renderValue={(selected) => {
@@ -427,10 +429,12 @@ export const TeamConnectionsSplitView = () => {
                   }
                   return (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => (
+                      {selected.map((userId) => {
+                        const member = availableTeamMembers.find((item) => item.userId === userId);
+                        return (
                         <Chip 
-                          key={value} 
-                          label={value} 
+                          key={userId} 
+                          label={member?.name || userId} 
                           size="small" 
                           sx={{ 
                             bgcolor: isDark ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)',
@@ -439,7 +443,7 @@ export const TeamConnectionsSplitView = () => {
                             borderRadius: '8px'
                           }} 
                         />
-                      ))}
+                      )})}
                     </Box>
                   );
                 }}
@@ -458,16 +462,21 @@ export const TeamConnectionsSplitView = () => {
                   }
                 }}
               >
-                {availableTeamMembers.map((name) => (
-                  <MenuItem key={name} value={name}>
-                    <Checkbox checked={selectedTeamMembers.indexOf(name) > -1} sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }} />
-                    <ListItemText primary={name} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+                {availableTeamMembers.map((member) => (
+                  <MenuItem key={member.userId} value={member.userId}>
+                    <Checkbox checked={selectedTeamMemberIds.indexOf(member.userId) > -1} sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }} />
+                    <ListItemText primary={member.name} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
                   </MenuItem>
                 ))}
               </Select>
             </Box>
 
             <Box sx={{ flexGrow: 1, minHeight: 300, ml: -2 }}>
+              {progressLoading ? (
+                <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 8, fontWeight: 600 }}>
+                  Loading progress...
+                </Typography>
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={filteredProgressData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
@@ -480,6 +489,7 @@ export const TeamConnectionsSplitView = () => {
                   <Bar dataKey="dealsClosed" name="Deals Closed" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </Box>
           </Box>
         </Grid>
