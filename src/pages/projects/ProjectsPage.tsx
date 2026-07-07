@@ -81,23 +81,28 @@ const ProjectsPage = () => {
 
       const progressVal = totalCards > 0 ? Math.round((lastColCards / totalCards) * 100) : 0;
 
-      let status = 'In Development';
-      if (progressVal === 100 && totalCards > 0) {
-        status = 'Active';
-      } else if (totalCards === 0) {
-        status = 'On Hold';
+      const boardAny = board as any;
+      let status = boardAny.status || 'In Development';
+      if (!boardAny.status) {
+        if (progressVal === 100 && totalCards > 0) {
+          status = 'Active';
+        } else if (totalCards === 0) {
+          status = 'On Hold';
+        }
       }
 
       // Dynamically create some tech stacks based on columns or defaults
-      const techStack = board.columns?.slice(0, 3).map(c => c.cards ? `${c.name} (${c.cards.length})` : c.name) || [];
+      const techStack = boardAny.techStack && boardAny.techStack.length > 0 
+        ? boardAny.techStack 
+        : (board.columns?.slice(0, 3).map(c => c.cards ? `${c.name} (${c.cards.length})` : c.name) || []);
 
       // Determine project type dynamically
-      const type = (board.name || '').toLowerCase().includes('internal') ? 'Internal Product' : 'Client';
+      const type = boardAny.type || ((board.name || '').toLowerCase().includes('internal') ? 'Internal Product' : 'Client');
 
       // Resolve members from ownerId and sharedWith
-      const ownerUser = dbUsers.find(u => u._id === (board as any).ownerId);
-      const sharedUsers = Array.isArray((board as any).sharedWith)
-        ? (board as any).sharedWith.map((id: any) => dbUsers.find(u => u._id === id)).filter(Boolean)
+      const ownerUser = dbUsers.find(u => u._id === boardAny.ownerId);
+      const sharedUsers = Array.isArray(boardAny.sharedWith)
+        ? boardAny.sharedWith.map((id: any) => dbUsers.find(u => u._id === id)).filter(Boolean)
         : [];
       const boardMembers = [ownerUser, ...sharedUsers].filter(Boolean);
 
@@ -105,7 +110,7 @@ const ProjectsPage = () => {
         id: board._id,
         title: board.name,
         type,
-        description: `Lead pipeline board containing ${board.columns?.length || 0} active columns and ${totalCards} total lead cards.`,
+        description: boardAny.description || `Lead pipeline board containing ${board.columns?.length || 0} active columns and ${totalCards} total lead cards.`,
         status,
         techStack,
         boardCount: board.columns?.length || 0,
@@ -141,7 +146,13 @@ const ProjectsPage = () => {
   const devCount = useMemo(() => projects.filter(p => p.status === 'In Development').length, [projects]);
 
   const handleAddProject = (data: ProjectFormData) => {
-    createBoardMutation.mutate({ name: data.title }, {
+    createBoardMutation.mutate({ 
+      name: data.title,
+      type: data.type,
+      status: data.status,
+      description: data.description,
+      techStack: data.techStack
+    }, {
       onSuccess: () => {
         setIsFormOpen(false);
       }
@@ -195,7 +206,7 @@ const ProjectsPage = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => navigate('/sales')}
+            onClick={() => setIsFormOpen(true)}
             sx={{
               bgcolor: tokens.brand.primary,
               color: '#fff',
@@ -270,38 +281,38 @@ const ProjectsPage = () => {
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
           gap: '4px'
         }}>
-          <IconButton 
+          <IconButton
             onClick={() => setViewMode('grid')}
-            sx={{ 
+            sx={{
               width: 36,
               height: 36,
-              color: viewMode === 'grid' ? (isDarkMode ? '#fff' : '#1A1625') : (isDarkMode ? 'rgba(255,255,255,0.4)' : '#71717A'), 
-              bgcolor: viewMode === 'grid' ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E4E4E7') : 'transparent', 
+              color: viewMode === 'grid' ? (isDarkMode ? '#fff' : '#1A1625') : (isDarkMode ? 'rgba(255,255,255,0.4)' : '#71717A'),
+              bgcolor: viewMode === 'grid' ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E4E4E7') : 'transparent',
               borderRadius: '50%',
               transition: 'all 0.2s ease',
-              '&:hover': { 
-                bgcolor: viewMode === 'grid' 
-                  ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#D4D4D8') 
-                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') 
+              '&:hover': {
+                bgcolor: viewMode === 'grid'
+                  ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#D4D4D8')
+                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
               }
             }}
           >
             <GridViewIcon sx={{ fontSize: 20 }} />
           </IconButton>
-          <IconButton 
+          <IconButton
             onClick={() => setViewMode('list')}
-            sx={{ 
+            sx={{
               width: 36,
               height: 36,
-              color: viewMode === 'list' ? (isDarkMode ? '#fff' : '#1A1625') : (isDarkMode ? 'rgba(255,255,255,0.4)' : '#71717A'), 
-              bgcolor: viewMode === 'list' ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E4E4E7') : 'transparent', 
-              borderRadius: '50%', 
+              color: viewMode === 'list' ? (isDarkMode ? '#fff' : '#1A1625') : (isDarkMode ? 'rgba(255,255,255,0.4)' : '#71717A'),
+              bgcolor: viewMode === 'list' ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E4E4E7') : 'transparent',
+              borderRadius: '50%',
               transition: 'all 0.2s ease',
-              '&:hover': { 
-                bgcolor: viewMode === 'list' 
-                  ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#D4D4D8') 
-                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') 
-              } 
+              '&:hover': {
+                bgcolor: viewMode === 'list'
+                  ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#D4D4D8')
+                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
+              }
             }}
           >
             <FormatListBulletedIcon sx={{ fontSize: 20 }} />
@@ -366,7 +377,7 @@ const ProjectsPage = () => {
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 1, mb: 3.5, flexWrap: 'wrap' }}>
-                {project.techStack.map(tech => (
+                {project.techStack.map((tech: string) => (
                   <Chip
                     key={tech}
                     label={tech}

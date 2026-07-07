@@ -5,7 +5,7 @@ import type { KanbanBoard, KanbanCard } from '@/types';
 const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
   getBoard: (id: string) => api.get<{ data: KanbanBoard }>(`/kanban/board/${id}`),
-  createBoard: (data: { name: string }) => api.post('/kanban/boards', data),
+  createBoard: (data: { name: string; type?: string; description?: string; status?: string; techStack?: string[] }) => api.post('/kanban/boards', data),
   updateBoard: ({ id, data }: { id: string; data: Partial<KanbanBoard> }) =>
     api.put(`/kanban/boards/${id}`, data),
   createColumn: ({ boardId, name }: { boardId: string; name: string }) =>

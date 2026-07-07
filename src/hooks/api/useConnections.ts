@@ -15,6 +15,7 @@ export interface SalesPipelineStats {
     conversationRate: number;
     qualifiedRate: number;
   };
+  messageStats?: Record<string, number>;
 }
 
 const connectionApi = {

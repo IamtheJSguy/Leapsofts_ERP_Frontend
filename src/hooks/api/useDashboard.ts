@@ -5,7 +5,7 @@ import type { DashboardStats } from '@/types';
 export const useDashboard = () =>
   useQuery({
     queryKey: ['dashboard'],
-    queryFn: () => api.get<{ data: DashboardStats }>('users/me').then((r) => r.data.data),
+    queryFn: () => api.get<{ data: DashboardStats }>('users/me/summary').then((r) => r.data.data),
     staleTime: 1000 * 60,
   });
 
