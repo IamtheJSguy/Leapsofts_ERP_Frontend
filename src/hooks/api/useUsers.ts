@@ -62,6 +62,18 @@ export const useUserAttendanceSummary = (
     enabled: !!userId && !!startDate && !!endDate,
   });
 
+export const useUserAuditLogs = (userId: string | undefined, page = 1, limit = 20) =>
+  useQuery({
+    queryKey: ['auditLogs', userId, page, limit],
+    queryFn: () =>
+      api
+        .get<{ data: any[]; meta: { page: number; limit: number; total: number } }>(`/admin/audit-logs/${userId}`, {
+          params: { page, limit },
+        })
+        .then((r) => r.data),
+    enabled: !!userId,
+  });
+
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -460,7 +460,7 @@ export const AdminDashboard = () => {
         {/* Team Insights */}
         <Grid item xs={12} sm={6} md={3}>
           <Box
-            onClick={() => navigate('/team/insights')}
+            onClick={() => navigate('/team')}
             sx={{
               p: 3,
               borderRadius: '24px',

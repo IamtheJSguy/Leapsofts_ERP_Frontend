@@ -265,26 +265,20 @@ export const ReportBuilder = ({
                 Select Employee
               </Typography>
               <Autocomplete
-                options={[
-                  { _id: '', name: 'All Employees' },
-                  ...agents.map((agent) => ({
-                    _id: agent._id,
-                    name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email,
-                  })),
-                ]}
+                options={agents.map((agent) => ({
+                  _id: agent._id,
+                  name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email,
+                }))}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option._id === value._id}
-                value={
-                  selectedAgentId === ''
-                    ? { _id: '', name: 'All Employees' }
-                    : {
-                        _id: selectedAgentId,
-                        name:
-                          agents.find((a) => a._id === selectedAgentId)
-                            ? `${agents.find((a) => a._id === selectedAgentId)?.firstName || ''} ${agents.find((a) => a._id === selectedAgentId)?.lastName || ''}`.trim() || agents.find((a) => a._id === selectedAgentId)?.email || ''
-                            : 'Unknown Employee',
-                      }
-                }
+                value={(() => {
+                  const agent = agents.find((a) => a._id === selectedAgentId) || agents[0];
+                  if (!agent) return null;
+                  return {
+                    _id: agent._id,
+                    name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email || '',
+                  };
+                })()}
                 onChange={(_, newValue) => {
                   const val = newValue ? newValue._id : '';
                   onAgentChange?.(val);
