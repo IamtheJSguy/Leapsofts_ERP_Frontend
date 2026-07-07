@@ -251,31 +251,7 @@ export default function MemberProgressPage() {
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            px: 3,
-            py: 1.5,
-            borderRadius: '20px',
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
-          }}
-        >
-          <Box
-            sx={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              bgcolor: user.isActiveSession ? '#10B981' : '#9CA3AF',
-              boxShadow: user.isActiveSession ? '0 0 8px #10B981' : 'none',
-            }}
-          />
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: 'text.secondary' }}>
-            {user.isActiveSession ? 'Active Session' : 'Offline'}
-          </Typography>
-        </Box>
+
       </Box>
 
       {/* 3. Luxury Stats Grid */}
