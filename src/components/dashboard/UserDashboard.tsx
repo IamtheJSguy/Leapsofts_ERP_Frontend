@@ -127,11 +127,11 @@ export const UserDashboard = () => {
               >
                 <FlashOnIcon sx={{ fontSize: 13 }} />
                 <Typography sx={{ fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.08em' }}>
-                  TODAY IN PIPELINE
+                  TODAY'S ACTIVITY
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                My Pipeline · {stats?.metrics?.pendingTasks || 0} active items
+                My Tasks · {stats?.metrics?.pendingTasks || 0} active items
               </Typography>
             </Box>
           </Box>
