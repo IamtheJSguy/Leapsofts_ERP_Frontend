@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { DashboardDateMeta, TeamConnectionRow, TeamProgressRow } from '@/types';
+import type { DashboardDateMeta, TeamConnectionRow, TeamProgressRow, PipelineVelocityPoint } from '@/types';
 
 export type DashboardPeriod = 'today' | 'week' | 'month' | 'quarter' | 'all' | 'custom';
 
@@ -82,3 +82,16 @@ export const useTeamProgress = (
     staleTime: 1000 * 60,
   });
 };
+
+export const usePipelineVelocity = (days = 7) =>
+  useQuery({
+    queryKey: ['admin', 'pipeline-velocity', days],
+    queryFn: () =>
+      api
+        .get<{ data: PipelineVelocityPoint[]; meta: DashboardDateMeta & { days?: number } }>(
+          '/admin/pipeline-velocity',
+          { params: { days } },
+        )
+        .then((r) => r.data),
+    staleTime: 1000 * 60,
+  });
