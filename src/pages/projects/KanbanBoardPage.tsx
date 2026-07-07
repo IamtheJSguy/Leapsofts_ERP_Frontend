@@ -1862,7 +1862,20 @@ export const KanbanBoardPage = () => {
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map((val) => {
                     const match = allUsers.find((u: any) => u._id === val);
-                    return <Chip key={val} label={match ? `${match.firstName || ''} ${match.lastName || ''}`.trim() : val} size="small" sx={{ height: 22, fontSize: '0.72rem' }} />;
+                    return (
+                      <Chip 
+                        key={val} 
+                        label={match ? `${match.firstName || ''} ${match.lastName || ''}`.trim() : val} 
+                        size="small" 
+                        onDelete={() => {
+                          setNewCardAssignees(newCardAssignees.filter(id => id !== val));
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                        }}
+                        sx={{ height: 22, fontSize: '0.72rem' }} 
+                      />
+                    );
                   })}
                 </Box>
               )}

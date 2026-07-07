@@ -273,7 +273,7 @@ export const ReportBuilder = ({
                 isOptionEqualToValue={(option, value) => option._id === value._id}
                 value={(() => {
                   const agent = agents.find((a) => a._id === selectedAgentId) || agents[0];
-                  if (!agent) return null;
+                  if (!agent) return undefined;
                   return {
                     _id: agent._id,
                     name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email || '',

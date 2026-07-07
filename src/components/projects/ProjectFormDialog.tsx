@@ -50,7 +50,7 @@ export const ProjectFormDialog = ({ open, onClose, onSubmit, isSubmitting }: Pro
     }
 
     onSubmit({ ...formData, techStack: finalTech });
-    
+
     // Reset form
     setFormData({
       title: '',
@@ -168,14 +168,14 @@ export const ProjectFormDialog = ({ open, onClose, onSubmit, isSubmitting }: Pro
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, pt: 2, mt: 1 }}>
         <Button onClick={onClose} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={!formData.title || isSubmitting}
-          variant="contained" 
-          sx={{ 
-            bgcolor: '#FF5733', 
-            color: '#fff', 
-            fontWeight: 700, 
+          variant="contained"
+          sx={{
+            bgcolor: '#FF5733',
+            color: '#fff',
+            fontWeight: 700,
             borderRadius: '24px',
             '&:hover': { bgcolor: '#E04A2A' }
           }}

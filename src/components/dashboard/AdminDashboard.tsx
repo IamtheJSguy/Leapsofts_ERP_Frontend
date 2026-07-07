@@ -24,6 +24,7 @@ import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
 import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
+import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -253,17 +254,23 @@ export const AdminDashboard = () => {
           ].map((stat) => (
             <Grid item xs={6} sm={4} md={2.4} key={stat.label}>
               <Box
+                onClick={() => {
+                  if (stat.label === 'TEAM CONNECTIONS') {
+                    document.getElementById('team-connections-split')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 sx={{
                   p: 2.2,
                   borderRadius: '16px',
                   bgcolor: 'rgba(0,0,0,0.008)',
                   border: '1px solid rgba(0,0,0,0.015)',
+                  cursor: stat.label === 'TEAM CONNECTIONS' ? 'pointer' : 'default',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   '&:hover': {
-                    bgcolor: 'rgba(0,0,0,0.015)',
-                    borderColor: 'rgba(0,0,0,0.03)',
+                    bgcolor: stat.label === 'TEAM CONNECTIONS' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(0,0,0,0.015)',
+                    borderColor: stat.label === 'TEAM CONNECTIONS' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.03)',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+                    boxShadow: stat.label === 'TEAM CONNECTIONS' ? '0 6px 16px rgba(59, 130, 246, 0.08)' : '0 4px 12px rgba(0,0,0,0.01)'
                   }
                 }}
               >
@@ -297,218 +304,8 @@ export const AdminDashboard = () => {
         </Grid>
       </Box>
 
-      {/* 2. Secondary Widgets Grid */}
-      <Grid container spacing={3.5}>
-        {/* Active Projects */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: '24px',
-              bgcolor: tokens.surface.card,
-              border: `1px solid ${tokens.surface.border}`,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              height: '100%',
-              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { 
-                boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
-                borderColor: 'rgba(0,0,0,0.06)'
-              }
-            }}
-          >
-            <Box>
-              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                Active Projects
-              </Typography>
-              <Typography sx={{ fontSize: '2rem', fontWeight: 850, color: tokens.text.primary, my: 0.8, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                2
-              </Typography>
-              <Box 
-                sx={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: 0.5,
-                  bgcolor: 'rgba(45, 138, 94, 0.06)',
-                  color: tokens.semantic.success,
-                  borderRadius: '12px',
-                  px: 1.2,
-                  py: 0.3,
-                  fontSize: '0.72rem',
-                  fontWeight: 700
-                }}
-              >
-                ↗ 1 new this quarter
-              </Box>
-            </Box>
-            <Box 
-              sx={{ 
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(93, 26, 137, 0.08) 0%, rgba(93, 26, 137, 0.01) 100%)', 
-                border: '1px solid rgba(93, 26, 137, 0.12)',
-                color: tokens.brand.primary 
-              }}
-            >
-              <FolderOpenOutlinedIcon sx={{ fontSize: 20 }} />
-            </Box>
-          </Box>
-        </Grid>
-
-        {/* Tasks Completed */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: '24px',
-              bgcolor: tokens.surface.card,
-              border: `1px solid ${tokens.surface.border}`,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              height: '100%',
-              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { 
-                boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
-                borderColor: 'rgba(0,0,0,0.06)'
-              }
-            }}
-          >
-            <Box>
-              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                Tasks Completed
-              </Typography>
-              <Typography sx={{ fontSize: '2rem', fontWeight: 850, color: tokens.text.primary, my: 0.8, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                14
-              </Typography>
-              <Typography sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                this week
-              </Typography>
-            </Box>
-            <Box 
-              sx={{ 
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(45, 138, 94, 0.08) 0%, rgba(45, 138, 94, 0.01) 100%)', 
-                border: '1px solid rgba(45, 138, 94, 0.12)',
-                color: tokens.semantic.success 
-              }}
-            >
-              <CheckCircleOutlinedIcon sx={{ fontSize: 20 }} />
-            </Box>
-          </Box>
-        </Grid>
-
-        {/* Pending Leaves */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: '24px',
-              bgcolor: tokens.surface.card,
-              border: `1px solid ${tokens.surface.border}`,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              height: '100%',
-              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { 
-                boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
-                borderColor: 'rgba(0,0,0,0.06)'
-              }
-            }}
-          >
-            <Box>
-              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                Pending Leaves
-              </Typography>
-              <Typography sx={{ fontSize: '2rem', fontWeight: 850, color: tokens.text.primary, my: 0.8, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                0
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', height: 16 }} />
-            </Box>
-            <Box 
-              sx={{ 
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(255, 127, 17, 0.08) 0%, rgba(255, 127, 17, 0.01) 100%)', 
-                border: '1px solid rgba(255, 127, 17, 0.12)',
-                color: tokens.brand.accent 
-              }}
-            >
-              <AccessTimeOutlinedIcon sx={{ fontSize: 20 }} />
-            </Box>
-          </Box>
-        </Grid>
-
-        {/* Team Insights */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Box
-            onClick={() => navigate('/team')}
-            sx={{
-              p: 3,
-              borderRadius: '24px',
-              bgcolor: tokens.surface.card,
-              border: `1px solid ${tokens.surface.border}`,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              height: '100%',
-              cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { 
-                boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
-                borderColor: tokens.brand.primaryMuted,
-                transform: 'translateY(-1px)'
-              }
-            }}
-          >
-            <Box>
-              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                Team
-              </Typography>
-              <Typography sx={{ fontSize: '1.5rem', fontWeight: 850, color: tokens.text.primary, my: 0.8, display: 'flex', alignItems: 'center', gap: 0.5, lineHeight: 1, letterSpacing: '-0.015em' }}>
-                Insights <span style={{ color: tokens.brand.accent }}>→</span>
-              </Typography>
-              <Typography sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.76rem' }}>
-                Weekly analysis
-              </Typography>
-            </Box>
-            <Box 
-              sx={{ 
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(196, 69, 69, 0.08) 0%, rgba(196, 69, 69, 0.01) 100%)', 
-                border: '1px solid rgba(196, 69, 69, 0.12)',
-                color: tokens.semantic.error 
-              }}
-            >
-              <PeopleOutlinedIcon sx={{ fontSize: 20 }} />
-            </Box>
-          </Box>
-        </Grid>
-      </Grid>
+      {/* 2. Team Connections & Charts Split View */}
+      <TeamConnectionsSplitView />
 
       {/* 3. Team Analysis & Warnings Section */}
       <Box
@@ -610,7 +407,9 @@ export const AdminDashboard = () => {
         </Box>
       </Box>
 
-      {/* 4. Bottom Grid */}
+
+
+      {/* 5. Bottom Grid */}
       <Grid container spacing={3.5}>
         {/* Column 1: My Tasks list (60%) */}
         <Grid item xs={12} md={7}>

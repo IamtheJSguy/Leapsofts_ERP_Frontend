@@ -32,6 +32,7 @@ import {
   CircularProgress,
   LinearProgress,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -40,6 +41,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import WarningIcon from '@mui/icons-material/Warning';
 import LinkIcon from '@mui/icons-material/Link';
 import EmailIcon from '@mui/icons-material/Email';
+import LockIcon from '@mui/icons-material/Lock';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
@@ -97,7 +99,7 @@ export const SalesPage = () => {
 
   const getCardTheme = (label: string) => {
     switch (label) {
-      case 'TOTAL PROSPECTS': 
+      case 'TOTAL PROSPECTS':
         return {
           icon: <SendIcon sx={{ fontSize: 20 }} />,
           color: tokens.brand.primary,
@@ -111,7 +113,7 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
           hoverBorder: tokens.brand.accent,
         };
-      case 'IN CONVERSATION':
+      case 'FOLLOW UP':
         return {
           icon: <ForumIcon sx={{ fontSize: 20 }} />,
           color: '#3B82F6',
@@ -125,14 +127,14 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
           hoverBorder: tokens.semantic.success,
         };
-      case 'PENDING':
+      case 'NOT SENT':
         return {
           icon: <EventIcon sx={{ fontSize: 20 }} />,
           color: '#F59E0B',
           bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
           hoverBorder: '#F59E0B',
         };
-      case 'NO RESPONSE':
+      case 'WAITING FOR REPLY':
         return {
           icon: <DescriptionIcon sx={{ fontSize: 20 }} />,
           color: '#EC4899',
@@ -231,6 +233,7 @@ export const SalesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('All Users');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
+  const [activeCard, setActiveCard] = useState('TOTAL PROSPECTS');
 
   const { data: usersData } = useUsers();
   const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
@@ -241,26 +244,36 @@ export const SalesPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedStatus]);
+  }, [debouncedSearch, selectedUserId, selectedStatus, activeCard]);
 
-  const leadFilters = useMemo(() => ({
-    page,
-    limit: rowsPerPage,
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
-    ...(selectedStatus !== 'All statuses' ? { connectionStatus: selectedStatus } : {}),
-  }), [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus]);
+  const leadFilters = useMemo(() => {
+    const filters: any = {
+      page,
+      limit: rowsPerPage,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
+      ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
+    };
+
+    if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
+    if (activeCard === 'FOLLOW UP') filters.messageStatus = 'follow_up';
+    if (activeCard === 'QUALIFIED') filters.isQualified = true;
+    if (activeCard === 'NOT SENT') filters.messageStatus = 'not_sent';
+    if (activeCard === 'WAITING FOR REPLY') filters.messageStatus = 'sent';
+
+    return filters;
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus, activeCard]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   let prospects = leadsResponse?.data ?? [];
   if (selectedUserId !== 'All Users') {
-    prospects = prospects.filter((p: any) => 
+    prospects = prospects.filter((p: any) =>
       p.assignedTo === selectedUserId || p.assignedTo?._id === selectedUserId
     );
   }
@@ -386,10 +399,10 @@ export const SalesPage = () => {
       return [
         { label: 'TOTAL PROSPECTS', value: '0', percent: null },
         { label: 'ACCEPTED', value: '0', percent: '0%' },
-        { label: 'IN CONVERSATION', value: '0', percent: '0%' },
+        { label: 'FOLLOW UP', value: '0', percent: '0%' },
         { label: 'QUALIFIED', value: '0', percent: '0%' },
-        { label: 'PENDING', value: '0', percent: '0%' },
-        { label: 'NO RESPONSE', value: '0', percent: '0%' },
+        { label: 'NOT SENT', value: '0', percent: '0%' },
+        { label: 'WAITING FOR REPLY', value: '0', percent: '0%' },
       ];
     }
 
@@ -398,10 +411,10 @@ export const SalesPage = () => {
     return [
       { label: 'TOTAL PROSPECTS', value: String(pipelineStats.totalProspects), percent: null },
       { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
-      { label: 'IN CONVERSATION', value: String(pipelineStats.inConversation), percent: pct(conversionRates.conversationRate) },
+      { label: 'FOLLOW UP', value: String(pipelineStats.messageStats?.follow_up || 0), percent: pct(conversionRates.conversationRate) },
       { label: 'QUALIFIED', value: String(pipelineStats.qualified), percent: pct(conversionRates.qualifiedRate) },
-      { label: 'PENDING', value: String(pipelineStats.pending), percent: pct(Math.round((pipelineStats.pending / (pipelineStats.totalProspects || 1)) * 100)) },
-      { label: 'NO RESPONSE', value: String(pipelineStats.noResponse + pipelineStats.declined), percent: pct(Math.round(((pipelineStats.noResponse + pipelineStats.declined) / (pipelineStats.totalProspects || 1)) * 100)) },
+      { label: 'NOT SENT', value: String(pipelineStats.messageStats?.not_sent || 0), percent: pct(Math.round(((pipelineStats.messageStats?.not_sent || 0) / (pipelineStats.totalProspects || 1)) * 100)) },
+      { label: 'WAITING FOR REPLY', value: String(pipelineStats.messageStats?.sent || 0), percent: pct(Math.round(((pipelineStats.messageStats?.sent || 0) / (pipelineStats.totalProspects || 1)) * 100)) },
     ];
   }, [pipelineStats]);
 
@@ -490,89 +503,96 @@ export const SalesPage = () => {
           <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
         </Box>
       ) : (
-      <Grid container spacing={2} sx={{ mb: 4.5 }}>
-        {stats.map((item, idx) => {
-          const theme = getCardTheme(item.label);
-          return (
-            <Grid item xs={6} sm={4} md={2} key={idx}>
-              <Card
-                sx={{
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                  borderRadius: '24px',
-                  p: 2.25,
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  gap: { xs: 1.2, sm: 1.75 },
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    borderColor: theme.hoverBorder,
-                    transform: 'translateY(-3px)',
-                    boxShadow: tokens.shadow.cardHover,
-                  },
-                }}
-              >
-                <Box
+        <Grid container spacing={2} sx={{ mb: 4.5 }}>
+          {stats.map((item, idx) => {
+            const theme = getCardTheme(item.label);
+            return (
+              <Grid item xs={6} sm={4} md={2} key={idx}>
+                <Card
+                  onClick={() => {
+                    setActiveCard(item.label);
+                    if (item.label === 'NOT SENT') setSelectedStatus('not_sent');
+                    else if (item.label === 'WAITING FOR REPLY') setSelectedStatus('sent');
+                    else if (item.label === 'FOLLOW UP') setSelectedStatus('follow_up');
+                    else setSelectedStatus('All statuses');
+                  }}
                   sx={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: '12px',
-                    bgcolor: theme.bgcolor,
-                    color: theme.color,
+                    bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                    border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
+                    borderRadius: '24px',
+                    p: 2.25,
+                    height: '100%',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 1.2, sm: 1.75 },
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: theme.hoverBorder,
+                      transform: 'translateY(-3px)',
+                      boxShadow: tokens.shadow.cardHover,
+                    },
                   }}
                 >
-                  {theme.icon}
-                </Box>
-                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: 'text.secondary',
-                        fontWeight: 750,
-                        fontSize: '0.6rem',
-                        letterSpacing: '0.04em',
-                        lineHeight: 1.2,
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                    {item.percent && (
-                      <Chip
-                        label={item.percent}
-                        size="small"
-                        sx={{
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                          color: 'text.secondary',
-                          fontSize: '0.58rem',
-                          height: 16,
-                          fontWeight: 800,
-                          px: 0.2,
-                          '& .MuiChip-label': { px: 0.75 }
-                        }}
-                      />
-                    )}
+                  <Box
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: '12px',
+                      bgcolor: theme.bgcolor,
+                      color: theme.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {theme.icon}
                   </Box>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
-                    {item.value}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          fontWeight: 750,
+                          fontSize: '0.6rem',
+                          letterSpacing: '0.04em',
+                          lineHeight: 1.2,
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.label}
+                      </Typography>
+                      {item.percent && (
+                        <Chip
+                          label={item.percent}
+                          size="small"
+                          sx={{
+                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                            color: 'text.secondary',
+                            fontSize: '0.58rem',
+                            height: 16,
+                            fontWeight: 800,
+                            px: 0.2,
+                            '& .MuiChip-label': { px: 0.75 }
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
+                      {item.value}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
       )}
 
       {/* Sub-Navigation Tabs Row */}
@@ -727,12 +747,14 @@ export const SalesPage = () => {
                 options={[{ _id: 'All Users', label: 'All Users' }, ...usersList.map((u: any) => ({ _id: u._id, label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email }))]}
                 getOptionLabel={(option) => option.label || ''}
                 value={
-                  selectedUserId === 'All Users' 
-                    ? { _id: 'All Users', label: 'All Users' } 
-                    : { _id: selectedUserId, label: (() => {
+                  selectedUserId === 'All Users'
+                    ? { _id: 'All Users', label: 'All Users' }
+                    : {
+                      _id: selectedUserId, label: (() => {
                         const user = usersList.find((u: any) => u._id === selectedUserId);
                         return user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown User';
-                      })() }
+                      })()
+                    }
                 }
                 onChange={(e, newValue) => setSelectedUserId(newValue ? newValue._id : 'All Users')}
                 disableClearable
@@ -765,8 +787,8 @@ export const SalesPage = () => {
                   }
                 }}
                 renderInput={(params) => (
-                  <TextField 
-                    {...params} 
+                  <TextField
+                    {...params}
                     placeholder="Search user..."
                     InputProps={{
                       ...params.InputProps,
@@ -786,14 +808,24 @@ export const SalesPage = () => {
             <FormControl sx={filterSelectSx}>
               <Select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedStatus(val);
+                  if (val === 'not_sent') setActiveCard('NOT SENT');
+                  else if (val === 'sent') setActiveCard('WAITING FOR REPLY');
+                  else if (val === 'follow_up') setActiveCard('FOLLOW UP');
+                  else setActiveCard('TOTAL PROSPECTS');
+                }}
                 input={<OutlinedInput />}
               >
                 <MenuItem value="All statuses">All statuses</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="accepted">Accepted</MenuItem>
-                <MenuItem value="declined">Declined</MenuItem>
-                <MenuItem value="no_response">No response</MenuItem>
+                <MenuItem value="not_sent">Not Sent</MenuItem>
+                <MenuItem value="sent">Sent</MenuItem>
+                <MenuItem value="replied">Replied</MenuItem>
+                <MenuItem value="follow_up">Follow Up</MenuItem>
+                <MenuItem value="negative">Negative</MenuItem>
+                <MenuItem value="positive">Positive</MenuItem>
+                <MenuItem value="future_lead">Future Lead</MenuItem>
               </Select>
             </FormControl>
 
@@ -1079,7 +1111,7 @@ export const SalesPage = () => {
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {prospect.isQualified? (
+                            {prospect.isQualified ? (
                               <Chip
                                 icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
                                 label="Qualified"
@@ -1093,28 +1125,36 @@ export const SalesPage = () => {
                                 }}
                               />
                             ) : (
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                startIcon={<StarIcon sx={{ fontSize: '14px !important' }} />}
-                                onClick={() => handleOpenQualifyConfirm(prospect._id)}
-                                disabled={qualifyLead.isPending}
-                                sx={{
-                                  borderRadius: '20px',
-                                  textTransform: 'none',
-                                  fontWeight: 600,
-                                  fontSize: '0.7rem',
-                                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                                  color: 'text.secondary',
-                                  '&:hover': {
-                                    bgcolor: tokens.brand.primary,
-                                    borderColor: tokens.brand.primary,
-                                    color: '#fff',
-                                  },
-                                }}
-                              >
-                                Qualify
-                              </Button>
+                              <Tooltip title={!isAdmin ? "Only administrators can qualify leads." : ""} arrow>
+                                <span>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={!isAdmin ? <LockIcon sx={{ fontSize: '14px !important' }} /> : <StarIcon sx={{ fontSize: '14px !important' }} />}
+                                    onClick={() => handleOpenQualifyConfirm(prospect._id)}
+                                    disabled={!isAdmin || qualifyLead.isPending}
+                                    sx={{
+                                      borderRadius: '20px',
+                                      textTransform: 'none',
+                                      fontWeight: 600,
+                                      fontSize: '0.7rem',
+                                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                      color: 'text.secondary',
+                                      '&:hover': {
+                                        bgcolor: !isAdmin ? 'transparent' : tokens.brand.primary,
+                                        borderColor: !isAdmin ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
+                                        color: !isAdmin ? 'text.secondary' : '#fff',
+                                      },
+                                      '&.Mui-disabled': {
+                                        borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        color: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                                      }
+                                    }}
+                                  >
+                                    Qualify
+                                  </Button>
+                                </span>
+                              </Tooltip>
                             )}
                           </Box>
                         </TableCell>
