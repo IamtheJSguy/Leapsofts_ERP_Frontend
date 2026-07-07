@@ -120,18 +120,20 @@ export const ProjectDetailsPage = () => {
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
   const [pendingAddUser, setPendingAddUser] = useState<any | null>(null);
 
-  // Derived data
-  const actualBoard = useMemo(() => (boardData as any)?.board || boardData, [boardData]);
+  // Derived data from get board API
+  const actualBoard = useMemo(() => boardData?.board, [boardData]);
   const isBoardOwner = useMemo(() => actualBoard?.ownerId === currentUser?._id, [actualBoard, currentUser]);
   const canManageTeam = isBoardOwner || isAdmin;
-  const cards = useMemo(() => (boardData as any)?.cards || [], [boardData]);
+  const cards = useMemo(() => boardData?.cards || [], [boardData]);
 
-  // Lead: pick the first card's leadId (populated object)
+  // Lead: prefer board-level leadId (qualified lead linked to board), fallback to first card
   const leadInfo = useMemo(() => {
+    const boardLead = actualBoard?.leadId;
+    if (boardLead && typeof boardLead === 'object') return boardLead;
     if (!cards.length) return null;
-    const firstCard = cards[0];
-    return firstCard?.leadId || null;
-  }, [cards]);
+    const firstCardLead = cards[0]?.leadId;
+    return firstCardLead && typeof firstCardLead === 'object' ? firstCardLead : null;
+  }, [actualBoard, cards]);
 
   // All lead cards for display (grouped by column)
   const cardsByColumn = useMemo(() => {
@@ -244,12 +246,14 @@ export const ProjectDetailsPage = () => {
               <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
                 {leadName}
               </Typography>
-              <Chip
-                icon={<CheckCircleIcon sx={{ fontSize: '14px !important', color: '#10B981 !important' }} />}
-                label="Qualified Lead"
-                size="small"
-                sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', fontWeight: 700, fontSize: '0.72rem', border: '1px solid rgba(16,185,129,0.2)' }}
-              />
+              {leadInfo?.isQualified && (
+                <Chip
+                  icon={<CheckCircleIcon sx={{ fontSize: '14px !important', color: '#10B981 !important' }} />}
+                  label="Qualified Lead"
+                  size="small"
+                  sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', fontWeight: 700, fontSize: '0.72rem', border: '1px solid rgba(16,185,129,0.2)' }}
+                />
+              )}
             </Box>
             {leadInfo?.company && (
               <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -401,15 +405,15 @@ export const ProjectDetailsPage = () => {
                 </Typography>
               )}
 
-              {/* Profile Sections from card */}
-              {cards[0]?.profileSections?.length > 0 && (
+              {/* Profile Sections from lead or first card */}
+              {((leadInfo?.profileSections?.length ?? 0) > 0 || (cards[0]?.profileSections?.length ?? 0) > 0) && (
                 <>
                   <Divider sx={{ my: 3, opacity: 0.5 }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2, color: 'text.primary' }}>
                     Profile Sections
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {cards[0].profileSections.map((ps: any, i: number) => (
+                    {(leadInfo?.profileSections || cards[0]?.profileSections || []).map((ps: any, i: number) => (
                       <Box
                         key={i}
                         sx={{

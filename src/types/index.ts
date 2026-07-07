@@ -71,6 +71,7 @@ export interface Lead {
   salesNavigatorUrl?: string;
   company?: string;
   title?: string;
+  jobTitle?: string;
   industry?: string;
   companySize?: string;
   location?: string;
@@ -78,6 +79,7 @@ export interface Lead {
   connectionStatus?: ConnectionStatus;
   messageStatus?: MessageStatus;
   isQualified?: boolean;
+  kanbanBoardId?: string;
   assignedTo?: string | User;
   profileSections?: ProfileSection[];
   versionHistory?: VersionHistoryEntry[];
@@ -381,6 +383,7 @@ export interface KanbanCard {
   members?: string[] | User[];
   comments?: KanbanComment[];
   activityLog?: ActivityLogEntry[];
+  profileSections?: ProfileSection[];
   enrichment?: ProfileSection[];
 }
 
@@ -402,6 +405,14 @@ export interface KanbanBoard {
   _id: string;
   name: string;
   columns: KanbanColumn[];
+  leadId?: string | Lead;
+  ownerId?: string;
+  sharedWith?: string[];
+}
+
+export interface KanbanBoardResponse {
+  board: KanbanBoard;
+  cards: KanbanCard[];
 }
 
 export interface Conversation {
