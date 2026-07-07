@@ -24,6 +24,8 @@ import LocalPhoneOutlinedIcon from '@mui/icons-material/LocalPhoneOutlined';
 import LinkIcon from '@mui/icons-material/Link';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -34,12 +36,13 @@ import WebAssetIcon from '@mui/icons-material/WebAsset';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useUpdateMe, useMe } from '@/hooks/api/useUsers';
+import { useUpdateMe, useMe, useChangePassword } from '@/hooks/api/useUsers';
 import { useSystemSettings } from '@/hooks/api/useSettings';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
+import { changePasswordSchema } from '@/utils/validators';
 
 export default function ProfilePage() {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -49,6 +52,7 @@ export default function ProfilePage() {
 
   const syncMySheet = useSyncMySheet();
   const updateMeMutation = useUpdateMe();
+  const changePasswordMutation = useChangePassword();
   const addToast = useUIStore((s) => s.addToast);
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
@@ -60,6 +64,15 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Password Form State
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
 
   // Preferences State
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -157,6 +170,53 @@ export default function ProfilePage() {
         },
         onError: () => {
           addToast({ message: 'Failed to update preferences.', severity: 'error' });
+        },
+      }
+    );
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordErrors({});
+
+    const result = changePasswordSchema.safeParse({
+      oldPassword,
+      newPassword,
+      confirmNewPassword,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0];
+        if (typeof field === 'string') {
+          fieldErrors[field] = issue.message;
+        }
+      });
+      setPasswordErrors(fieldErrors);
+      return;
+    }
+
+    changePasswordMutation.mutate(
+      {
+        oldPassword: result.data.oldPassword,
+        newPassword: result.data.newPassword,
+      },
+      {
+        onSuccess: () => {
+          setOldPassword('');
+          setNewPassword('');
+          setConfirmNewPassword('');
+          setShowOldPassword(false);
+          setShowNewPassword(false);
+          setShowConfirmPassword(false);
+          addToast({ message: 'Password updated successfully!', severity: 'success' });
+        },
+        onError: (err: any) => {
+          addToast({
+            message: err?.response?.data?.message || 'Failed to update password.',
+            severity: 'error',
+          });
         },
       }
     );
@@ -401,6 +461,7 @@ export default function ProfilePage() {
         {/* Profile Tab */}
         {activeTab === 'profile' && (
           <Fade in timeout={500}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <Card sx={cardSx}>
               <Box component="form" onSubmit={handleProfileSave}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 4, letterSpacing: '-0.015em' }}>
@@ -517,6 +578,147 @@ export default function ProfilePage() {
                 </Box>
               </Box>
             </Card>
+
+            <Card sx={cardSx}>
+              <Box component="form" onSubmit={handlePasswordChange}>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1, letterSpacing: '-0.015em' }}>
+                  Change Password
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
+                  Update your login password. You will need your current password to confirm the change.
+                </Typography>
+
+                <Grid container spacing={3.5}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Current Password"
+                      fullWidth
+                      type={showOldPassword ? 'text' : 'password'}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      error={!!passwordErrors.oldPassword}
+                      helperText={passwordErrors.oldPassword}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlinedIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowOldPassword((prev) => !prev)}
+                              edge="end"
+                              aria-label="toggle current password visibility"
+                            >
+                              {showOldPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={textFieldSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} />
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="New Password"
+                      fullWidth
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      error={!!passwordErrors.newPassword}
+                      helperText={passwordErrors.newPassword || 'Must be at least 8 characters'}
+                      FormHelperTextProps={{
+                        sx: { color: passwordErrors.newPassword ? undefined : 'text.secondary', fontSize: '0.74rem', mt: 0.75 },
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlinedIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowNewPassword((prev) => !prev)}
+                              edge="end"
+                              aria-label="toggle new password visibility"
+                            >
+                              {showNewPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={textFieldSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Confirm New Password"
+                      fullWidth
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      error={!!passwordErrors.confirmNewPassword}
+                      helperText={passwordErrors.confirmNewPassword}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlinedIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                              edge="end"
+                              aria-label="toggle confirm password visibility"
+                            >
+                              {showConfirmPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={textFieldSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider sx={{ my: 4, opacity: isDarkMode ? 0.08 : 0.08 }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={changePasswordMutation.isPending}
+                    startIcon={changePasswordMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <LockOutlinedIcon sx={{ fontSize: 18 }} />}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      fontWeight: 700,
+                      px: { xs: 3, sm: 5 },
+                      py: 1.4,
+                      borderRadius: '14px',
+                      textTransform: 'none',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.86rem',
+                      boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      '&:hover': {
+                        bgcolor: tokens.brand.primaryLight,
+                        boxShadow: `0 6px 20px ${alpha(tokens.brand.primary, 0.4)}`,
+                        transform: 'translateY(-1px)',
+                      },
+                      '&:active': { transform: 'translateY(1px)' },
+                    }}
+                  >
+                    {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </Box>
+              </Box>
+            </Card>
+            </Box>
           </Fade>
         )}
 
