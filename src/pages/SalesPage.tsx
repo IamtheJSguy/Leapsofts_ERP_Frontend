@@ -1079,7 +1079,7 @@ export const SalesPage = () => {
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {prospect.isQualified || prospect.connectionStatus === 'accepted' ? (
+                            {prospect.isQualified? (
                               <Chip
                                 icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
                                 label="Qualified"

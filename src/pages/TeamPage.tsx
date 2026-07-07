@@ -53,7 +53,7 @@ import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { formatDate } from '@/utils/formatters';
@@ -89,6 +89,7 @@ const TeamPage = () => {
 
   // Load summary for the selected user if one is active
   const { data: userSummary } = useUserSummary(selectedUser?._id, summaryDate);
+  const { data: auditResponse } = useUserAuditLogs(selectedUser?._id, activityPage, 20);
 
   // Fetch kanban boards to resolve actual projects/boards for this user
   const { data: boards = [] } = useKanbanBoards();
@@ -471,57 +472,7 @@ const TeamPage = () => {
             ))}
           </Grid>
 
-          {/* Custom SVG Line Chart */}
-          <Box sx={{ mt: 4, mb: 1, height: 110, position: 'relative' }}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                opacity: isDarkMode ? 0.05 : 0.08,
-                pointerEvents: 'none',
-              }}
-            >
-              <Box sx={{ borderBottom: '1.5px dashed currentColor', width: '100%' }} />
-              <Box sx={{ borderBottom: '1.5px dashed currentColor', width: '100%' }} />
-              <Box sx={{ borderBottom: '1.5px dashed currentColor', width: '100%' }} />
-            </Box>
-            <svg viewBox="0 0 1000 100" width="100%" height="100%" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-              <defs>
-                <linearGradient id="waveGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFA08A" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#FFA08A" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M 0 80 C 150 75, 250 15, 400 45 C 550 75, 650 35, 800 65 C 900 85, 950 50, 1000 55 L 1000 100 L 0 100 Z"
-                fill="url(#waveGradient)"
-              />
-              <path
-                d="M 0 80 C 150 75, 250 15, 400 45 C 550 75, 650 35, 800 65 C 900 85, 950 50, 1000 55"
-                fill="none"
-                stroke="#FFA08A"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <circle cx="400" cy="45" r="4.5" fill="#FFA08A" stroke={isDarkMode ? '#1a1721' : '#fff'} strokeWidth="1.5" />
-              <circle cx="800" cy="65" r="4.5" fill="#FFA08A" stroke={isDarkMode ? '#1a1721' : '#fff'} strokeWidth="1.5" />
-            </svg>
-          </Box>
 
-          {/* Graph labels */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 2, mb: 3 }}>
-            {['6d', '5d', '4d', '3d', '2d', 'Yest', 'Today'].map((label, index) => (
-              <Typography key={index} variant="caption" sx={{ color: 'text.secondary', fontWeight: 650, fontSize: '0.7rem' }}>
-                {label}
-              </Typography>
-            ))}
-          </Box>
 
           {/* Bottom stats details row */}
           <Box
@@ -885,59 +836,26 @@ const TeamPage = () => {
 
         {/* Activity Log Card */}
         {(() => {
-          const allMockActivities = [
-            // June 4
-            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Problem Cards to Resolved', time: '5:18 PM', from: 'Problem Cards', to: 'Resolved', isAction: true },
-            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from InQA to Problem Cards', time: '5:18 PM', from: 'InQA', to: 'Problem Cards', isAction: true },
-            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Resolved to InQA', time: '5:18 PM', from: 'Resolved', to: 'InQA', isAction: true },
-            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Resolved', time: '5:17 PM', from: 'Customer side', to: 'Resolved', isAction: true },
-            { date: 'THU, JUN 4 · 2026', desc: 'MOVED task "otp test" from Customer side to Doing', time: '5:17 PM', from: 'Customer side', to: 'Doing', isAction: true },
-            { date: 'THU, JUN 4 · 2026', desc: 'CREATED task "otp test" in Berger App', time: '5:16 PM', isCreate: true },
-
-            // June 3
-            { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Pin location icon should be working in map" from Customer side to Service provider', time: '8:10 PM', from: 'Customer side', to: 'Service provider', isAction: true },
-            { date: 'WED, JUN 3 · 2026', desc: 'MOVED task "Complete UI fixes for this screen" from Service provider to Customer side', time: '8:05 PM', from: 'Service provider', to: 'Customer side', isAction: true },
-            { date: 'WED, JUN 3 · 2026', desc: 'CREATED task "Map integration" in Berger App', time: '11:30 AM', isCreate: true },
-            { date: 'WED, JUN 3 · 2026', desc: 'CREATED task "Complete UI fixes for this screen" in Berger App', time: '10:00 AM', isCreate: true },
-
-            // June 2
-            { date: 'TUE, JUN 2 · 2026', desc: 'MOVED task "User auth token check" from Doing to InQA', time: '6:00 PM', from: 'Doing', to: 'InQA', isAction: true },
-            { date: 'TUE, JUN 2 · 2026', desc: 'MOVED task "User auth token check" from Todo to Doing', time: '2:15 PM', from: 'Todo', to: 'Doing', isAction: true },
-            { date: 'TUE, JUN 2 · 2026', desc: 'CREATED task "User auth token check" in Auth Microservice', time: '9:00 AM', isCreate: true },
-
-            // June 1
-            { date: 'MON, JUN 1 · 2026', desc: 'MOVED task "Setup CI/CD pipeline" from Doing to Resolved', time: '7:45 PM', from: 'Doing', to: 'Resolved', isAction: true },
-            { date: 'MON, JUN 1 · 2026', desc: 'MOVED task "Setup CI/CD pipeline" from Todo to Doing', time: '1:00 PM', from: 'Todo', to: 'Doing', isAction: true },
-            { date: 'MON, JUN 1 · 2026', desc: 'CREATED task "Setup CI/CD pipeline" in Devops Project', time: '10:30 AM', isCreate: true },
-
-            // May 31
-            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from InQA to Resolved', time: '10:00 PM', from: 'InQA', to: 'Resolved', isAction: true },
-            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from Doing to InQA', time: '6:30 PM', from: 'Doing', to: 'InQA', isAction: true },
-            { date: 'SUN, MAY 31 · 2026', desc: 'MOVED task "Database replication setup" from Todo to Doing', time: '11:00 AM', from: 'Todo', to: 'Doing', isAction: true },
-
-            // May 30
-            { date: 'SAT, MAY 30 · 2026', desc: 'CREATED task "Database replication setup" in DB Cluster', time: '5:00 PM', isCreate: true },
-            { date: 'SAT, MAY 30 · 2026', desc: 'MOVED task "UI landing page draft" from Doing to Resolved', time: '4:20 PM', from: 'Doing', to: 'Resolved', isAction: true },
-            { date: 'SAT, MAY 30 · 2026', desc: 'MOVED task "UI landing page draft" from Todo to Doing', time: '1:00 PM', from: 'Todo', to: 'Doing', isAction: true },
-            { date: 'SAT, MAY 30 · 2026', desc: 'CREATED task "UI landing page draft" in Berger App', time: '10:00 AM', isCreate: true },
-
-            // May 29
-            { date: 'FRI, MAY 29 · 2026', desc: 'MOVED task "API Gateway Routing Setup" from Doing to Resolved', time: '6:15 PM', from: 'Doing', to: 'Resolved', isAction: true },
-            { date: 'FRI, MAY 29 · 2026', desc: 'MOVED task "API Gateway Routing Setup" from Todo to Doing', time: '2:00 PM', from: 'Todo', to: 'Doing', isAction: true },
-            { date: 'FRI, MAY 29 · 2026', desc: 'CREATED task "API Gateway Routing Setup" in Gateway Dev', time: '11:00 AM', isCreate: true },
-          ];
-
+          const allMockActivities = auditResponse?.data || [];
           const pageSize = 20;
-          const totalPages = Math.ceil(allMockActivities.length / pageSize);
-          const paginatedActivities = allMockActivities.slice((activityPage - 1) * pageSize, activityPage * pageSize);
+          const totalPages = Math.ceil((auditResponse?.meta?.total || 0) / pageSize);
+          const paginatedActivities = allMockActivities;
 
           // Group paginated activities by date
-          const groupedActivities: Record<string, typeof allMockActivities> = {};
-          paginatedActivities.forEach((activity) => {
-            if (!groupedActivities[activity.date]) {
-              groupedActivities[activity.date] = [];
+          const groupedActivities: Record<string, any[]> = {};
+          paginatedActivities.forEach((activity: any) => {
+            const dateKey = new Date(activity.createdAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+            if (!groupedActivities[dateKey]) {
+              groupedActivities[dateKey] = [];
             }
-            groupedActivities[activity.date].push(activity);
+            groupedActivities[dateKey].push({
+              ...activity,
+              date: dateKey,
+              time: new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isCreate: activity.action === 'create',
+              isAction: true,
+              desc: `${activity.entityType} ${typeof activity.entityId === 'object' && activity.entityId ? (activity.entityId.prospectName || activity.entityId.firstName || activity.entityId.title || activity.entityId.name || '') : (activity.entityId || '')}`,
+            });
           });
 
           return (
@@ -969,7 +887,7 @@ const TeamPage = () => {
                   </Typography>
                 </Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                  {allMockActivities.length} events
+                  {auditResponse?.meta?.total || 0} events
                 </Typography>
               </Box>
 
@@ -1001,20 +919,20 @@ const TeamPage = () => {
                           <Box sx={{ flexGrow: 1 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                               <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? '#e0e0e0' : tokens.text.primary, fontSize: '0.86rem' }}>
-                                <Box component="span" sx={{ color: item.isCreate ? '#3B82F6' : '#EF4444', fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
-                                  {item.isCreate ? 'CREATED' : 'MOVED'}
+                                <Box component="span" sx={{ color: item.isCreate ? '#3B82F6' : (item.action === 'check_in' || item.action === 'qualify' ? '#10B981' : (item.action === 'update' ? '#F59E0B' : '#EF4444')), fontWeight: 750, mr: 0.5, fontSize: '0.82rem' }}>
+                                  {item.action.toUpperCase().replace(/_/g, ' ')}
                                 </Box>
-                                {item.desc.replace(/^(CREATED|MOVED)\s/, '')}
+                                {item.desc}
                               </Typography>
                               <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
                                 {item.time}
                               </Typography>
                             </Box>
 
-                            {item.isAction && (
+                            {item.isAction && item.changes && (
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                                 <Chip
-                                  label={item.from}
+                                  label={item.action}
                                   size="small"
                                   sx={{
                                     bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
@@ -1024,20 +942,24 @@ const TeamPage = () => {
                                     fontWeight: 650,
                                   }}
                                 />
-                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                                  →
-                                </Typography>
-                                <Chip
-                                  label={item.to}
-                                  size="small"
-                                  sx={{
-                                    bgcolor: item.to === 'Resolved' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                                    color: item.to === 'Resolved' ? '#10B981' : '#EF4444',
-                                    fontSize: '0.66rem',
-                                    height: 18,
-                                    fontWeight: 750,
-                                  }}
-                                />
+                                {item.changes && Object.keys(item.changes).length > 0 && (
+                                  <>
+                                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                      →
+                                    </Typography>
+                                    <Chip
+                                      label={`Changed: ${Object.keys(item.changes).join(', ')}`}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: 'rgba(16, 185, 129, 0.08)',
+                                        color: '#10B981',
+                                        fontSize: '0.66rem',
+                                        height: 18,
+                                        fontWeight: 750,
+                                      }}
+                                    />
+                                  </>
+                                )}
                               </Box>
                             )}
                           </Box>

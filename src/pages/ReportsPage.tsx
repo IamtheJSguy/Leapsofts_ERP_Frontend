@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Typography,
   Box,
@@ -48,9 +48,16 @@ const ReportsPage = () => {
   }, [users, selectedAgentId]);
 
   const selectedAgentName = useMemo(() => {
-    if (!selectedAgent) return 'All Employees';
+    if (!selectedAgent) return '';
     return `${selectedAgent.firstName || ''} ${selectedAgent.lastName || ''}`.trim() || selectedAgent.email;
   }, [selectedAgent]);
+
+  // Default to first user if none selected
+  useEffect(() => {
+    if (isAdmin && users.length > 0 && !selectedAgentId) {
+      setSelectedAgentId(users[0]._id);
+    }
+  }, [isAdmin, users, selectedAgentId]);
 
   // Fetch the selected report details (with polling while processing)
   const { data: selectedReport, isLoading: reportLoading } = useReport(selectedReportId ?? undefined);
