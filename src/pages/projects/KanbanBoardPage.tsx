@@ -303,62 +303,33 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
 
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
-
-  const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState('');
-
-  const [confirmTitleOpen, setConfirmTitleOpen] = useState(false);
-  const [confirmDescOpen, setConfirmDescOpen] = useState(false);
-  const [confirmPriorityOpen, setConfirmPriorityOpen] = useState(false);
-  const [pendingPriority, setPendingPriority] = useState<string | null>(null);
+  const [pendingAssignees, setPendingAssignees] = useState<string[]>([]);
+  const [pendingDueDate, setPendingDueDate] = useState('');
+  const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
+  const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
 
-  const [searchParams] = useSearchParams();
   useEffect(() => {
-    if (open && searchParams.get('comment')) {
-      setActiveTab('comments');
+    if (task && open) {
+      setEditTitle(task.title || '');
+      setEditDesc(task.description || '');
+      setPendingAssignees(Array.isArray(task.rawCard?.assignedTo)
+        ? task.rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
+        : []);
+      setPendingDueDate(task.rawCard?.dueDate ? task.rawCard.dueDate.split('T')[0] : '');
+      setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
+      setPendingPriority(task.rawCard?.priority || 'medium');
     }
-  }, [open, searchParams]);
+  }, [task, open]);
 
-  const startEditingDesc = () => {
-    setEditDesc(task.description || '');
-    setIsEditingDesc(true);
-  };
-
-  const handleDescSubmit = () => {
-    if (editDesc.trim() !== (task.description || '').trim()) {
-      setConfirmDescOpen(true);
-    } else {
-      setIsEditingDesc(false);
-    }
-  };
-
-  const confirmDescEdit = () => {
-    updateCardMutation.mutate({
-      cardId: task.id,
-      data: { description: editDesc.trim() }
-    }, {
-      onSuccess: () => {
-        setIsEditingDesc(false);
-        setConfirmDescOpen(false);
-      }
-    });
-  };
-
-  // Confirmation Dialog States
+  // Confirmation Dialog States for Deletion only
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDesc, setConfirmDesc] = useState('');
   const [confirmAction, setConfirmAction] = useState<'deleteCard' | 'deleteComment' | null>(null);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
-
-  // Assignee Confirmation State
-  const [assigneeConfirmOpen, setAssigneeConfirmOpen] = useState(false);
-  const [pendingAssignees, setPendingAssignees] = useState<string[]>([]);
-  const [pendingDueDate, setPendingDueDate] = useState('');
-  const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
 
   // Tabs State
   const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
@@ -379,6 +350,41 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   }, [boardMembers, allUsers]);
 
   const isAdminOrOwner = currentUser?.role === 'admin' || actualBoard?.ownerId === currentUser?._id;
+
+  const handleConfirmSave = () => {
+    // Update assignees and dates via assignCard
+    assignCardMutation.mutate({
+      cardId: task.id,
+      data: {
+        assignedTo: pendingAssignees,
+        ...(pendingDueDate ? { dueDate: pendingDueDate } : {}),
+        ...(pendingKpiEndDate ? { kpiEndDate: pendingKpiEndDate } : {}),
+      },
+    }, {
+      onSuccess: () => {
+        // Also update title, desc, and priority if they changed
+        const updates: any = {};
+        if (editTitle.trim() && editTitle.trim() !== task.title) updates.title = editTitle.trim();
+        if (editDesc.trim() !== (task.description || '')) updates.description = editDesc.trim();
+        if (pendingPriority !== (task.rawCard?.priority || 'medium')) updates.priority = pendingPriority;
+        
+        if (Object.keys(updates).length > 0) {
+          updateCardMutation.mutate({
+            cardId: task.id,
+            data: updates
+          }, {
+            onSuccess: () => {
+               addToast({ message: 'Task updated successfully', severity: 'success' });
+               onClose();
+            }
+          });
+        } else {
+           addToast({ message: 'Task updated successfully', severity: 'success' });
+           onClose();
+        }
+      }
+    });
+  };
 
   if (!task) return null;
 
@@ -462,71 +468,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     setTargetCommentId(null);
   };
 
-  const handleTitleSubmit = () => {
-    if (editTitle.trim() && editTitle.trim() !== task.title) {
-      setConfirmTitleOpen(true);
-    } else {
-      setIsEditingTitle(false);
-    }
-  };
 
-  const confirmTitleEdit = () => {
-    updateCardMutation.mutate({
-      cardId: task.id,
-      data: { title: editTitle.trim() }
-    }, {
-      onSuccess: () => {
-        setIsEditingTitle(false);
-        setConfirmTitleOpen(false);
-      }
-    });
-  };
 
   const handlePriorityClick = (e: any) => setPriorityMenuAnchor(e.currentTarget);
   const handlePriorityClose = () => setPriorityMenuAnchor(null);
 
   const handlePriorityChange = (newPriority: string) => {
-    if (newPriority !== (task.rawCard?.priority || 'medium')) {
-      setPendingPriority(newPriority);
-      setConfirmPriorityOpen(true);
-    }
+    setPendingPriority(newPriority);
     handlePriorityClose();
   };
 
-  const confirmPriorityEdit = () => {
-    if (pendingPriority) {
-      updateCardMutation.mutate({
-        cardId: task.id,
-        data: { priority: pendingPriority }
-      }, {
-        onSuccess: () => {
-          setConfirmPriorityOpen(false);
-          setPendingPriority(null);
-        }
-      });
-    }
-  };
 
-  const handleAssigneeChange = (event: any) => {
-    const selectedIds = event.target.value;
-    setPendingAssignees(selectedIds);
-    setAssigneeConfirmOpen(true);
-  };
-
-  const handleAssigneeConfirm = () => {
-    assignCardMutation.mutate({
-      cardId: task.id,
-      data: {
-        assignedTo: pendingAssignees,
-        ...(pendingDueDate ? { dueDate: pendingDueDate } : {}),
-        ...(pendingKpiEndDate ? { kpiEndDate: pendingKpiEndDate } : {}),
-      },
-    }, {
-      onSuccess: () => {
-        setAssigneeConfirmOpen(false);
-      },
-    });
-  };
 
   const authorName = lead ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : 'Unnamed Lead';
 
@@ -572,7 +524,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 <Chip label="Qualified" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: tokens.semantic.success, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
               )}
               {(() => {
-                const p = (task.rawCard?.priority || 'medium') as keyof typeof PRIORITY_CONFIG;
+                const p = pendingPriority as keyof typeof PRIORITY_CONFIG;
                 const cfg = PRIORITY_CONFIG[p] || PRIORITY_CONFIG.medium;
                 return (
                   <Box>
@@ -619,55 +571,29 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 );
               })()}
             </Box>
-            {isEditingTitle ? (
+            {isAdminOrOwner ? (
               <TextField
                 fullWidth
                 size="small"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSubmit(); }}
-                autoFocus
+                placeholder="Task Title"
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     fontWeight: 800,
-                    pr: 0.5,
                     borderRadius: '12px'
                   }
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={handleTitleSubmit}
-                        sx={{
-                          bgcolor: tokens.brand.primary, color: '#fff',
-                          '&:hover': { bgcolor: tokens.brand.primaryDark },
-                          width: 28, height: 28, borderRadius: '8px',
-                          boxShadow: '0 2px 8px rgba(93, 26, 137, 0.3)'
-                        }}
-                      >
-                        <CheckIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-                    </InputAdornment>
-                  )
                 }}
               />
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography
                   variant="h5"
-                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3, cursor: isAdminOrOwner ? 'pointer' : 'default' }}
-                  onClick={() => { if (isAdminOrOwner) { setEditTitle(task.title); setIsEditingTitle(true); } }}
+                  sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.3 }}
                   noWrap
                 >
                   {task.title}
                 </Typography>
-                {isAdminOrOwner && (
-                  <IconButton size="small" onClick={() => { setEditTitle(task.title); setIsEditingTitle(true); }}>
-                    <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
-                  </IconButton>
-                )}
               </Box>
             )}
           </Box>
@@ -744,77 +670,39 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     <DescriptionOutlinedIcon fontSize="small" />
                     <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
                   </Box>
-                  {!isEditingDesc && isAdminOrOwner && (
-                    <IconButton size="small" onClick={startEditingDesc} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
-                      <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  )}
-                </Box>
-
-                {isEditingDesc ? (
-                  <Box sx={{ mt: 1 }}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      placeholder="Add a detailed description..."
-                      value={editDesc}
-                      onChange={(e) => setEditDesc(e.target.value)}
-                      autoFocus
-                      sx={{
-                        mb: 1.5,
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '12px',
-                          bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
-                        }
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                      <Button
-                        size="small"
-                        onClick={() => setIsEditingDesc(false)}
-                        sx={{ textTransform: 'none', borderRadius: '18px', fontWeight: 600, color: 'text.secondary' }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={handleDescSubmit}
-                        disableElevation
-                        sx={{
-                          textTransform: 'none',
-                          borderRadius: '18px',
-                          fontWeight: 700,
-                          bgcolor: tokens.brand.primary,
-                          color: '#fff',
-                          '&:hover': { bgcolor: tokens.brand.primary }
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </Box>
                   </Box>
-                ) : (
-                  <Typography
-                    variant="body2"
-                    onClick={() => { if (isAdminOrOwner) startEditingDesc(); }}
-                    sx={{
-                      color: task.description ? 'text.secondary' : 'text.disabled',
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      cursor: isAdminOrOwner ? 'pointer' : 'default',
-                      minHeight: 24,
-                      fontStyle: task.description ? 'normal' : 'italic',
-                      '&:hover': {
-                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                        borderRadius: '4px',
-                      }
-                    }}
-                  >
-                    {task.description || 'Click to add a description...'}
-                  </Typography>
-                )}
+                  {isAdminOrOwner ? (
+                    <Box sx={{ mt: 1 }}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        placeholder="Add a detailed description..."
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        sx={{
+                          mb: 1.5,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '12px',
+                            bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                          }
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: task.description ? 'text.secondary' : 'text.disabled',
+                        lineHeight: 1.7,
+                        whiteSpace: 'pre-wrap',
+                        minHeight: 24,
+                        fontStyle: task.description ? 'normal' : 'italic',
+                      }}
+                    >
+                      {task.description || 'No description provided.'}
+                    </Typography>
+                  )}
               </Box>
 
               {/* Due Date */}
@@ -840,8 +728,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                       <Select
                         labelId="assign-member-label"
                         multiple
-                        value={assignedToIds}
-                        onChange={handleAssigneeChange}
+                        value={pendingAssignees}
+                        onChange={(e) => setPendingAssignees(e.target.value as string[])}
                         input={<OutlinedInput label="Assign Team Members" />}
                         renderValue={(selected) => (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -853,7 +741,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           </Box>
                         )}
                       >
-                        {allUsers.map((u: any) => (
+                        {boardMembers.map((u: any) => (
                           <MenuItem key={u._id} value={u._id}>
                             {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
                           </MenuItem>
@@ -885,6 +773,29 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         How long this task shows in daily KPIs (defaults to due date or 7 days)
                       </Typography>
                     </Box>
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={handleConfirmSave}
+                      disabled={updateCardMutation.isPending || assignCardMutation.isPending}
+                      sx={{
+                        mt: 2,
+                        py: 1.5,
+                        borderRadius: '12px',
+                        fontWeight: 750,
+                        bgcolor: tokens.brand.primary,
+                        color: '#fff',
+                        textTransform: 'none',
+                        boxShadow: '0 4px 14px rgba(93, 26, 137, 0.4)',
+                        '&:hover': {
+                          bgcolor: tokens.brand.primaryDark,
+                          boxShadow: '0 6px 20px rgba(93, 26, 137, 0.6)',
+                        }
+                      }}
+                    >
+                      {(updateCardMutation.isPending || assignCardMutation.isPending) ? 'Saving...' : 'Confirm and Save'}
+                    </Button>
                   </Box>
                 ) : (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -1079,38 +990,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         onCancel={() => { setConfirmOpen(false); setConfirmAction(null); setTargetCommentId(null); }}
         confirmLabel="Confirm Action"
       />
-      <ConfirmDialog
-        open={assigneeConfirmOpen}
-        title="Assign Team Members"
-        message="Assigning will create daily KPI tasks for each member until the task is completed or the tracking period ends."
-        onConfirm={handleAssigneeConfirm}
-        onCancel={() => setAssigneeConfirmOpen(false)}
-        confirmLabel="Assign & Create KPIs"
-      />
-      <ConfirmDialog
-        open={confirmTitleOpen}
-        title="Update Task Name"
-        message={`Are you sure you want to change the task name to "${editTitle.trim()}"?`}
-        onConfirm={confirmTitleEdit}
-        onCancel={() => { setConfirmTitleOpen(false); setIsEditingTitle(false); setEditTitle(task.title); }}
-        confirmLabel="Save Name"
-      />
-      <ConfirmDialog
-        open={confirmDescOpen}
-        title="Update Task Description"
-        message="Are you sure you want to update this task's description?"
-        onConfirm={confirmDescEdit}
-        onCancel={() => { setConfirmDescOpen(false); setIsEditingDesc(false); setEditDesc(task.description || ''); }}
-        confirmLabel="Save Description"
-      />
-      <ConfirmDialog
-        open={confirmPriorityOpen}
-        title="Update Priority"
-        message={`Are you sure you want to change the task priority?`}
-        onConfirm={confirmPriorityEdit}
-        onCancel={() => { setConfirmPriorityOpen(false); setPendingPriority(null); }}
-        confirmLabel="Save Priority"
-      />
+
     </>
   );
 };
@@ -1880,7 +1760,7 @@ export const KanbanBoardPage = () => {
                 </Box>
               )}
             >
-              {allUsers.map((u: any) => (
+              {boardMembers.map((u: any) => (
                 <MenuItem key={u._id} value={u._id}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
