@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KanbanBoard, KanbanCard } from '@/types';
+import type { KanbanBoard, KanbanBoardResponse, KanbanCard } from '@/types';
 
 const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
-  getBoard: (id: string) => api.get<{ data: KanbanBoard }>(`/kanban/board/${id}`),
+  getBoard: (id: string) => api.get<{ data: KanbanBoardResponse }>(`/kanban/board/${id}`),
   createBoard: (data: { name: string; type?: string; description?: string; status?: string; techStack?: string[] }) => api.post('/kanban/boards', data),
   updateBoard: ({ id, data }: { id: string; data: Partial<KanbanBoard> }) =>
     api.put(`/kanban/boards/${id}`, data),

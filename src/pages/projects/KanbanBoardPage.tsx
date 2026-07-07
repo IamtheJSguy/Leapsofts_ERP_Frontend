@@ -1133,8 +1133,12 @@ export const KanbanBoardPage = () => {
   const createCardMutation = useCreateCard(activeBoardId);
   const assignCardMutation = useAssignCard(activeBoardId);
 
-  const actualBoard = useMemo(() => (board as any)?.board || board, [board]);
-  const cardsList = useMemo(() => (board as any)?.cards || [], [board]);
+  const actualBoard = useMemo(() => board?.board, [board]);
+  const cardsList = useMemo(() => board?.cards || [], [board]);
+  const boardLead = useMemo(() => {
+    const lead = actualBoard?.leadId;
+    return lead && typeof lead === 'object' ? lead : null;
+  }, [actualBoard]);
 
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
@@ -1494,7 +1498,16 @@ export const KanbanBoardPage = () => {
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>/</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>{actualBoard.name}</Typography>
           </Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>{actualBoard.name} Board</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
+            {boardLead
+              ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
+              : `${actualBoard.name} Board`}
+          </Typography>
+          {boardLead?.company && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>
+              {boardLead.company}{(boardLead.jobTitle || boardLead.title) ? ` · ${boardLead.jobTitle || boardLead.title}` : ''}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
           <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
