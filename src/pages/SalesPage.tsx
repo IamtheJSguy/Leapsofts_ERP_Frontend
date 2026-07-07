@@ -283,7 +283,11 @@ export const SalesPage = () => {
     );
   }
   const totalProspects = selectedUserId !== 'All Users' ? prospects.length : (leadsResponse?.meta.total ?? 0);
-  const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats();
+  const pipelineFilters = useMemo(() => ({
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
+  }), [startDate, endDate]);
+  const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
   // Google Sheet Dialog and Sync Loading state
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
@@ -526,7 +530,7 @@ export const SalesPage = () => {
           {stats.map((item, idx) => {
             const theme = getCardTheme(item.label);
             return (
-              <Grid item xs={6} sm={4} md={2} key={idx}>
+              <Grid item xs={6} sm={4} md={4} lg={2} key={idx}>
                 <Card
                   onClick={() => {
                     setActiveCard(item.label);
@@ -542,8 +546,8 @@ export const SalesPage = () => {
                     p: 2.25,
                     height: '100%',
                     display: 'flex',
-                    alignItems: { xs: 'flex-start', sm: 'center' },
-                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexDirection: { xs: 'column', sm: 'row', lg: 'column', xl: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'center', lg: 'flex-start', xl: 'center' },
                     gap: { xs: 1.2, sm: 1.75 },
                     transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
@@ -1383,7 +1387,8 @@ export const SalesPage = () => {
             borderRadius: '24px',
             bgcolor: isDarkMode ? '#1e1b24' : '#fff',
             backgroundImage: 'none',
-            minWidth: 400,
+            minWidth: { xs: 'auto', sm: 400 },
+            width: { xs: '90%', sm: 'auto' },
           },
         }}
       >

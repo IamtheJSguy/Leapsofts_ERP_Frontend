@@ -752,10 +752,14 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                       label="Due Date"
                       value={(pendingDueDate || rawCard?.dueDate) ? new Date((pendingDueDate || rawCard.dueDate).split('T')[0] + 'T00:00:00') : null}
                       onChange={(date) => {
-                        const y = date.getFullYear();
-                        const m = String(date.getMonth() + 1).padStart(2, '0');
-                        const d = String(date.getDate()).padStart(2, '0');
-                        setPendingDueDate(`${y}-${m}-${d}`);
+                        if (date) {
+                          const y = date.getFullYear();
+                          const m = String(date.getMonth() + 1).padStart(2, '0');
+                          const d = String(date.getDate()).padStart(2, '0');
+                          setPendingDueDate(`${y}-${m}-${d}`);
+                        } else {
+                          setPendingDueDate('');
+                        }
                       }}
                     />
                     <Box>
@@ -763,10 +767,14 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         label="KPI tracking end date"
                         value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date((pendingKpiEndDate || rawCard.kpiEndDate).split('T')[0] + 'T00:00:00') : null}
                         onChange={(date) => {
-                          const y = date.getFullYear();
-                          const m = String(date.getMonth() + 1).padStart(2, '0');
-                          const d = String(date.getDate()).padStart(2, '0');
-                          setPendingKpiEndDate(`${y}-${m}-${d}`);
+                          if (date) {
+                            const y = date.getFullYear();
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const d = String(date.getDate()).padStart(2, '0');
+                            setPendingKpiEndDate(`${y}-${m}-${d}`);
+                          } else {
+                            setPendingKpiEndDate('');
+                          }
                         }}
                       />
                       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
@@ -1732,10 +1740,14 @@ export const KanbanBoardPage = () => {
                 label="Due Date"
                 value={newCardDueDate ? new Date(newCardDueDate.split('T')[0] + 'T00:00:00') : null}
                 onChange={(date) => {
-                  const y = date.getFullYear();
-                  const m = String(date.getMonth() + 1).padStart(2, '0');
-                  const d = String(date.getDate()).padStart(2, '0');
-                  setNewCardDueDate(`${y}-${m}-${d}`);
+                  if (date) {
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    setNewCardDueDate(`${y}-${m}-${d}`);
+                  } else {
+                    setNewCardDueDate('');
+                  }
                 }}
               />
             </Box>

@@ -26,18 +26,18 @@ export const DateRangePicker = ({
   const start = startDate ? new Date(startDate) : null;
   const end = endDate ? new Date(endDate) : null;
 
-  const handleStartChange = (d: Date) => onStartChange(format(d, 'yyyy-MM-dd'));
-  const handleEndChange = (d: Date) => onEndChange(format(d, 'yyyy-MM-dd'));
+  const handleStartChange = (d: Date | null) => onStartChange(d ? format(d, 'yyyy-MM-dd') : '');
+  const handleEndChange = (d: Date | null) => onEndChange(d ? format(d, 'yyyy-MM-dd') : '');
 
   if (layout === 'compact') {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap', '& button': { minHeight: 32, py: 0.5, px: 1.5, borderRadius: '8px', minWidth: 110 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, '& button': { minHeight: 32, py: 0.5, px: 1.5, borderRadius: '8px', minWidth: { xs: 'auto', sm: 110 } }, '& > div': { flexGrow: 1 } }}>
         <ModernDatePicker
           value={start}
           onChange={handleStartChange}
           placeholder="Start"
         />
-        <Typography sx={{ color: 'text.secondary', fontWeight: 700 }}>-</Typography>
+        <Typography sx={{ color: 'text.secondary', fontWeight: 700, display: { xs: 'none', sm: 'block' } }}>-</Typography>
         <ModernDatePicker
           value={end}
           onChange={handleEndChange}

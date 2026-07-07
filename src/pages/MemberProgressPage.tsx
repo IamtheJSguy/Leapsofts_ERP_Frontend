@@ -166,7 +166,13 @@ export default function MemberProgressPage() {
             <ModernDatePicker
               value={selectedSummaryDate}
               onChange={(date) => {
-                setSearchParams({ date: toApiDateString(date) }, { replace: true });
+                if (date) {
+                  setSearchParams({ date: toApiDateString(date) }, { replace: true });
+                } else {
+                  const newParams = new URLSearchParams(window.location.search);
+                  newParams.delete('date');
+                  setSearchParams(newParams, { replace: true });
+                }
               }}
               placeholder="Select date"
             />

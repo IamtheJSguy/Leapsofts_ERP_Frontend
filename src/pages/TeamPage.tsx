@@ -423,7 +423,11 @@ const TeamPage = () => {
             <Box sx={{ minWidth: 220 }}>
               <ModernDatePicker
                 value={parseSummaryDate(summaryDate)}
-                onChange={(date) => setSummaryDate(date.toLocaleDateString('en-CA'))}
+                onChange={(date) => {
+                  if (date) {
+                    setSummaryDate(date.toLocaleDateString('en-CA'));
+                  }
+                }}
                 placeholder="Select date"
               />
             </Box>

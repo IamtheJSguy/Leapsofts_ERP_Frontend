@@ -23,8 +23,8 @@ const connectionApi = {
     api.get('/connections/stats', { params }),
   getRatios: (params: Record<string, string>) =>
     api.get('/connections/ratios', { params }),
-  getPipelineStats: () =>
-    api.get<{ data: SalesPipelineStats }>('/connections/pipeline'),
+  getPipelineStats: (params?: Record<string, string>) =>
+    api.get<{ data: SalesPipelineStats }>('/connections/pipeline', { params }),
   updateStatus: ({ leadId, status }: { leadId: string; status: ConnectionStatus }) =>
     api.put(`/connections/${leadId}/status`, { status }),
 };
@@ -36,10 +36,10 @@ export const useConnectionStats = (filters: Record<string, string> = {}) =>
     staleTime: 1000 * 60 * 2,
   });
 
-export const useSalesPipelineStats = () =>
+export const useSalesPipelineStats = (params?: Record<string, string>) =>
   useQuery({
-    queryKey: ['salesPipelineStats'],
-    queryFn: () => connectionApi.getPipelineStats().then((r) => r.data.data),
+    queryKey: ['salesPipelineStats', params],
+    queryFn: () => connectionApi.getPipelineStats(params).then((r) => r.data.data),
     staleTime: 1000 * 60,
   });
 

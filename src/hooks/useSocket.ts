@@ -24,15 +24,6 @@ export const useSocket = () => {
       initialized.current = true;
     }
 
-    const onConnectError = () => {
-      addToast({ message: 'Reconnecting...', severity: 'warning' });
-    };
-
-    socket.on('connect_error', onConnectError);
-
-    return () => {
-      socket.off('connect_error', onConnectError);
-    };
   }, [isAuthenticated, addToast]);
 
   const joinRoom = (room: string) => {

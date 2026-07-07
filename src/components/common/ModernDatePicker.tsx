@@ -6,6 +6,7 @@ import {
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { 
   format, addMonths, subMonths, startOfMonth, endOfMonth, 
   startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, 
@@ -16,7 +17,7 @@ import { tokens } from '@/styles/tokens';
 interface ModernDatePickerProps {
   label?: string;
   value: Date | null;
-  onChange: (date: Date) => void;
+  onChange: (date: Date | null) => void;
   minDate?: Date;
   placeholder?: string;
 }
@@ -86,7 +87,24 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
         <Typography variant="body2" sx={{ fontWeight: value ? 700 : 500, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {value ? format(value, 'MMM d, yyyy') : placeholder}
         </Typography>
-        <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: value ? tokens.brand.primary : 'text.disabled' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {value && (
+            <CancelIcon 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onChange(null); 
+              }}
+              sx={{ 
+                fontSize: 16, 
+                color: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': { color: 'error.main' }
+              }} 
+            />
+          )}
+          <CalendarTodayOutlinedIcon sx={{ fontSize: 16, color: value ? tokens.brand.primary : 'text.disabled' }} />
+        </Box>
       </Button>
 
       {/* Popover Calendar */}
