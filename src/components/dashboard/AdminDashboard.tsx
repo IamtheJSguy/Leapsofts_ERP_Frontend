@@ -33,22 +33,6 @@ export const AdminDashboard = () => {
   const { data: teamAnalysis, isLoading: isTeamAnalysisLoading } = useTeamAnalysis('week');
   const { data: allMeetings = [] } = useMeetings();
 
-  const [quickLogOpen, setQuickLogOpen] = useState(false);
-  const [logType, setLogType] = useState('connection');
-  const [logCount, setLogCount] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Keyboard shortcut listener for ⌘L / Ctrl+L
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        setQuickLogOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   if (isPipelineOverviewLoading || isTeamAnalysisLoading) {
     return (
@@ -143,15 +127,6 @@ export const AdminDashboard = () => {
     },
   ];
 
-  const handleQuickLogSubmit = () => {
-    setIsSubmitting(true);
-    // Simulate API call to log activity
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setQuickLogOpen(false);
-      refetch(); // Refresh dashboard counts
-    }, 800);
-  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -209,46 +184,6 @@ export const AdminDashboard = () => {
 
           {/* Quick Actions Buttons */}
           <Box sx={{ display: 'flex', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
-            <Button
-              variant="contained"
-              onClick={() => setQuickLogOpen(true)}
-              disableElevation
-              sx={{
-                background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                borderRadius: '16px',
-                px: { xs: 1.5, sm: 2.2 },
-                py: { xs: 0.6, sm: 0.8 },
-                textTransform: 'none',
-                whiteSpace: 'nowrap',
-                gap: 1.2,
-                boxShadow: '0 4px 10px rgba(255, 127, 17, 0.12)',
-                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': {
-                  background: `linear-gradient(135deg, ${tokens.brand.accentDark} 0%, ${tokens.brand.accent} 100%)`,
-                  boxShadow: '0 6px 15px rgba(255, 127, 17, 0.22)',
-                  transform: 'translateY(-0.5px)'
-                }
-              }}
-            >
-              Quick log
-              <Typography 
-                component="span"
-                sx={{ 
-                  fontSize: '0.62rem', 
-                  bgcolor: 'rgba(255,255,255,0.22)', 
-                  px: 0.8, 
-                  py: 0.2, 
-                  borderRadius: '6px',
-                  fontWeight: 800
-                }}
-              >
-                ⌘L
-              </Typography>
-            </Button>
-
             <Button
               variant="outlined"
               onClick={() => navigate('/sales')}
@@ -601,7 +536,7 @@ export const AdminDashboard = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
                   <NotificationsNoneOutlinedIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} />
-                  Reminders
+                  Upcoming Meetings
                 </Typography>
                 <Button 
                   variant="text" 
@@ -632,7 +567,7 @@ export const AdminDashboard = () => {
               >
                 <NotificationsNoneOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
                 <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted, mb: 0.5 }}>
-                  No upcoming reminders
+                  No upcoming meetings
                 </Typography>
                 <Typography 
                   onClick={() => navigate('/meetings')}
@@ -778,95 +713,7 @@ export const AdminDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Quick Log Interactive Modal Dialog */}
-      <Dialog 
-        open={quickLogOpen} 
-        onClose={() => setQuickLogOpen(false)}
-        PaperProps={{
-          sx: {
-            borderRadius: '20px',
-            p: 1.5,
-            width: '100%',
-            maxWidth: 440,
-            boxShadow: '0 15px 50px rgba(26, 22, 37, 0.1)'
-          }
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.15rem', pb: 1, letterSpacing: '-0.01em' }}>
-          Quick Log Activity
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
-          <Typography sx={{ color: tokens.text.secondary, fontSize: '0.86rem' }}>
-            Quickly log actions taken in your team pipeline. This will instantly update your dashboard metrics.
-          </Typography>
 
-          <TextField
-            select
-            fullWidth
-            label="Activity Type"
-            value={logType}
-            onChange={(e) => setLogType(e.target.value)}
-            slotProps={{
-              select: {
-                MenuProps: {
-                  slotProps: {
-                    paper: {
-                      sx: { borderRadius: '12px' }
-                    }
-                  }
-                }
-              }
-            }}
-          >
-            <MenuItem value="connection">Connection Sent</MenuItem>
-            <MenuItem value="accept">Connection Accepted</MenuItem>
-            <MenuItem value="message">Message Sent</MenuItem>
-            <MenuItem value="meeting">Meeting Scheduled</MenuItem>
-          </TextField>
-
-          <TextField
-            fullWidth
-            label="Quantity / Count"
-            type="number"
-            value={logCount}
-            onChange={(e) => setLogCount(Number(e.target.value))}
-            slotProps={{
-              htmlInput: { min: 1 }
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button 
-            onClick={() => setQuickLogOpen(false)}
-            sx={{ 
-              textTransform: 'none', 
-              color: tokens.text.secondary, 
-              fontWeight: 700 
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleQuickLogSubmit}
-            disabled={isSubmitting}
-            disableElevation
-            sx={{
-              background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
-              color: '#fff',
-              fontWeight: 800,
-              borderRadius: '12px',
-              textTransform: 'none',
-              px: 3,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${tokens.brand.accentDark} 0%, ${tokens.brand.accent} 100%)`
-              }
-            }}
-          >
-            {isSubmitting ? 'Logging...' : 'Log Activity'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

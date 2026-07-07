@@ -493,7 +493,7 @@ export const TeamConnectionsSplitView = () => {
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
                   <Bar dataKey="totalLeads" name="Total Leads" fill={tokens.brand.primary} radius={[4, 4, 0, 0]} barSize={20} />
                   <Bar dataKey="meetingsBooked" name="Meetings Booked" fill={tokens.brand.accent} radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="dealsClosed" name="Deals Closed" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="dealsClosed" name="Qualified Leads" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
               )}
