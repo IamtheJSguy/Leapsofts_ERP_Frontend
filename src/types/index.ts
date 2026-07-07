@@ -497,6 +497,55 @@ export interface PipelineVelocityPoint {
   completed: number;
 }
 
+export interface TeamAnalysisMetrics {
+  doneThisWeek: number;
+  moved: number;
+  overdue: number;
+  idleMembers: number;
+  attentionCount: number;
+}
+
+export interface TeamTaskItem {
+  id: string;
+  title: string;
+  date: string;
+  boardId: string;
+  boardName: string;
+}
+
+export interface TeamDeadlineItem {
+  id: string;
+  title: string;
+  date: string;
+  userName: string;
+}
+
+export interface TeamTasksOverview {
+  boardId: string;
+  boardName: string;
+  total: number;
+  items: TeamTaskItem[];
+}
+
+export interface TeamAnalysisData {
+  metrics: TeamAnalysisMetrics;
+  tasks: TeamTasksOverview;
+  deadlines: TeamDeadlineItem[];
+}
+
+export interface TodaySalesSummary {
+  newLeads: number;
+  connectionsSent: number;
+  connectionsAccepted: number;
+  acceptanceRate: number;
+  messagesSent: number;
+  replies: number;
+  replyRate: number;
+  qualified: number;
+  meetingsToday: number;
+  activeReps: number;
+}
+
 export interface DashboardStats {
   connectionsSent?: number;
   connectionsAccepted?: number;

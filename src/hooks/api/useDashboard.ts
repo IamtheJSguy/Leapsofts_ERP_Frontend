@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { DashboardStats } from '@/types';
+import type { DashboardStats, TodaySalesSummary } from '@/types';
 
 export const useDashboard = () =>
   useQuery({
@@ -11,8 +11,8 @@ export const useDashboard = () =>
 
 export const useAdminDashboard = () =>
   useQuery({
-    queryKey: ['dashboard', 'admin'],
+    queryKey: ['dashboard', 'admin', 'today-sales'],
     queryFn: () =>
-      api.get<{ data: DashboardStats }>('/dashboard/admin').then((r) => r.data.data),
+      api.get<{ data: TodaySalesSummary }>('/admin/today-sales').then((r) => r.data.data),
     staleTime: 1000 * 60,
   });

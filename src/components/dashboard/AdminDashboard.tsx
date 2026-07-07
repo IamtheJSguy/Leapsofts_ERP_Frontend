@@ -20,7 +20,8 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAdminDashboard } from '@/hooks/api/useDashboard';
-import { useKanbanBoards } from '@/hooks/api/useKanban';
+import { useTeamAnalysis } from '@/hooks/api/useAdminTeamDashboard';
+import { useMeetings } from '@/hooks/api/useMeetings';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
 import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
@@ -28,8 +29,9 @@ import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { data: stats, isLoading, refetch } = useAdminDashboard();
-  const { data: boards } = useKanbanBoards();
+  const { data: todaySales, isLoading: isTodaySalesLoading, refetch } = useAdminDashboard();
+  const { data: teamAnalysis, isLoading: isTeamAnalysisLoading } = useTeamAnalysis('week');
+  const { data: allMeetings = [] } = useMeetings();
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [logType, setLogType] = useState('connection');
@@ -48,7 +50,7 @@ export const AdminDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  if (isLoading) {
+  if (isTodaySalesLoading || isTeamAnalysisLoading) {
     return (
       <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <ChartSkeleton height={180} />
@@ -62,41 +64,76 @@ export const AdminDashboard = () => {
     );
   }
 
-  // Extract real kanban cards or fallback to screenshot mock data
-  const allCards = boards?.[0]?.columns.flatMap(col => col.cards ?? []).filter(Boolean) || [];
-  const tasksList = allCards.length > 0 
-    ? allCards.slice(0, 3).map((card) => {
-        if (!card) return null;
-        const leadId = (card as any).leadId;
-        const leadName = typeof leadId === 'object' && leadId 
-          ? `${leadId.firstName || ''} ${leadId.lastName || ''}`.trim() || 'Unassigned Lead'
-          : (card as any).title || 'Untitled Lead Task';
-        const companyName = typeof leadId === 'object' && leadId?.company 
-          ? ` - ${leadId.company}` 
-          : '';
-        
-        const activityLog = (card as any).activityLog;
-        const rawDate = activityLog?.[0]?.timestamp
-          ? activityLog[0].timestamp
-          : (typeof leadId === 'object' && leadId?.createdAt)
-            ? leadId.createdAt
-            : null;
+  const formatShortDate = (value: string) =>
+    new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-        return {
-          id: (card as any)._id || Math.random().toString(),
-          title: `${leadName}${companyName}`,
-          date: rawDate 
-            ? new Date(rawDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-            : 'Mar 5'
-        };
-      }).filter(Boolean)
-    : [
-        { id: '1', title: 'Zubair Talib - Celara', date: 'Mar 5' },
-        { id: '2', title: 'Blair Gatchel - Breva', date: 'Mar 5' },
-        { id: '3', title: 'M. Badrawy - Pachin Paints', date: 'Mar 5' },
-      ];
+  const tasksOverview = teamAnalysis?.tasks;
+  const tasksList = tasksOverview?.items ?? [];
+  const totalTasksCount = tasksOverview?.total ?? 0;
+  const boardLabel = tasksOverview?.boardName?.toUpperCase() ?? 'TEAM BOARD';
 
-  const totalTasksCount = allCards.length > 0 ? allCards.length : 34;
+  const upcomingMeetings = allMeetings
+    .filter((m: any) => new Date(m.scheduledAt) >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+    .slice(0, 3);
+
+  const upcomingDeadlines = teamAnalysis?.deadlines ?? [];
+
+  const analysisMetrics = [
+    { label: 'Done this week', count: teamAnalysis?.metrics.doneThisWeek ?? 0, color: tokens.semantic.success, bg: 'rgba(45, 138, 94, 0.03)', border: 'rgba(45, 138, 94, 0.08)' },
+    { label: 'Moved', count: teamAnalysis?.metrics.moved ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
+    { label: 'Overdue', count: teamAnalysis?.metrics.overdue ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
+    { label: 'Idle members', count: teamAnalysis?.metrics.idleMembers ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
+  ];
+
+  const attentionCount = teamAnalysis?.metrics.attentionCount ?? 0;
+
+  const todayLabel = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const todaySalesStats = [
+    {
+      label: 'NEW LEADS',
+      val: todaySales?.newLeads ?? 0,
+      sub: todaySales?.activeReps ? `${todaySales.activeReps} reps active` : undefined,
+      action: 'scroll' as const,
+      target: 'team-connections-split',
+    },
+    {
+      label: 'CONNECTIONS SENT',
+      val: todaySales?.connectionsSent ?? 0,
+      sub: todaySales?.connectionsAccepted
+        ? `${todaySales.connectionsAccepted} accepted`
+        : undefined,
+      action: 'scroll' as const,
+      target: 'team-connections-split',
+    },
+    {
+      label: 'ACCEPT RATE',
+      val: `${todaySales?.acceptanceRate ?? 0}%`,
+      sub: todaySales?.connectionsSent ? `of ${todaySales.connectionsSent} sent` : undefined,
+    },
+    {
+      label: 'MESSAGES SENT',
+      val: todaySales?.messagesSent ?? 0,
+      sub: todaySales?.replies ? `${todaySales.replies} replies` : undefined,
+    },
+    {
+      label: 'REPLY RATE',
+      val: `${todaySales?.replyRate ?? 0}%`,
+      sub: todaySales?.messagesSent ? `${todaySales.messagesSent} outreach` : undefined,
+    },
+    {
+      label: 'MEETINGS TODAY',
+      val: todaySales?.meetingsToday ?? 0,
+      sub: todaySales?.qualified ? `${todaySales.qualified} qualified leads` : undefined,
+      action: 'navigate' as const,
+      target: '/meetings',
+    },
+  ];
 
   const handleQuickLogSubmit = () => {
     setIsSubmitting(true);
@@ -157,7 +194,7 @@ export const AdminDashboard = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                Your team · Active Sales Campaigns
+                Team sales · {todayLabel}
               </Typography>
             </Box>
           </Box>
@@ -206,6 +243,7 @@ export const AdminDashboard = () => {
 
             <Button
               variant="outlined"
+              onClick={() => navigate('/sales')}
               sx={{
                 borderColor: tokens.surface.border,
                 color: tokens.text.primary,
@@ -240,23 +278,21 @@ export const AdminDashboard = () => {
             lineHeight: 1.5
           }}
         >
-          Team-wide activity log dashboard. Tap <strong style={{ color: tokens.text.primary, fontWeight: 700 }}>⌘L</strong> from anywhere — or click below — to manually log target achievements.
+          {todaySales?.newLeads
+            ? `${todaySales.newLeads} lead${todaySales.newLeads === 1 ? '' : 's'} logged today across ${todaySales.activeReps} rep${todaySales.activeReps === 1 ? '' : 's'}.`
+            : 'No leads logged yet today — open Sales to update the pipeline or use ⌘L to quick-log activity.'}
         </Typography>
 
         {/* Inline statistics counters (Admin stats) - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 3.5 }}>
-          {[
-            { label: 'TEAM CONNECTIONS', val: stats?.connectionsSent ?? 0 },
-            { label: 'ACCEPTANCE RATE', val: `${stats?.connectionsAccepted ?? 0}%` },
-            { label: 'TEAM MESSAGES', val: stats?.messagesSent ?? 0 },
-            { label: 'REPLIES', val: '18%' },
-            { label: 'TEAM MEETINGS', val: stats?.meetingsScheduled ?? 0 }
-          ].map((stat) => (
-            <Grid item xs={6} sm={4} md={2.4} key={stat.label}>
+          {todaySalesStats.map((stat) => (
+            <Grid item xs={6} sm={4} md={2} key={stat.label}>
               <Box
                 onClick={() => {
-                  if (stat.label === 'TEAM CONNECTIONS') {
-                    document.getElementById('team-connections-split')?.scrollIntoView({ behavior: 'smooth' });
+                  if (stat.action === 'scroll' && stat.target) {
+                    document.getElementById(stat.target)?.scrollIntoView({ behavior: 'smooth' });
+                  } else if (stat.action === 'navigate' && stat.target) {
+                    navigate(stat.target);
                   }
                 }}
                 sx={{
@@ -264,13 +300,14 @@ export const AdminDashboard = () => {
                   borderRadius: '16px',
                   bgcolor: 'rgba(0,0,0,0.008)',
                   border: '1px solid rgba(0,0,0,0.015)',
-                  cursor: stat.label === 'TEAM CONNECTIONS' ? 'pointer' : 'default',
+                  cursor: stat.action ? 'pointer' : 'default',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  height: '100%',
                   '&:hover': {
-                    bgcolor: stat.label === 'TEAM CONNECTIONS' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(0,0,0,0.015)',
-                    borderColor: stat.label === 'TEAM CONNECTIONS' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.03)',
+                    bgcolor: stat.action ? 'rgba(59, 130, 246, 0.04)' : 'rgba(0,0,0,0.015)',
+                    borderColor: stat.action ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.03)',
                     transform: 'translateY(-1px)',
-                    boxShadow: stat.label === 'TEAM CONNECTIONS' ? '0 6px 16px rgba(59, 130, 246, 0.08)' : '0 4px 12px rgba(0,0,0,0.01)'
+                    boxShadow: stat.action ? '0 6px 16px rgba(59, 130, 246, 0.08)' : '0 4px 12px rgba(0,0,0,0.01)'
                   }
                 }}
               >
@@ -298,6 +335,20 @@ export const AdminDashboard = () => {
                 >
                   {stat.val}
                 </Typography>
+                {stat.sub && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: tokens.text.muted,
+                      fontWeight: 600,
+                      mt: 0.5,
+                      display: 'block',
+                      fontSize: '0.68rem',
+                    }}
+                  >
+                    {stat.sub}
+                  </Typography>
+                )}
               </Box>
             </Grid>
           ))}
@@ -343,12 +394,7 @@ export const AdminDashboard = () => {
 
         {/* Analysis numbers row */}
         <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-          {[
-            { label: 'Done this week', count: 5, color: tokens.semantic.success, bg: 'rgba(45, 138, 94, 0.03)', border: 'rgba(45, 138, 94, 0.08)' },
-            { label: 'Moved', count: 12, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-            { label: 'Overdue', count: 38, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-            { label: 'Idle members', count: 3, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' }
-          ].map((item) => (
+          {analysisMetrics.map((item) => (
             <Grid item xs={6} sm={3} key={item.label}>
               <Box 
                 sx={{ 
@@ -376,6 +422,7 @@ export const AdminDashboard = () => {
 
         {/* HEADS UP Warnings Alert */}
         <Box
+          onClick={() => navigate('/team/insights')}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -399,7 +446,9 @@ export const AdminDashboard = () => {
                 HEADS-UP
               </Typography>
               <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                8 things need attention
+                {attentionCount === 1
+                  ? '1 thing needs attention'
+                  : `${attentionCount} things need attention`}
               </Typography>
             </Box>
           </Box>
@@ -437,6 +486,7 @@ export const AdminDashboard = () => {
               </Typography>
               <Button 
                 variant="text" 
+                onClick={() => navigate('/board')}
                 sx={{ 
                   textTransform: 'none', 
                   color: tokens.text.muted, 
@@ -452,7 +502,7 @@ export const AdminDashboard = () => {
             {/* Board header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.text.muted, letterSpacing: '0.04em' }}>
-                LEAPSOFTS-LEAD-BOARD
+                {boardLabel}
               </Typography>
               <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.text.muted }}>
                 {totalTasksCount}
@@ -461,7 +511,11 @@ export const AdminDashboard = () => {
 
             {/* Task list entries */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
-              {tasksList.map((task) => task && (
+              {tasksList.length === 0 ? (
+                <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.muted, py: 2, textAlign: 'center' }}>
+                  No open team tasks
+                </Typography>
+              ) : tasksList.map((task) => (
                 <Box
                   key={task.id}
                   sx={{
@@ -488,14 +542,16 @@ export const AdminDashboard = () => {
                     </Typography>
                   </Box>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
-                    {task.date}
+                    {formatShortDate(task.date)}
                   </Typography>
                 </Box>
               ))}
             </Box>
 
             {/* Bottom load link */}
+            {totalTasksCount > tasksList.length && (
             <Typography
+              onClick={() => navigate('/board')}
               sx={{
                 mt: 'auto',
                 pt: 1,
@@ -509,6 +565,7 @@ export const AdminDashboard = () => {
             >
               +{totalTasksCount - tasksList.length} more in this project →
             </Typography>
+            )}
           </Box>
         </Grid>
 
@@ -540,6 +597,7 @@ export const AdminDashboard = () => {
                 </Typography>
                 <Button 
                   variant="text" 
+                  onClick={() => navigate('/meetings')}
                   sx={{ 
                     textTransform: 'none', 
                     color: tokens.text.muted, 
@@ -552,7 +610,8 @@ export const AdminDashboard = () => {
                 </Button>
               </Box>
 
-              {/* Reminders Empty state */}
+              {/* Reminders / upcoming meetings */}
+              {upcomingMeetings.length === 0 ? (
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -568,6 +627,7 @@ export const AdminDashboard = () => {
                   No upcoming reminders
                 </Typography>
                 <Typography 
+                  onClick={() => navigate('/meetings')}
                   sx={{ 
                     fontSize: '0.8rem', 
                     fontWeight: 700, 
@@ -579,6 +639,48 @@ export const AdminDashboard = () => {
                   Create one →
                 </Typography>
               </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
+                  {upcomingMeetings.map((meeting: any) => (
+                    <Box
+                      key={meeting._id}
+                      onClick={() => meeting.meetingLink && window.open(meeting.meetingLink, '_blank')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1.8,
+                        borderRadius: '12px',
+                        bgcolor: 'rgba(0,0,0,0.006)',
+                        border: '1px solid rgba(0,0,0,0.02)',
+                        cursor: meeting.meetingLink ? 'pointer' : 'default',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(0,0,0,0.015)',
+                          borderColor: 'rgba(0,0,0,0.05)',
+                          transform: 'translateX(2px)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.12)' }} />
+                        <Box>
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                            {meeting.title}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 500, fontSize: '0.75rem', color: tokens.text.muted }}>
+                            {new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                        {formatShortDate(meeting.scheduledAt)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
 
             {/* Upcoming Deadlines Card */}
@@ -606,7 +708,8 @@ export const AdminDashboard = () => {
                 </Typography>
               </Box>
 
-              {/* Deadlines Empty state */}
+              {/* Deadlines */}
+              {upcomingDeadlines.length === 0 ? (
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -622,6 +725,46 @@ export const AdminDashboard = () => {
                   No upcoming deadlines
                 </Typography>
               </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
+                  {upcomingDeadlines.map((deadline) => (
+                    <Box
+                      key={deadline.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1.8,
+                        borderRadius: '12px',
+                        bgcolor: 'rgba(0,0,0,0.006)',
+                        border: '1px solid rgba(0,0,0,0.02)',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(0,0,0,0.015)',
+                          borderColor: 'rgba(0,0,0,0.05)',
+                          transform: 'translateX(2px)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255, 127, 17, 0.35)' }} />
+                        <Box>
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                            {deadline.title}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 500, fontSize: '0.75rem', color: tokens.text.muted }}>
+                            {deadline.userName}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                        {formatShortDate(deadline.date)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
         </Grid>
