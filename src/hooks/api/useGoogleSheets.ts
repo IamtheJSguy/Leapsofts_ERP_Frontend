@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 
 const googleSheetsApi = {
-  syncGoogleSheet: (sheetId: string) =>
-    api.post<{ success: boolean; data?: any }>(`/sheets/${sheetId}/sync`),
+  syncGoogleSheet: (userId: string) =>
+    api.post<{ success: boolean; data?: any }>(`/sheets/${userId}/sync`),
   syncMySheet: () => 
     api.post<{ success: boolean; data?: any }>('/sheets/sync-my-sheet'),
 };
