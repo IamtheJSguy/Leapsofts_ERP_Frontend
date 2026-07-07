@@ -53,6 +53,7 @@ import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
@@ -242,6 +243,8 @@ export const SalesPage = () => {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
@@ -250,7 +253,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedStatus, activeCard]);
+  }, [debouncedSearch, selectedUserId, selectedStatus, activeCard, startDate, endDate]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -259,6 +262,8 @@ export const SalesPage = () => {
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
       ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
+      ...(startDate ? { startDate } : {}),
+      ...(endDate ? { endDate } : {}),
     };
 
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
@@ -268,7 +273,7 @@ export const SalesPage = () => {
     if (activeCard === 'WAITING FOR REPLY') filters.messageStatus = 'sent';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus, activeCard]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus, activeCard, startDate, endDate]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   let prospects = leadsResponse?.data ?? [];
@@ -457,44 +462,58 @@ export const SalesPage = () => {
       />
 
       {/* Page Header */}
-      <Box sx={{ mb: 4.5, position: 'relative' }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 800,
-            letterSpacing: '-0.025em',
-            mb: 0.5,
-            color: isDarkMode ? '#fff' : tokens.text.primary,
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 1.5,
-          }}
-        >
-          Sales & Pipeline
-          <Chip
-            label="Outbound Motion"
-            size="small"
+      <Box sx={{ mb: 4.5, position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography
+            variant="h4"
             sx={{
-              bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
-              color: tokens.brand.primary,
               fontWeight: 800,
-              fontSize: '0.68rem',
-              height: 22,
-              border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)'}`,
+              letterSpacing: '-0.025em',
+              mb: 0.5,
+              color: isDarkMode ? '#fff' : tokens.text.primary,
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 1.5,
             }}
+          >
+            Sales & Pipeline
+            <Chip
+              label="Outbound Motion"
+              size="small"
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                color: tokens.brand.primary,
+                fontWeight: 800,
+                fontSize: '0.68rem',
+                height: 22,
+                border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)'}`,
+              }}
+            />
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
+              fontWeight: 500,
+              fontSize: '0.92rem',
+            }}
+          >
+            Track outbound conversions, import contacts via Google Sheets, and manage stages.
+          </Typography>
+        </Box>
+
+        {/* Date Range Filter in Header */}
+        <Box sx={{ minWidth: { xs: '100%', sm: 260 }, maxWidth: { sm: 300 } }}>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartChange={setStartDate}
+            onEndChange={setEndDate}
+            size="small"
+            layout="compact"
           />
-        </Typography>
-        <Typography
-          variant="body1"
-          sx={{
-            color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
-            fontWeight: 500,
-            fontSize: '0.92rem',
-          }}
-        >
-          Track outbound conversions, import contacts via Google Sheets, and manage stages.
-        </Typography>
+        </Box>
       </Box>
 
       {/* Stats Counter Row */}

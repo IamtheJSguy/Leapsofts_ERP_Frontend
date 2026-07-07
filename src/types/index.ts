@@ -531,6 +531,8 @@ export interface LeadValidationResult {
 }
 
 export interface LeadFilters {
+  startDate?: string;
+  endDate?: string;
   connectionStatus?: string;
   messageStatus?: string;
   status?: string;

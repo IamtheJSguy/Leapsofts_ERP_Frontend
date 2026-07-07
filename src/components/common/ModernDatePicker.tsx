@@ -83,7 +83,7 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
           }
         }}
       >
-        <Typography variant="body2" sx={{ fontWeight: value ? 700 : 500, letterSpacing: '-0.01em' }}>
+        <Typography variant="body2" sx={{ fontWeight: value ? 700 : 500, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {value ? format(value, 'MMM d, yyyy') : placeholder}
         </Typography>
         <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: value ? tokens.brand.primary : 'text.disabled' }} />
