@@ -13,6 +13,8 @@ const userApi = {
   updateRole: ({ id, role }: { id: string; role: string }) =>
     api.put(`/users/${id}/role`, { role }),
   updateMe: (data: Partial<User>) => api.put('/users/me', data),
+  changePassword: (data: { oldPassword: string; newPassword: string }) =>
+    api.put('/users/me/change-password', data),
   getMe: () => api.get<{ data: User }>('/users/me'),
 };
 
@@ -120,6 +122,11 @@ export const useUpdateMe = () => {
     },
   });
 };
+
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: userApi.changePassword,
+  });
 
 import { useAuthStore } from '@/store/useAuthStore';
 
