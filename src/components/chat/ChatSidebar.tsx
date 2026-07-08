@@ -387,10 +387,11 @@ export const ChatSidebar = () => {
             width: '100%',
             maxWidth: 440,
             overflow: 'hidden',
+            m: { xs: 2, sm: 3 }
           }
         }}
       >
-        <Box sx={{ p: 4, pb: 2 }}>
+        <Box sx={{ p: { xs: 2.5, sm: 4 }, pb: { xs: 1.5, sm: 2 } }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, textAlign: 'center', letterSpacing: '-0.02em' }}>
             New Conversation
           </Typography>
@@ -497,7 +498,7 @@ export const ChatSidebar = () => {
           />
         </Box>
 
-        <Box sx={{ px: 2, pb: 3 }}>
+        <Box sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 2, sm: 3 } }}>
           <List sx={{ maxHeight: 280, overflowY: 'auto', p: 0 }}>
             {filteredNewChatUsers.map((user, index) => {
               const name = getDisplayName(user);
@@ -519,10 +520,10 @@ export const ChatSidebar = () => {
                     }
                   }}
                   sx={{
-                    px: 2,
+                    px: { xs: 1.5, sm: 2 },
                     py: 1.5,
                     mb: 1,
-                    mx: 2,
+                    mx: { xs: 1, sm: 2 },
                     borderRadius: '18px',
                     bgcolor: isTopMatch
                       ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)')
@@ -561,11 +562,12 @@ export const ChatSidebar = () => {
                   </Avatar>
                   <ListItemText
                     primary={
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isTopMatch ? tokens.brand.primary : 'text.primary', letterSpacing: '-0.01em' }}>
+                      <Typography variant="subtitle2" noWrap sx={{ fontWeight: 800, color: isTopMatch ? tokens.brand.primary : 'text.primary', letterSpacing: '-0.01em' }}>
                         {name}
                       </Typography>
                     }
-                    secondary={<Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>{user.email}</Typography>}
+                    secondary={<Typography variant="body2" noWrap sx={{ color: 'text.secondary', fontWeight: 500 }}>{user.email}</Typography>}
+                    sx={{ overflow: 'hidden' }}
                   />
                 </ListItemButton>
               );
