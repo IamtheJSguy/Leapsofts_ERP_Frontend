@@ -14,7 +14,7 @@ const CONNECTION_COLORS: Record<ConnectionStatus, StatusColorPair> = connectionS
 const MESSAGE_COLORS: Record<MessageStatus, StatusColorPair> = messageStatusTokens;
 
 export const getConnectionColors = (status?: ConnectionStatus): StatusColorPair =>
-  status ? CONNECTION_COLORS[status] : CONNECTION_COLORS.not_sent;
+  status ? CONNECTION_COLORS[status] : CONNECTION_COLORS.pending;
 
 export const getMessageColors = (status?: MessageStatus): StatusColorPair =>
   status ? MESSAGE_COLORS[status] : MESSAGE_COLORS.not_sent;

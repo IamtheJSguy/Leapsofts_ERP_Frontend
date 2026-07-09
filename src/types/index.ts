@@ -1,8 +1,7 @@
 export type Role = 'admin' | 'manager' | 'user';
 
 export type ConnectionStatus =
-  | 'not_sent'
-  | 'sent'
+  | 'pending'
   | 'accepted'
   | 'declined'
   | 'no_response';
@@ -611,6 +610,7 @@ export interface LeadFilters {
   sortBy?: string;
   order?: 'asc' | 'desc';
   search?: string;
+  icp?: string;
 }
 
 export interface ValidationResult {

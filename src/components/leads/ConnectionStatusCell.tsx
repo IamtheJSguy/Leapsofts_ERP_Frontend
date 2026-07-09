@@ -8,7 +8,7 @@ interface ConnectionStatusCellProps {
   status?: ConnectionStatus;
 }
 
-export const ConnectionStatusCell = ({ leadId, status = 'not_sent' }: ConnectionStatusCellProps) => {
+export const ConnectionStatusCell = ({ leadId, status = 'pending' }: ConnectionStatusCellProps) => {
   const updateStatus = useUpdateConnectionStatus();
 
   return (

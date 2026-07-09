@@ -81,8 +81,7 @@ export const chartSeries = {
 
 /** Connection status → semantic token keys */
 export const connectionStatusTokens = {
-  not_sent: { color: tokens.semantic.neutral, bg: tokens.semantic.neutralBg },
-  sent: { color: tokens.brand.primary, bg: tokens.semantic.infoBg },
+  pending: { color: tokens.semantic.neutral, bg: tokens.semantic.neutralBg },
   accepted: { color: tokens.semantic.success, bg: tokens.semantic.successBg },
   declined: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
   no_response: { color: tokens.semantic.warning, bg: tokens.semantic.warningBg },
