@@ -67,6 +67,8 @@ import EventIcon from '@mui/icons-material/Event';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
+import { useIcps } from '@/hooks/api/useSettings';
+import { getDisplayName } from '@/utils/formatters';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
 export const SalesPage = () => {
@@ -239,11 +241,16 @@ export const SalesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('All Users');
   const [selectedIcp, setSelectedIcp] = useState('');
+  const [selectedProfile, setSelectedProfile] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
   const [activeCard, setActiveCard] = useState('TOTAL PROSPECTS');
 
   const { data: usersData } = useUsers();
   const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
+  const { data: icpsData } = useIcps();
+  const icpsList = icpsData || [];
+  const { data: profileUsersData } = useUsers({ role: 'admin,manager', limit: '100' });
+  const profileUsersList = profileUsersData || [];
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -365,7 +372,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedStatus, activeCard, startDate, endDate]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -374,6 +381,7 @@ export const SalesPage = () => {
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
       ...(selectedIcp ? { icp: selectedIcp } : {}),
+      ...(selectedProfile ? { profile: selectedProfile } : {}),
       ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
@@ -386,7 +394,7 @@ export const SalesPage = () => {
     if (activeCard === 'WAITING FOR REPLY') filters.messageStatus = 'sent';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedStatus, activeCard, startDate, endDate]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   let prospects = leadsResponse?.data ?? [];
@@ -943,10 +951,12 @@ export const SalesPage = () => {
             {/* ICP Filter - Admin Only */}
             {isElevated && (
               <TextField
+                select
                 size="small"
                 placeholder="Filter by Campaign (ICP)"
                 value={selectedIcp}
                 onChange={(e) => setSelectedIcp(e.target.value)}
+                SelectProps={{ displayEmpty: true }}
                 sx={{
                   flexGrow: 1,
                   minWidth: { xs: '100%', sm: 180 },
@@ -967,7 +977,53 @@ export const SalesPage = () => {
                     },
                   },
                 }}
-              />
+              >
+                <MenuItem value="">All ICPs</MenuItem>
+                {icpsList.map((icp) => (
+                  <MenuItem key={icp._id} value={icp.name}>
+                    {icp.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+
+            {/* Profile Filter - Admin Only */}
+            {isElevated && (
+              <TextField
+                select
+                size="small"
+                placeholder="Filter by Profile"
+                value={selectedProfile}
+                onChange={(e) => setSelectedProfile(e.target.value)}
+                SelectProps={{ displayEmpty: true }}
+                sx={{
+                  flexGrow: 1,
+                  minWidth: { xs: '100%', sm: 180 },
+                  maxWidth: { sm: 240 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '20px',
+                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                    height: 42,
+                    fontSize: '0.84rem',
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                  },
+                }}
+              >
+                <MenuItem value="">All Profiles</MenuItem>
+                {profileUsersList.map((u: any) => (
+                  <MenuItem key={u._id} value={getDisplayName(u)}>
+                    {getDisplayName(u)}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
 
             {/* Status Select Dropdown */}
@@ -1182,8 +1238,18 @@ export const SalesPage = () => {
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                          <TextField size="small" placeholder="Campaign (ICP)" value={newLeadData.icp} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                          <TextField size="small" placeholder="Profile" value={newLeadData.profile} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                          <TextField select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                            <MenuItem value=""><em>No ICP</em></MenuItem>
+                            {icpsList.map((icp) => (
+                              <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                            <MenuItem value=""><em>No Profile</em></MenuItem>
+                            {profileUsersList.map((u: any) => (
+                              <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
+                            ))}
+                          </TextField>
                         </Box>
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
@@ -1240,8 +1306,18 @@ export const SalesPage = () => {
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
                             <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                              <TextField size="small" placeholder="Campaign (ICP)" value={editData.icp} onChange={(e) => handleEditChange(prospect._id, 'icp', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                              <TextField size="small" placeholder="Profile" value={editData.profile} onChange={(e) => handleEditChange(prospect._id, 'profile', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                              <TextField select size="small" placeholder="Campaign (ICP)" value={editData.icp || ''} onChange={(e) => handleEditChange(prospect._id, 'icp', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                                <MenuItem value=""><em>No ICP</em></MenuItem>
+                                {icpsList.map((icp) => (
+                                  <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
+                                ))}
+                              </TextField>
+                              <TextField select size="small" placeholder="Profile" value={editData.profile || ''} onChange={(e) => handleEditChange(prospect._id, 'profile', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                                <MenuItem value=""><em>No Profile</em></MenuItem>
+                                {profileUsersList.map((u: any) => (
+                                  <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
+                                ))}
+                              </TextField>
                             </Box>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>

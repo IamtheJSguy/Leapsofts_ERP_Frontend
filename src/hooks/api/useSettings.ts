@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { ApiResponse, SystemSettings } from '@/types';
+import type { ApiResponse, IcpEntry, SystemSettings } from '@/types';
 
 export const useSystemSettings = () =>
   useQuery({
@@ -14,5 +14,42 @@ export const useUpdateSystemSettings = () => {
   return useMutation({
     mutationFn: (data: SystemSettings) => api.put('/admin/settings', data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['systemSettings'] }),
+  });
+};
+
+export const useIcps = () =>
+  useQuery({
+    queryKey: ['icps'],
+    queryFn: () =>
+      api.get<ApiResponse<IcpEntry[]>>('/admin/settings/icps').then((r) => r.data.data),
+  });
+
+const invalidateIcpQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
+  queryClient.invalidateQueries({ queryKey: ['icps'] });
+};
+
+export const useAddIcp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.post('/admin/settings/icps', { name }),
+    onSuccess: () => invalidateIcpQueries(queryClient),
+  });
+};
+
+export const useRenameIcp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ icpId, name }: { icpId: string; name: string }) =>
+      api.patch(`/admin/settings/icps/${icpId}`, { name }),
+    onSuccess: () => invalidateIcpQueries(queryClient),
+  });
+};
+
+export const useRemoveIcp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (icpId: string) => api.delete(`/admin/settings/icps/${icpId}`),
+    onSuccess: () => invalidateIcpQueries(queryClient),
   });
 };

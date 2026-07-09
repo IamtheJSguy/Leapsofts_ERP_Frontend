@@ -580,11 +580,19 @@ export interface DashboardStats {
   }[];
 }
 
+export interface IcpEntry {
+  _id: string;
+  name: string;
+  addedBy?: string;
+  createdAt?: string;
+}
+
 export interface SystemSettings {
   referenceSheetUrl?: string;
   chatRetentionMonths?: number;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
+  icps?: IcpEntry[];
 }
 
 export interface LeadValidationResult {
@@ -603,6 +611,8 @@ export interface LeadFilters {
   location?: string;
   industry?: string;
   companySize?: string;
+  icp?: string;
+  profile?: string;
   assignedTo?: string;
   isQualified?: boolean;
   page?: number;
