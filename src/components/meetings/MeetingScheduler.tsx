@@ -60,8 +60,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
   // Filter meetings to only show those the current user is a participant of
@@ -84,7 +83,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
   // Can the current user edit or delete this meeting?
   const canEditOrDelete = (meeting: Meeting) => {
-    if (isAdmin) return true;
+    if (isElevated) return true;
     if (isCreatedByAdmin(meeting)) return false;
     if (!currentUser) return false;
     const creatorId = typeof meeting.createdBy === 'string'

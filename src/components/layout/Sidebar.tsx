@@ -37,7 +37,7 @@ interface NavItem {
   label: string;
   path: string;
   icon: React.ReactNode;
-  adminOnly?: boolean;
+  requiresPermission?: 'canViewTeamDashboard' | 'canViewAdminReports' | 'canViewSystemSettings';
 }
 
 interface NavGroup {
@@ -55,15 +55,15 @@ const navGroups: NavGroup[] = [
       { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
       // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
       { label: 'Board', path: '/board', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, adminOnly: true },
+      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewTeamDashboard' },
     ],
   },
   {
     title: 'Analytics',
     items: [
       // { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Team Insights', path: '/team/insights', icon: <TimelineIcon sx={{ fontSize: 18 }} />, adminOnly: true },
+      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports' },
+      { label: 'Team Insights', path: '/team/insights', icon: <TimelineIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewTeamDashboard' },
     ],
   },
   {
@@ -76,7 +76,7 @@ const navGroups: NavGroup[] = [
   {
     title: 'System',
     items: [
-      { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon sx={{ fontSize: 18 }} />, adminOnly: true },
+      { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSystemSettings' },
     ],
   },
 ];
@@ -107,7 +107,7 @@ const BrandMark = () => (
 
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();
-  const { canManageUsers } = usePermissions();
+  const permissions = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -193,13 +193,13 @@ export const Sidebar = () => {
           '&::-webkit-scrollbar': {
             display: 'none', // Chrome, Safari, Edge
           },
-          '-ms-overflow-style': 'none', // IE
+          msOverflowStyle: 'none', // IE
         }}
       >
         {navGroups.map((group, groupIdx) => {
           // Filter items based on permissions
           const filteredItems = group.items.filter(
-            (item) => !item.adminOnly || canManageUsers
+            (item) => !item.requiresPermission || permissions[item.requiresPermission]
           );
 
           if (filteredItems.length === 0) return null;

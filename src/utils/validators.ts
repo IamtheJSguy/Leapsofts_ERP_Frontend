@@ -83,7 +83,7 @@ export const userSchema = z.object({
   password: z.string().min(8).optional().or(z.literal('')),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  role: z.enum([ROLES.ADMIN, ROLES.USER]),
+  role: z.enum([ROLES.ADMIN, ROLES.MANAGER, ROLES.USER]),
 });
 
 export const enrichmentSchema = z.object({

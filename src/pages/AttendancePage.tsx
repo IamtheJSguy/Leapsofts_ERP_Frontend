@@ -40,7 +40,7 @@ export const AttendancePage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdminView = currentUser?.role === 'admin' || currentUser?.role === 'manager';
 
   // --- Personal User States & Queries ---
   const [page, setPage] = useState(1);
@@ -314,7 +314,7 @@ export const AttendancePage = () => {
   // -------------------------------------------------------------
   // RENDER ADMIN VIEW
   // -------------------------------------------------------------
-  if (isAdmin) {
+  if (isAdminView) {
     return (
       <Box className="animate-fade-in-up" sx={{ pb: 6, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
