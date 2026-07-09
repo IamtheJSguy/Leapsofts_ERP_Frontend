@@ -60,8 +60,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { user, isElevated } = useAuth();
 
   const myMeetings = useMemo(() => {
     return meetings.filter((m: Meeting) => {
@@ -129,7 +128,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   // - Admins can always
   // - Users can only if THEY created it AND it was NOT created by an admin
   const canEditOrDelete = (meeting: Meeting) => {
-    if (isAdmin) return true;
+    if (isElevated) return true;
     if (isCreatedByAdmin(meeting)) return false;
     if (!currentUser) return false;
     const creatorId = typeof meeting.createdBy === 'string'

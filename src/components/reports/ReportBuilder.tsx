@@ -30,7 +30,7 @@ import { reportFilterSchema } from '@/utils/validators';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { useGenerateReport } from '@/hooks/api/useReports';
 import { useUsers } from '@/hooks/api/useUsers';
-import { useAuthStore } from '@/store/useAuthStore';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
@@ -81,12 +81,11 @@ export const ReportBuilder = ({
 }: ReportBuilderProps) => {
   const generateReport = useGenerateReport();
   const addToast = useUIStore((s) => s.addToast);
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
+  const { isElevated } = usePermissions();
 
   const { data: users = [] } = useUsers(
     {},
-    { enabled: isAdmin },
+    { enabled: isElevated },
   );
 
   const theme = useTheme();
@@ -259,7 +258,7 @@ export const ReportBuilder = ({
           </Box>
 
           {/* User Filter (Admin Only) */}
-          {isAdmin && !isTeamReport && (
+          {isElevated && !isTeamReport && (
             <Box sx={{ minWidth: { xs: '100%', sm: 260 }, flexGrow: 1, maxWidth: { sm: 320 } }}>
               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
                 Select Employee

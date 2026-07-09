@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'user';
+export type Role = 'admin' | 'manager' | 'user';
 
 export type ConnectionStatus =
   | 'pending'

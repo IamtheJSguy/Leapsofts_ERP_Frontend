@@ -26,6 +26,9 @@ import {
   MemberProgressPage,
 } from './lazy-pages';
 
+const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
+const ELEVATED_ROLES = [ROLES.ADMIN, ROLES.MANAGER] as const;
+
 const wrap = (element: React.ReactNode) => (
   <ErrorBoundary>
     <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -44,7 +47,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: (
-      <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+      <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
         <AppLayout />
       </ProtectedRoute>
     ),
@@ -53,7 +56,7 @@ export const router = createBrowserRouter([
       {
         path: 'tasks',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <TasksPage />
           </ProtectedRoute>,
         ),
@@ -61,7 +64,7 @@ export const router = createBrowserRouter([
       {
         path: 'board',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ProjectsPage />
           </ProtectedRoute>,
         ),
@@ -69,7 +72,7 @@ export const router = createBrowserRouter([
       {
         path: 'board/:projectId',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ProjectDetailsPage />
           </ProtectedRoute>,
         ),
@@ -77,7 +80,7 @@ export const router = createBrowserRouter([
       {
         path: 'board/:projectId/boards/:boardId',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <KanbanBoardPage />
           </ProtectedRoute>,
         ),
@@ -85,7 +88,7 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
             <ReportsPage />
           </ProtectedRoute>,
         ),
@@ -93,7 +96,7 @@ export const router = createBrowserRouter([
       {
         path: 'meetings',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <MeetingsPage />
           </ProtectedRoute>,
         ),
@@ -101,7 +104,7 @@ export const router = createBrowserRouter([
       {
         path: 'chat',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ChatPage />
           </ProtectedRoute>,
         ),
@@ -109,7 +112,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
             <AdminPage />
           </ProtectedRoute>,
         ),
@@ -117,7 +120,7 @@ export const router = createBrowserRouter([
       {
         path: 'team',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
             <TeamPage />
           </ProtectedRoute>,
         ),
@@ -125,7 +128,7 @@ export const router = createBrowserRouter([
       {
         path: 'attendance',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <AttendancePage />
           </ProtectedRoute>,
         ),
@@ -133,7 +136,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <SalesPage />
           </ProtectedRoute>,
         ),
@@ -141,7 +144,7 @@ export const router = createBrowserRouter([
       {
         path: 'profile',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.USER]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ProfilePage />
           </ProtectedRoute>,
         ),
@@ -149,7 +152,7 @@ export const router = createBrowserRouter([
       {
         path: 'team/insights',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
             <TeamInsightsPage />
           </ProtectedRoute>,
         ),
@@ -157,7 +160,7 @@ export const router = createBrowserRouter([
       {
         path: 'team/member/:userId',
         element: wrap(
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
             <MemberProgressPage />
           </ProtectedRoute>,
         ),

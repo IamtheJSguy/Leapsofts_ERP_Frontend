@@ -103,7 +103,7 @@ interface ActiveAssignment {
 
 const TasksPage = () => {
   const { user } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isElevated } = usePermissions();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -112,16 +112,16 @@ const TasksPage = () => {
   const { data: dbUsers = [] } = useUsers();
 
   // Fetch actual templates from the API
-  const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isAdmin });
+  const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isElevated });
   const createTemplateMutation = useCreateKPITemplate();
   const updateTemplateMutation = useUpdateKPITemplate();
   const deleteTemplateMutation = useDeleteKPITemplate();
   const assignTemplateMutation = useAssignKPITemplate();
   const unassignTemplateMutation = useUnassignKPITemplate();
   const removeAssignmentItemMutation = useRemoveAssignmentItem();
-  const { data: standaloneKpis = [] } = useKPIs({ enabled: isAdmin });
+  const { data: standaloneKpis = [] } = useKPIs({ enabled: isElevated });
   const deleteKpiMutation = useDeleteKPI();
-  const { data: pendingChangeRequests = [] } = usePendingKPIChangeRequests({ enabled: isAdmin });
+  const { data: pendingChangeRequests = [] } = usePendingKPIChangeRequests({ enabled: isElevated });
   const { data: myChangeRequests = [] } = useMyKPIChangeRequests();
 
   // State to track if we are editing an existing template
@@ -144,9 +144,9 @@ const TasksPage = () => {
   }, [apiTemplates]);
 
   // Fetch assignments conditionally: admin sees all assignments, agent sees their own assignments
-  const { data: adminAssignments = [] } = useKPITemplateAssignments({ enabled: isAdmin });
-  const { data: userAssignments = [] } = useMyAssignments({ enabled: !isAdmin });
-  const apiAssignments = isAdmin ? adminAssignments : userAssignments;
+  const { data: adminAssignments = [] } = useKPITemplateAssignments({ enabled: isElevated });
+  const { data: userAssignments = [] } = useMyAssignments({ enabled: !isElevated });
+  const apiAssignments = isElevated ? adminAssignments : userAssignments;
 
   // Map API assignments to UI assignments
   const mappedAssignments = useMemo((): ActiveAssignment[] => {
@@ -278,15 +278,15 @@ const TasksPage = () => {
 
   // Set default tab to assignments for non-admin users
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isElevated) {
       setDashboardTab('assignments');
     }
-  }, [isAdmin]);
+  }, [isElevated]);
 
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
-    if (tab === 'change_requests' && isAdmin) setDashboardTab('change_requests');
-  }, [isAdmin]);
+    if (tab === 'change_requests' && isElevated) setDashboardTab('change_requests');
+  }, [isElevated]);
 
   // Active assignment sub-filtering for agents/users
   const [taskCategory, setTaskCategory] = useState<'active' | 'overdue' | 'high' | 'done'>('active');
@@ -301,7 +301,7 @@ const TasksPage = () => {
 
     // Make sure we only count assignments relevant to the current user (if they are agent)
     const relevantAssignments = activeAssignments.filter((assign) => {
-      if (!isAdmin && user) {
+      if (!isElevated && user) {
         return assign.assignedTo.some((id) => id === user._id || (id === 'user-1' && user.email === 'alex@leapsofts.com'));
       }
       return true;
@@ -332,7 +332,7 @@ const TasksPage = () => {
     });
 
     return { active, overdue, high, done };
-  }, [activeAssignments, isAdmin, user]);
+  }, [activeAssignments, isElevated, user]);
 
   // Navigation View modes: 'list', 'create', or 'details'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'details'>('list');
@@ -620,7 +620,7 @@ const TasksPage = () => {
           });
           setIsAssignOpen(false);
           setConfirmAssignOpen(false);
-          if (!isAdmin) {
+          if (!isElevated) {
             setDashboardTab('assignments');
           }
         },
@@ -736,7 +736,7 @@ const TasksPage = () => {
   const filteredAssignments = useMemo(() => {
     return activeAssignments.filter((assign) => {
       // 1. User role assignment filter
-      if (!isAdmin && user) {
+      if (!isElevated && user) {
         const isAssigned = assign.assignedTo.some((id) => {
           return id === user._id || (id === 'user-1' && user.email === 'alex@leapsofts.com');
         });
@@ -750,7 +750,7 @@ const TasksPage = () => {
       if (!matchesSearch) return false;
 
       // 3. Category tab filter (only applied for agents/users, keep admin same)
-      if (!isAdmin) {
+      if (!isElevated) {
         const isCompleted = assign.kpis.every((k) => k.completed);
         
         if (taskCategory === 'done') {
@@ -783,13 +783,13 @@ const TasksPage = () => {
 
       return true;
     });
-  }, [activeAssignments, searchQuery, taskCategory, isAdmin, user]);
+  }, [activeAssignments, searchQuery, taskCategory, isElevated, user]);
 
   // Combined statistics based on state databases
   const stats = useMemo(() => {
     const activeTemplatesCount = templates.length;
     const userAssignments = activeAssignments.filter((assign) => {
-      if (!isAdmin && user) {
+      if (!isElevated && user) {
         return assign.assignedTo.some((id) => id === user._id || (id === 'user-1' && user.email === 'alex@leapsofts.com'));
       }
       return true;
@@ -804,7 +804,7 @@ const TasksPage = () => {
       activeAssignmentsCount,
       completedAssignmentsCount,
     };
-  }, [templates, activeAssignments, isAdmin, user]);
+  }, [templates, activeAssignments, isElevated, user]);
 
   const handleLayoutChange = (_event: React.MouseEvent<HTMLElement>, newLayout: 'grid' | 'list' | null) => {
     if (newLayout !== null) {
@@ -1317,7 +1317,7 @@ const TasksPage = () => {
               Back to Targets
             </Button>
 
-            {isAdmin && (
+            {isElevated && (
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Button
                   variant="outlined"
@@ -1505,7 +1505,7 @@ const TasksPage = () => {
                 </Box>
               </Card>
 
-              {isAdmin && (() => {
+              {isElevated && (() => {
                 const templateAssignments = activeAssignments.filter(
                   (a) => a.templateId === selectedTemplate._id
                 );
@@ -1619,7 +1619,7 @@ const TasksPage = () => {
     // Active assignment details layout
     if (selectedAssignment) {
       const visibleKpis = selectedAssignment.kpis.filter((k) => {
-        if (isAdmin) return true;
+        if (isElevated) return true;
         if (!user) return false;
         return k.assignedTo.some((id) => id === user._id || (id === 'user-1' && user.email === 'alex@leapsofts.com'));
       });
@@ -1730,7 +1730,7 @@ const TasksPage = () => {
                   <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.015em' }}>
                     KPI Goals Checklist
                   </Typography>
-                  {!isAdmin && (
+                  {!isElevated && (
                     <Button
                       size="small"
                       variant="outlined"
@@ -1750,11 +1750,11 @@ const TasksPage = () => {
                     return (
                       <Box
                         key={kpi.itemId || kpi._id || idx}
-                        onClick={isAdmin ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
+                        onClick={isElevated ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
                         sx={{
                           p: 3,
                           borderRadius: '18px',
-                          cursor: isAdmin ? 'default' : 'pointer',
+                          cursor: isElevated ? 'default' : 'pointer',
                           bgcolor: isChecked
                             ? isDarkMode ? 'rgba(45, 138, 94, 0.06)' : 'rgba(45, 138, 94, 0.02)'
                             : isDarkMode ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0,0,0,0.005)',
@@ -1768,16 +1768,16 @@ const TasksPage = () => {
                           gap: 2,
                           transition: 'all 0.2s ease',
                           '&:hover': {
-                            borderColor: isAdmin
+                            borderColor: isElevated
                               ? (isChecked ? tokens.semantic.success : (isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.05)'))
                               : (isChecked ? tokens.semantic.success : tokens.brand.primary),
-                            transform: isAdmin ? 'none' : 'translateX(2px)',
+                            transform: isElevated ? 'none' : 'translateX(2px)',
                           },
                         }}
                       >
                         <Checkbox
                           checked={isChecked}
-                          disabled={isAdmin}
+                          disabled={isElevated}
                           color="success"
                           sx={{
                             p: 0,
@@ -1791,7 +1791,7 @@ const TasksPage = () => {
                             },
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          onChange={isAdmin ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
+                          onChange={isElevated ? undefined : () => handleToggleKpiCompletion(selectedAssignment._id, kpi.name)}
                         />
                         <Box sx={{ flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -1813,7 +1813,7 @@ const TasksPage = () => {
                             {kpi.description}
                           </Typography>
                         </Box>
-                        {!isAdmin && (kpi.itemId || kpi._id) && (
+                        {!isElevated && (kpi.itemId || kpi._id) && (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
                             <Button
                               size="small"
@@ -1849,7 +1849,7 @@ const TasksPage = () => {
                             </Button>
                           </Box>
                         )}
-                        {isAdmin && (kpi.itemId || kpi._id) && selectedAssignment.assignedTo[0] && (
+                        {isElevated && (kpi.itemId || kpi._id) && selectedAssignment.assignedTo[0] && (
                           <Button
                             size="small"
                             variant="text"
@@ -1883,7 +1883,7 @@ const TasksPage = () => {
                     );
                   })}
                 </Box>
-                {!isAdmin && <MyChangeRequestsPanel assignmentId={selectedAssignment._id} />}
+                {!isElevated && <MyChangeRequestsPanel assignmentId={selectedAssignment._id} />}
               </Card>
             </Grid>
 
@@ -1959,7 +1959,7 @@ const TasksPage = () => {
                     </>
                   )}
                   {/* Unassign Target Button (Only visible for Admins) */}
-                  {isAdmin && (
+                  {isElevated && (
                     <Box sx={{ mt: 2.5 }}>
                       <Button
                         variant="outlined"
@@ -1994,7 +1994,7 @@ const TasksPage = () => {
   }
 
     // STANDARD GOALS LIST DASHBOARD RENDERING
-    if (!isAdmin) {
+    if (!isElevated) {
       return <UserDailyKpisView />;
     }
 
@@ -2032,13 +2032,13 @@ const TasksPage = () => {
               fontSize: '0.92rem',
             }}
           >
-            {isAdmin
+            {isElevated
               ? 'Manage reusable templates, allocate targets, and monitor agent performance.'
               : 'Review your active objective targets and complete daily checklist milestones.'}
           </Typography>
         </Box>
 
-        {isAdmin && (
+        {isElevated && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -2070,7 +2070,7 @@ const TasksPage = () => {
 
       {/* Mini stats counters grid */}
       <Grid container spacing={3.5} sx={{ mb: 4.5 }}>
-        {isAdmin && (
+        {isElevated && (
           <Grid item xs={12} sm={4}>
             <Box
               sx={{
@@ -2117,7 +2117,7 @@ const TasksPage = () => {
           </Grid>
         )}
 
-        <Grid item xs={12} sm={isAdmin ? 4 : 6}>
+        <Grid item xs={12} sm={isElevated ? 4 : 6}>
           <Box
             sx={{
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
@@ -2162,7 +2162,7 @@ const TasksPage = () => {
           </Box>
         </Grid>
 
-        <Grid item xs={12} sm={isAdmin ? 4 : 6}>
+        <Grid item xs={12} sm={isElevated ? 4 : 6}>
           <Box
             sx={{
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
@@ -2209,7 +2209,7 @@ const TasksPage = () => {
       </Grid>
 
       {/* Navigation Sub-Tabs */}
-      {isAdmin && viewMode === 'list' && (
+      {isElevated && viewMode === 'list' && (
         <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
           <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
@@ -2220,15 +2220,15 @@ const TasksPage = () => {
         </Box>
       )}
 
-      {dashboardTab === 'daily_progress' && isAdmin && viewMode === 'list' && (
+      {dashboardTab === 'daily_progress' && isElevated && viewMode === 'list' && (
         <DailyTeamProgress />
       )}
 
-      {dashboardTab === 'change_requests' && isAdmin && viewMode === 'list' && (
+      {dashboardTab === 'change_requests' && isElevated && viewMode === 'list' && (
         <ChangeRequestQueue />
       )}
 
-      {dashboardTab === 'standalone_kpis' && isAdmin && viewMode === 'list' && (
+      {dashboardTab === 'standalone_kpis' && isElevated && viewMode === 'list' && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditingStandaloneKpi(null); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none', borderRadius: '12px' }}>
@@ -2514,7 +2514,7 @@ const TasksPage = () => {
                         >
                           View KPIs
                         </Button>
-                        {isAdmin && (
+                        {isElevated && (
                           <Button
                             variant="contained"
                             size="small"
@@ -2619,7 +2619,7 @@ const TasksPage = () => {
                       >
                         View KPIs ({tpl.kpis.length})
                       </Button>
-                      {isAdmin && (
+                      {isElevated && (
                         <Button
                           variant="contained"
                           size="small"
@@ -2649,9 +2649,9 @@ const TasksPage = () => {
       )}
 
       {/* SUB-TAB 2: ACTIVE ASSIGNMENT CARDS LIST (Users only) */}
-      {dashboardTab === 'assignments' && !isAdmin && (
+      {dashboardTab === 'assignments' && !isElevated && (
         <>
-          {!isAdmin && (
+          {!isElevated && (
             <Box
               sx={{
                 display: 'flex',
@@ -2930,7 +2930,7 @@ const TasksPage = () => {
                           </Box>
 
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            {isAdmin && (
+                            {isElevated && (
                               <Button
                                 variant="outlined"
                                 size="small"
@@ -2977,7 +2977,7 @@ const TasksPage = () => {
                                 },
                               }}
                             >
-                              {isAdmin ? 'View Target' : 'Update Target'}
+                              {isElevated ? 'View Target' : 'Update Target'}
                             </Button>
                           </Box>
                         </Box>
@@ -3118,7 +3118,7 @@ const TasksPage = () => {
                           ))}
                         </AvatarGroup>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          {isAdmin && (
+                          {isElevated && (
                             <Button
                               variant="outlined"
                               size="small"
@@ -3165,7 +3165,7 @@ const TasksPage = () => {
                               },
                             }}
                           >
-                            {isAdmin ? 'View Target' : 'Open Target'}
+                            {isElevated ? 'View Target' : 'Open Target'}
                           </Button>
                         </Box>
                       </Grid>

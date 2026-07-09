@@ -13,6 +13,8 @@ const userApi = {
   updateRole: ({ id, role }: { id: string; role: string }) =>
     api.put(`/users/${id}/role`, { role }),
   updateMe: (data: Partial<User>) => api.put('/users/me', data),
+  changePassword: (data: { oldPassword: string; newPassword: string }) =>
+    api.put('/users/me/change-password', data),
   getMe: () => api.get<{ data: User }>('/users/me'),
 };
 
@@ -62,7 +64,12 @@ export const useUserAttendanceSummary = (
     enabled: !!userId && !!startDate && !!endDate,
   });
 
-export const useUserAuditLogs = (userId: string | undefined, page = 1, limit = 20) =>
+export const useUserAuditLogs = (
+  userId: string | undefined,
+  page = 1,
+  limit = 20,
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: ['auditLogs', userId, page, limit],
     queryFn: () =>
@@ -71,7 +78,7 @@ export const useUserAuditLogs = (userId: string | undefined, page = 1, limit = 2
           params: { page, limit },
         })
         .then((r) => r.data),
-    enabled: !!userId,
+    enabled: !!userId && (options?.enabled ?? true),
   });
 
 export const useCreateUser = () => {
@@ -120,6 +127,11 @@ export const useUpdateMe = () => {
     },
   });
 };
+
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: userApi.changePassword,
+  });
 
 import { useAuthStore } from '@/store/useAuthStore';
 

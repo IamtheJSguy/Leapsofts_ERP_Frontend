@@ -1,6 +1,7 @@
 import { Typography, Box, Button, useTheme } from '@mui/material';
 import { useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
 import { tokens } from '@/styles/tokens';
 
@@ -8,6 +9,7 @@ const AdminPage = () => {
   const [tab, setTab] = useState(0);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { canManageSystemSettings } = usePermissions();
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -22,7 +24,7 @@ const AdminPage = () => {
             color: isDarkMode ? '#fff' : tokens.text.primary,
           }}
         >
-          Admin Panel
+          {canManageSystemSettings ? 'Admin Panel' : 'Management Panel'}
         </Typography>
         <Typography
           variant="body1"
@@ -90,7 +92,7 @@ const AdminPage = () => {
 
       {/* Render Active Config Panel */}
       <Box sx={{ mt: 1 }}>
-        {tab === 0 ? <UserManagementTable /> : <SystemSettingsPanel />}
+        {tab === 0 ? <UserManagementTable /> : <SystemSettingsPanel readOnly={!canManageSystemSettings} />}
       </Box>
     </Box>
   );

@@ -3,24 +3,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { ROLES } from '@/lib/constants';
 
 export const usePermissions = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager, isElevated } = useAuth();
 
   return useMemo(
     () => ({
-      canManageUsers: isAdmin,
-      canManageKPIs: isAdmin,
-      canApproveKPIChanges: isAdmin,
-      canViewAdminDashboard: isAdmin,
-      canViewAdminReports: isAdmin,
+      canManageUsers: isElevated,
+      canManageKPIs: isElevated,
+      canApproveKPIChanges: isElevated,
+      canViewAdminDashboard: isElevated,
+      canViewAdminReports: isElevated,
+      canViewTeamDashboard: isElevated,
       canManageSystemSettings: isAdmin,
+      canViewSystemSettings: isElevated,
+      canPromoteRoles: isAdmin,
       canManageLeads: !!user,
       canViewKanban: !!user,
       canUseChat: !!user,
       canScheduleMeetings: !!user,
-      canGenerateReports: !!user,
+      canGenerateReports: isElevated,
       isAdmin,
+      isManager,
+      isElevated,
       isUser: user?.role === ROLES.USER,
     }),
-    [user, isAdmin],
+    [user, isAdmin, isManager, isElevated],
   );
 };

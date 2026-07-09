@@ -47,6 +47,7 @@ import {
   useEditComment, useDeleteComment, useShareBoard
 } from '@/hooks/api/useKanban';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { CommentText } from '@/components/kanban/CommentText';
@@ -341,6 +342,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
   const currentUser = useAuthStore((s) => s.user);
+  const { isElevated } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
 
   const mentionableUsers = useMemo(() => {
@@ -349,7 +351,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     return [...boardMembers, ...admins];
   }, [boardMembers, allUsers]);
 
-  const isAdminOrOwner = currentUser?.role === 'admin' || actualBoard?.ownerId === currentUser?._id;
+  const isAdminOrOwner = isElevated || actualBoard?.ownerId === currentUser?._id;
 
   const handleConfirmSave = () => {
     // Update assignees and dates via assignCard
@@ -1029,8 +1031,8 @@ export const KanbanBoardPage = () => {
   }, [actualBoard]);
 
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
-  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isAdmin;
+  const { isElevated } = useAuth();
+  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isElevated;
 
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];

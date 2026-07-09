@@ -23,6 +23,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ShieldIcon from '@mui/icons-material/Shield';
 import PersonIcon from '@mui/icons-material/Person';
 import { useUsers, useDeleteUser } from '@/hooks/api/useUsers';
+import { usePermissions } from '@/hooks/usePermissions';
 import { getDisplayName } from '@/utils/formatters';
 import { RoleAssignmentModal } from './RoleAssignmentModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -33,6 +34,7 @@ import type { User } from '@/types';
 export const UserManagementTable = () => {
   const { data: users = [], isLoading } = useUsers();
   const deleteUser = useDeleteUser();
+  const { canPromoteRoles } = usePermissions();
   const [roleUser, setRoleUser] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -269,6 +271,7 @@ export const UserManagementTable = () => {
                     {/* Actions */}
                     <TableCell sx={{ py: 1.75, borderBottom: 0, textAlign: 'right', pr: 4 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                        {canPromoteRoles && (
                         <IconButton
                           size="small"
                           onClick={() => setRoleUser(user)}
@@ -288,6 +291,7 @@ export const UserManagementTable = () => {
                         >
                           <EditIcon sx={{ fontSize: 16 }} />
                         </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           onClick={() => setDeleteId(user._id)}

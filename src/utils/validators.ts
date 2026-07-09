@@ -18,6 +18,21 @@ export const registerSchema = z.object({
   lastName: z.string().optional(),
 });
 
+export const changePasswordSchema = z
+  .object({
+    oldPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+    confirmNewPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmNewPassword'],
+  })
+  .refine((data) => data.oldPassword !== data.newPassword, {
+    message: 'New password must be different from current password',
+    path: ['newPassword'],
+  });
+
 export const leadSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
@@ -68,7 +83,7 @@ export const userSchema = z.object({
   password: z.string().min(8).optional().or(z.literal('')),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  role: z.enum([ROLES.ADMIN, ROLES.USER]),
+  role: z.enum([ROLES.ADMIN, ROLES.MANAGER, ROLES.USER]),
 });
 
 export const enrichmentSchema = z.object({

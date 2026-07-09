@@ -11,7 +11,7 @@ import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
 
 const DashboardPage = () => {
-  const { isAdmin, user } = useAuth();
+  const { isElevated, user } = useAuth();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -445,7 +445,7 @@ const DashboardPage = () => {
       )}
 
       {/* Main Dashboard Render */}
-      {isAdmin ? <AdminDashboard /> : <UserDashboard />}
+      {isElevated ? <AdminDashboard /> : <UserDashboard />}
     </Box>
   );
 };

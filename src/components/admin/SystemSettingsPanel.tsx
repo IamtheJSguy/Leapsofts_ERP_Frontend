@@ -18,7 +18,7 @@ import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/api/useSetti
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
-export const SystemSettingsPanel = () => {
+export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }) => {
   const { data: settings, isLoading } = useSystemSettings();
   const updateSettings = useUpdateSystemSettings();
   const addToast = useUIStore((s) => s.addToast);
@@ -152,6 +152,7 @@ export const SystemSettingsPanel = () => {
                 fullWidth
                 value={retentionMonths}
                 onChange={(e) => setRetentionMonths(e.target.value)}
+                disabled={readOnly}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '16px',
@@ -207,6 +208,7 @@ export const SystemSettingsPanel = () => {
                     color="primary"
                     checked={dailyReportEnabled}
                     onChange={(e) => setDailyReportEnabled(e.target.checked)}
+                    disabled={readOnly}
                   />
                 </Box>
 
@@ -219,6 +221,7 @@ export const SystemSettingsPanel = () => {
                     color="primary"
                     checked={weeklyReportEnabled}
                     onChange={(e) => setWeeklyReportEnabled(e.target.checked)}
+                    disabled={readOnly}
                   />
                 </Box>
               </Box>
@@ -226,6 +229,7 @@ export const SystemSettingsPanel = () => {
           </Grid>
         </Grid>
 
+        {!readOnly && (
         <Box sx={{ mt: 5, display: 'flex', justifyContent: 'flex-start' }}>
           <Button
             variant="contained"
@@ -260,6 +264,7 @@ export const SystemSettingsPanel = () => {
             {updateSettings.isPending ? 'Saving...' : 'Save Configuration'}
           </Button>
         </Box>
+        )}
       </Box>
     </Paper>
   );
