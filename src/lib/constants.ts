@@ -43,14 +43,19 @@ export const ROLES = {
 
 export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
+  MESSAGE_READ: 'message:read',
   NOTIFICATION_NEW: 'notification:new',
   KANBAN_CARD_MOVED: 'kanban:card_moved',
   KANBAN_COMMENT_ADDED: 'kanban:comment_added',
   LEAD_STATUS_CHANGED: 'lead:status_changed',
   USER_ONLINE: 'user:online',
+  CONVERSATION_NEW: 'conversation:new',
+  CONVERSATION_UPDATED: 'conversation:updated',
   JOIN_ROOM: 'join:room',
   LEAVE_ROOM: 'leave:room',
   SHIFT_UPDATED: 'shift:updated',
+  CHAT_JOIN: 'chat:join',
+  CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
 } as const;
 

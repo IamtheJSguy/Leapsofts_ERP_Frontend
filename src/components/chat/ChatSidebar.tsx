@@ -33,7 +33,7 @@ export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
-  const { activeConversationId, setActiveConversation, typingUsers } = useChatStore();
+  const { activeConversationId, setActiveConversation, typingUsers, unreadCounts, clearUnread } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -210,7 +210,7 @@ export const ChatSidebar = () => {
             {filteredConversations.map((conv: any) => {
               const active = activeConversationId === conv._id;
               const details = conv.details;
-              const unreadCount = conv.unreadCount || 0;
+              const unreadCount = Math.max(conv.unreadCount || 0, unreadCounts[conv._id] || 0);
               const typingUsersInConv = typingUsers[conv._id] || [];
               const otherTypingUsers = typingUsersInConv.filter((id) => id !== currentUser?._id);
 
@@ -220,6 +220,7 @@ export const ChatSidebar = () => {
                   selected={active}
                   onClick={() => {
                     setActiveConversation(conv._id);
+                    clearUnread(conv._id);
                     setSearchQuery('');
                   }}
                   sx={{
@@ -287,6 +288,7 @@ export const ChatSidebar = () => {
 
                   {/* Text details */}
                   <ListItemText
+                    secondaryTypographyProps={{ component: 'div' }}
                     primary={
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                         <Typography
@@ -301,7 +303,7 @@ export const ChatSidebar = () => {
                         >
                           {details.name}
                         </Typography>
-                        {conv.updatedAt && (
+                        {(conv.lastMessageAt || conv.updatedAt) && (
                           <Typography
                             variant="caption"
                             sx={{
@@ -311,7 +313,7 @@ export const ChatSidebar = () => {
                               fontWeight: 500,
                             }}
                           >
-                            {formatDateTime(conv.updatedAt).split(' ')[0]}
+                            {formatDateTime(conv.lastMessageAt || conv.updatedAt).split(' ')[0]}
                           </Typography>
                         )}
                       </Box>

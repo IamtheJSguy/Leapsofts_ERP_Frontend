@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { queryClient } from './queryClient';
 import { useAuthStore } from '@/store/useAuthStore';
+import { disconnectSocket, refreshSocketAuth } from '@/lib/socket';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -51,11 +52,13 @@ api.interceptors.response.use(
         );
         const accessToken = data.data.accessToken as string;
         localStorage.setItem('accessToken', accessToken);
+        refreshSocketAuth(accessToken);
         onRefreshed(accessToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem('accessToken');
+        disconnectSocket();
         useAuthStore.getState().clearAuth();
         queryClient.clear();
         window.location.href = '/login';

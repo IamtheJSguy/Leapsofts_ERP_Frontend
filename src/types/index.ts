@@ -422,6 +422,7 @@ export interface Conversation {
   admin?: string | User;
   participants: User[];
   lastMessage?: Message;
+  lastMessageAt?: string;
   unreadCount?: number;
   updatedAt: string;
 }
@@ -455,7 +456,8 @@ export interface DriveFile {
 export interface Message {
   _id: string;
   conversationId: string;
-  sender: string | User;
+  senderId?: string | User;
+  sender?: string | User;
   content: string;
   type: 'text' | 'file' | 'drive_file';
   fileUrl?: string;
@@ -464,6 +466,7 @@ export interface Message {
   driveMimeType?: string;
   driveWebViewLink?: string;
   driveIconLink?: string;
+  readBy?: string[];
   createdAt: string;
 }
 

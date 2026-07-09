@@ -17,7 +17,15 @@ const chatApi = {
     driveWebViewLink?: string;
     driveIconLink?: string;
   }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
-  createConversation: (data: { participantId?: string; isGroup?: boolean; name?: string; description?: string; participantIds?: string[] }) => {
+  markRead: (conversationId: string) =>
+    api.post(`/chat/conversations/${conversationId}/read`),
+  createConversation: (data: {
+    participantId?: string;
+    isGroup?: boolean;
+    name?: string;
+    description?: string;
+    participantIds?: string[];
+  }) => {
     if (data.isGroup) {
       return api.post('/chat/conversations/group', {
         name: data.name,
@@ -30,20 +38,26 @@ const chatApi = {
   searchMessages: (query: string) =>
     api.get('/chat/search', { params: { q: query } }),
   addGroupMember: (data: { conversationId: string; participantId: string }) =>
-    api.post(`/chat/conversations/group/${data.conversationId}/participants`, { participantId: data.participantId }),
+    api.post(`/chat/conversations/group/${data.conversationId}/participants`, {
+      participantId: data.participantId,
+    }),
   removeGroupMember: (data: { conversationId: string; participantId: string }) =>
-    api.delete(`/chat/conversations/group/${data.conversationId}/participants/${data.participantId}`),
+    api.delete(
+      `/chat/conversations/group/${data.conversationId}/participants/${data.participantId}`,
+    ),
 };
-
 
 export const useConversations = () =>
   useQuery({
     queryKey: ['conversations'],
-    queryFn: () => chatApi.getConversations().then((r) => {
-      const data = r.data.data || [];
-      return data;
-    }),
-    refetchInterval: 3000,
+    queryFn: () =>
+      chatApi.getConversations().then((r) => {
+        const data = r.data.data || [];
+        return data;
+      }),
+    // Sockets deliver live updates, but this is the fallback if a message
+    // was missed while the socket was disconnected (e.g. tab was backgrounded).
+    refetchOnWindowFocus: true,
   });
 
 export const useMessages = (conversationId: string | null, params: Record<string, string> = {}) =>
@@ -51,16 +65,57 @@ export const useMessages = (conversationId: string | null, params: Record<string
     queryKey: ['messages', conversationId, params],
     queryFn: () => chatApi.getMessages(conversationId!, params).then((r) => r.data.data),
     enabled: !!conversationId,
-    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: chatApi.sendMessage,
-    onSuccess: (_res, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (res, variables) => {
+      const message = (res.data as { data: Message }).data;
+      if (message) {
+        queryClient.setQueriesData<Message[]>(
+          { queryKey: ['messages', variables.conversationId] },
+          (old) => {
+            if (!old) return [message];
+            if (old.some((m) => m._id === message._id)) return old;
+            return [...old, message];
+          },
+        );
+        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+          if (!old) return old;
+          const updated = old.map((conv) =>
+            conv._id === variables.conversationId
+              ? { ...conv, lastMessage: message, updatedAt: message.createdAt, unreadCount: 0 }
+              : conv,
+          );
+          const idx = updated.findIndex((c) => c._id === variables.conversationId);
+          if (idx > 0) {
+            const [item] = updated.splice(idx, 1);
+            updated.unshift(item);
+          }
+          return updated;
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      }
+    },
+  });
+};
+
+export const useMarkConversationRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) => chatApi.markRead(conversationId),
+    onSuccess: (_res, conversationId) => {
+      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        if (!old) return old;
+        return old.map((conv) =>
+          conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
+        );
+      });
     },
   });
 };

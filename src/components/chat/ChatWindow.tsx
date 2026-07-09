@@ -21,7 +21,7 @@ import AddToDriveIcon from '@mui/icons-material/AddToDrive';
 import ImageIcon from '@mui/icons-material/Image';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useMessages, useSendMessage, useConversations, useCreateConversation } from '@/hooks/api/useChat';
+import { useMessages, useSendMessage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,13 +38,14 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
-  const { activeConversationId, setActiveConversation } = useChatStore();
+  const { activeConversationId, setActiveConversation, clearUnread } = useChatStore();
   const { user } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
   const { data: messages = [], isLoading } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
   const createConversation = useCreateConversation();
+  const markRead = useMarkConversationRead();
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const { joinChat, leaveChat, emitTyping } = useSocket();
@@ -67,11 +68,31 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
 
   useEffect(() => {
-    if (activeConversationId) {
-      joinChat(activeConversationId);
-      return () => leaveChat(activeConversationId);
+    if (!activeConversationId || activeConversationId.startsWith('mock-')) return;
+
+    joinChat(activeConversationId);
+    clearUnread(activeConversationId);
+    markRead.mutate(activeConversationId);
+
+    return () => leaveChat(activeConversationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when conversation changes
+  }, [activeConversationId, joinChat, leaveChat, clearUnread]);
+
+  // Mark as read when new messages arrive while this conversation is open
+  const lastMarkedMessageId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeConversationId || activeConversationId.startsWith('mock-') || messages.length === 0) return;
+    const last = messages[messages.length - 1] as any;
+    if (!last?._id || last._id === lastMarkedMessageId.current) return;
+    lastMarkedMessageId.current = last._id;
+    const senderRef = last.senderId || last.sender;
+    const senderId = typeof senderRef === 'object' ? senderRef?._id : senderRef;
+    if (senderId !== user?._id) {
+      clearUnread(activeConversationId);
+      markRead.mutate(activeConversationId);
     }
-  }, [activeConversationId, joinChat, leaveChat]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, activeConversationId, user?._id, clearUnread]);
 
   // Intercept and generate mock messages if this is a mock conversation
   const mockMessages = useMemo(() => {
