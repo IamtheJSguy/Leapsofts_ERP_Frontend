@@ -33,6 +33,7 @@ import {
   LinearProgress,
   Alert,
   Tooltip,
+  IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -42,16 +43,20 @@ import WarningIcon from '@mui/icons-material/Warning';
 import LinkIcon from '@mui/icons-material/Link';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
+import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
+import type { Lead } from '@/types';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
-import { useLeads, useQualifyLead } from '@/hooks/api/useLeads';
+import { useLeads, useQualifyLead, useCreateLead, useUpdateLead } from '@/hooks/api/useLeads';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckIcon from '@mui/icons-material/Check';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
@@ -233,6 +238,7 @@ export const SalesPage = () => {
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('All Users');
+  const [selectedIcp, setSelectedIcp] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
   const [activeCard, setActiveCard] = useState('TOTAL PROSPECTS');
 
@@ -246,6 +252,112 @@ export const SalesPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Inline Lead Creation State
+  const [isAddingInline, setIsAddingInline] = useState(false);
+  const [newLeadData, setNewLeadData] = useState<Partial<Lead>>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    icp: '',
+    profile: '',
+    connectionStatus: 'pending',
+    messageStatus: 'not_sent',
+    linkedinMsg: ''
+  });
+  const createLead = useCreateLead();
+
+  const handleInlineSave = () => {
+    createLead.mutate(newLeadData, {
+      onSuccess: () => {
+        addToast({ message: 'Lead created successfully', severity: 'success' });
+        setIsAddingInline(false);
+        setNewLeadData({
+          firstName: '', lastName: '', email: '', icp: '', profile: '',
+          connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: ''
+        });
+      },
+      onError: (err: any) => {
+        const errorMsg = err?.response?.data?.error?.message || 'Failed to create lead';
+        addToast({ message: errorMsg, severity: 'error' });
+      }
+    });
+  };
+
+  // Multi-Row Inline Edit State
+  const [editingLeads, setEditingLeads] = useState<Record<string, any>>({});
+  const updateLead = useUpdateLead();
+
+  const handleEditClick = (prospect: any) => {
+    setEditingLeads((prev) => ({
+      ...prev,
+      [prospect._id]: {
+        firstName: prospect.firstName || '',
+        lastName: prospect.lastName || '',
+        email: prospect.email || '',
+        icp: prospect.icp || '',
+        profile: prospect.profile || '',
+        connectionStatus: prospect.connectionStatus || 'pending',
+        messageStatus: prospect.messageStatus || 'not_sent',
+        linkedinMsg: prospect.linkedinMsg || ''
+      }
+    }));
+  };
+
+  const handleEditChange = (id: string, field: string, value: string) => {
+    setEditingLeads((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleEditSave = (id: string, originalProspect?: any) => {
+    const dataToSave = editingLeads[id];
+    if (!dataToSave) return;
+    
+    if (originalProspect) {
+      const hasChanged = 
+        dataToSave.firstName !== (originalProspect.firstName || '') ||
+        dataToSave.lastName !== (originalProspect.lastName || '') ||
+        dataToSave.email !== (originalProspect.email || '') ||
+        dataToSave.icp !== (originalProspect.icp || '') ||
+        dataToSave.profile !== (originalProspect.profile || '') ||
+        dataToSave.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
+        dataToSave.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
+        dataToSave.linkedinMsg !== (originalProspect.linkedinMsg || '');
+        
+      if (!hasChanged) {
+        handleEditCancel(id);
+        return;
+      }
+    }
+
+    updateLead.mutate({ id, data: dataToSave }, {
+      onSuccess: () => {
+        addToast({ message: 'Lead updated successfully', severity: 'success' });
+        setEditingLeads((prev) => {
+          const newState = { ...prev };
+          delete newState[id];
+          return newState;
+        });
+      },
+      onError: (err: any) => {
+        const errorMsg = err?.response?.data?.error?.message || 'Failed to update lead';
+        addToast({ message: errorMsg, severity: 'error' });
+      }
+    });
+  };
+
+  const handleEditCancel = (id: string) => {
+    setEditingLeads((prev) => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
     return () => clearTimeout(timer);
@@ -253,7 +365,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedStatus, activeCard, startDate, endDate]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedStatus, activeCard, startDate, endDate]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -261,6 +373,7 @@ export const SalesPage = () => {
       limit: rowsPerPage,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
+      ...(selectedIcp ? { icp: selectedIcp } : {}),
       ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
@@ -827,6 +940,36 @@ export const SalesPage = () => {
               />
             )}
 
+            {/* ICP Filter - Admin Only */}
+            {isAdmin && (
+              <TextField
+                size="small"
+                placeholder="Filter by Campaign (ICP)"
+                value={selectedIcp}
+                onChange={(e) => setSelectedIcp(e.target.value)}
+                sx={{
+                  flexGrow: 1,
+                  minWidth: { xs: '100%', sm: 180 },
+                  maxWidth: { sm: 240 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '20px',
+                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                    height: 42,
+                    fontSize: '0.84rem',
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: tokens.brand.primary,
+                    },
+                  },
+                }}
+              />
+            )}
+
             {/* Status Select Dropdown */}
             <FormControl sx={filterSelectSx}>
               <Select
@@ -852,36 +995,58 @@ export const SalesPage = () => {
               </Select>
             </FormControl>
 
-            {/* Add Prospect Action Button */}
-            <Button
-              variant="contained"
-              startIcon={isAdmin ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => {
-                if (isAdmin) {
-                  handleAdminSync();
-                } else {
-                  setIsLinkDialogOpen(true);
-                }
-              }}
-              sx={{
-                bgcolor: tokens.brand.primary,
-                color: '#fff',
-                textTransform: 'none',
-                borderRadius: '24px',
-                height: 42,
-                px: 3,
-                fontWeight: 700,
-                fontSize: '0.84rem',
-                boxShadow: 'none',
-                alignSelf: { xs: 'stretch', sm: 'auto' },
-                '&:hover': {
-                  bgcolor: tokens.brand.primaryLight,
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', gap: 1.5, alignSelf: { xs: 'stretch', sm: 'auto' } }}>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setIsAddingInline(true)}
+                sx={{
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#fff' : tokens.text.primary,
+                  textTransform: 'none',
+                  borderRadius: '24px',
+                  height: 42,
+                  px: 3,
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  '&:hover': {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                  },
+                }}
+              >
+                Add Lead
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={isAdmin ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
+                onClick={() => {
+                  if (isAdmin) {
+                    handleAdminSync();
+                  } else {
+                    setIsLinkDialogOpen(true);
+                  }
+                }}
+                sx={{
+                  bgcolor: tokens.brand.primary,
+                  color: '#fff',
+                  textTransform: 'none',
+                  borderRadius: '24px',
+                  height: 42,
+                  px: 3,
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
                   boxShadow: 'none',
-                },
-              }}
-            >
-              {isAdmin ? 'Sync Now' : 'Connect and sync'}
-            </Button>
+                  '&:hover': {
+                    bgcolor: tokens.brand.primaryLight,
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                {isAdmin ? 'Sync Now' : 'Connect and sync'}
+              </Button>
+            </Box>
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
@@ -1004,11 +1169,127 @@ export const SalesPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
+                  {isAddingInline && (
+                    <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderBottom: `2px solid ${tokens.brand.primary}` }}>
+                      <TableCell sx={{ py: 2, pl: 3 }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <TextField size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            <TextField size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                          </Box>
+                          <TextField size="small" placeholder="Email" value={newLeadData.email} onChange={(e) => setNewLeadData({ ...newLeadData, email: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                          <TextField size="small" placeholder="Campaign (ICP)" value={newLeadData.icp} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                          <TextField size="small" placeholder="Profile" value={newLeadData.profile} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'row' }}>
+                          <Select size="small" value={newLeadData.connectionStatus} onChange={(e) => setNewLeadData({ ...newLeadData, connectionStatus: e.target.value as any })} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 } }}>
+                            <MenuItem value="pending">Conn: Pending</MenuItem>
+                            <MenuItem value="accepted">Conn: Accepted</MenuItem>
+                            <MenuItem value="declined">Conn: Declined</MenuItem>
+                            <MenuItem value="no_response">Conn: No Response</MenuItem>
+                          </Select>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Select size="small" value={newLeadData.messageStatus} onChange={(e) => setNewLeadData({ ...newLeadData, messageStatus: e.target.value as any, linkedinMsg: e.target.value })} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
+                          <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
+                          <MenuItem value="sent">Msg: Sent</MenuItem>
+                          <MenuItem value="replied">Msg: Replied</MenuItem>
+                          <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
+                          <MenuItem value="negative">Msg: Negative</MenuItem>
+                          <MenuItem value="positive">Msg: Positive</MenuItem>
+                          <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
+                        </Select>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.disabled' }}>Just now</Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ py: 2, pr: 3 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                          <IconButton onClick={handleInlineSave} sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}>
+                            <CheckIcon sx={{ fontSize: 20 }} />
+                          </IconButton>
+                          <IconButton onClick={() => setIsAddingInline(false)} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
+                            <CloseIcon sx={{ fontSize: 20 }} />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {prospects.map((prospect) => {
+                    const isEditing = !!editingLeads[prospect._id];
+                    if (isEditing) {
+                      const editData = editingLeads[prospect._id];
+                      return (
+                        <TableRow key={`edit-${prospect._id}`} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderBottom: `2px solid ${tokens.brand.primary}` }}>
+                          <TableCell sx={{ py: 2, pl: 3 }}>
+                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <TextField size="small" placeholder="First Name" value={editData.firstName} onChange={(e) => handleEditChange(prospect._id, 'firstName', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                                <TextField size="small" placeholder="Last Name" value={editData.lastName} onChange={(e) => handleEditChange(prospect._id, 'lastName', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                              </Box>
+                              <TextField size="small" placeholder="Email" value={editData.email} onChange={(e) => handleEditChange(prospect._id, 'email', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ py: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                              <TextField size="small" placeholder="Campaign (ICP)" value={editData.icp} onChange={(e) => handleEditChange(prospect._id, 'icp', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                              <TextField size="small" placeholder="Profile" value={editData.profile} onChange={(e) => handleEditChange(prospect._id, 'profile', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ py: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'row' }}>
+                              <Select size="small" value={editData.connectionStatus} onChange={(e) => handleEditChange(prospect._id, 'connectionStatus', e.target.value)} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 } }}>
+                                <MenuItem value="pending">Conn: Pending</MenuItem>
+                                <MenuItem value="accepted">Conn: Accepted</MenuItem>
+                                <MenuItem value="declined">Conn: Declined</MenuItem>
+                                <MenuItem value="no_response">Conn: No Response</MenuItem>
+                              </Select>
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ py: 2 }}>
+                            <Select size="small" value={editData.messageStatus} onChange={(e) => {
+                                handleEditChange(prospect._id, 'messageStatus', e.target.value);
+                                handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
+                              }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
+                                <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
+                                <MenuItem value="sent">Msg: Sent</MenuItem>
+                                <MenuItem value="replied">Msg: Replied</MenuItem>
+                                <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
+                                <MenuItem value="negative">Msg: Negative</MenuItem>
+                                <MenuItem value="positive">Msg: Positive</MenuItem>
+                                <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
+                            </Select>
+                          </TableCell>
+                          <TableCell sx={{ py: 2 }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.disabled' }}>Just now</Typography>
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: 2, pr: 3 }}>
+                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                              <IconButton onClick={() => handleEditSave(prospect._id, prospect)} sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}>
+                                <CheckIcon sx={{ fontSize: 20 }} />
+                              </IconButton>
+                              <IconButton onClick={() => handleEditCancel(prospect._id)} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
+                                <CloseIcon sx={{ fontSize: 20 }} />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
-                    const connToken = (connectionStatusTokens as any)[prospect.connectionStatus || 'not_sent'] || connectionStatusTokens.not_sent;
+                    const connToken = (connectionStatusTokens as any)[prospect.connectionStatus || 'pending'] || connectionStatusTokens.pending;
                     const msgToken = (messageStatusTokens as any)[prospect.messageStatus || 'not_sent'] || messageStatusTokens.not_sent;
 
                     const lkMsgStyle = getLinkedinMsgStyle(prospect.linkedinMsg);
@@ -1069,7 +1350,7 @@ export const SalesPage = () => {
 
                         {/* Outreach Connection/Message Status */}
                         <TableCell sx={{ py: 2, borderBottom: 0 }}>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
                             <Chip
                               label={`Conn: ${prospect.connectionStatus || 'not_sent'}`}
                               size="small"
@@ -1134,6 +1415,21 @@ export const SalesPage = () => {
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <Tooltip title="Edit Prospect" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditClick(prospect)}
+                                sx={{
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                    color: tokens.brand.primary,
+                                  }
+                                }}
+                              >
+                                <EditIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
                             {prospect.isQualified ? (
                               <Chip
                                 icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
