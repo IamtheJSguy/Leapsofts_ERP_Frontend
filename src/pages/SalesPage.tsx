@@ -271,13 +271,28 @@ export const SalesPage = () => {
     messageStatus: 'not_sent',
     linkedinMsg: ''
   });
+  const [addLeadErrors, setAddLeadErrors] = useState<Record<string, boolean>>({});
   const createLead = useCreateLead();
 
   const handleInlineSave = () => {
+    const errors: Record<string, boolean> = {};
+    if (!newLeadData.firstName?.trim()) errors.firstName = true;
+    if (!newLeadData.lastName?.trim()) errors.lastName = true;
+    if (!newLeadData.icp?.trim()) errors.icp = true;
+    if (!newLeadData.profile?.trim()) errors.profile = true;
+
+    if (Object.keys(errors).length > 0) {
+      setAddLeadErrors(errors);
+      addToast({ message: 'Please fill in all required fields.', severity: 'error' });
+      return;
+    }
+
+    setAddLeadErrors({});
     createLead.mutate(newLeadData, {
       onSuccess: () => {
         addToast({ message: 'Lead created successfully', severity: 'success' });
         setIsAddingInline(false);
+        setAddLeadErrors({});
         setNewLeadData({
           firstName: '', lastName: '', email: '', icp: '', profile: '',
           connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: ''
@@ -1230,21 +1245,21 @@ export const SalesPage = () => {
                       <TableCell sx={{ py: 2, pl: 3 }}>
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <TextField size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                            <TextField size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            <TextField error={addLeadErrors.firstName} size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            <TextField error={addLeadErrors.lastName} size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
                           </Box>
                           <TextField size="small" placeholder="Email" value={newLeadData.email} onChange={(e) => setNewLeadData({ ...newLeadData, email: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
                         </Box>
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                          <TextField select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                          <TextField error={addLeadErrors.icp} select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
                             <MenuItem value=""><em>No ICP</em></MenuItem>
                             {icpsList.map((icp) => (
                               <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
                             ))}
                           </TextField>
-                          <TextField select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                          <TextField error={addLeadErrors.profile} select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
                             <MenuItem value=""><em>No Profile</em></MenuItem>
                             {profileUsersList.map((u: any) => (
                               <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
@@ -1282,7 +1297,7 @@ export const SalesPage = () => {
                           <IconButton onClick={handleInlineSave} sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}>
                             <CheckIcon sx={{ fontSize: 20 }} />
                           </IconButton>
-                          <IconButton onClick={() => setIsAddingInline(false)} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
+                          <IconButton onClick={() => { setIsAddingInline(false); setAddLeadErrors({}); }} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
                             <CloseIcon sx={{ fontSize: 20 }} />
                           </IconButton>
                         </Box>
