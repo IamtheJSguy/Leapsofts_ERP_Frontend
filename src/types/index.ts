@@ -620,7 +620,6 @@ export interface LeadFilters {
   sortBy?: string;
   order?: 'asc' | 'desc';
   search?: string;
-  icp?: string;
 }
 
 export interface ValidationResult {
