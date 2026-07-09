@@ -24,6 +24,8 @@ import {
   useTheme,
   alpha,
   Badge,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -58,10 +60,20 @@ import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { formatDate } from '@/utils/formatters';
 import { getSocket } from '@/lib/socket';
+import { CreateTeamModal } from '@/components/team/CreateTeamModal';
+import { AddExistingTeamMemberPanel } from '@/components/team/AddExistingTeamMemberPanel';
+import { useMyTeam } from '@/hooks/api/useTeam';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ROLES } from '@/lib/constants';
+import type { Role } from '@/types';
 
 const TeamPage = () => {
   const navigate = useNavigate();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, isManager, canManageUsers, canPromoteRoles } = usePermissions();
+  const currentUser = useAuthStore((s) => s.user);
+  const teamQuery = useMyTeam();
+  const showCreateTeam = isManager && teamQuery.isError;
+  const canAddExistingMember = isManager && !showCreateTeam;
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -89,7 +101,7 @@ const TeamPage = () => {
 
   // Load summary for the selected user if one is active
   const { data: userSummary } = useUserSummary(selectedUser?._id, summaryDate);
-  const { data: auditResponse } = useUserAuditLogs(selectedUser?._id, activityPage, 20);
+  const { data: auditResponse } = useUserAuditLogs(selectedUser?._id, activityPage, 20, { enabled: isAdmin });
 
   // Fetch kanban boards to resolve actual projects/boards for this user
   const { data: boards = [] } = useKanbanBoards();
@@ -136,7 +148,8 @@ const TeamPage = () => {
   const [jobTitle, setJobTitle] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('Engineering');
-  const [roleSelection, setRoleSelection] = useState<'user' | 'admin'>('user');
+  const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
+  const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
 
   const filteredTeam = useMemo(() => {
@@ -166,7 +179,8 @@ const TeamPage = () => {
     setJobTitle('');
     setPhone('');
     setDepartment('Engineering');
-    setRoleSelection('user');
+    setRoleSelection(ROLES.USER);
+    setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
   };
@@ -188,7 +202,7 @@ const TeamPage = () => {
       password,
       firstName,
       lastName,
-      role: roleSelection,
+      role: isAdmin ? roleSelection : ROLES.USER,
       jobTitle,
       phone,
       department,
@@ -709,8 +723,9 @@ const TeamPage = () => {
                     onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
                     sx={inputSx}
                   >
-                    <MenuItem value="user">User</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value={ROLES.USER}>User</MenuItem>
+                    {canPromoteRoles && <MenuItem value={ROLES.MANAGER}>Manager</MenuItem>}
+                    {canPromoteRoles && <MenuItem value={ROLES.ADMIN}>Admin</MenuItem>}
                   </TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -838,8 +853,8 @@ const TeamPage = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Activity Log Card */}
-        {(() => {
+        {/* Activity Log Card — admin only */}
+        {isAdmin && (() => {
           const allMockActivities = auditResponse?.data || [];
           const pageSize = 20;
           const totalPages = Math.ceil((auditResponse?.meta?.total || 0) / pageSize);
@@ -1021,6 +1036,7 @@ const TeamPage = () => {
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
+      {showCreateTeam && <CreateTeamModal open />}
       {/* Page Header */}
       <Box
         sx={{
@@ -1056,7 +1072,7 @@ const TeamPage = () => {
           </Typography>
         </Box>
 
-        {isAdmin && (
+        {canManageUsers && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -1486,8 +1502,8 @@ const TeamPage = () => {
           },
         }}
       >
-        <Box component="form" onSubmit={handleAddMember}>
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2, pt: 2, px: 3 }}>
+        <Box component={addMemberTab === 'create' ? 'form' : 'div'} onSubmit={addMemberTab === 'create' ? handleAddMember : undefined}>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: canAddExistingMember ? 1 : 2, pt: 2, px: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', color: isDarkMode ? '#fff' : tokens.text.primary, fontFamily: 'system-ui, sans-serif' }}>
               Add Team Member
             </Typography>
@@ -1503,6 +1519,26 @@ const TeamPage = () => {
             </IconButton>
           </DialogTitle>
 
+          {canAddExistingMember && (
+            <Box sx={{ px: 3, pb: 1 }}>
+              <Tabs
+                value={addMemberTab}
+                onChange={(_, value: 'create' | 'existing') => setAddMemberTab(value)}
+                sx={{
+                  minHeight: 40,
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    minHeight: 40,
+                  },
+                }}
+              >
+                <Tab label="Create new" value="create" />
+                <Tab label="Add existing" value="existing" />
+              </Tabs>
+            </Box>
+          )}
+
           <DialogContent
             sx={{
               px: 3,
@@ -1516,6 +1552,14 @@ const TeamPage = () => {
               '-ms-overflow-style': 'none',
             }}
           >
+            {addMemberTab === 'existing' && canAddExistingMember ? (
+              <AddExistingTeamMemberPanel
+                onAdded={() => {
+                  setIsAddOpen(false);
+                  handleResetForm();
+                }}
+              />
+            ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1.5 }}>
 
               {/* Row 1: Full Name & Email */}
@@ -1647,7 +1691,8 @@ const TeamPage = () => {
                     Role
                   </Typography>
 
-                  {/* Segmented Toggler (Pill Toggler matching mockup reference) */}
+                  {/* Role selection — admin only; managers always create employees */}
+                  {canPromoteRoles ? (
                   <Box
                     sx={{
                       display: 'flex',
@@ -1660,43 +1705,37 @@ const TeamPage = () => {
                       boxSizing: 'border-box',
                     }}
                   >
-                    <Box
-                      onClick={() => setRoleSelection('user')}
-                      sx={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        bgcolor: roleSelection === 'user' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-                        color: roleSelection === 'user' ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
-                        fontWeight: 700,
-                        fontSize: '0.82rem',
-                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}
-                    >
-                      Employee
-                    </Box>
-                    <Box
-                      onClick={() => setRoleSelection('admin')}
-                      sx={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        bgcolor: roleSelection === 'admin' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-                        color: roleSelection === 'admin' ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
-                        fontWeight: 700,
-                        fontSize: '0.82rem',
-                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}
-                    >
-                      Admin
-                    </Box>
+                    {([
+                      { value: ROLES.USER, label: 'Employee' },
+                      { value: ROLES.MANAGER, label: 'Manager' },
+                      { value: ROLES.ADMIN, label: 'Admin' },
+                    ] as const).map(({ value, label }) => (
+                      <Box
+                        key={value}
+                        onClick={() => setRoleSelection(value)}
+                        sx={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          bgcolor: roleSelection === value ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+                          color: roleSelection === value ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        }}
+                      >
+                        {label}
+                      </Box>
+                    ))}
                   </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
+                      New members are added as employees on your team.
+                    </Typography>
+                  )}
                 </Grid>
               </Grid>
 
@@ -1726,6 +1765,7 @@ const TeamPage = () => {
                 />
               </Box>
             </Box>
+            )}
           </DialogContent>
 
           {/* Action CTAs */}
@@ -1743,8 +1783,9 @@ const TeamPage = () => {
                 '&:hover': { bgcolor: 'transparent', color: tokens.brand.primary }
               }}
             >
-              Cancel
+              {addMemberTab === 'existing' && canAddExistingMember ? 'Close' : 'Cancel'}
             </Button>
+            {!(addMemberTab === 'existing' && canAddExistingMember) && (
             <Button
               type="submit"
               variant="contained"
@@ -1770,6 +1811,7 @@ const TeamPage = () => {
             >
               {createUserMutation.isPending ? 'Adding...' : 'Add Member'}
             </Button>
+            )}
           </DialogActions>
         </Box>
       </Dialog>

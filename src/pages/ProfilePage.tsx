@@ -387,7 +387,7 @@ export default function ProfilePage() {
           </Typography>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
             <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {user?.role === 'admin' ? 'Administrator' : 'Sales Representative'}
+              {user?.role === 'admin' ? 'Administrator' : user?.role === 'manager' ? 'Manager' : 'Sales Representative'}
             </Typography>
             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'text.disabled' }} />
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>

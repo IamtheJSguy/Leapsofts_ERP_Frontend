@@ -15,6 +15,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useState, useEffect } from 'react';
 import { useUpdateUser } from '@/hooks/api/useUsers';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ROLES } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
@@ -34,6 +35,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
   const addToast = useUIStore((s) => s.addToast);
   const [confirmOpen, setConfirmOpen] = useState(false);
   
+  const { canPromoteRoles } = usePermissions();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -123,6 +125,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
             label="Role"
             value={role}
             onChange={(e) => setRole(e.target.value as any)}
+            disabled={!canPromoteRoles}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '16px',
@@ -150,6 +153,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
             }}
           >
             <MenuItem value={ROLES.ADMIN}>Admin</MenuItem>
+            <MenuItem value={ROLES.MANAGER}>Manager</MenuItem>
             <MenuItem value={ROLES.USER}>User</MenuItem>
           </TextField>
 
@@ -249,7 +253,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
     <ConfirmDialog
       open={confirmOpen}
       title="Update User Settings"
-      message={`Are you sure you want to change ${user?.email}'s role to "${role === ROLES.ADMIN ? 'Admin' : 'User'}"? This will affect their access permissions immediately.`}
+      message={`Are you sure you want to change ${user?.email}'s role to "${role === ROLES.ADMIN ? 'Admin' : role === ROLES.MANAGER ? 'Manager' : 'User'}"? This will affect their access permissions immediately.`}
       confirmLabel="Save Changes"
       cancelLabel="Cancel"
       isPending={updateUser.isPending}

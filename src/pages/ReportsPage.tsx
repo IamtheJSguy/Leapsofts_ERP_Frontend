@@ -15,7 +15,7 @@ import { ReportTable } from '@/components/reports/ReportTable';
 import { ReportExportButton } from '@/components/reports/ReportExportButton';
 import { AttendanceReportView } from '@/components/reports/AttendanceReportView';
 import { KpiPerformanceView } from '@/components/reports/KpiPerformanceView';
-import { useAuthStore } from '@/store/useAuthStore';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useReport } from '@/hooks/api/useReports';
 import { tokens } from '@/styles/tokens';
@@ -30,8 +30,7 @@ import type {
 const ReportsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
+  const { isElevated } = usePermissions();
 
   // Toggle state: 'generate' or 'history'
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate');
@@ -41,7 +40,7 @@ const ReportsPage = () => {
   const [reportType, setReportType] = useState<string>('user_summary');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
 
-  const { data: users = [] } = useUsers({}, { enabled: isAdmin });
+  const { data: users = [] } = useUsers({}, { enabled: isElevated });
 
   const selectedAgent = useMemo(() => {
     return users.find((u) => u._id === selectedAgentId) || null;
@@ -54,10 +53,10 @@ const ReportsPage = () => {
 
   // Default to first user if none selected
   useEffect(() => {
-    if (isAdmin && users.length > 0 && !selectedAgentId) {
+    if (isElevated && users.length > 0 && !selectedAgentId) {
       setSelectedAgentId(users[0]._id);
     }
-  }, [isAdmin, users, selectedAgentId]);
+  }, [isElevated, users, selectedAgentId]);
 
   // Fetch the selected report details (with polling while processing)
   const { data: selectedReport, isLoading: reportLoading } = useReport(selectedReportId ?? undefined);
@@ -313,7 +312,7 @@ const ReportsPage = () => {
   };
 
   // If not admin, redirect handled by router — this is a safety check
-  if (!isAdmin) return null;
+  if (!isElevated) return null;
 
   return (
     <Box sx={{ pb: 4 }}>

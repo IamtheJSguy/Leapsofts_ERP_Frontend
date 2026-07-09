@@ -302,7 +302,7 @@ export const Header = () => {
               </Typography>
               <Box sx={{ display: 'inline-flex', mt: 0.75 }}>
                 <Chip
-                  label={user?.role === 'admin' ? 'Administrator' : 'Agent'}
+                  label={user?.role === 'admin' ? 'Administrator' : user?.role === 'manager' ? 'Manager' : 'Agent'}
                   size="small"
                   sx={{
                     height: 18,
@@ -310,8 +310,10 @@ export const Header = () => {
                     fontWeight: 800,
                     bgcolor: user?.role === 'admin'
                       ? theme === 'dark' ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.06)'
+                      : user?.role === 'manager'
+                        ? theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)'
                       : theme === 'dark' ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
-                    color: user?.role === 'admin' ? tokens.brand.accent : tokens.brand.primary,
+                    color: user?.role === 'admin' ? tokens.brand.accent : user?.role === 'manager' ? '#3B82F6' : tokens.brand.primary,
                     borderRadius: '4px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',

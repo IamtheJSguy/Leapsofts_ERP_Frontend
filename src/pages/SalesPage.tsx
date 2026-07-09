@@ -68,7 +68,7 @@ export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
-  const { isAdmin } = usePermissions();
+  const { isElevated } = usePermissions();
   const syncMySheet = useSyncMySheet();
   const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
@@ -765,7 +765,7 @@ export const SalesPage = () => {
 
 
             {/* User Search Autocomplete - Admin Only */}
-            {isAdmin && (
+            {isElevated && (
               <Autocomplete
                 options={[{ _id: 'All Users', label: 'All Users' }, ...usersList.map((u: any) => ({ _id: u._id, label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email }))]}
                 getOptionLabel={(option) => option.label || ''}
@@ -855,9 +855,9 @@ export const SalesPage = () => {
             {/* Add Prospect Action Button */}
             <Button
               variant="contained"
-              startIcon={isAdmin ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
+              startIcon={isElevated ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
               onClick={() => {
-                if (isAdmin) {
+                if (isElevated) {
                   handleAdminSync();
                 } else {
                   setIsLinkDialogOpen(true);
@@ -880,7 +880,7 @@ export const SalesPage = () => {
                 },
               }}
             >
-              {isAdmin ? 'Sync Now' : 'Connect and sync'}
+              {isElevated ? 'Sync Now' : 'Connect and sync'}
             </Button>
           </Box>
 
@@ -1148,14 +1148,14 @@ export const SalesPage = () => {
                                 }}
                               />
                             ) : (
-                              <Tooltip title={!isAdmin ? "Only administrators can qualify leads." : ""} arrow>
+                              <Tooltip title={!isElevated ? "Only managers and administrators can qualify leads." : ""} arrow>
                                 <span>
                                   <Button
                                     variant="outlined"
                                     size="small"
-                                    startIcon={!isAdmin ? <LockIcon sx={{ fontSize: '14px !important' }} /> : <StarIcon sx={{ fontSize: '14px !important' }} />}
+                                    startIcon={!isElevated ? <LockIcon sx={{ fontSize: '14px !important' }} /> : <StarIcon sx={{ fontSize: '14px !important' }} />}
                                     onClick={() => handleOpenQualifyConfirm(prospect._id)}
-                                    disabled={!isAdmin || qualifyLead.isPending}
+                                    disabled={!isElevated || qualifyLead.isPending}
                                     sx={{
                                       borderRadius: '20px',
                                       textTransform: 'none',
@@ -1164,9 +1164,9 @@ export const SalesPage = () => {
                                       borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                                       color: 'text.secondary',
                                       '&:hover': {
-                                        bgcolor: !isAdmin ? 'transparent' : tokens.brand.primary,
-                                        borderColor: !isAdmin ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
-                                        color: !isAdmin ? 'text.secondary' : '#fff',
+                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.primary,
+                                        borderColor: !isElevated ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
+                                        color: !isElevated ? 'text.secondary' : '#fff',
                                       },
                                       '&.Mui-disabled': {
                                         borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',

@@ -36,6 +36,7 @@ import { tokens } from '@/styles/tokens';
 import { useKanbanBoard, useShareBoard } from '@/hooks/api/useKanban';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 const TABS = ['Overview', 'Team'];
@@ -114,7 +115,7 @@ export const ProjectDetailsPage = () => {
   const [selectedUserVal, setSelectedUserVal] = useState<any | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
+  const { isElevated } = useAuth();
 
   // Confirmation state for adding member
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
@@ -123,7 +124,7 @@ export const ProjectDetailsPage = () => {
   // Derived data from get board API
   const actualBoard = useMemo(() => boardData?.board, [boardData]);
   const isBoardOwner = useMemo(() => actualBoard?.ownerId === currentUser?._id, [actualBoard, currentUser]);
-  const canManageTeam = isBoardOwner || isAdmin;
+  const canManageTeam = isBoardOwner || isElevated;
   const cards = useMemo(() => boardData?.cards || [], [boardData]);
 
   // Lead: prefer board-level leadId (qualified lead linked to board), fallback to first card
