@@ -1245,21 +1245,21 @@ export const SalesPage = () => {
                       <TableCell sx={{ py: 2, pl: 3 }}>
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <TextField error={addLeadErrors.firstName} size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                            <TextField error={addLeadErrors.lastName} size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
+                            <TextField error={addLeadErrors.firstName} size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }} />
+                            <TextField error={addLeadErrors.lastName} size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }} />
                           </Box>
                           <TextField size="small" placeholder="Email" value={newLeadData.email} onChange={(e) => setNewLeadData({ ...newLeadData, email: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
                         </Box>
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                          <TextField error={addLeadErrors.icp} select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                          <TextField error={addLeadErrors.icp} select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }}>
                             <MenuItem value=""><em>No ICP</em></MenuItem>
                             {icpsList.map((icp) => (
                               <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
                             ))}
                           </TextField>
-                          <TextField error={addLeadErrors.profile} select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
+                          <TextField error={addLeadErrors.profile} select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }}>
                             <MenuItem value=""><em>No Profile</em></MenuItem>
                             {profileUsersList.map((u: any) => (
                               <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
