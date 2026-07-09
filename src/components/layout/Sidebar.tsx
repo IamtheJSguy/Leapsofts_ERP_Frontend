@@ -63,7 +63,6 @@ const navGroups: NavGroup[] = [
     items: [
       // { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports' },
-      // { label: 'Team Insights', path: '/team/insights', icon: <TimelineIcon sx={{ fontSize: 18 }} />, adminOnly: true },
     ],
   },
   {
