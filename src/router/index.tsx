@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'board',
+        path: 'projects',
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ProjectsPage />
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'board/:projectId',
+        path: 'projects/:slug',
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ProjectDetailsPage />
@@ -78,7 +78,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'board/:projectId/boards/:boardId',
+        path: 'projects/:slug/boards/:boardId',
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <KanbanBoardPage />

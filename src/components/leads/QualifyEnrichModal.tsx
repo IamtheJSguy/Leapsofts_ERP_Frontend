@@ -20,7 +20,7 @@ interface QualifyEnrichModalProps {
   open: boolean;
   leadId: string;
   onClose: () => void;
-  onSuccess: (boardId?: string) => void;
+  onSuccess: (boardId?: string, projectId?: string) => void;
 }
 
 const DEFAULT_SECTIONS = [
@@ -308,9 +308,9 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
       });
 
       const res: any = await qualifyLead.mutateAsync({ id: leadId });
-      const boardId = res?.data?.data?.board?._id || res?.data?.board?._id;
+      const board = res?.data?.data?.board || res?.data?.board;
       
-      onSuccess(boardId);
+      onSuccess(board?._id, board?.projectId || 'leads');
     } catch (err: any) {
       console.error('Failed to enrich and qualify lead:', err);
       const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to enrich and qualify lead.';

@@ -543,7 +543,7 @@ export const UserDashboard = () => {
               </Typography>
               <Button
                 variant="text"
-                onClick={() => navigate('/board')}
+                onClick={() => navigate('/projects')}
                 sx={{
                   textTransform: 'none',
                   color: tokens.text.muted,
@@ -571,7 +571,7 @@ export const UserDashboard = () => {
               {boardsList.map((board: any) => (
                 <Box
                   key={board._id}
-                  onClick={() => navigate(`/board/${board._id}`)}
+                  onClick={() => navigate(`/projects/${board.projectId}/boards/${board._id}`)}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -605,7 +605,7 @@ export const UserDashboard = () => {
 
             {totalBoardsCount > boardsList.length && (
               <Typography
-                onClick={() => navigate('/board')}
+                onClick={() => navigate('/projects')}
                 sx={{
                   mt: 'auto',
                   pt: 1,

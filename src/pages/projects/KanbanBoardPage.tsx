@@ -44,8 +44,9 @@ import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
-  useEditComment, useDeleteComment, useShareBoard
+  useEditComment, useDeleteComment
 } from '@/hooks/api/useKanban';
+import { useAddBoardMember } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
@@ -1006,9 +1007,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 };
 
 export const KanbanBoardPage = () => {
-  const { projectId, boardId } = useParams<{ projectId: string; boardId: string }>();
+  const { slug, boardId } = useParams<{ slug: string; boardId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeBoardId = boardId || projectId;
+  const activeBoardId = boardId || '';
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -1037,9 +1038,19 @@ export const KanbanBoardPage = () => {
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
     const owner = allUsers.find((u: any) => u._id === actualBoard.ownerId);
-    const sharedIds = Array.isArray(actualBoard.sharedWith) ? actualBoard.sharedWith : [];
-    const shared = sharedIds.map((id: any) => allUsers.find((u: any) => u._id === id)).filter(Boolean);
-    return [owner, ...shared].filter(Boolean);
+    const membersList = (actualBoard.members || []).map((m: any) => {
+      const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
+      return allUsers.find((u: any) => u._id === uid);
+    }).filter(Boolean);
+    
+    // De-duplicate in case owner is also in members
+    const all = [owner, ...membersList].filter(Boolean);
+    const seen = new Set();
+    return all.filter((u: any) => {
+      if (seen.has(u._id)) return false;
+      seen.add(u._id);
+      return true;
+    });
   }, [actualBoard, allUsers]);
 
   const [activeTask, setActiveTask] = useState<any | null>(null);
@@ -1077,7 +1088,7 @@ export const KanbanBoardPage = () => {
   // Share Board Dialog State
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedUserToShare, setSelectedUserToShare] = useState<string>('');
-  const shareBoardMutation = useShareBoard();
+  const addBoardMemberMutation = useAddBoardMember(slug, activeBoardId);
 
   // Share Confirmation Dialog State
   const [confirmShareOpen, setConfirmShareOpen] = useState(false);
@@ -1283,12 +1294,12 @@ export const KanbanBoardPage = () => {
 
   // Executes actual share mutation after confirmation
   const handleConfirmShare = () => {
-    if (activeBoardId && pendingShareUserId) {
-      const currentShared = Array.isArray(actualBoard?.sharedWith) ? actualBoard.sharedWith : [];
-      const updatedShared = [...currentShared, pendingShareUserId];
-      shareBoardMutation.mutate({
+    if (activeBoardId && pendingShareUserId && slug) {
+      addBoardMemberMutation.mutate({
+        slug,
         boardId: activeBoardId,
-        userIds: updatedShared
+        userId: pendingShareUserId,
+        role: 'member'
       }, {
         onSuccess: () => {
           setSelectedUserToShare('');
@@ -1368,7 +1379,7 @@ export const KanbanBoardPage = () => {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h6" color="error">Error loading board details.</Typography>
-        <Button onClick={() => navigate('/board')} sx={{ mt: 2 }} variant="outlined">Back to Board</Button>
+        <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }} variant="outlined">Back to Projects</Button>
       </Box>
     );
   }
@@ -1380,10 +1391,10 @@ export const KanbanBoardPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Button
               startIcon={<ArrowBackIcon fontSize="small" />}
-              onClick={() => navigate(`/board/${projectId}`)}
+              onClick={() => navigate(`/projects/${slug}?tab=Board`)}
               sx={{ color: 'text.secondary', textTransform: 'none', minWidth: 0, p: 0, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
             >
-              Board
+              Project
             </Button>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>/</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>{actualBoard.name}</Typography>
@@ -1879,7 +1890,7 @@ export const KanbanBoardPage = () => {
               label="Select User"
               sx={{ borderRadius: '24px' }}
             >
-              {allUsers.filter((u: any) => u._id !== actualBoard?.ownerId && !(actualBoard?.sharedWith || []).includes(u._id)).map((u: any) => (
+              {allUsers.filter((u: any) => u._id !== actualBoard?.ownerId && !(actualBoard?.members || []).some((m: any) => (typeof m.userId === 'string' ? m.userId : m.userId?._id) === u._id)).map((u: any) => (
                 <MenuItem key={u._id} value={u._id}>
                   {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
                 </MenuItem>
@@ -1889,7 +1900,7 @@ export const KanbanBoardPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setIsShareDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || shareBoardMutation.isPending} sx={{ bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
+          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
             Invite
           </Button>
         </DialogActions>
@@ -1908,7 +1919,7 @@ export const KanbanBoardPage = () => {
             message={`Are you sure you want to add ${pendingUserName} to this board? They will be able to view and interact with all cards on this board.`}
             confirmLabel="Add Member"
             cancelLabel="Cancel"
-            isPending={shareBoardMutation.isPending}
+            isPending={addBoardMemberMutation.isPending}
             onConfirm={handleConfirmShare}
             onCancel={() => {
               setConfirmShareOpen(false);

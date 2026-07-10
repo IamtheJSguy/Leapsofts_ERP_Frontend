@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,15 +10,15 @@ import {
   useTheme,
   Box,
   Typography,
+  Chip,
 } from '@mui/material';
-
+import type { ProjectStatus } from '@/types';
 
 export interface ProjectFormData {
-  title: string;
-  type: string;
+  name: string;
   description: string;
-  status: string;
-  techStack: string[];
+  status: ProjectStatus;
+  tags: string[];
 }
 
 interface ProjectFormDialogProps {
@@ -26,87 +26,134 @@ interface ProjectFormDialogProps {
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => void;
   isSubmitting?: boolean;
+  initialData?: {
+    name: string;
+    description: string;
+    status: ProjectStatus;
+    tags: string[];
+  };
 }
 
-export const ProjectFormDialog = ({ open, onClose, onSubmit, isSubmitting }: ProjectFormDialogProps) => {
+export const ProjectFormDialog = ({
+  open,
+  onClose,
+  onSubmit,
+  isSubmitting,
+  initialData,
+}: ProjectFormDialogProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [formData, setFormData] = useState<ProjectFormData>({
-    title: '',
-    type: 'Internal Product',
+    name: '',
     description: '',
-    status: 'In Development',
-    techStack: [],
+    status: 'in_development',
+    tags: [],
   });
 
-  const [techInput, setTechInput] = useState('');
+  const [tagInput, setTagInput] = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        description: initialData.description || '',
+        status: initialData.status || 'in_development',
+        tags: initialData.tags || [],
+      });
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+        status: 'in_development',
+        tags: [],
+      });
+    }
+    setTagInput('');
+  }, [initialData, open]);
 
   const handleSubmit = () => {
-    // Add pending tech stack if any
-    let finalTech = formData.techStack;
-    if (techInput.trim()) {
-      finalTech = [...finalTech, techInput.trim()];
+    let finalTags = [...formData.tags];
+    if (tagInput.trim() && !finalTags.includes(tagInput.trim())) {
+      finalTags.push(tagInput.trim());
     }
 
-    onSubmit({ ...formData, techStack: finalTech });
-
-    // Reset form
-    setFormData({
-      title: '',
-      type: 'Internal Product',
-      description: '',
-      status: 'In Development',
-      techStack: [],
-    });
-    setTechInput('');
+    onSubmit({ ...formData, tags: finalTags });
     onClose();
   };
 
+  const handleAddTag = () => {
+    const trimmed = tagInput.trim();
+    if (trimmed && !formData.tags.includes(trimmed)) {
+      setFormData({ ...formData, tags: [...formData.tags, trimmed] });
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter((t) => t !== tagToRemove),
+    });
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 800, color: 'text.primary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, pb: 2, mb: 2 }}>
-        New Project
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '24px',
+          bgcolor: isDarkMode ? '#1A1625' : '#fff',
+          backgroundImage: 'none',
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          fontWeight: 800,
+          color: 'text.primary',
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+          pb: 2,
+          px: 3,
+        }}
+      >
+        {initialData ? 'Edit Project' : 'New Project'}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ px: 3, py: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
           <TextField
-            label="Project Title"
+            label="Project Name"
             fullWidth
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             variant="outlined"
             size="small"
+            InputProps={{
+              sx: { borderRadius: '12px' },
+            }}
           />
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              select
-              label="Type"
-              fullWidth
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              variant="outlined"
-              size="small"
-            >
-              <MenuItem value="Internal Product">Internal Product</MenuItem>
-              <MenuItem value="Client">Client</MenuItem>
-            </TextField>
-
-            <TextField
-              select
-              label="Status"
-              fullWidth
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              variant="outlined"
-              size="small"
-            >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="In Development">In Development</MenuItem>
-              <MenuItem value="On Hold">On Hold</MenuItem>
-            </TextField>
-          </Box>
+          <TextField
+            select
+            label="Status"
+            fullWidth
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value as ProjectStatus })}
+            variant="outlined"
+            size="small"
+            InputProps={{
+              sx: { borderRadius: '12px' },
+            }}
+          >
+            <MenuItem value="in_development">In Development</MenuItem>
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="on_hold">On Hold</MenuItem>
+          </TextField>
 
           <TextField
             label="Description"
@@ -117,70 +164,93 @@ export const ProjectFormDialog = ({ open, onClose, onSubmit, isSubmitting }: Pro
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             variant="outlined"
             size="small"
+            InputProps={{
+              sx: { borderRadius: '12px' },
+            }}
           />
 
           <Box>
             <TextField
-              label="Tech Stack (Press Enter to add)"
+              label="Tags (Press Enter to add)"
               fullWidth
-              value={techInput}
-              onChange={(e) => setTechInput(e.target.value)}
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && techInput.trim()) {
+                if (e.key === 'Enter') {
                   e.preventDefault();
-                  setFormData({ ...formData, techStack: [...formData.techStack, techInput.trim()] });
-                  setTechInput('');
+                  handleAddTag();
                 }
               }}
               variant="outlined"
               size="small"
+              InputProps={{
+                sx: { borderRadius: '12px' },
+              }}
             />
-            {formData.techStack.length > 0 && (
+            {formData.tags.length > 0 && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
-                {formData.techStack.map((tech, idx) => (
-                  <Box
+                {formData.tags.map((tag, idx) => (
+                  <Chip
                     key={idx}
+                    label={tag}
+                    onDelete={() => handleRemoveTag(tag)}
+                    size="small"
                     sx={{
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                      fontWeight: 650,
+                      borderRadius: '8px',
                     }}
-                  >
-                    <Typography variant="caption" sx={{ fontWeight: 650 }}>{tech}</Typography>
-                    <Box
-                      component="span"
-                      onClick={() => setFormData({ ...formData, techStack: formData.techStack.filter((_, i) => i !== idx) })}
-                      sx={{ cursor: 'pointer', fontSize: '10px', color: 'text.secondary', '&:hover': { color: 'error.main' } }}
-                    >
-                      ✕
-                    </Box>
-                  </Box>
+                  />
                 ))}
               </Box>
             )}
           </Box>
-
         </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, pt: 2, mt: 1 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: 3,
+          pt: 2,
+          borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        }}
+      >
+        <Button
+          onClick={onClose}
+          sx={{
+            color: 'text.secondary',
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: '24px',
+            px: 2.5,
+          }}
+        >
+          Cancel
+        </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!formData.title || isSubmitting}
+          disabled={!formData.name.trim() || isSubmitting}
           variant="contained"
           sx={{
             bgcolor: '#FF5733',
             color: '#fff',
             fontWeight: 700,
             borderRadius: '24px',
-            '&:hover': { bgcolor: '#E04A2A' }
+            textTransform: 'none',
+            px: 3,
+            boxShadow: 'none',
+            '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' },
+            '&.Mui-disabled': {
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)',
+              color: 'text.disabled',
+            },
           }}
         >
-          {isSubmitting ? 'Creating...' : 'Create Project'}
+          {isSubmitting
+            ? 'Saving...'
+            : initialData
+            ? 'Save Changes'
+            : 'Create Project'}
         </Button>
       </DialogActions>
     </Dialog>

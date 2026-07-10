@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -17,672 +17,761 @@ import {
   Divider,
   Autocomplete,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EmailIcon from '@mui/icons-material/Email';
-import PhoneIcon from '@mui/icons-material/Phone';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
-import BusinessIcon from '@mui/icons-material/Business';
-import WorkIcon from '@mui/icons-material/Work';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import GroupIcon from '@mui/icons-material/Group';
-import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import NotesIcon from '@mui/icons-material/Notes';
+import GroupIcon from '@mui/icons-material/Group';
+import InfoIcon from '@mui/icons-material/Info';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ShieldIcon from '@mui/icons-material/Shield';
+import AddIcon from '@mui/icons-material/Add';
+import WorkIcon from '@mui/icons-material/Work';
+
 import { tokens } from '@/styles/tokens';
-import { useKanbanBoard, useShareBoard } from '@/hooks/api/useKanban';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
+import { BoardCard } from '@/components/projects/BoardCard';
+import {
+  useProject,
+  useUpdateProject,
+  useDeleteProject,
+  useAddProjectMember,
+  useRemoveProjectMember,
+  useCreateProjectBoard,
+} from '@/hooks/api/useProjects';
+import type { ProjectStatus, ProjectMember } from '@/types';
 
-const TABS = ['Overview', 'Team'];
+const TABS = ['Board', 'Overview', 'Team'];
 
-// Connection / message status display helpers
-const connStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  not_sent:  { label: 'Not Sent',  color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-  sent:      { label: 'Sent',      color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
-  accepted:  { label: 'Accepted',  color: '#34d399', bg: 'rgba(52,211,153,0.1)' },
-  declined:  { label: 'Declined',  color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
-  no_response: { label: 'No Response', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
-};
-
-const msgStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  not_sent:    { label: 'Not Sent',    color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-  sent:        { label: 'Msg Sent',    color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
-  replied:     { label: 'Replied',     color: '#34d399', bg: 'rgba(52,211,153,0.1)' },
-  follow_up:   { label: 'Follow Up',   color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
-  negative:    { label: 'Negative',    color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
-  positive:    { label: 'Positive',    color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
-  future_lead: { label: 'Future Lead', color: '#fb923c', bg: 'rgba(251,146,60,0.1)' },
-};
-
-const InfoRow = ({ icon, label, value, href }: { icon: React.ReactNode; label: string; value?: string; href?: string }) => {
-  const theme = useTheme();
-  const isDarkMode = theme.palette.mode === 'dark';
-  if (!value) return null;
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, py: 1.5 }}>
-      <Box sx={{ color: 'text.secondary', mt: 0.25, flexShrink: 0 }}>{icon}</Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.25 }}>
-          {label}
-        </Typography>
-        {href ? (
-          <Typography
-            component="a"
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="body2"
-            sx={{
-              fontWeight: 650,
-              color: tokens.brand.primary,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              '&:hover': { textDecoration: 'underline' },
-            }}
-          >
-            {value} <OpenInNewIcon sx={{ fontSize: 14 }} />
-          </Typography>
-        ) : (
-          <Typography variant="body2" sx={{ fontWeight: 650, color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'text.primary', wordBreak: 'break-all' }}>
-            {value}
-          </Typography>
-        )}
-      </Box>
-    </Box>
-  );
+const getStatusConfig = (status?: ProjectStatus) => {
+  switch (status) {
+    case 'active':
+      return { label: 'Active', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
+    case 'in_development':
+      return { label: 'In Development', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+    case 'on_hold':
+    default:
+      return { label: 'On Hold', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' };
+  }
 };
 
 export const ProjectDetailsPage = () => {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const [activeTab, setActiveTab] = useState(0);
+  const initialTab = searchParams.get('tab') || 'Board';
+  const initialTabIndex = TABS.indexOf(initialTab) !== -1 ? TABS.indexOf(initialTab) : 0;
+  const [activeTab, setActiveTab] = useState(initialTabIndex);
 
-  const { data: boardData, isLoading } = useKanbanBoard(projectId);
+  const { data, isLoading } = useProject(slug);
+  const updateProjectMutation = useUpdateProject(slug);
+  const deleteProjectMutation = useDeleteProject();
+  const addProjectMemberMutation = useAddProjectMember(slug);
+  const removeProjectMemberMutation = useRemoveProjectMember(slug);
+  const createProjectBoardMutation = useCreateProjectBoard(slug);
+
   const { data: dbUsers = [] } = useUsers();
-  const shareBoardMutation = useShareBoard();
-  const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
-  const [selectedUserVal, setSelectedUserVal] = useState<any | null>(null);
-  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
 
-  // Confirmation state for adding member
-  const [confirmAddOpen, setConfirmAddOpen] = useState(false);
-  const [pendingAddUser, setPendingAddUser] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false);
 
-  // Derived data from get board API
-  const actualBoard = useMemo(() => boardData?.board, [boardData]);
-  const isBoardOwner = useMemo(() => actualBoard?.ownerId === currentUser?._id, [actualBoard, currentUser]);
-  const canManageTeam = isBoardOwner || isElevated;
-  const cards = useMemo(() => boardData?.cards || [], [boardData]);
+  // New board input states
+  const [newBoardName, setNewBoardName] = useState('');
 
-  // Lead: prefer board-level leadId (qualified lead linked to board), fallback to first card
-  const leadInfo = useMemo(() => {
-    const boardLead = actualBoard?.leadId;
-    if (boardLead && typeof boardLead === 'object') return boardLead;
-    if (!cards.length) return null;
-    const firstCardLead = cards[0]?.leadId;
-    return firstCardLead && typeof firstCardLead === 'object' ? firstCardLead : null;
-  }, [actualBoard, cards]);
+  // Add member states
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState<any | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'member'>('member');
 
-  // All lead cards for display (grouped by column)
-  const cardsByColumn = useMemo(() => {
-    if (!actualBoard?.columns || !cards.length) return {};
-    const map: Record<string, any[]> = {};
-    for (const col of actualBoard.columns) {
-      map[col._id] = cards.filter((c: any) => c.columnId === col._id || c.columnId?.toString() === col._id?.toString());
+  // Deconstruct derived data
+  const project = data?.project;
+  const boards = data?.boards || [];
+
+  const isProjectOwner = project?.ownerId === currentUser?._id;
+  const canManageProject = isProjectOwner || isElevated;
+
+  const handleTabChange = (index: number) => {
+    setActiveTab(index);
+    setSearchParams({ tab: TABS[index] });
+  };
+
+  const handleEditSubmit = (formData: any) => {
+    if (slug) {
+      updateProjectMutation.mutate({
+        slug,
+        data: {
+          name: formData.name,
+          description: formData.description,
+          status: formData.status,
+          tags: formData.tags,
+        },
+      });
     }
-    return map;
-  }, [actualBoard, cards]);
+  };
 
-  const totalCards = cards.length;
+  const handleDeleteConfirm = () => {
+    if (slug) {
+      deleteProjectMutation.mutate(slug, {
+        onSuccess: () => {
+          navigate('/projects');
+        },
+      });
+    }
+  };
 
-  const boardMeta = useMemo(() => {
-    if (!actualBoard) return null;
-    const ownerUser = dbUsers.find((u) => u._id === actualBoard.ownerId);
-    const sharedUserIds = Array.isArray(actualBoard.sharedWith) ? actualBoard.sharedWith : [];
-    const sharedUsers = sharedUserIds.map((id: any) => dbUsers.find((u) => u._id === id)).filter(Boolean);
-    const allMembers = [ownerUser, ...sharedUsers].filter(Boolean);
-    return { ownerUser, sharedUserIds, sharedUsers, allMembers };
-  }, [actualBoard, dbUsers]);
+  const handleAddMember = () => {
+    if (slug && selectedUserToAdd) {
+      addProjectMemberMutation.mutate(
+        {
+          slug,
+          userId: selectedUserToAdd._id,
+          role: selectedRole,
+        },
+        {
+          onSuccess: () => {
+            setSelectedUserToAdd(null);
+            setIsAddMemberOpen(false);
+          },
+        }
+      );
+    }
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    if (slug) {
+      removeProjectMemberMutation.mutate({ slug, userId });
+    }
+  };
+
+  const handleCreateBoard = () => {
+    if (slug && newBoardName.trim()) {
+      createProjectBoardMutation.mutate(
+        {
+          slug,
+          data: { name: newBoardName.trim() },
+        },
+        {
+          onSuccess: () => {
+            setNewBoardName('');
+            setIsCreateBoardOpen(false);
+          },
+        }
+      );
+    }
+  };
+
+  const projectOwnerUser = useMemo(() => {
+    return dbUsers.find((u) => u._id === project?.ownerId);
+  }, [project?.ownerId, dbUsers]);
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
         <CircularProgress sx={{ color: tokens.brand.primary }} />
       </Box>
     );
   }
 
-  const boardName = actualBoard?.name || 'Board';
+  if (!project) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h5" color="error">
+          Project not found
+        </Typography>
+        <Button onClick={() => navigate('/projects')} startIcon={<ArrowBackIcon />} sx={{ mt: 2 }}>
+          Back to Projects
+        </Button>
+      </Box>
+    );
+  }
 
-  // ─── Lead info from any card on this board ─────────────────────────
-  // leadInfo is the populated leadId object from the first card
-  const leadName =
-    leadInfo
-      ? ([leadInfo.firstName, leadInfo.lastName].filter(Boolean).join(' ').trim() || leadInfo.prospectName || leadInfo.company || boardName)
-      : boardName;
-
-  const connToken = connStatusConfig[leadInfo?.connectionStatus || 'not_sent'] || connStatusConfig.not_sent;
-  const msgToken = msgStatusConfig[leadInfo?.messageStatus || 'not_sent'] || msgStatusConfig.not_sent;
-
-  // Stage user and open confirmation
-  const handleAddMember = () => {
-    if (selectedUserToAdd && projectId && boardMeta && selectedUserVal) {
-      setPendingAddUser(selectedUserVal);
-      setConfirmAddOpen(true);
-    }
-  };
-
-  // Execute actual share mutation after confirmation
-  const handleConfirmAddMember = () => {
-    if (pendingAddUser && projectId && boardMeta) {
-      const updatedShared = [...boardMeta.sharedUserIds, pendingAddUser._id];
-      shareBoardMutation.mutate({ boardId: projectId, userIds: updatedShared }, {
-        onSuccess: () => {
-          setSelectedUserToAdd('');
-          setSelectedUserVal(null);
-          setPendingAddUser(null);
-          setConfirmAddOpen(false);
-        },
-        onError: () => {
-          setPendingAddUser(null);
-          setConfirmAddOpen(false);
-        },
-      });
-    }
-  };
-
-  const confirmRemoveMember = () => {
-    if (projectId && memberToRemove && boardMeta) {
-      const updatedShared = boardMeta.sharedUserIds.filter((id: any) => id !== memberToRemove);
-      shareBoardMutation.mutate({ boardId: projectId, userIds: updatedShared }, {
-        onSuccess: () => setMemberToRemove(null),
-        onError: () => setMemberToRemove(null),
-      });
-    }
-  };
+  const statusConfig = getStatusConfig(project.status);
 
   return (
-    <Box className="animate-fade-in-up" sx={{ pb: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-
-      {/* Back */}
+    <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
+      {/* Back button */}
       <Button
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        onClick={() => navigate('/board')}
-        sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 600, alignSelf: 'flex-start', mb: 2, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
+        onClick={() => navigate('/projects')}
+        startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+        sx={{
+          color: 'text.secondary',
+          fontWeight: 700,
+          fontSize: '0.85rem',
+          mb: 3,
+          textTransform: 'none',
+          '&:hover': { bgcolor: 'transparent', color: tokens.brand.primary },
+        }}
       >
-        Back to Boards
+        Back to Projects
       </Button>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-          {/* Lead Avatar */}
-          <Avatar
-            sx={{
-              width: 56,
-              height: 56,
-              bgcolor: tokens.brand.primaryMuted,
-              fontWeight: 800,
-              fontSize: '1.25rem',
-              border: `2px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-            }}
-          >
-            {leadName.charAt(0).toUpperCase()}
-          </Avatar>
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
-                {leadName}
-              </Typography>
-              {leadInfo?.isQualified && (
-                <Chip
-                  icon={<CheckCircleIcon sx={{ fontSize: '14px !important', color: '#10B981 !important' }} />}
-                  label="Qualified Lead"
-                  size="small"
-                  sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10B981', fontWeight: 700, fontSize: '0.72rem', border: '1px solid rgba(16,185,129,0.2)' }}
-                />
-              )}
-            </Box>
-            {leadInfo?.company && (
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                <BusinessIcon sx={{ fontSize: 15 }} />
-                {leadInfo.company}
-                {leadInfo.jobTitle && ` · ${leadInfo.jobTitle}`}
-              </Typography>
-            )}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 3 }}>
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+            <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em', color: 'text.primary' }}>
+              {project.name}
+            </Typography>
+            <Chip
+              label={statusConfig.label}
+              size="small"
+              sx={{
+                bgcolor: statusConfig.bg,
+                color: statusConfig.color,
+                fontWeight: 750,
+                fontSize: '0.72rem',
+                border: 'none',
+              }}
+            />
+          </Box>
+          <Typography variant="body1" sx={{ color: 'text.secondary', maxW: '700px', mb: 2 }}>
+            {project.description || 'No description provided.'}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {project.tags?.map((tag) => (
+              <Chip
+                key={tag}
+                label={tag}
+                size="small"
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  color: 'text.secondary',
+                  fontWeight: 650,
+                  fontSize: '0.68rem',
+                  borderRadius: '6px',
+                }}
+              />
+            ))}
           </Box>
         </Box>
 
-        {/* Top-Right High Priority Call To Action */}
-        <Button
-          variant="contained"
-          onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
-          startIcon={<DashboardCustomizeIcon sx={{ fontSize: 18 }} />}
-          sx={{
-            bgcolor: tokens.brand.primary,
-            color: '#fff',
-            fontWeight: 750,
-            borderRadius: '24px',
-            textTransform: 'none',
-            px: 3.5,
-            py: 1.25,
-            boxShadow: 'none',
-            fontSize: '0.86rem',
-            transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
-            '&:hover': {
-              bgcolor: tokens.brand.primaryLight,
-              boxShadow: tokens.shadow.cardHover,
-              transform: 'translateY(-2px)'
-            },
-          }}
-        >
-          Open Kanban Board
-        </Button>
+        {canManageProject && !project.isDefault && (
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button
+              variant="outlined"
+              startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setIsEditOpen(true)}
+              sx={{
+                borderRadius: '24px',
+                textTransform: 'none',
+                fontWeight: 700,
+                color: 'text.primary',
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                '&:hover': {
+                  borderColor: tokens.brand.primary,
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                },
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              sx={{
+                borderRadius: '24px',
+                textTransform: 'none',
+                fontWeight: 700,
+                color: tokens.semantic.error,
+                borderColor: 'rgba(239, 68, 68, 0.2)',
+                '&:hover': {
+                  borderColor: tokens.semantic.error,
+                  bgcolor: 'rgba(239, 68, 68, 0.04)',
+                },
+              }}
+            >
+              Delete
+            </Button>
+          </Box>
+        )}
       </Box>
 
-      {/* Tabs */}
+      {/* Tabs Menu */}
       <Box
         sx={{
-          display: 'flex', alignItems: 'center', gap: 0.75, mb: 4, p: 0.6,
-          alignSelf: 'flex-start', borderRadius: '30px',
-          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-          border: '1px solid', borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-          overflowX: 'auto', whiteSpace: 'nowrap',
-          scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' },
+          display: 'flex',
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          mb: 4,
+          gap: 3,
         }}
       >
-        {TABS.map((tab, idx) => {
-          const isSelected = activeTab === idx;
-          const activeColor = isDarkMode ? tokens.brand.primaryLight : tokens.brand.primary;
-          const activeBg = isDarkMode ? 'rgba(123,61,168,0.12)' : 'rgba(93,26,137,0.08)';
-          const activeBorder = isDarkMode ? 'rgba(123,61,168,0.3)' : 'rgba(93,26,137,0.25)';
-          return (
-            <Button
-              key={tab}
-              onClick={() => setActiveTab(idx)}
-              sx={{
-                textTransform: 'none', borderRadius: '24px', px: 3, py: 0.8, fontWeight: 700, fontSize: '0.86rem',
-                transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
-                bgcolor: isSelected ? activeBg : 'transparent',
-                color: isSelected ? activeColor : 'text.secondary',
-                border: '1px solid', borderColor: isSelected ? activeBorder : 'transparent',
-                '&:hover': { transform: 'translateY(-1.5px)', bgcolor: isSelected ? activeBg : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'), color: isSelected ? activeColor : 'text.primary' },
-              }}
-            >
-              {tab}
-            </Button>
-          );
-        })}
+        {TABS.map((tab, idx) => (
+          <Box
+            key={tab}
+            onClick={() => handleTabChange(idx)}
+            sx={{
+              pb: 1.5,
+              cursor: 'pointer',
+              position: 'relative',
+              color: activeTab === idx ? 'text.primary' : 'text.secondary',
+              fontWeight: activeTab === idx ? 800 : 600,
+              fontSize: '0.95rem',
+              transition: 'color 0.2s ease',
+              '&::after': activeTab === idx ? {
+                content: '""',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                bgcolor: tokens.brand.primary,
+                borderRadius: '2px',
+              } : undefined,
+            }}
+          >
+            {tab}
+          </Box>
+        ))}
       </Box>
 
-      {/* Tab Content */}
-      <Box sx={{ flexGrow: 1 }}>
-
-        {/* ── OVERVIEW TAB ───────────────────────────────────────────── */}
+      {/* Tabs Content */}
+      <Box>
+        {/* BOARD TAB */}
         {activeTab === 0 && (
-          <Box className="animate-fade-in-up" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
-
-            {/* Left — Lead Profile */}
-            <Box
-              sx={{
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-                borderRadius: '24px',
-                p: { xs: 2.5, sm: 4 },
-              }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BusinessIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
-                Lead Profile
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                {boards.length} boards
               </Typography>
-
-              {/* Status Chips */}
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
-                <Chip
-                  label={`Connection: ${connToken.label}`}
-                  size="small"
-                  sx={{ bgcolor: connToken.bg, color: connToken.color, fontWeight: 700, fontSize: '0.7rem', border: `1px solid ${connToken.color}30` }}
-                />
-                <Chip
-                  label={`Message: ${msgToken.label}`}
-                  size="small"
-                  sx={{ bgcolor: msgToken.bg, color: msgToken.color, fontWeight: 700, fontSize: '0.7rem', border: `1px solid ${msgToken.color}30` }}
-                />
-                {leadInfo?.icp && (
-                  <Chip
-                    label={`ICP: ${leadInfo.icp}`}
-                    size="small"
-                    sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary', fontWeight: 700, fontSize: '0.7rem' }}
-                  />
-                )}
-              </Box>
-
-              <Divider sx={{ mb: 3, opacity: 0.5 }} />
-
-              {/* Contact Info Rows */}
-              {leadInfo ? (
-                <>
-                  <InfoRow icon={<EmailIcon sx={{ fontSize: 18 }} />} label="Email" value={leadInfo.email} href={leadInfo.email ? `mailto:${leadInfo.email}` : undefined} />
-                  <InfoRow icon={<PhoneIcon sx={{ fontSize: 18 }} />} label="Phone" value={leadInfo.phone} />
-                  <InfoRow icon={<LinkedInIcon sx={{ fontSize: 18 }} />} label="LinkedIn" value={leadInfo.linkedInUrl} href={leadInfo.linkedInUrl} />
-                  <InfoRow icon={<BusinessIcon sx={{ fontSize: 18 }} />} label="Company" value={leadInfo.company} />
-                  <InfoRow icon={<WorkIcon sx={{ fontSize: 18 }} />} label="Job Title" value={leadInfo.jobTitle} />
-                  <InfoRow icon={<LocationOnIcon sx={{ fontSize: 18 }} />} label="Location" value={leadInfo.location} />
-                  <InfoRow icon={<GroupIcon sx={{ fontSize: 18 }} />} label="Company Size" value={leadInfo.companySize} />
-                  {leadInfo.profile && <InfoRow icon={<WorkIcon sx={{ fontSize: 18 }} />} label="Profile" value={leadInfo.profile} />}
-                  {leadInfo.notes && (
-                    <>
-                      <Divider sx={{ my: 2.5, opacity: 0.5 }} />
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                        <NotesIcon sx={{ color: 'text.secondary', mt: 0.25, fontSize: 18, flexShrink: 0 }} />
-                        <Box>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.5 }}>
-                            Notes
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65, fontStyle: 'italic' }}>
-                            {leadInfo.notes}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </>
-                  )}
-                </>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                  No lead profile data available. Open the Board tab to view the Kanban board.
-                </Typography>
-              )}
-
-              {/* Profile Sections from lead or first card */}
-              {((leadInfo?.profileSections?.length ?? 0) > 0 || (cards[0]?.profileSections?.length ?? 0) > 0) && (
-                <>
-                  <Divider sx={{ my: 3, opacity: 0.5 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2, color: 'text.primary' }}>
-                    Profile Sections
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {(leadInfo?.profileSections || cards[0]?.profileSections || []).map((ps: any, i: number) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          p: 2.5, borderRadius: '16px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                        }}
-                      >
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, display: 'block', mb: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {ps.title}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>
-                          {ps.content}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                </>
+              {canManageProject && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsCreateBoardOpen(true)}
+                  sx={{
+                    bgcolor: tokens.brand.primary,
+                    color: '#fff',
+                    fontWeight: 700,
+                    borderRadius: '24px',
+                    textTransform: 'none',
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+                  }}
+                >
+                  New Board
+                </Button>
               )}
             </Box>
 
-            {/* Right — Stats */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <StatCard
-                icon={<DashboardCustomizeIcon sx={{ color: tokens.brand.primary, fontSize: 22 }} />}
-                count={actualBoard?.columns?.length || 0}
-                label="Columns"
-                iconBg={isDarkMode ? 'rgba(93,26,137,0.15)' : 'rgba(93,26,137,0.08)'}
-                onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
-              />
-              <StatCard
-                icon={<GroupIcon sx={{ color: '#3B82F6', fontSize: 22 }} />}
-                count={boardMeta?.allMembers?.length || 1}
-                label="Team Members"
-                iconBg="rgba(59,130,246,0.1)"
-                onClick={() => setActiveTab(1)}
-              />
-              <StatCard
-                icon={<CheckCircleIcon sx={{ color: '#10B981', fontSize: 22 }} />}
-                count={totalCards}
-                label="Cards on Board"
-                iconBg="rgba(16,185,129,0.1)"
-                onClick={() => navigate(`/board/${projectId}/boards/${projectId}`)}
-              />
+            {boards.length === 0 ? (
+              <Box
+                sx={{
+                  py: 8,
+                  textAlign: 'center',
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.2)' : 'rgba(0,0,0,0.01)',
+                  borderRadius: '24px',
+                  border: `1px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+                }}
+              >
+                <Typography variant="body1" sx={{ color: 'text.secondary', mb: 2, fontWeight: 600 }}>
+                  This project has no boards yet.
+                </Typography>
+                {canManageProject && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => setIsCreateBoardOpen(true)}
+                    sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
+                  >
+                    Create the First Board
+                  </Button>
+                )}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 3,
+                }}
+              >
+                {boards.map((board) => (
+                  <BoardCard
+                    key={board._id}
+                    board={board}
+                    onClick={() => navigate(`/projects/${project.slug}/boards/${board._id}`)}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* OVERVIEW TAB */}
+        {activeTab === 1 && (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
+              gap: 4,
+            }}
+          >
+            {/* Main Info */}
+            <Box
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: '24px',
+                p: 4,
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
+                Project Description
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4, lineHeight: 1.7 }}>
+                {project.description || 'No description provided.'}
+              </Typography>
+              <Divider sx={{ mb: 4 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
+                Status Details
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                This is a <strong>{project.isDefault ? 'default system' : 'custom'}</strong> project currently in the{' '}
+                <strong>{project.status.replace('_', ' ')}</strong> phase.
+              </Typography>
+            </Box>
+
+            {/* Sidebar metadata */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3,
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  borderRadius: '24px',
+                  p: 3,
+                }}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2 }}>
+                  Metadata
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <InfoIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        PROJECT OWNER
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {projectOwnerUser
+                          ? `${projectOwnerUser.firstName || ''} ${projectOwnerUser.lastName || ''}`.trim() ||
+                            projectOwnerUser.email
+                          : 'System Admin'}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <CalendarTodayIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        CREATED ON
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {new Date(project.createdAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <GroupIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                        TEAM MEMBERS
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {project.members?.length || 0} users
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           </Box>
         )}
 
-        {/* ── TEAM TAB ───────────────────────────────────────────────── */}
-        {activeTab === 1 && (() => {
-          const availableUsersToAdd = dbUsers.filter((u) =>
-            u._id !== actualBoard?.ownerId && !(boardMeta?.sharedUserIds || []).includes(u._id)
-          );
-
-          return (
-            <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* Add Member */}
-              {canManageTeam ? (
-                <Box
-                  sx={{
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-                    borderRadius: '20px', p: 3,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2,
-                  }}
+        {/* TEAM TAB */}
+        {activeTab === 2 && (
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                {project.members?.length || 0} members
+              </Typography>
+              {canManageProject && (
+                <Button
+                  variant="outlined"
+                  startIcon={<PersonAddIcon />}
+                  onClick={() => setIsAddMemberOpen(true)}
+                  sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
                 >
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>Manage Board Team</Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>Add new members or modify permissions for this board.</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', minWidth: { xs: '100%', sm: 380 }, flex: { xs: 1, md: 'none' } }}>
-                    <Autocomplete
-                      size="small"
-                      options={availableUsersToAdd}
-                      getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email || ''}
-                      value={selectedUserVal}
-                      onChange={(event, newValue) => {
-                        setSelectedUserVal(newValue);
-                        setSelectedUserToAdd(newValue ? newValue._id : '');
-                      }}
-                      sx={{
-                        flexGrow: 1,
-                        minWidth: 240,
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '24px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                          '& fieldset': {
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: tokens.brand.primaryMuted,
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: tokens.brand.primary,
-                            borderWidth: '1px',
-                          },
-                        },
-                      }}
-                      renderInput={(params) => (
-                        <TextField 
-                          {...params} 
-                          placeholder="Search user to add..." 
-                          variant="outlined" 
-                        />
-                      )}
-                      renderOption={(props, option) => {
-                        const fullName = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email || 'User';
-                        const initial = (option.firstName?.charAt(0) || option.email?.charAt(0) || 'U').toUpperCase();
-                        return (
-                          <li {...props} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '8px 12px' }}>
-                            <Avatar sx={{ width: 26, height: 26, fontSize: '0.72rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
-                              {initial}
-                            </Avatar>
-                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                              <Typography variant="body2" sx={{ fontWeight: 650 }}>{fullName}</Typography>
-                              {option.firstName && (
-                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{option.email}</Typography>
-                              )}
-                            </Box>
-                          </li>
-                        );
-                      }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={handleAddMember}
-                      disabled={!selectedUserToAdd || shareBoardMutation.isPending}
-                      startIcon={<PersonAddIcon />}
-                      sx={{ 
-                        bgcolor: tokens.brand.primary, 
-                        borderRadius: '24px', 
-                        textTransform: 'none', 
-                        fontWeight: 700, 
-                        boxShadow: 'none', 
-                        height: 38,
-                        px: 3, 
-                        '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' } 
-                      }}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-                    borderRadius: '20px', p: 3,
-                  }}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>Board Team</Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Only the board owner can add or remove members from this board.</Typography>
-                </Box>
+                  Add Member
+                </Button>
               )}
-
-              {/* Members List */}
-              <Box
-                sx={{
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-                  borderRadius: '24px', p: 3,
-                }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2 }}>
-                  Board Members ({boardMeta?.allMembers?.length || 0})
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  {(boardMeta?.allMembers || []).map((m: any, idx: number) => {
-                    const isOwner = m._id === actualBoard?.ownerId;
-                    const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email || 'User';
-                    const initial = (m.firstName?.charAt(0) || m.email?.charAt(0) || 'U').toUpperCase();
-                    return (
-                      <Box
-                        key={m._id || idx}
-                        sx={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2,
-                          p: 2, borderRadius: '16px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                          <Avatar sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
-                          <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{fullName}</Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{m.email}</Typography>
-                          </Box>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                          <Chip
-                            label={isOwner ? 'Board Owner' : 'Member'}
-                            size="small"
-                            sx={{ bgcolor: isOwner ? 'rgba(93,26,137,0.08)' : 'rgba(0,0,0,0.04)', color: isOwner ? tokens.brand.primary : 'text.secondary', fontWeight: 700, fontSize: '0.72rem' }}
-                          />
-                          {!isOwner && isBoardOwner && (
-                            <IconButton
-                              size="small"
-                              onClick={() => setMemberToRemove(m._id)}
-                              disabled={shareBoardMutation.isPending}
-                              sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.08)' } }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-
-              <ConfirmDialog
-                open={!!memberToRemove}
-                title="Remove Team Member"
-                message="Are you sure you want to remove this member? They will no longer have access to this board."
-                confirmLabel="Remove Member"
-                isPending={shareBoardMutation.isPending}
-                onConfirm={confirmRemoveMember}
-                onCancel={() => setMemberToRemove(null)}
-              />
-
-              {/* Add Member Confirmation */}
-              <ConfirmDialog
-                open={confirmAddOpen}
-                title="Add Team Member"
-                message={`Are you sure you want to add ${pendingAddUser ? (`${pendingAddUser.firstName || ''} ${pendingAddUser.lastName || ''}`.trim() || pendingAddUser.email) : 'this member'} to this board? They will be able to view and interact with all cards.`}
-                confirmLabel="Add Member"
-                cancelLabel="Cancel"
-                isPending={shareBoardMutation.isPending}
-                onConfirm={handleConfirmAddMember}
-                onCancel={() => {
-                  setConfirmAddOpen(false);
-                  setPendingAddUser(null);
-                }}
-              />
             </Box>
-          );
-        })()}
-      </Box>
-    </Box>
-  );
-};
 
-// ── Stat Card ───────────────────────────────────────────────────────────
-const StatCard = ({ icon, count, label, iconBg, onClick }: { icon: React.ReactNode; count: number; label: string; iconBg: string; onClick?: () => void }) => {
-  const theme = useTheme();
-  const isDarkMode = theme.palette.mode === 'dark';
-  return (
-    <Box
-      onClick={onClick}
-      sx={{
-        bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
-        borderRadius: '20px', p: 3,
-        display: 'flex', alignItems: 'center', gap: 2.5,
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        cursor: onClick ? 'pointer' : 'default',
-        '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: tokens.shadow.cardHover } : {},
-      }}
-    >
-      <Box sx={{ width: 48, height: 48, borderRadius: '16px', bgcolor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
+            <Box
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: '24px',
+                overflow: 'hidden',
+              }}
+            >
+              {project.members.map((member, idx) => {
+                const id = typeof member.userId === 'string' ? member.userId : member.userId?._id;
+                const user = dbUsers.find((u) => u._id === id);
+                if (!user) return null;
+
+                const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+                const initial = (user.firstName?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase();
+
+                const isOwner = member.role === 'owner';
+
+                return (
+                  <Box
+                    key={member._id || idx}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 2.5,
+                      borderBottom:
+                        idx < project.members.length - 1
+                          ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+                          : 'none',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                          {name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {user.email}
+                        </Typography>
+                        {user.jobTitle && (
+                          <Typography variant="caption" sx={{ color: tokens.brand.primary, display: 'block', mt: 0.25 }}>
+                            {user.jobTitle}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Chip
+                        label={member.role.toUpperCase()}
+                        size="small"
+                        icon={<ShieldIcon sx={{ fontSize: '12px !important' }} />}
+                        sx={{
+                          bgcolor: isOwner
+                            ? 'rgba(167, 139, 250, 0.1)'
+                            : member.role === 'admin'
+                            ? 'rgba(59, 130, 246, 0.1)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                          color: isOwner ? '#a78bfa' : member.role === 'admin' ? '#3b82f6' : 'text.secondary',
+                          fontWeight: 750,
+                          fontSize: '0.65rem',
+                          height: 22,
+                        }}
+                      />
+                      {canManageProject && !isOwner && member.userId !== currentUser?._id && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveMember(id)}
+                          sx={{
+                            color: 'text.secondary',
+                            '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
       </Box>
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1 }}>{count}</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.5 }}>{label}</Typography>
-      </Box>
+
+      {/* dialogs */}
+      <ProjectFormDialog
+        open={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSubmit={handleEditSubmit}
+        isSubmitting={updateProjectMutation.isPending}
+        initialData={{
+          name: project.name,
+          description: project.description || '',
+          status: project.status,
+          tags: project.tags || [],
+        }}
+      />
+
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        title="Delete Project"
+        message="Are you sure you want to delete this project and all its boards? This action is permanent and cannot be undone."
+        confirmLabel="Yes, Delete Project"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+      />
+
+      {/* CREATE BOARD DIALOG */}
+      <Dialog
+        open={isCreateBoardOpen}
+        onClose={() => setIsCreateBoardOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            p: 1,
+            bgcolor: isDarkMode ? '#1E1B24' : '#fff',
+            backgroundImage: 'none',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem' }}>Create Board</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            Provide a name for the new board inside this project.
+          </Typography>
+          <TextField
+            autoFocus
+            label="Board Name"
+            fullWidth
+            size="small"
+            value={newBoardName}
+            onChange={(e) => setNewBoardName(e.target.value)}
+            InputProps={{ sx: { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setIsCreateBoardOpen(false)}
+            sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreateBoard}
+            disabled={!newBoardName.trim() || createProjectBoardMutation.isPending}
+            variant="contained"
+            sx={{
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: '24px',
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+            }}
+          >
+            {createProjectBoardMutation.isPending ? 'Creating...' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ADD MEMBER DIALOG */}
+      <Dialog
+        open={isAddMemberOpen}
+        onClose={() => setIsAddMemberOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            p: 1.5,
+            bgcolor: isDarkMode ? '#1E1B24' : '#fff',
+            backgroundImage: 'none',
+            minWidth: { xs: '320px', sm: '400px' },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem' }}>Add Team Member</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+            <Autocomplete
+              options={dbUsers.filter(
+                (u) => !project.members.some((m) => (typeof m.userId === 'string' ? m.userId : m.userId?._id) === u._id)
+              )}
+              getOptionLabel={(option) =>
+                `${option.firstName || ''} ${option.lastName || ''}`.trim()
+                  ? `${option.firstName || ''} ${option.lastName || ''} (${option.email})`
+                  : option.email
+              }
+              value={selectedUserToAdd}
+              onChange={(_, newVal) => setSelectedUserToAdd(newVal)}
+              renderInput={(params) => (
+                <TextField {...params} label="Search User" size="small" InputProps={{ ...params.InputProps, sx: { borderRadius: '12px' } }} />
+              )}
+            />
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="role-select-label">Project Role</InputLabel>
+              <Select
+                labelId="role-select-label"
+                value={selectedRole}
+                label="Project Role"
+                onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'member')}
+                sx={{ borderRadius: '12px' }}
+              >
+                <MenuItem value="member">Member (Read/Write boards)</MenuItem>
+                <MenuItem value="admin">Admin (Manage boards & members)</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setIsAddMemberOpen(false)}
+            sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddMember}
+            disabled={!selectedUserToAdd || addProjectMemberMutation.isPending}
+            variant="contained"
+            sx={{
+              bgcolor: tokens.brand.primary,
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: '24px',
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+            }}
+          >
+            Add Member
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -400,18 +400,57 @@ export interface ActivityLogEntry {
   timestamp: string;
 }
 
+export interface BoardMember {
+  _id?: string;
+  userId: string | User;
+  role: 'admin' | 'member';
+}
+
 export interface KanbanBoard {
   _id: string;
   name: string;
   columns: KanbanColumn[];
+  projectId: string;
+  ownerId: string;
+  members: BoardMember[];
   leadId?: string | Lead;
-  ownerId?: string;
-  sharedWith?: string[];
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface KanbanBoardResponse {
   board: KanbanBoard;
   cards: KanbanCard[];
+}
+
+export type ProjectStatus = 'active' | 'on_hold' | 'in_development';
+
+export interface ProjectMember {
+  _id?: string;
+  userId: string | User;
+  role: 'owner' | 'admin' | 'member';
+}
+
+export interface Project {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  status: ProjectStatus;
+  tags: string[];
+  ownerId: string;
+  members: ProjectMember[];
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectWithBoards {
+  project: Project;
+  boards: KanbanBoard[];
 }
 
 export interface Conversation {

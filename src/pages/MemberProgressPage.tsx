@@ -491,7 +491,7 @@ export default function MemberProgressPage() {
               {tasksList.map((task: any) => (
                 <Grid item xs={12} md={6} key={task.id}>
                   <Box
-                    onClick={() => task.boardId && navigate(`/board/${task.boardId}/boards/${task.boardId}`)}
+                    onClick={() => task.boardId && navigate(`/projects/${task.projectId || task.boardId}/boards/${task.boardId}`)}
                     sx={{
                       p: 2.5,
                       borderRadius: '20px',

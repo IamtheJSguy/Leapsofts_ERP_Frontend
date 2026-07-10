@@ -617,7 +617,7 @@ const TeamPage = () => {
                 return (
                   <Box
                     key={task.id}
-                    onClick={() => navigate(`/board/${task.boardId}/boards/${task.boardId}`)}
+                    onClick={() => navigate(`/projects/${task.projectId || task.boardId}/boards/${task.boardId}`)}
                     sx={{
                       display: 'flex',
                       justifyContent: 'space-between',

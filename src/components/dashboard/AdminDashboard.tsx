@@ -429,7 +429,7 @@ export const AdminDashboard = () => {
               </Typography>
               <Button 
                 variant="text" 
-                onClick={() => navigate('/board')}
+                onClick={() => navigate('/projects')}
                 sx={{ 
                   textTransform: 'none', 
                   color: tokens.text.muted, 
@@ -494,7 +494,7 @@ export const AdminDashboard = () => {
             {/* Bottom load link */}
             {totalTasksCount > tasksList.length && (
             <Typography
-              onClick={() => navigate('/board')}
+              onClick={() => navigate('/projects')}
               sx={{
                 mt: 'auto',
                 pt: 1,

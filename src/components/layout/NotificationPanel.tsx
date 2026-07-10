@@ -206,7 +206,7 @@ export const NotificationPanel = () => {
                     } else if (n.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION && (n as any).metadata?.boardId) {
                       setNotificationPanelOpen(false);
                       const m = (n as any).metadata;
-                      navigate(`/board/${m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
+                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
                     }
                   }}
                   sx={{
