@@ -189,7 +189,7 @@ export default function MemberProgressPage() {
           p: 3.5,
           borderRadius: '32px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(30px)',
+          /* backdropFilter: 'blur(30px)' (removed for performance) */
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
           boxShadow: isDarkMode ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.02)',
           display: 'flex',
@@ -294,7 +294,7 @@ export default function MemberProgressPage() {
                 p: 3,
                 borderRadius: '24px',
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.5)' : 'rgba(255,255,255,0.7)',
-                backdropFilter: 'blur(30px)',
+                /* backdropFilter: 'blur(30px)' (removed for performance) */
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
                 boxShadow: `0 4px 30px ${stat.glow}`,
                 display: 'flex',
@@ -342,7 +342,7 @@ export default function MemberProgressPage() {
               p: 3.5,
               borderRadius: '28px',
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.5)' : 'rgba(255,255,255,0.7)',
-              backdropFilter: 'blur(30px)',
+              /* backdropFilter: 'blur(30px)' (removed for performance) */
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
             }}
           >
@@ -382,7 +382,7 @@ export default function MemberProgressPage() {
               p: 3.5,
               borderRadius: '28px',
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.5)' : 'rgba(255,255,255,0.7)',
-              backdropFilter: 'blur(30px)',
+              /* backdropFilter: 'blur(30px)' (removed for performance) */
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
             }}
           >
@@ -417,7 +417,7 @@ export default function MemberProgressPage() {
           p: 3.5,
           borderRadius: '32px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(30px)',
+          /* backdropFilter: 'blur(30px)' (removed for performance) */
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
           boxSizing: 'border-box',
           display: 'flex',
@@ -665,7 +665,7 @@ export default function MemberProgressPage() {
           p: 3.5,
           borderRadius: '32px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(30px)',
+          /* backdropFilter: 'blur(30px)' (removed for performance) */
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
           display: 'flex',
           flexDirection: 'column',

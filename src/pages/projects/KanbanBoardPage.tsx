@@ -68,7 +68,7 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
         sx: {
           borderRadius: '20px',
           p: 1.5,
-          backdropFilter: 'blur(10px)',
+          /* backdropFilter: 'blur(10px)' (removed for performance) */
           boxShadow: '0 10px 40px rgba(0,0,0,0.12)'
         }
       }}
@@ -497,7 +497,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           sx: {
             width: { xs: '100%', sm: 480 },
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             borderTopLeftRadius: '24px',
             borderBottomLeftRadius: '24px',
@@ -511,7 +511,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           BackdropProps: {
             sx: {
               bgcolor: 'rgba(0,0,0,0.2)',
-              backdropFilter: 'blur(4px)',
+              /* backdropFilter: 'blur(4px)' (removed for performance) */
             },
           },
         }}
@@ -1465,7 +1465,7 @@ export const KanbanBoardPage = () => {
         </Box>
       </Box>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', gap: 3, overflowX: 'auto', pb: 2, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }, '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
+      <Box sx={{ flexGrow: 1, display: 'flex', gap: 3, overflowX: 'auto', pb: 2, transform: 'translateZ(0)', willChange: 'transform', '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }, '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}

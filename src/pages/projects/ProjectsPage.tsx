@@ -194,7 +194,7 @@ const ProjectsPage = () => {
               '& .MuiOutlinedInput-root': {
                 borderRadius: '24px',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.6)',
-                backdropFilter: 'blur(8px)',
+                /* backdropFilter: 'blur(8px)' (removed for performance) */
                 transition: 'all 0.25s ease',
                 '& fieldset': {
                   borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',

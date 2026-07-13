@@ -1138,7 +1138,7 @@ export const SalesPage = () => {
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.25)' : 'rgba(255, 255, 255, 0.45)',
                 border: `1.5px dashed ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)'}`,
                 borderRadius: '24px',
-                backdropFilter: 'blur(10px)',
+                /* backdropFilter: 'blur(10px)' (removed for performance) */
                 maxWidth: 560,
                 mx: 'auto',
                 boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.01)',
@@ -1614,7 +1614,7 @@ export const SalesPage = () => {
           sx: {
             borderRadius: '24px',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             p: 1.5,
             width: '100%',
@@ -1703,7 +1703,7 @@ export const SalesPage = () => {
           sx: {
             borderRadius: '24px',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             p: 4,
             width: '100%',

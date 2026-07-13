@@ -74,7 +74,7 @@ export const UserManagementTable = () => {
           mb: 3,
           p: 2,
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
-          backdropFilter: 'blur(20px)',
+          /* backdropFilter: 'blur(20px)' (removed for performance) */
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
           borderRadius: '24px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',

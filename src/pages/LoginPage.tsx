@@ -168,7 +168,7 @@ const LoginPage = () => {
               maxWidth: 360,
               background: 'rgba(255, 255, 255, 0.03)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              backdropFilter: 'blur(12px)',
+              /* backdropFilter: 'blur(12px)' (removed for performance) */
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
               display: 'flex',
               flexDirection: 'column',
@@ -355,7 +355,7 @@ const LoginPage = () => {
             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.55)' : 'rgba(255, 255, 255, 0.65)',
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)'}`,
-            backdropFilter: 'blur(24px) saturate(180%)',
+            /* backdropFilter: 'blur(24px) saturate(180%)' (removed for performance) */
             boxShadow: isDarkMode
               ? '0 24px 64px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(255, 255, 255, 0.05)'
               : tokens.shadow.card,

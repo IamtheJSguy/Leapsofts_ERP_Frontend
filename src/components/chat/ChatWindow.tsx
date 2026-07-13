@@ -280,8 +280,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           py: { xs: 1.5, md: 2 },
           borderBottom: 'none',
           bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          /* backdropFilter: 'blur(20px)' (removed for performance) */
+          /* WebkitBackdropFilter: 'blur(20px)' (removed for performance) */
           boxShadow: isDarkMode ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.02)',
           zIndex: 10,
         }}
@@ -442,8 +442,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             px: 2,
             borderRadius: '32px',
             bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.8)' : 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
+            /* backdropFilter: 'blur(24px)' (removed for performance) */
+            /* WebkitBackdropFilter: 'blur(24px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
             boxShadow: isDarkMode ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(93,26,137,0.08)',
             transition: 'all 0.3s ease',
