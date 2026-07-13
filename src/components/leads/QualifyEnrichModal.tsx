@@ -11,7 +11,7 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import DescriptionIcon from '@mui/icons-material/Description';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { useLead, useUpdateLead, useQualifyLead } from '@/hooks/api/useLeads';
+import { useLead, useQualifyLead } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
@@ -213,7 +213,6 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
   const isDarkMode = theme.palette.mode === 'dark';
   
   const { data: lead, isLoading: isLeadLoading } = useLead(open ? leadId : undefined);
-  const updateLead = useUpdateLead();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
 
@@ -302,12 +301,16 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
         content: sections[sec.key] || ''
       })).filter(sec => sec.content.trim() !== '');
 
-      await updateLead.mutateAsync({
+      const { title, email, linkedInUrl, ...restLeadData } = leadData;
+      const res: any = await qualifyLead.mutateAsync({
         id: leadId,
-        data: { ...leadData, notes, profileSections }
+        ...restLeadData,
+        ...(title ? { jobTitle: title } : {}),
+        ...(email?.trim() ? { email: email.trim() } : {}),
+        ...(linkedInUrl?.trim() ? { linkedInUrl: linkedInUrl.trim() } : {}),
+        ...(notes?.trim() ? { notes } : {}),
+        profileSections,
       });
-
-      const res: any = await qualifyLead.mutateAsync({ id: leadId });
       const board = res?.data?.data?.board || res?.data?.board;
       
       onSuccess(board?._id, board?.projectId || 'leads');
@@ -318,7 +321,7 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
     }
   };
 
-  const isPending = updateLead.isPending || qualifyLead.isPending;
+  const isPending = qualifyLead.isPending;
 
   return (
     <Dialog 
