@@ -123,6 +123,7 @@ const LeadSummaryColumn = memo(({
         {renderField('LinkedIn', 'linkedInUrl')}
         {renderField('Industry', 'industry')}
         {renderField('Company Size', 'companySize')}
+        {renderField('Location', 'location')}
       </Box>
     </Box>
   );
@@ -243,6 +244,7 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
         phone: lead.phone || '',
         companySize: lead.companySize || '',
         linkedInUrl: lead.linkedInUrl || '',
+        location: lead.location || '',
       });
       setNotes(lead.notes || '');
       const newSections: Record<string, string> = {
