@@ -1019,7 +1019,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 };
 
 export const KanbanBoardPage = () => {
-  const { slug, boardId } = useParams<{ slug: string; boardId: string }>();
+  const { id: projectId, boardId } = useParams<{ id: string; boardId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeBoardId = boardId || '';
   const navigate = useNavigate();
@@ -1100,7 +1100,7 @@ export const KanbanBoardPage = () => {
   // Share Board Dialog State
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedUserToShare, setSelectedUserToShare] = useState<string>('');
-  const addBoardMemberMutation = useAddBoardMember(slug, activeBoardId);
+  const addBoardMemberMutation = useAddBoardMember(projectId, activeBoardId);
 
   // Share Confirmation Dialog State
   const [confirmShareOpen, setConfirmShareOpen] = useState(false);
@@ -1306,9 +1306,9 @@ export const KanbanBoardPage = () => {
 
   // Executes actual share mutation after confirmation
   const handleConfirmShare = () => {
-    if (activeBoardId && pendingShareUserId && slug) {
+    if (activeBoardId && pendingShareUserId && projectId) {
       addBoardMemberMutation.mutate({
-        slug,
+        id: projectId,
         boardId: activeBoardId,
         userId: pendingShareUserId,
         role: 'member'
@@ -1403,7 +1403,7 @@ export const KanbanBoardPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Button
               startIcon={<ArrowBackIcon fontSize="small" />}
-              onClick={() => navigate(`/projects/${slug}?tab=Board`)}
+              onClick={() => navigate(`/projects/${projectId}?tab=Board`)}
               sx={{ color: 'text.secondary', textTransform: 'none', minWidth: 0, p: 0, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
             >
               Project

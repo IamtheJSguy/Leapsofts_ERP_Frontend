@@ -315,7 +315,7 @@ const ProjectsPage = () => {
             return (
               <Box
                 key={project._id}
-                onClick={() => navigate(`/projects/${project.slug}`)}
+                onClick={() => navigate(`/projects/${project._id}`)}
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
@@ -354,7 +354,7 @@ const ProjectsPage = () => {
                         size="small"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setProjectToDelete(project.slug);
+                          setProjectToDelete(project._id);
                         }}
                         sx={{
                           color: 'text.secondary',
@@ -493,7 +493,7 @@ const ProjectsPage = () => {
             return (
               <Box
                 key={project._id}
-                onClick={() => navigate(`/projects/${project.slug}`)}
+                onClick={() => navigate(`/projects/${project._id}`)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -567,7 +567,7 @@ const ProjectsPage = () => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setProjectToDelete(project.slug);
+                        setProjectToDelete(project._id);
                       }}
                       sx={{
                         color: 'text.secondary',

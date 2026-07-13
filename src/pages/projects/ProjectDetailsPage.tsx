@@ -67,7 +67,7 @@ const getStatusConfig = (status?: ProjectStatus) => {
 };
 
 export const ProjectDetailsPage = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
@@ -77,12 +77,12 @@ export const ProjectDetailsPage = () => {
   const initialTabIndex = TABS.indexOf(initialTab) !== -1 ? TABS.indexOf(initialTab) : 0;
   const [activeTab, setActiveTab] = useState(initialTabIndex);
 
-  const { data, isLoading } = useProject(slug);
-  const updateProjectMutation = useUpdateProject(slug);
+  const { data, isLoading } = useProject(projectId);
+  const updateProjectMutation = useUpdateProject(projectId);
   const deleteProjectMutation = useDeleteProject();
-  const addProjectMemberMutation = useAddProjectMember(slug);
-  const removeProjectMemberMutation = useRemoveProjectMember(slug);
-  const createProjectBoardMutation = useCreateProjectBoard(slug);
+  const addProjectMemberMutation = useAddProjectMember(projectId);
+  const removeProjectMemberMutation = useRemoveProjectMember(projectId);
+  const createProjectBoardMutation = useCreateProjectBoard(projectId);
   const deleteBoardMutation = useDeleteBoard();
   const queryClient = useQueryClient();
 
@@ -118,9 +118,9 @@ export const ProjectDetailsPage = () => {
   };
 
   const handleEditSubmit = (formData: any) => {
-    if (slug) {
+    if (projectId) {
       updateProjectMutation.mutate({
-        slug,
+        id: projectId,
         data: {
           name: formData.name,
           description: formData.description,
@@ -132,8 +132,8 @@ export const ProjectDetailsPage = () => {
   };
 
   const handleDeleteConfirm = () => {
-    if (slug) {
-      deleteProjectMutation.mutate(slug, {
+    if (projectId) {
+      deleteProjectMutation.mutate(projectId, {
         onSuccess: () => {
           navigate('/projects');
         },
@@ -142,10 +142,10 @@ export const ProjectDetailsPage = () => {
   };
 
   const handleAddMember = () => {
-    if (slug && selectedUserToAdd) {
+    if (projectId && selectedUserToAdd) {
       addProjectMemberMutation.mutate(
         {
-          slug,
+          id: projectId,
           userId: selectedUserToAdd._id,
           role: selectedRole,
         },
@@ -160,16 +160,16 @@ export const ProjectDetailsPage = () => {
   };
 
   const handleRemoveMember = (userId: string) => {
-    if (slug) {
-      removeProjectMemberMutation.mutate({ slug, userId });
+    if (projectId) {
+      removeProjectMemberMutation.mutate({ id: projectId, userId });
     }
   };
 
   const handleCreateBoard = () => {
-    if (slug && newBoardName.trim()) {
+    if (projectId && newBoardName.trim()) {
       createProjectBoardMutation.mutate(
         {
-          slug,
+          id: projectId,
           data: { name: newBoardName.trim() },
         },
         {
@@ -188,8 +188,8 @@ export const ProjectDetailsPage = () => {
         onSuccess: () => {
           setBoardToDelete(null);
           setIsDeleteBoardConfirmOpen(false);
-          if (slug) {
-            queryClient.invalidateQueries({ queryKey: ['project', slug] });
+          if (projectId) {
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
           }
         }
       });
@@ -429,7 +429,7 @@ export const ProjectDetailsPage = () => {
                     <BoardCard
                       key={board._id}
                       board={board}
-                      onClick={() => navigate(`/projects/${project.slug}/boards/${board._id}`)}
+                      onClick={() => navigate(`/projects/${project._id}/boards/${board._id}`)}
                       onDelete={
                         canDeleteBoard
                           ? (e) => {

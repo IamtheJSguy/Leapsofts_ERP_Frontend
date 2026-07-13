@@ -312,8 +312,11 @@ export const QualifyEnrichModal = ({ open, leadId, onClose, onSuccess }: Qualify
         profileSections,
       });
       const board = res?.data?.data?.board || res?.data?.board;
-      
-      onSuccess(board?._id, board?.projectId || 'leads');
+      const projectId =
+        typeof board?.projectId === 'string'
+          ? board.projectId
+          : board?.projectId?._id || board?.projectId?.toString?.();
+      onSuccess(board?._id, projectId);
     } catch (err: any) {
       console.error('Failed to enrich and qualify lead:', err);
       const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to enrich and qualify lead.';
