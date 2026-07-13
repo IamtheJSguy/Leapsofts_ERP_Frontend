@@ -162,7 +162,7 @@ export const LeadDetailsPage = () => {
           </Box>
 
           {/* Profile Sections & Enrichment */}
-          {(lead.profileSections?.length > 0 || lead.notes) && (
+          {(!!lead.profileSections?.length || !!lead.notes) && (
             <Box sx={{ 
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
