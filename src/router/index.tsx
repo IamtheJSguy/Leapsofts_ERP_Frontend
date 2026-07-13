@@ -24,6 +24,7 @@ import {
   KanbanBoardPage,
   AttendancePage,
   MemberProgressPage,
+  LeadDetailsPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -138,6 +139,14 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <SalesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'sales/leads/:id',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+            <LeadDetailsPage />
           </ProtectedRoute>,
         ),
       },

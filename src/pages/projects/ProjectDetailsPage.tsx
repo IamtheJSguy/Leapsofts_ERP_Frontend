@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -48,6 +49,7 @@ import {
   useRemoveProjectMember,
   useCreateProjectBoard,
 } from '@/hooks/api/useProjects';
+import { useDeleteBoard } from '@/hooks/api/useKanban';
 import type { ProjectStatus, ProjectMember } from '@/types';
 
 const TABS = ['Board', 'Overview', 'Team'];
@@ -81,6 +83,8 @@ export const ProjectDetailsPage = () => {
   const addProjectMemberMutation = useAddProjectMember(slug);
   const removeProjectMemberMutation = useRemoveProjectMember(slug);
   const createProjectBoardMutation = useCreateProjectBoard(slug);
+  const deleteBoardMutation = useDeleteBoard();
+  const queryClient = useQueryClient();
 
   const { data: dbUsers = [] } = useUsers();
   const currentUser = useAuthStore((s) => s.user);
@@ -90,6 +94,9 @@ export const ProjectDetailsPage = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false);
+  
+  const [isDeleteBoardConfirmOpen, setIsDeleteBoardConfirmOpen] = useState(false);
+  const [boardToDelete, setBoardToDelete] = useState<string | null>(null);
 
   // New board input states
   const [newBoardName, setNewBoardName] = useState('');
@@ -172,6 +179,20 @@ export const ProjectDetailsPage = () => {
           },
         }
       );
+    }
+  };
+
+  const handleDeleteBoardConfirm = () => {
+    if (boardToDelete) {
+      deleteBoardMutation.mutate(boardToDelete, {
+        onSuccess: () => {
+          setBoardToDelete(null);
+          setIsDeleteBoardConfirmOpen(false);
+          if (slug) {
+            queryClient.invalidateQueries({ queryKey: ['project', slug] });
+          }
+        }
+      });
     }
   };
 
@@ -401,13 +422,25 @@ export const ProjectDetailsPage = () => {
                   gap: 3,
                 }}
               >
-                {boards.map((board) => (
-                  <BoardCard
-                    key={board._id}
-                    board={board}
-                    onClick={() => navigate(`/projects/${project.slug}/boards/${board._id}`)}
-                  />
-                ))}
+                {boards.map((board) => {
+                  const isQualifiedBoard = board.name.trim().toLowerCase() === 'qualified';
+                  const canDeleteBoard = (canManageProject || board.ownerId === currentUser?._id) && !isQualifiedBoard;
+                  return (
+                    <BoardCard
+                      key={board._id}
+                      board={board}
+                      onClick={() => navigate(`/projects/${project.slug}/boards/${board._id}`)}
+                      onDelete={
+                        canDeleteBoard
+                          ? (e) => {
+                              setBoardToDelete(board._id);
+                              setIsDeleteBoardConfirmOpen(true);
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
               </Box>
             )}
           </Box>
@@ -643,6 +676,19 @@ export const ProjectDetailsPage = () => {
         cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setIsDeleteConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isDeleteBoardConfirmOpen}
+        title="Delete Board"
+        message="Are you sure you want to delete this board? All columns and tasks inside it will be lost permanently."
+        confirmLabel="Yes, Delete Board"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteBoardConfirm}
+        onCancel={() => {
+          setIsDeleteBoardConfirmOpen(false);
+          setBoardToDelete(null);
+        }}
       />
 
       {/* CREATE BOARD DIALOG */}

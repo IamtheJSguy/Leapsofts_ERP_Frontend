@@ -7,8 +7,10 @@ import {
   Avatar,
   Tooltip,
   useTheme,
+  IconButton,
 } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { tokens } from '@/styles/tokens';
 import type { KanbanBoard, User } from '@/types';
 import { useUsers } from '@/hooks/api/useUsers';
@@ -16,9 +18,10 @@ import { useUsers } from '@/hooks/api/useUsers';
 interface BoardCardProps {
   board: KanbanBoard;
   onClick: () => void;
+  onDelete?: (e: React.MouseEvent) => void;
 }
 
-export const BoardCard = ({ board, onClick }: BoardCardProps) => {
+export const BoardCard = ({ board, onClick, onDelete }: BoardCardProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { data: dbUsers = [] } = useUsers();
@@ -67,11 +70,28 @@ export const BoardCard = ({ board, onClick }: BoardCardProps) => {
         },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-        <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
-        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
-          {board.name}
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
+          <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
+            {board.name}
+          </Typography>
+        </Box>
+        {onDelete && (
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(e);
+            }}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        )}
       </Box>
 
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>

@@ -338,50 +338,7 @@ export default function TeamInsightsPage() {
         ))}
       </Grid>
 
-      {/* 3. Heads-Up Attention Alert Center */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          borderRadius: '24px',
-          bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.04)' : 'rgba(255, 127, 17, 0.02)',
-          border: `1px solid ${isDarkMode ? 'rgba(255, 127, 17, 0.12)' : 'rgba(255, 127, 17, 0.08)'}`,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5, flexWrap: 'wrap' }}>
-          <WarningAmberOutlinedIcon sx={{ color: tokens.brand.accent }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.accent, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.76rem' }}>
-            Heads-Up • {processedData.alerts.length} Things Need Attention
-          </Typography>
-        </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {processedData.alerts.map((alert, index) => (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, pl: 1 }}>
-              <Box
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  bgcolor: alert.type === 'danger' ? tokens.semantic.error : tokens.brand.accent,
-                  mt: 1,
-                  flexShrink: 0,
-                }}
-              />
-              <Box>
-                <Typography sx={{ fontSize: '0.86rem', fontWeight: 600, color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                  {alert.text}
-                </Typography>
-                {alert.details && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.76rem', display: 'block', mt: 0.25 }}>
-                    {alert.details}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          ))}
-        </Box>
-      </Paper>
 
       {/* 4. Charts Panel (Velocity Area Chart & Workload Bar Chart) */}
       <Grid container spacing={3.5}>

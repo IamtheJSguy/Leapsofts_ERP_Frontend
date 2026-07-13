@@ -26,6 +26,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import CheckIcon from '@mui/icons-material/Check';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FlagIcon from '@mui/icons-material/Flag';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { tokens } from '@/styles/tokens';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 
@@ -345,6 +346,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
+  const navigate = useNavigate();
 
   const mentionableUsers = useMemo(() => {
     const memberIds = new Set(boardMembers.map((user: any) => user._id));
@@ -601,6 +603,16 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             )}
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+            {lead && (
+              <Tooltip title="View Details">
+                <IconButton 
+                  onClick={() => navigate(`/sales/leads/${lead._id}`)}
+                  sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}
+                >
+                  <OpenInNewIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {isAdminOrOwner && (
               <IconButton onClick={triggerDeleteCardConfirm} sx={{ color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)' } }}>
                 <DeleteIcon fontSize="small" />

@@ -363,40 +363,7 @@ export const AdminDashboard = () => {
           ))}
         </Grid>
 
-        {/* HEADS UP Warnings Alert */}
-        <Box
-          onClick={() => navigate('/team/insights')}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            p: 2,
-            borderRadius: '16px',
-            bgcolor: 'rgba(255, 127, 17, 0.03)',
-            border: '1px solid rgba(255, 127, 17, 0.1)',
-            cursor: 'pointer',
-            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-            '&:hover': {
-              bgcolor: 'rgba(255, 127, 17, 0.06)',
-              borderColor: 'rgba(255, 127, 17, 0.18)'
-            }
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <WarningAmberOutlinedIcon sx={{ color: tokens.brand.accent }} />
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.62rem', letterSpacing: '0.08em', color: tokens.brand.accent }}>
-                HEADS-UP
-              </Typography>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                {attentionCount === 1
-                  ? '1 thing needs attention'
-                  : `${attentionCount} things need attention`}
-              </Typography>
-            </Box>
-          </Box>
-          <ChevronRightIcon sx={{ color: tokens.text.muted }} />
-        </Box>
+
       </Box>
 
 
