@@ -9,7 +9,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  MenuItem
+  MenuItem,
+  Chip
 } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
@@ -22,6 +23,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useDashboard } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
+import { useDailyKpis } from '@/hooks/api/useShifts';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
 import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
@@ -30,6 +32,7 @@ export const UserDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, refetch } = useDashboard();
   const { data: boards } = useKanbanBoards();
+  const { data: groupedKpis } = useDailyKpis();
   const { data: allMeetings = [] } = useMeetings();
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -139,36 +142,53 @@ export const UserDashboard = () => {
 
         {/* Inline statistics counters - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 2.5 }}>
-          {(stats?.kpiChartData && stats.kpiChartData.length > 0
-            ? stats.kpiChartData.map((kpi) => ({
-                label: kpi.name.toUpperCase(),
-                val: kpi.Achieved,
-                target: kpi.Target,
-              }))
-            : [
-                { label: 'COMPLETED KPIS', val: stats?.metrics?.completedKpis || 0, target: undefined },
-              ]
-          ).map((stat) => (
-            <Grid item xs={6} sm={4} md={2.4} key={stat.label}>
+          {(() => {
+            const baseStats: any[] = stats?.kpiChartData && stats.kpiChartData.length > 0
+              ? stats.kpiChartData.map((kpi: any) => ({
+                  label: kpi.name.toUpperCase(),
+                  val: kpi.Achieved,
+                  target: kpi.Target,
+                }))
+              : [
+                  { label: 'COMPLETED KPIS', val: stats?.metrics?.completedKpis || 0, target: undefined },
+                ];
+            
+            // Use the overdue count from useDailyKpis directly as requested
+            const overdueKpisCount = groupedKpis?.counts?.overdue || 0;
+            const totalOverdue = (stats?.metrics?.overdueTasks || 0) + overdueKpisCount;
+
+            return [
+              ...baseStats,
+              { 
+                label: 'OVERDUE', 
+                val: totalOverdue, 
+                target: undefined,
+                isOverdue: true 
+              }
+            ];
+          })().map((stat, i) => (
+            <Grid item xs={6} sm={4} md={2.4} key={stat.label + i}>
               <Box
                 sx={{
+                  height: '100%',
+                  boxSizing: 'border-box',
                   p: 2.2,
                   borderRadius: '16px',
-                  bgcolor: 'rgba(0,0,0,0.008)',
-                  border: '1px solid rgba(0,0,0,0.015)',
+                  bgcolor: stat.isOverdue ? 'rgba(239, 68, 68, 0.05)' : 'rgba(0,0,0,0.008)',
+                  border: stat.isOverdue ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(0,0,0,0.015)',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   '&:hover': {
-                    bgcolor: 'rgba(0,0,0,0.015)',
-                    borderColor: 'rgba(0,0,0,0.03)',
+                    bgcolor: stat.isOverdue ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0,0,0,0.015)',
+                    borderColor: stat.isOverdue ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0,0,0,0.03)',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+                    boxShadow: stat.isOverdue ? '0 4px 12px rgba(239, 68, 68, 0.1)' : '0 4px 12px rgba(0,0,0,0.01)'
                   }
                 }}
               >
                 <Typography
                   variant="caption"
                   sx={{
-                    color: tokens.text.muted,
+                    color: stat.isOverdue ? tokens.semantic.error : tokens.text.muted,
                     fontWeight: 750,
                     letterSpacing: '0.08em',
                     fontSize: '0.62rem',
@@ -182,16 +202,20 @@ export const UserDashboard = () => {
                   sx={{
                     fontSize: { xs: '1.4rem', sm: '1.8rem' },
                     fontWeight: 850,
-                    color: tokens.text.primary,
+                    color: stat.isOverdue ? tokens.semantic.error : tokens.text.primary,
                     lineHeight: 1,
                     letterSpacing: '-0.02em'
                   }}
                 >
                   {stat.val}
                 </Typography>
-                {'target' in stat && stat.target != null && stat.target > 0 && (
+                {('target' in stat && stat.target != null && stat.target > 0) ? (
                   <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 600, mt: 0.5, display: 'block' }}>
                     of {stat.target} target
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 600, mt: 0.5, display: 'block', visibility: 'hidden' }}>
+                    no target
                   </Typography>
                 )}
               </Box>
@@ -567,7 +591,7 @@ export const UserDashboard = () => {
                     </Typography>
                   </Box>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
-                    {board.columns?.length || 0} stages
+                    {board.columns?.length || 0} columns
                   </Typography>
                 </Box>
               ))}
@@ -727,22 +751,78 @@ export const UserDashboard = () => {
                 </Typography>
               </Box>
 
-              {/* Deadlines Empty state */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  py: 4,
-                  flex: 1
-                }}
-              >
-                <AccessTimeOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
-                <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
-                  No upcoming deadlines
-                </Typography>
-              </Box>
+              {(!stats?.tasksList || stats.tasksList.length === 0) ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    py: 4,
+                    flex: 1
+                  }}
+                >
+                  <AccessTimeOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
+                    No upcoming deadlines
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, maxHeight: 300, overflowY: 'auto' }}>
+                  {stats.tasksList.map((task: any) => (
+                    <Box
+                      key={task.id}
+                      onClick={() => navigate(`/projects/${task.projectId}/boards/${task.boardId}?card=${task.id}`)}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        p: 2,
+                        borderRadius: '16px',
+                        bgcolor: 'rgba(0,0,0,0.015)',
+                        border: '1px solid rgba(0,0,0,0.03)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          bgcolor: 'rgba(0,0,0,0.03)',
+                          borderColor: 'rgba(0,0,0,0.06)',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography sx={{ fontWeight: 750, color: tokens.text.primary, fontSize: '0.9rem' }}>
+                          {task.title}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Chip 
+                            label={`${task.boardName} • ${task.columnName}`} 
+                            size="small" 
+                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }} 
+                          />
+                        </Box>
+                      </Box>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography 
+                          sx={{ 
+                            fontSize: '0.75rem', 
+                            fontWeight: 700, 
+                            color: task.isOverdue ? tokens.semantic.error : tokens.brand.primary 
+                          }}
+                        >
+                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </Typography>
+                        {task.isOverdue && (
+                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end', mt: 0.2 }}>
+                            <WarningAmberOutlinedIcon sx={{ fontSize: 12 }} /> Overdue
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
         </Grid>
