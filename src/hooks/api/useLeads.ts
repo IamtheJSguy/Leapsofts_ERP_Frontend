@@ -16,8 +16,8 @@ const leadApi = {
     }),
   validateLeads: (data: { leads: Partial<Lead>[] }) =>
     api.post<{ data: ValidationResult }>('/leads/validate', data),
-  qualifyLead: ({ id, boardId }: { id: string; boardId?: string }) =>
-    api.post(`/leads/${id}/qualify`, boardId ? { boardId } : {}),
+  qualifyLead: ({ id, boardId, ...data }: { id: string; boardId?: string } & Partial<Lead>) =>
+    api.post(`/leads/${id}/qualify`, boardId ? { ...data, boardId } : data),
   getLeadHistory: (id: string) => api.get(`/leads/${id}/history`),
 };
 
