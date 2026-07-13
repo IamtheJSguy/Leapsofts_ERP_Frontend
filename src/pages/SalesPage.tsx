@@ -102,7 +102,7 @@ export const SalesPage = () => {
     addToast({ message: 'Lead qualified successfully! Card created.', severity: 'success' });
     setConfirmQualifyOpen(false);
     setLeadIdToQualify('');
-    if (boardId) navigate(`/projects/${projectId || 'leads'}/boards/${boardId}`);
+    if (boardId && projectId) navigate(`/projects/${projectId}/boards/${boardId}`);
   };
 
   const getCardTheme = (label: string) => {

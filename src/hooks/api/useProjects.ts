@@ -9,29 +9,29 @@ interface ProjectResponse {
 
 const projectsApi = {
   getProjects: () => api.get<{ data: Project[] }>('/projects'),
-  getProject: (slug: string) => api.get<{ data: ProjectResponse }>(`/projects/${slug}`),
+  getProject: (id: string) => api.get<{ data: ProjectResponse }>(`/projects/${id}`),
   createProject: (data: { name: string; description?: string; status?: ProjectStatus; tags?: string[] }) =>
     api.post<{ data: Project }>('/projects', data),
-  updateProject: ({ slug, data }: { slug: string; data: Partial<Project> }) =>
-    api.put<{ data: Project }>(`/projects/${slug}`, data),
-  deleteProject: (slug: string) => api.delete(`/projects/${slug}`),
+  updateProject: ({ id, data }: { id: string; data: Partial<Project> }) =>
+    api.put<{ data: Project }>(`/projects/${id}`, data),
+  deleteProject: (id: string) => api.delete(`/projects/${id}`),
 
-  getMembers: (slug: string) => api.get<{ data: ProjectMember[] }>(`/projects/${slug}/members`),
-  addMember: ({ slug, userId, role }: { slug: string; userId: string; role?: string }) =>
-    api.post<{ data: Project }>(`/projects/${slug}/members`, { userId, role }),
-  removeMember: ({ slug, userId }: { slug: string; userId: string }) =>
-    api.delete(`/projects/${slug}/members/${userId}`),
+  getMembers: (id: string) => api.get<{ data: ProjectMember[] }>(`/projects/${id}/members`),
+  addMember: ({ id, userId, role }: { id: string; userId: string; role?: string }) =>
+    api.post<{ data: Project }>(`/projects/${id}/members`, { userId, role }),
+  removeMember: ({ id, userId }: { id: string; userId: string }) =>
+    api.delete(`/projects/${id}/members/${userId}`),
 
-  getBoards: (slug: string) => api.get<{ data: KanbanBoard[] }>(`/projects/${slug}/boards`),
-  createBoard: ({ slug, data }: { slug: string; data: { name: string; columns?: { name: string; order: number }[] } }) =>
-    api.post<{ data: KanbanBoard }>(`/projects/${slug}/boards`, data),
+  getBoards: (id: string) => api.get<{ data: KanbanBoard[] }>(`/projects/${id}/boards`),
+  createBoard: ({ id, data }: { id: string; data: { name: string; columns?: { name: string; order: number }[] } }) =>
+    api.post<{ data: KanbanBoard }>(`/projects/${id}/boards`, data),
 
-  getBoardMembers: ({ slug, boardId }: { slug: string; boardId: string }) =>
-    api.get<{ data: any[] }>(`/projects/${slug}/boards/${boardId}/members`),
-  addBoardMember: ({ slug, boardId, userId, role }: { slug: string; boardId: string; userId: string; role?: string }) =>
-    api.post<{ data: any }>(`/projects/${slug}/boards/${boardId}/members`, { userId, role }),
-  removeBoardMember: ({ slug, boardId, userId }: { slug: string; boardId: string; userId: string }) =>
-    api.delete(`/projects/${slug}/boards/${boardId}/members/${userId}`),
+  getBoardMembers: ({ id, boardId }: { id: string; boardId: string }) =>
+    api.get<{ data: any[] }>(`/projects/${id}/boards/${boardId}/members`),
+  addBoardMember: ({ id, boardId, userId, role }: { id: string; boardId: string; userId: string; role?: string }) =>
+    api.post<{ data: any }>(`/projects/${id}/boards/${boardId}/members`, { userId, role }),
+  removeBoardMember: ({ id, boardId, userId }: { id: string; boardId: string; userId: string }) =>
+    api.delete(`/projects/${id}/boards/${boardId}/members/${userId}`),
 };
 
 export const useProjects = () =>
@@ -40,11 +40,11 @@ export const useProjects = () =>
     queryFn: () => projectsApi.getProjects().then((r) => r.data.data),
   });
 
-export const useProject = (slug: string | undefined) =>
+export const useProject = (id: string | undefined) =>
   useQuery({
-    queryKey: ['project', slug],
-    queryFn: () => projectsApi.getProject(slug!).then((r) => r.data.data),
-    enabled: !!slug,
+    queryKey: ['project', id],
+    queryFn: () => projectsApi.getProject(id!).then((r) => r.data.data),
+    enabled: !!id,
   });
 
 export const useCreateProject = () => {
@@ -57,15 +57,15 @@ export const useCreateProject = () => {
   });
 };
 
-export const useUpdateProject = (slug?: string) => {
+export const useUpdateProject = (id?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.updateProject,
-    onSuccess: (res, variables) => {
+    onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', variables.slug] });
-      if (slug) {
-        queryClient.invalidateQueries({ queryKey: ['project', slug] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] });
       }
     },
   });
@@ -81,97 +81,97 @@ export const useDeleteProject = () => {
   });
 };
 
-export const useProjectMembers = (slug: string | undefined) =>
+export const useProjectMembers = (id: string | undefined) =>
   useQuery({
-    queryKey: ['projectMembers', slug],
-    queryFn: () => projectsApi.getMembers(slug!).then((r) => r.data.data),
-    enabled: !!slug,
+    queryKey: ['projectMembers', id],
+    queryFn: () => projectsApi.getMembers(id!).then((r) => r.data.data),
+    enabled: !!id,
   });
 
-export const useAddProjectMember = (slug?: string) => {
+export const useAddProjectMember = (id?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.addMember,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['project', variables.slug] });
-      queryClient.invalidateQueries({ queryKey: ['projectMembers', variables.slug] });
-      if (slug) {
-        queryClient.invalidateQueries({ queryKey: ['project', slug] });
-        queryClient.invalidateQueries({ queryKey: ['projectMembers', slug] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['projectMembers', variables.id] });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] });
+        queryClient.invalidateQueries({ queryKey: ['projectMembers', id] });
       }
     },
   });
 };
 
-export const useRemoveProjectMember = (slug?: string) => {
+export const useRemoveProjectMember = (id?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.removeMember,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['project', variables.slug] });
-      queryClient.invalidateQueries({ queryKey: ['projectMembers', variables.slug] });
-      if (slug) {
-        queryClient.invalidateQueries({ queryKey: ['project', slug] });
-        queryClient.invalidateQueries({ queryKey: ['projectMembers', slug] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['projectMembers', variables.id] });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] });
+        queryClient.invalidateQueries({ queryKey: ['projectMembers', id] });
       }
     },
   });
 };
 
-export const useProjectBoards = (slug: string | undefined) =>
+export const useProjectBoards = (id: string | undefined) =>
   useQuery({
-    queryKey: ['projectBoards', slug],
-    queryFn: () => projectsApi.getBoards(slug!).then((r) => r.data.data),
-    enabled: !!slug,
+    queryKey: ['projectBoards', id],
+    queryFn: () => projectsApi.getBoards(id!).then((r) => r.data.data),
+    enabled: !!id,
   });
 
-export const useCreateProjectBoard = (slug?: string) => {
+export const useCreateProjectBoard = (id?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.createBoard,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['project', variables.slug] });
-      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.slug] });
-      if (slug) {
-        queryClient.invalidateQueries({ queryKey: ['project', slug] });
-        queryClient.invalidateQueries({ queryKey: ['projectBoards', slug] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] });
+        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
       }
     },
   });
 };
 
-export const useBoardMembers = (slug: string | undefined, boardId: string | undefined) =>
+export const useBoardMembers = (id: string | undefined, boardId: string | undefined) =>
   useQuery({
-    queryKey: ['boardMembers', slug, boardId],
-    queryFn: () => projectsApi.getBoardMembers({ slug: slug!, boardId: boardId! }).then((r) => r.data.data),
-    enabled: !!slug && !!boardId,
+    queryKey: ['boardMembers', id, boardId],
+    queryFn: () => projectsApi.getBoardMembers({ id: id!, boardId: boardId! }).then((r) => r.data.data),
+    enabled: !!id && !!boardId,
   });
 
-export const useAddBoardMember = (slug?: string, boardId?: string) => {
+export const useAddBoardMember = (id?: string, boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.addBoardMember,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.slug, variables.boardId] });
-      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.slug] });
-      if (slug && boardId) {
-        queryClient.invalidateQueries({ queryKey: ['boardMembers', slug, boardId] });
-        queryClient.invalidateQueries({ queryKey: ['projectBoards', slug] });
+      queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.id, variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      if (id && boardId) {
+        queryClient.invalidateQueries({ queryKey: ['boardMembers', id, boardId] });
+        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
       }
     },
   });
 };
 
-export const useRemoveBoardMember = (slug?: string, boardId?: string) => {
+export const useRemoveBoardMember = (id?: string, boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: projectsApi.removeBoardMember,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.slug, variables.boardId] });
-      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.slug] });
-      if (slug && boardId) {
-        queryClient.invalidateQueries({ queryKey: ['boardMembers', slug, boardId] });
-        queryClient.invalidateQueries({ queryKey: ['projectBoards', slug] });
+      queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.id, variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      if (id && boardId) {
+        queryClient.invalidateQueries({ queryKey: ['boardMembers', id, boardId] });
+        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
       }
     },
   });
