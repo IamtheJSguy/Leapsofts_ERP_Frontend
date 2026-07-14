@@ -58,6 +58,7 @@ export const WeeklyActivityChart = ({ data }: WeeklyActivityChartProps) => {
         borderRadius: 4,
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.4)' : '#FFFFFF',
         border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)'}`,
+        /* backdropFilter: isDarkMode (removed for performance) */
         boxShadow: isDarkMode 
           ? '0 4px 20px rgba(0, 0, 0, 0.15)' 
           : '0 4px 20px rgba(26, 22, 37, 0.02)',
