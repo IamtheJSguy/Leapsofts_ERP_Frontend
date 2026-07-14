@@ -124,7 +124,33 @@ export const useCreateConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: chatApi.createConversation,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+    onSuccess: (res) => {
+      // Extract the new conversation from the response
+      const newConversation: Conversation | undefined =
+        (res.data as { data?: Conversation })?.data ?? (res.data as unknown as Conversation);
+
+      if (newConversation?._id) {
+        // Inject directly into the cache so the creator sees it instantly
+        // without waiting for a round-trip refetch.
+        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+          if (!old) {
+            // Cache not populated yet — let the socket / next render fetch it
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            return old;
+          }
+          if (old.some((c) => c._id === newConversation._id)) {
+            // Already inserted (e.g. by a concurrent socket event) — merge
+            return old.map((c) =>
+              c._id === newConversation._id ? { ...c, ...newConversation } : c,
+            );
+          }
+          return [newConversation, ...old];
+        });
+      } else {
+        // Fallback if the response shape is unexpected
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      }
+    },
   });
 };
 

@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { Lead, LeadFilters, LeadsListResponse, PaginatedResponse, ValidationResult } from '@/types';
+import type {
+  ApiResponse,
+  BulkUploadResponse,
+  Lead,
+  LeadFilters,
+  LeadsListResponse,
+  PaginatedResponse,
+  ValidationResult,
+} from '@/types';
 
 const leadApi = {
   getLeads: (params: LeadFilters) =>
@@ -11,7 +19,7 @@ const leadApi = {
     api.put(`/leads/${id}`, data),
   deleteLead: (id: string) => api.delete(`/leads/${id}`),
   bulkUpload: (formData: FormData) =>
-    api.post('/leads/bulk-upload', formData, {
+    api.post<ApiResponse<BulkUploadResponse>>('/leads/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   validateLeads: (data: { leads: Partial<Lead>[] }) =>

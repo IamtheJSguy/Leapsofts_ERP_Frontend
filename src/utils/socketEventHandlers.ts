@@ -6,6 +6,11 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
+// The backend emits MESSAGE_NEW to both `conversation:<id>` and `user:<id>`
+// rooms. Users who have joined a conversation room receive it twice.
+// Track recently processed message IDs and ignore the duplicate delivery.
+const recentlyProcessedMessages = new Set<string>();
+
 const getSenderId = (message: Message): string => {
   if (message.senderId) {
     return typeof message.senderId === 'string' ? message.senderId : message.senderId._id;
@@ -61,6 +66,16 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
     const message = data as Message;
+    const messageId = message._id;
+
+    // Guard against double-delivery: the backend emits to both the conversation
+    // room and each user's personal room. Skip if already handled.
+    if (messageId && recentlyProcessedMessages.has(messageId)) return;
+    if (messageId) {
+      recentlyProcessedMessages.add(messageId);
+      setTimeout(() => recentlyProcessedMessages.delete(messageId), 5000);
+    }
+
     const conversationId = getConversationId(message);
     const currentUserId = useAuthStore.getState().user?._id;
     const senderId = getSenderId(message);
@@ -120,11 +135,20 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.CONVERSATION_NEW, (data: unknown) => {
     const conversation = data as Conversation;
+    const existing = queryClient.getQueryData<Conversation[]>(['conversations']);
+    if (!existing) {
+      // Conversations haven't loaded yet — force a fresh fetch that will
+      // include the new conversation returned by the server.
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      return;
+    }
     queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
       if (!old) return [conversation];
       if (old.some((c) => c._id === conversation._id)) {
+        // Already present — just merge in any updated fields (e.g. populated participants)
         return old.map((c) => (c._id === conversation._id ? { ...c, ...conversation } : c));
       }
+      // Prepend so it appears at the top of the list
       return [conversation, ...old];
     });
   });
