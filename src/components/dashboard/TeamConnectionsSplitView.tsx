@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
       <Box
         sx={{
           bgcolor: isDark ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(8px)',
+          /* backdropFilter: 'blur(8px)' (removed for performance) */
           border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
           boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.08)',
           borderRadius: '12px',

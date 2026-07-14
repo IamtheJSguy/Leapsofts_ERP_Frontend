@@ -188,8 +188,37 @@ export const useReorderColumns = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.reorderColumns,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
+    onMutate: async (variables) => {
+      const key = ['kanbanBoard', variables.boardId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previousBoard = queryClient.getQueryData<KanbanBoard>(key);
+      
+      queryClient.setQueryData<KanbanBoard>(key, (old: any) => {
+        if (!old || !old.columns) return old;
+        const newColumns = [...old.columns];
+        newColumns.sort((a, b) => {
+          const idA = a._id || a.id;
+          const idB = b._id || b.id;
+          const indexA = variables.columnIds.indexOf(idA);
+          const indexB = variables.columnIds.indexOf(idB);
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+        return { ...old, columns: newColumns };
+      });
+      
+      return { previousBoard, key };
+    },
+    onError: (_err, _vars, context: any) => {
+      if (context?.previousBoard && context.key) {
+        queryClient.setQueryData(context.key, context.previousBoard);
+      }
+    },
+    onSettled: (_data, _err, _vars, context: any) => {
+      if (context?.key) {
+        queryClient.invalidateQueries({ queryKey: context.key });
+      }
     },
   });
 };

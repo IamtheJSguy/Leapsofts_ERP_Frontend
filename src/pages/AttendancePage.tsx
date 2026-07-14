@@ -536,7 +536,7 @@ export const AttendancePage = () => {
               width: { xs: '100%', sm: 460 },
               p: 3.5,
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-              backdropFilter: 'blur(16px)',
+              /* backdropFilter: 'blur(16px)' (removed for performance) */
               borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             }
           }}

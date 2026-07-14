@@ -133,7 +133,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         borderRadius: '28px',
         border: `1px solid ${isDarkMode ? alpha('#fff', 0.05) : alpha(tokens.brand.primary, 0.05)}`,
         bgcolor: isDarkMode ? alpha('#121212', 0.6) : '#ffffff',
-        backdropFilter: 'blur(20px)',
+        /* backdropFilter: 'blur(20px)' (removed for performance) */
         boxShadow: isDarkMode 
           ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
           : '0 12px 40px rgba(93, 26, 137, 0.04)',

@@ -167,7 +167,7 @@ const DashboardPage = () => {
             p: 2.5,
             borderRadius: '24px',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.01)',
             display: 'flex',
@@ -348,7 +348,7 @@ const DashboardPage = () => {
             p: 2.5,
             borderRadius: '24px',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },

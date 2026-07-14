@@ -157,7 +157,7 @@ const GlassDatePicker = ({ value, onChange, isDarkMode }: GlassDatePickerProps) 
               p: 2.5,
               borderRadius: '24px',
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(30px)',
+              /* backdropFilter: 'blur(30px)' (removed for performance) */
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
               boxShadow: isDarkMode ? '0 10px 40px rgba(0,0,0,0.5)' : '0 10px 40px rgba(0,0,0,0.08)',
               width: 320,
@@ -270,7 +270,7 @@ const UserProgressCard = ({ group, isDarkMode, date }: UserProgressCardProps) =>
       sx={{
         borderRadius: '24px',
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(30px)',
+        /* backdropFilter: 'blur(30px)' (removed for performance) */
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
         boxShadow: isDarkMode ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.03)',
         overflow: 'hidden',
@@ -435,7 +435,7 @@ export const DailyTeamProgress = () => {
           mb: 4,
           p: 2.5,
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
-          backdropFilter: 'blur(20px)',
+          /* backdropFilter: 'blur(20px)' (removed for performance) */
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
           borderRadius: '24px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',

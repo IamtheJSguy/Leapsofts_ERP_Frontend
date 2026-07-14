@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Box, Typography, Button, useTheme, IconButton, InputAdornment,
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
@@ -37,8 +38,12 @@ import {
   useDroppable, MeasuringStrategy
 } from '@dnd-kit/core';
 import {
-  SortableContext, sortableKeyboardCoordinates,
-  verticalListSortingStrategy, useSortable,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -68,7 +73,7 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
         sx: {
           borderRadius: '20px',
           p: 1.5,
-          backdropFilter: 'blur(10px)',
+          /* backdropFilter: 'blur(10px)' (removed for performance) */
           boxShadow: '0 10px 40px rgba(0,0,0,0.12)'
         }
       }}
@@ -301,6 +306,65 @@ const DroppableColumn = ({ col, isDarkMode, children }: any) => {
   );
 };
 
+const SortableBoardColumn = ({
+  col,
+  colTasks,
+  isDarkMode,
+  onAddCard,
+  onColumnMenuOpen,
+  setDrawerTaskId,
+}: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: col.id,
+    data: { type: 'Column', column: col },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column' }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box 
+          {...attributes} 
+          {...listeners} 
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, cursor: isDragging ? 'grabbing' : 'grab', py: 0.5 }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{col.title}</Typography>
+          <Chip label={colTasks.length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
+        </Box>
+        <Box>
+          <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={() => onAddCard(col.id)}>
+            <AddIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            sx={{ color: 'text.secondary' }}
+            onClick={(e) => onColumnMenuOpen(e, col.id, col.title)}
+          >
+            <MoreHorizIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
+
+      <SortableContext items={colTasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+        <DroppableColumn col={col} isDarkMode={isDarkMode}>
+          {colTasks.map((task: any) => (
+            <SortableTask key={task.id} task={task} isDarkMode={isDarkMode} onTaskClick={(t: any) => setDrawerTaskId(t.id)} />
+          ))}
+        </DroppableColumn>
+      </SortableContext>
+    </Box>
+  );
+};
+
 const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard }: any) => {
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -497,7 +561,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           sx: {
             width: { xs: '100%', sm: 480 },
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
+            /* backdropFilter: 'blur(20px)' (removed for performance) */
             borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             borderTopLeftRadius: '24px',
             borderBottomLeftRadius: '24px',
@@ -511,7 +575,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           BackdropProps: {
             sx: {
               bgcolor: 'rgba(0,0,0,0.2)',
-              backdropFilter: 'blur(4px)',
+              /* backdropFilter: 'blur(4px)' (removed for performance) */
             },
           },
         }}
@@ -1065,7 +1129,8 @@ export const KanbanBoardPage = () => {
     });
   }, [actualBoard, allUsers]);
 
-  const [activeTask, setActiveTask] = useState<any | null>(null);
+  const [activeTask, setActiveTask] = useState<any>(null);
+  const [activeColumn, setActiveColumn] = useState<any>(null);
   const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null);
 
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
@@ -1081,7 +1146,7 @@ export const KanbanBoardPage = () => {
 
   // Direct Card Creation Dialog
   const [isCardDialogOpen, setIsCardDialogOpen] = useState(false);
-  const [cardTargetColumnId, setCardTargetColumnId] = useState<string>('');
+  const [cardTargetColumnId, setCardTargetColumnId] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [newCardDescription, setNewCardDescription] = useState('');
   const [newCardPriority, setNewCardPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
@@ -1327,16 +1392,37 @@ export const KanbanBoardPage = () => {
   };
 
   const handleDragStart = (e: DragStartEvent) => {
-    const task = tasks.find(t => t.id === e.active.id);
+    const { active } = e;
+    if (active.data.current?.type === 'Column') {
+      setActiveColumn(active.data.current.column);
+      return;
+    }
+    const task = tasks.find(t => t.id === active.id);
     if (task) setActiveTask(task);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
     setActiveTask(null);
+    setActiveColumn(null);
     const { active, over } = e;
     if (!over) return;
     const activeId = active.id as string;
     const overId = over.id as string;
+
+    if (active.data.current?.type === 'Column') {
+      const activeColIndex = columns.findIndex((c: any) => c.id === activeId);
+      const overColIndex = columns.findIndex((c: any) => c.id === overId);
+      
+      if (activeColIndex !== overColIndex && activeColIndex !== -1 && overColIndex !== -1) {
+        const colIds = columns.map((c: any) => c.id);
+        const newColIds = arrayMove(colIds, activeColIndex, overColIndex);
+        reorderColumnsMutation.mutate({
+          boardId: activeBoardId,
+          columnIds: newColIds
+        });
+      }
+      return;
+    }
 
     const activeTaskMatch = tasks.find(t => t.id === activeId);
     if (!activeTaskMatch) return;
@@ -1477,54 +1563,58 @@ export const KanbanBoardPage = () => {
             }
           }}
         >
-          {columns.map((col: any) => {
-            const colTasks = filteredTasks.filter(t => t.columnId === col.id);
-            return (
-              <Box key={col.id} sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{col.title}</Typography>
-                    <Chip label={colTasks.length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
+          <SortableContext items={columns.map((c: any) => c.id)} strategy={horizontalListSortingStrategy}>
+            {columns.map((col: any) => {
+              const colTasks = filteredTasks.filter(t => t.columnId === col.id);
+              return (
+                <SortableBoardColumn
+                  key={col.id}
+                  col={col}
+                  colTasks={colTasks}
+                  isDarkMode={isDarkMode}
+                  onAddCard={(colId: string) => { setCardTargetColumnId(colId); setIsCardDialogOpen(true); }}
+                  onColumnMenuOpen={(e: any, colId: string, title: string) => {
+                    setColumnMenuAnchor(e.currentTarget);
+                    setMenuTargetColumnId(colId);
+                    setRenameColumnText(title);
+                  }}
+                  setDrawerTaskId={setDrawerTaskId}
+                />
+              );
+            })}
+          </SortableContext>
+
+          {typeof document !== 'undefined' ? createPortal(
+            <DragOverlay dropAnimation={{
+              duration: 250,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
+              {activeColumn ? (
+                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, py: 0.5, cursor: 'grabbing' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{activeColumn.title}</Typography>
+                      <Chip label={filteredTasks.filter(t => t.columnId === activeColumn.id).length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
+                    </Box>
+                    <Box>
+                      <IconButton size="small" sx={{ color: 'text.secondary' }}><AddIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" sx={{ color: 'text.secondary' }}><MoreHorizIcon fontSize="small" /></IconButton>
+                    </Box>
                   </Box>
-                  <Box>
-                    <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={() => { setCardTargetColumnId(col.id); setIsCardDialogOpen(true); }}>
-                      <AddIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      sx={{ color: 'text.secondary' }}
-                      onClick={(e) => {
-                        setColumnMenuAnchor(e.currentTarget);
-                        setMenuTargetColumnId(col.id);
-                        setRenameColumnText(col.title);
-                      }}
-                    >
-                      <MoreHorizIcon fontSize="small" />
-                    </IconButton>
+                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '16px', p: 1.5, minHeight: 150 }}>
+                    {filteredTasks.filter(t => t.columnId === activeColumn.id).map(task => (
+                      <TaskCardVisual key={task.id} task={task} isDarkMode={isDarkMode} />
+                    ))}
                   </Box>
                 </Box>
-
-                <SortableContext items={colTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  <DroppableColumn col={col} isDarkMode={isDarkMode}>
-                    {colTasks.map(task => (
-                      <SortableTask key={task.id} task={task} isDarkMode={isDarkMode} onTaskClick={(t: any) => setDrawerTaskId(t.id)} />
-                    ))}
-                  </DroppableColumn>
-                </SortableContext>
-              </Box>
-            );
-          })}
-
-          <DragOverlay dropAnimation={{
-            duration: 250,
-            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-          }}>
-            {activeTask ? (
-              <Box sx={{ width: '100%', height: '100%', transform: 'rotate(2deg) scale(1.02)', transformOrigin: 'top left', cursor: 'grabbing' }}>
-                <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
-              </Box>
-            ) : null}
-          </DragOverlay>
+              ) : activeTask ? (
+                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing' }}>
+                  <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
+                </Box>
+              ) : null}
+            </DragOverlay>,
+            document.body
+          ) : null}
         </DndContext>
 
         <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column' }}>

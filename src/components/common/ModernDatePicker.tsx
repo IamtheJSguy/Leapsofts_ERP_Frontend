@@ -120,7 +120,7 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
             width: 320,
             borderRadius: '20px',
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(24px)',
+            /* backdropFilter: 'blur(24px)' (removed for performance) */
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
             boxShadow: isDarkMode 
               ? '0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)' 

@@ -76,7 +76,7 @@ export const CheckInReminder = () => {
           p: 2.5,
           zIndex: 1100,
           background: isDark ? 'rgba(30, 27, 36, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(20px)',
+          /* backdropFilter: 'blur(20px)' (removed for performance) */
           border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(93, 26, 137, 0.08)'}`,
           boxShadow: tokens.shadow.card,
           display: 'flex',
