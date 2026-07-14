@@ -123,7 +123,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
       }}
       slotProps={{
         backdrop: {
-          sx: { backdropFilter: 'blur(4px)', backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.2)' }
+          sx: { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.2)' }
         }
       }}
     >
