@@ -419,7 +419,7 @@ const DashboardPage = () => {
           <Button
             variant="outlined"
             startIcon={<AddTaskIcon />}
-            href="/board"
+            href="/tasks"
             sx={{
               zIndex: 1,
               color: tokens.brand.primary,

@@ -57,7 +57,7 @@ export const AdminDashboard = () => {
   const boardLabel = tasksOverview?.boardName?.toUpperCase() ?? 'TEAM BOARD';
 
   const upcomingMeetings = allMeetings
-    .filter((m: any) => new Date(m.scheduledAt) >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .filter((m: any) => new Date(m.scheduledAt).getTime() > Date.now())
     .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 3);
 
@@ -316,24 +316,6 @@ export const AdminDashboard = () => {
           }
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-            Team Analysis · this week
-          </Typography>
-          <Button 
-            variant="text" 
-            onClick={() => navigate('/team/insights')}
-            sx={{ 
-              textTransform: 'none', 
-              color: tokens.text.muted, 
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              '&:hover': { color: tokens.brand.primary } 
-            }}
-          >
-            Open Insights &gt;
-          </Button>
-        </Box>
 
         {/* Analysis numbers row */}
         <Grid container spacing={2.5} sx={{ mb: 2.5 }}>

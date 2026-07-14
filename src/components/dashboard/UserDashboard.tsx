@@ -72,7 +72,7 @@ export const UserDashboard = () => {
 
   // Meetings for Upcoming Meetings section
   const upcomingMeetings = allMeetings
-    .filter((m: any) => new Date(m.scheduledAt) >= new Date(new Date().setHours(0,0,0,0)))
+    .filter((m: any) => new Date(m.scheduledAt).getTime() > Date.now())
     .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 3);
 
