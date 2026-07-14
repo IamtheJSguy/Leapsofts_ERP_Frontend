@@ -670,3 +670,27 @@ export interface ValidationResult {
   duplicates: { incoming: Lead; existing: Lead }[];
   errors: { row: number; message: string }[];
 }
+
+export type BulkUploadRowStatus = 'inserted' | 'updated' | 'error';
+
+export interface BulkUploadRowResult {
+  row: number;
+  firstName?: string;
+  lastName?: string;
+  icp?: string;
+  status: BulkUploadRowStatus;
+  message?: string;
+  leadId?: string;
+}
+
+export interface BulkUploadSummary {
+  total: number;
+  inserted: number;
+  updated: number;
+  errors: number;
+}
+
+export interface BulkUploadResponse {
+  summary: BulkUploadSummary;
+  results: BulkUploadRowResult[];
+}

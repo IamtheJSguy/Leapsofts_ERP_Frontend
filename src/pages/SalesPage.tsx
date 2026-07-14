@@ -60,12 +60,14 @@ import CheckIcon from '@mui/icons-material/Check';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
+import { BulkUploadModal } from '@/components/leads/BulkUploadModal';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
 import EventIcon from '@mui/icons-material/Event';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps } from '@/hooks/api/useSettings';
 import { getDisplayName } from '@/utils/formatters';
@@ -440,6 +442,9 @@ export const SalesPage = () => {
   // Qualify Confirmation Dialog state
   const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
   const [leadIdToQualify, setLeadIdToQualify] = useState<string>('');
+
+  // Bulk Upload Modal state
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
@@ -1067,7 +1072,7 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Action Buttons */}
-            <Box sx={{ display: 'flex', gap: 1.5, alignSelf: { xs: 'stretch', sm: 'auto' } }}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignSelf: { xs: 'stretch', sm: 'auto' }, flexWrap: 'wrap' }}>
               <Button
                 variant="outlined"
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
@@ -1088,6 +1093,27 @@ export const SalesPage = () => {
                 }}
               >
                 Add Lead
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setIsBulkUploadOpen(true)}
+                sx={{
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#fff' : tokens.text.primary,
+                  textTransform: 'none',
+                  borderRadius: '24px',
+                  height: 42,
+                  px: 3,
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  '&:hover': {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                  },
+                }}
+              >
+                Bulk Upload
               </Button>
               <Button
                 variant="contained"
@@ -1862,6 +1888,11 @@ export const SalesPage = () => {
           setConfirmQualifyOpen(false);
           setLeadIdToQualify('');
         }}
+      />
+
+      <BulkUploadModal
+        open={isBulkUploadOpen}
+        onClose={() => setIsBulkUploadOpen(false)}
       />
     </Box>
   );
