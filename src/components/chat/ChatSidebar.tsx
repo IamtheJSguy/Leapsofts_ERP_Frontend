@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   List,
   ListItemButton,
@@ -42,6 +43,7 @@ export const ChatSidebar = () => {
   const [selectedUserToChat, setSelectedUserToChat] = useState<any>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
+  const navigate = useNavigate();
 
   // Group chat states
   const [chatTab, setChatTab] = useState(0); // 0 = Direct, 1 = Group
@@ -114,7 +116,10 @@ export const ChatSidebar = () => {
             setNewChatSearch('');
             // If backend returns the new conv ID, set it active
             const newConvId = res.data?.data?._id || res.data?._id;
-            if (newConvId) setActiveConversation(newConvId);
+            if (newConvId) {
+              setActiveConversation(newConvId);
+              navigate(`/chat/${newConvId}`);
+            }
           },
         }
       );
@@ -135,7 +140,10 @@ export const ChatSidebar = () => {
             setSelectedGroupMembers([]);
             setNewChatSearch('');
             const newConvId = res.data?.data?._id || res.data?._id;
-            if (newConvId) setActiveConversation(newConvId);
+            if (newConvId) {
+              setActiveConversation(newConvId);
+              navigate(`/chat/${newConvId}`);
+            }
           },
         }
       );
@@ -222,6 +230,7 @@ export const ChatSidebar = () => {
                     setActiveConversation(conv._id);
                     clearUnread(conv._id);
                     setSearchQuery('');
+                    navigate(`/chat/${conv._id}`);
                   }}
                   sx={{
                     px: 2.25,
