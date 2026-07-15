@@ -500,7 +500,7 @@ export default function TeamInsightsPage() {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Typography sx={{ fontSize: '1.5rem', filter: `drop-shadow(0 2px 4px ${alpha(award.color, 0.3)})` }}>{award.icon}</Typography>
+                  <Typography sx={{ fontSize: '1.5rem', filter: `drop-shadow(0 2px 4px ${`color-mix(in srgb, ${award.color} 30%, transparent)`})` }}>{award.icon}</Typography>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 700, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.82rem' }}>
                       {award.text}
@@ -581,8 +581,8 @@ export default function TeamInsightsPage() {
                         px: 1.5,
                         py: 0.5,
                         borderRadius: '12px',
-                        border: `1px solid ${alpha(statusColor, 0.15)}`,
-                        bgcolor: alpha(statusColor, 0.05),
+                        border: `1px solid ${`color-mix(in srgb, ${statusColor} 15%, transparent)`}`,
+                        bgcolor: `color-mix(in srgb, ${statusColor} 5%, transparent)`,
                       }}
                     >
                       <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: statusColor }} />
@@ -656,8 +656,8 @@ export default function TeamInsightsPage() {
                       {activityBlocks.map((count, bIdx) => {
                         let squareBg = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
                         if (count > 0) {
-                          if (count === 1) squareBg = alpha(tokens.brand.primary, 0.2);
-                          else if (count === 2) squareBg = alpha(tokens.brand.primary, 0.5);
+                          if (count === 1) squareBg = `color-mix(in srgb, ${tokens.brand.primary} 20%, transparent)`;
+                          else if (count === 2) squareBg = `color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`;
                           else squareBg = tokens.brand.primary;
                         }
 

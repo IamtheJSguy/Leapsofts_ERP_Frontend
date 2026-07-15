@@ -93,8 +93,8 @@ const buildPalette = (mode: 'light' | 'dark'): ThemeOptions['palette'] => {
     },
     error: { main: '#E57373', light: alpha(tokens.semantic.error, 0.15) },
     warning: { main: '#FFB74D', light: alpha(tokens.semantic.warning, 0.15) },
-    success: { main: '#81C784', light: alpha(tokens.semantic.success, 0.15) },
-    info: { main: tokens.brand.primaryLight, light: alpha(tokens.brand.primary, 0.2) },
+    success: { main: '#81C784', light: 'color-mix(in srgb, var(--semantic-success, #2D8A5E) 15%, transparent)' },
+    info: { main: tokens.brand.primaryLight, light: 'color-mix(in srgb, var(--brand-primary, #5D1A89) 20%, transparent)' },
     background: {
       default: '#141218',
       paper: '#1E1B24',

@@ -50,7 +50,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     action: 'add' | 'remove' | null;
@@ -151,7 +151,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
         >
           <CloseIcon />
         </IconButton>
-        
+
         <Avatar
           sx={{
             width: 72,
@@ -286,12 +286,12 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
                       onClick={() => handleAddMemberClick(u._id, getDisplayName(u))}
                       disabled={isAdding}
                     >
-                    <ListItemAvatar sx={{ minWidth: 40 }}>
-                      <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem' }}>{getDisplayName(u).charAt(0)}</Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{getDisplayName(u)}</Typography>}
-                    />
+                      <ListItemAvatar sx={{ minWidth: 40 }}>
+                        <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem' }}>{getDisplayName(u).charAt(0)}</Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{getDisplayName(u)}</Typography>}
+                      />
                     </ListItemButton>
                   </ListItem>
                 ))}
@@ -307,8 +307,8 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
       )}
 
       {/* Confirmation Dialog */}
-      <Dialog 
-        open={confirmDialog.isOpen} 
+      <Dialog
+        open={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
         PaperProps={{
           sx: {
@@ -332,11 +332,11 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
           <Button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} sx={{ color: 'text.secondary', fontWeight: 600 }}>
             Cancel
           </Button>
-          <Button 
-            onClick={confirmAction} 
-            variant="contained" 
+          <Button
+            onClick={confirmAction}
+            variant="contained"
             disabled={isAdding || isRemoving}
-            sx={{ 
+            sx={{
               bgcolor: confirmDialog.action === 'add' ? tokens.brand.primary : tokens.semantic.error,
               fontWeight: 700,
               borderRadius: '8px',

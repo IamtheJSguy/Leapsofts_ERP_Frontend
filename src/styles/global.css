@@ -39,6 +39,8 @@
   --text-secondary: #9a94a8;
   --text-muted: #6b6578;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --brand-primary: #a855f7;
+  --semantic-success: #10b981;
 }
 
 html,

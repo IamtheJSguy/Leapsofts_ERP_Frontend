@@ -51,7 +51,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { joinChat, leaveChat, emitTyping } = useSocket();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  
+
   // Track typing
   const typingUsers = useChatStore((s) => activeConversationId ? s.typingUsers[activeConversationId] : undefined);
   const otherTypingUsers = (typingUsers || []).filter((id) => id !== user?._id);
@@ -409,11 +409,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         ) : (
           <>
             {enhancedMessages.map(({ msg, isOwn }: any) => (
-                <MessageBubble
-                  key={msg._id}
-                  message={msg}
-                  isOwn={isOwn}
-                />
+              <MessageBubble
+                key={msg._id}
+                message={msg}
+                isOwn={isOwn}
+              />
             ))}
             <div ref={bottomRef} />
           </>

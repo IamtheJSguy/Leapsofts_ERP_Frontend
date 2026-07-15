@@ -71,8 +71,8 @@ export const RecentActivityFeed = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: alpha(color, isDarkMode ? 0.12 : 0.06),
-                    border: `1px solid ${alpha(color, isDarkMode ? 0.2 : 0.1)}`,
+                    bgcolor: `color-mix(in srgb, ${color} ${(isDarkMode ? 0.12 : 0.06) * 100}%, transparent)`,
+                    border: `1px solid ${`color-mix(in srgb, ${color} ${(isDarkMode ? 0.2 : 0.1) * 100}%, transparent)`}`,
                     mt: 0.25,
                   }}
                 >
