@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Card, useTheme } from '@mui/material';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
 import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/useChatStore';
 
 const ChatPage = () => {
@@ -12,7 +13,24 @@ const ChatPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const { conversationId } = useParams();
+  const navigate = useNavigate();
+  const { activeConversationId, setActiveConversation } = useChatStore();
+
+  useEffect(() => {
+    if (conversationId && conversationId !== activeConversationId) {
+      setActiveConversation(conversationId);
+    } else if (!conversationId && activeConversationId) {
+      // If there is no ID in the URL but we have an active chat, sync URL
+      navigate(`/chat/${activeConversationId}`, { replace: true });
+    }
+  }, [conversationId, activeConversationId, setActiveConversation, navigate]);
+
+  useEffect(() => {
+    return () => {
+      setActiveConversation(null);
+    };
+  }, [setActiveConversation]);
 
   return (
     <Box

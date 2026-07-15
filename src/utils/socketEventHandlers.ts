@@ -3,8 +3,12 @@ import { SOCKET_EVENTS } from '@/lib/constants';
 import type { Conversation, Message, Notification } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUIStore } from '@/store/useUIStore';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+const notificationSound = new Audio('/notfication.mp3');
+notificationSound.preload = 'auto';
 
 const getSenderId = (message: Message): string => {
   if (message.senderId) {
@@ -100,6 +104,35 @@ export const setupSocketEventHandlers = (
       chatStore.activeConversationId !== conversationId
     ) {
       chatStore.incrementUnread(conversationId);
+
+      // WhatsApp style notification and audio
+      try {
+        notificationSound.currentTime = 0;
+        notificationSound.play().catch(e => console.error("Audio playback failed:", e));
+      } catch (e) {
+        console.error("Audio not supported");
+      }
+
+      let senderName = 'New Message';
+      let senderAvatar = undefined;
+
+      if (typeof message.sender === 'object' && message.sender !== null) {
+        const s = message.sender as any;
+        if (s.firstName || s.lastName) {
+          senderName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+        } else if (s.name) {
+          senderName = s.name;
+        }
+        senderAvatar = s.avatar;
+      }
+
+      useUIStore.getState().addToast({
+        message: message.content || 'Sent an attachment',
+        severity: 'message',
+        title: senderName,
+        avatar: senderAvatar,
+        conversationId
+      });
     }
   });
 

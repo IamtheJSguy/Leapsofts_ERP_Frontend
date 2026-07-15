@@ -6,19 +6,20 @@ import { SOCKET_EVENTS } from '@/lib/constants';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
 
+let eventHandlersInitialized = false;
+
 export const useSocket = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const initialized = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       disconnectSocket();
-      initialized.current = false;
+      eventHandlersInitialized = false;
       return;
     }
 
     const socket = connectSocket();
-    if (!initialized.current) {
+    if (!eventHandlersInitialized) {
       setupSocketEventHandlers(socket, queryClient);
 
       // Any reconnect (network blip, server restart, brief auth hiccup, etc.)
@@ -35,7 +36,7 @@ export const useSocket = () => {
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       });
 
-      initialized.current = true;
+      eventHandlersInitialized = true;
     }
   }, [isAuthenticated]);
 

@@ -3,7 +3,11 @@ import { create } from 'zustand';
 export interface Toast {
   id: string;
   message: string;
-  severity: 'success' | 'error' | 'warning' | 'info';
+  severity: 'success' | 'error' | 'warning' | 'info' | 'message';
+  title?: string;
+  avatar?: string;
+  onClick?: () => void;
+  conversationId?: string;
 }
 
 interface UIState {

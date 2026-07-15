@@ -9,6 +9,8 @@ import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSocket } from '@/hooks/useSocket';
+import { useConversations } from '@/hooks/api/useChat';
+import { useChatStore } from '@/store/useChatStore';
 import { tokens } from '@/styles/tokens';
 
 export const AppLayout = () => {
@@ -17,6 +19,9 @@ export const AppLayout = () => {
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
   useSocket();
+
+  const { data: conversations = [] } = useConversations();
+  const unreadCounts = useChatStore((s) => s.unreadCounts);
 
   useEffect(() => {
     if (!isCheckedIn || user?.role === 'admin') return;
@@ -30,6 +35,20 @@ export const AppLayout = () => {
 
     return () => clearInterval(interval);
   }, [isCheckedIn, tick, user?.role]);
+
+  useEffect(() => {
+    let totalUnread = 0;
+    conversations.forEach((conv: any) => {
+      const count = Math.max(conv.unreadCount || 0, unreadCounts[conv._id] || 0);
+      if (count > 0) totalUnread++;
+    });
+
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) B2B Lead Gen`;
+    } else {
+      document.title = 'B2B Lead Gen';
+    }
+  }, [conversations, unreadCounts]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.surface.main }}>
