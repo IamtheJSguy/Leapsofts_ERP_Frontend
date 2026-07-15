@@ -7,8 +7,10 @@ import { useUIStore } from '@/store/useUIStore';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-const notificationSound = new Audio('/notfication.mp3');
-notificationSound.preload = 'auto';
+// The backend emits MESSAGE_NEW to both `conversation:<id>` and `user:<id>`
+// rooms. Users who have joined a conversation room receive it twice.
+// Track recently processed message IDs and ignore the duplicate delivery.
+const recentlyProcessedMessages = new Set<string>();
 
 const getSenderId = (message: Message): string => {
   if (message.senderId) {
