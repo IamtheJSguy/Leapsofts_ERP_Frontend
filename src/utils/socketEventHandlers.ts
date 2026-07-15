@@ -12,6 +12,9 @@ const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 // Track recently processed message IDs and ignore the duplicate delivery.
 const recentlyProcessedMessages = new Set<string>();
 
+const notificationSound = new Audio('/notfication.mp3');
+notificationSound.preload = 'auto';
+
 const getSenderId = (message: Message): string => {
   if (message.senderId) {
     return typeof message.senderId === 'string' ? message.senderId : message.senderId._id;
