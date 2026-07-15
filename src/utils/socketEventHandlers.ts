@@ -10,11 +10,6 @@ const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 const notificationSound = new Audio('/notfication.mp3');
 notificationSound.preload = 'auto';
 
-// The backend emits MESSAGE_NEW to both `conversation:<id>` and `user:<id>`
-// rooms. Users who have joined a conversation room receive it twice.
-// Track recently processed message IDs and ignore the duplicate delivery.
-const recentlyProcessedMessages = new Set<string>();
-
 const getSenderId = (message: Message): string => {
   if (message.senderId) {
     return typeof message.senderId === 'string' ? message.senderId : message.senderId._id;
@@ -70,12 +65,6 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
     const message = data as Message;
-    
-    // Ignore duplicate delivery
-    if (recentlyProcessedMessages.has(message._id)) return;
-    recentlyProcessedMessages.add(message._id);
-    setTimeout(() => recentlyProcessedMessages.delete(message._id), 5000);
-
     const conversationId = getConversationId(message);
     const currentUserId = useAuthStore.getState().user?._id;
     const senderId = getSenderId(message);
