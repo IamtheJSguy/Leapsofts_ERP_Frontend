@@ -53,9 +53,9 @@ export const NotificationPanel = () => {
       PaperProps={{
         sx: {
           width: { xs: '100%', sm: 420 },
-          bgcolor: isDarkMode ? alpha('#1E1B24', 0.85) : alpha('#FFFFFF', 0.9),
+          bgcolor: isDarkMode ? `color-mix(in srgb, #1E1B24 85%, transparent)` : `color-mix(in srgb, #FFFFFF 90%, transparent)`,
           backdropFilter: 'blur(24px)',
-          borderLeft: `1px solid ${isDarkMode ? alpha('#FFFFFF', 0.08) : alpha('#000000', 0.06)}`,
+          borderLeft: `1px solid ${isDarkMode ? `color-mix(in srgb, #FFFFFF 8%, transparent)` : `color-mix(in srgb, #000000 6%, transparent)`}`,
           backgroundImage: 'none',
           boxShadow: isDarkMode ? '-8px 0 32px rgba(0,0,0,0.5)' : '-8px 0 32px rgba(0,0,0,0.05)',
         }
@@ -70,11 +70,11 @@ export const NotificationPanel = () => {
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            borderBottom: `1px solid ${isDarkMode ? alpha('#FFFFFF', 0.06) : alpha('#000000', 0.04)}`,
+            borderBottom: `1px solid ${isDarkMode ? `color-mix(in srgb, #FFFFFF 6%, transparent)` : `color-mix(in srgb, #000000 4%, transparent)`}`,
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            bgcolor: isDarkMode ? alpha('#1E1B24', 0.6) : alpha('#FFFFFF', 0.6),
+            bgcolor: isDarkMode ? `color-mix(in srgb, #1E1B24 60%, transparent)` : `color-mix(in srgb, #FFFFFF 60%, transparent)`,
             backdropFilter: 'blur(12px)',
           }}
         >
@@ -85,7 +85,7 @@ export const NotificationPanel = () => {
             {unreadCount > 0 && (
               <Box
                 sx={{
-                  bgcolor: alpha(tokens.brand.primary, 0.12),
+                  bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 12%, transparent)`,
                   color: tokens.brand.primary,
                   px: 1.2,
                   py: 0.4,
@@ -119,9 +119,9 @@ export const NotificationPanel = () => {
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
                   color: unreadCount > 0 ? tokens.brand.primary : 'text.disabled',
-                  bgcolor: unreadCount > 0 ? (isDarkMode ? alpha(tokens.brand.primary, 0.08) : alpha(tokens.brand.primary, 0.05)) : 'transparent',
+                  bgcolor: unreadCount > 0 ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`) : 'transparent',
                   '&:hover': {
-                    bgcolor: unreadCount > 0 ? alpha(tokens.brand.primary, 0.15) : 'transparent',
+                    bgcolor: unreadCount > 0 ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : 'transparent',
                   }
                 }}
               >
@@ -133,10 +133,10 @@ export const NotificationPanel = () => {
               aria-label="Close notifications"
               sx={{
                 flexShrink: 0,
-                bgcolor: isDarkMode ? alpha('#FFF', 0.04) : alpha('#000', 0.02),
+                bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 4%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
                 color: 'text.secondary',
                 '&:hover': {
-                  bgcolor: isDarkMode ? alpha('#FFF', 0.08) : alpha('#000', 0.05),
+                  bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 8%, transparent)` : `color-mix(in srgb, #000 5%, transparent)`,
                 }
               }}
             >
@@ -155,15 +155,15 @@ export const NotificationPanel = () => {
                 sx={{ 
                   display: 'flex', gap: 2, p: 2, 
                   borderRadius: '16px', 
-                  bgcolor: isDarkMode ? alpha('#FFF', 0.02) : alpha('#000', 0.02),
+                  bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
                   animation: 'pulse 1.5s infinite ease-in-out',
                 }}
               >
-                <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.05) }} />
+                <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
                 <Box sx={{ flex: 1 }}>
-                  <Box sx={{ width: '60%', height: 16, borderRadius: '4px', bgcolor: isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.05), mb: 1 }} />
-                  <Box sx={{ width: '90%', height: 12, borderRadius: '4px', bgcolor: isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.05), mb: 1 }} />
-                  <Box sx={{ width: '30%', height: 10, borderRadius: '4px', bgcolor: isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.05) }} />
+                  <Box sx={{ width: '60%', height: 16, borderRadius: '4px', bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)`, mb: 1 }} />
+                  <Box sx={{ width: '90%', height: 12, borderRadius: '4px', bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)`, mb: 1 }} />
+                  <Box sx={{ width: '30%', height: 10, borderRadius: '4px', bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
                 </Box>
               </Box>
             ))
@@ -174,8 +174,8 @@ export const NotificationPanel = () => {
                 sx={{ 
                   width: 80, height: 80, 
                   borderRadius: '24px', 
-                  bgcolor: isDarkMode ? alpha('#FFF', 0.03) : alpha('#000', 0.02),
-                  border: `1px solid ${isDarkMode ? alpha('#FFF', 0.08) : alpha('#000', 0.05)}`,
+                  bgcolor: isDarkMode ? `color-mix(in srgb, #FFF 3%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
+                  border: `1px solid ${isDarkMode ? `color-mix(in srgb, #FFF 8%, transparent)` : `color-mix(in srgb, #000 5%, transparent)`}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   mb: 3,
                   boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.02)'
@@ -217,22 +217,22 @@ export const NotificationPanel = () => {
                     gap: { xs: 1.5, sm: 2.5 },
                     cursor: n.isRead ? 'default' : 'pointer',
                     bgcolor: !n.isRead 
-                      ? (isDarkMode ? alpha(tokens.brand.primary, 0.06) : alpha(tokens.brand.primary, 0.03)) 
-                      : (isDarkMode ? alpha('#FFF', 0.015) : '#FFFFFF'),
+                      ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 6%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 3%, transparent)`) 
+                      : (isDarkMode ? `color-mix(in srgb, #FFF 1.5%, transparent)` : '#FFFFFF'),
                     border: `1px solid ${
                       !n.isRead 
-                        ? (isDarkMode ? alpha(tokens.brand.primary, 0.15) : alpha(tokens.brand.primary, 0.1))
-                        : (isDarkMode ? alpha('#FFF', 0.04) : alpha('#000', 0.04))
+                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`)
+                        : (isDarkMode ? `color-mix(in srgb, #FFF 4%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`)
                     }`,
                     boxShadow: !n.isRead && !isDarkMode ? '0 4px 20px rgba(93, 26, 137, 0.03)' : 'none',
                     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                     '&:hover': {
                       transform: 'translateY(-2px)',
                       bgcolor: !n.isRead 
-                        ? (isDarkMode ? alpha(tokens.brand.primary, 0.08) : alpha(tokens.brand.primary, 0.05))
-                        : (isDarkMode ? alpha('#FFF', 0.03) : alpha('#000', 0.015)),
+                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`)
+                        : (isDarkMode ? `color-mix(in srgb, #FFF 3%, transparent)` : `color-mix(in srgb, #000 1.5%, transparent)`),
                       boxShadow: isDarkMode ? '0 8px 30px rgba(0,0,0,0.4)' : '0 8px 30px rgba(0,0,0,0.06)',
-                      borderColor: !n.isRead ? alpha(tokens.brand.primary, 0.25) : (isDarkMode ? alpha('#FFF', 0.08) : alpha('#000', 0.08)),
+                      borderColor: !n.isRead ? `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)` : (isDarkMode ? `color-mix(in srgb, #FFF 8%, transparent)` : `color-mix(in srgb, #000 8%, transparent)`),
                     }
                   }}
                 >
@@ -246,7 +246,7 @@ export const NotificationPanel = () => {
                         width: 8, height: 8, 
                         borderRadius: '50%', 
                         bgcolor: tokens.brand.primary,
-                        boxShadow: `0 0 10px ${alpha(tokens.brand.primary, 0.5)}`
+                        boxShadow: `0 0 10px ${`color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`}`
                       }} 
                     />
                   )}
@@ -263,8 +263,8 @@ export const NotificationPanel = () => {
                       justifyContent: 'center',
                       color: !n.isRead ? tokens.brand.primary : 'text.secondary',
                       bgcolor: !n.isRead 
-                        ? (isDarkMode ? alpha(tokens.brand.primary, 0.15) : alpha(tokens.brand.primary, 0.08))
-                        : (isDarkMode ? alpha('#FFF', 0.05) : alpha('#000', 0.04)),
+                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)`)
+                        : (isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`),
                     }}
                   >
                     {getNotificationIcon(n)}

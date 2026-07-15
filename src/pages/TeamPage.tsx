@@ -554,7 +554,7 @@ const TeamPage = () => {
         >
           {[
             { label: 'Department', value: selectedUser.department || 'Engineering', icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
-            { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
+            { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : selectedUser.role === 'manager' ? 'MANAGER' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
             { label: 'Shift', value: `${formatTime12Hour(selectedUser.shiftStart) || '09:00 AM'} - ${formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM'}`, icon: <AccessTimeIcon sx={{ fontSize: 20, color: '#3B82F6' }} /> },
             { label: 'Start Date', value: 'Jun 3, 2026', icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
             { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true, icon: <CheckCircleIcon sx={{ fontSize: 20, color: selectedUser.isActive ? '#10B981' : '#EF4444' }} /> },
@@ -678,92 +678,268 @@ const TeamPage = () => {
               backgroundImage: 'none',
               width: '100%',
               maxWidth: 550,
+              maxHeight: '90vh',
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
+              '-ms-overflow-style': 'none',
+              scrollbarWidth: 'none',
             }
           }}
         >
-          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit User Details</Typography>
-          </DialogTitle>
           <form onSubmit={handleEditUserSubmit}>
-            <DialogContent sx={{ px: 3 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+            <DialogContent
+              sx={{
+                px: 3,
+                pt: 3,
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+                '-ms-overflow-style': 'none',
+                scrollbarWidth: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1 }}>
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      First Name *
+                    </Typography>
+                    <TextField
+                      placeholder="John"
+                      required
+                      fullWidth
+                      value={selectedUser.firstName || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, firstName: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Last Name *
+                    </Typography>
+                    <TextField
+                      placeholder="Doe"
+                      required
+                      fullWidth
+                      value={selectedUser.lastName || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, lastName: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Email *
+                    </Typography>
+                    <TextField
+                      placeholder="john@example.com"
+                      required
+                      type="email"
+                      fullWidth
+                      value={selectedUser.email || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Phone
+                    </Typography>
+                    <TextField
+                      placeholder="+1 (786) 555-0100"
+                      fullWidth
+                      value={selectedUser.phone || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Job Title
+                    </Typography>
+                    <TextField
+                      placeholder="Full Stack Developer"
+                      fullWidth
+                      value={selectedUser.jobTitle || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, jobTitle: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Department
+                    </Typography>
+                    <FormControl fullWidth sx={{ mb: 2.5 }}>
+                      <Select
+                        value={selectedUser.department || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
+                        displayEmpty
+                        input={
+                          <OutlinedInput
+                            sx={{
+                              borderRadius: '20px',
+                              height: 46,
+                              bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                              fontSize: '0.88rem',
+                              '& fieldset': {
+                                borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: tokens.brand.primary,
+                              },
+                            }}
+                          />
+                        }
+                      >
+                        <MenuItem value="">None</MenuItem>
+                        <MenuItem value="Leadership">Leadership</MenuItem>
+                        <MenuItem value="Engineering">Engineering</MenuItem>
+                        <MenuItem value="Product">Product</MenuItem>
+                        <MenuItem value="Quality">Quality</MenuItem>
+                        <MenuItem value="Marketing">Marketing</MenuItem>
+                        <MenuItem value="Design">Design</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2.5}>
+                  {canPromoteRoles && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                        Role
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : '#fff',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                          borderRadius: '24px',
+                          p: 0.5,
+                          width: '100%',
+                          height: 46,
+                          boxSizing: 'border-box',
+                          mb: 2.5
+                        }}
+                      >
+                        {([
+                          { value: ROLES.USER, label: 'Employee' },
+                          { value: ROLES.MANAGER, label: 'Manager' },
+                          { value: ROLES.ADMIN, label: 'Admin' },
+                        ] as const).map(({ value, label }) => (
+                          <Box
+                            key={value}
+                            onClick={() => setSelectedUser({ ...selectedUser, role: value })}
+                            sx={{
+                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '20px',
+                              cursor: 'pointer',
+                              bgcolor: selectedUser.role === value ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+                              color: selectedUser.role === value ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
+                              fontWeight: 700,
+                              fontSize: '0.82rem',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                            }}
+                          >
+                            {label}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Grid>
+                  )}
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Status
+                    </Typography>
+                    <FormControl fullWidth sx={{ mb: 2.5 }}>
+                      <Select
+                        value={selectedUser.isActive ? 'active' : 'inactive'}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, isActive: e.target.value === 'active' })}
+                        input={
+                          <OutlinedInput
+                            sx={{
+                              borderRadius: '20px',
+                              height: 46,
+                              bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                              fontSize: '0.88rem',
+                              '& fieldset': {
+                                borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: tokens.brand.primary,
+                              },
+                            }}
+                          />
+                        }
+                      >
+                        <MenuItem value="active">Active</MenuItem>
+                        <MenuItem value="inactive">Inactive</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Shift Start
+                    </Typography>
+                    <TextField
+                      type="time"
+                      fullWidth
+                      value={selectedUser.shiftStart || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, shiftStart: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Shift End
+                    </Typography>
+                    <TextField
+                      type="time"
+                      fullWidth
+                      value={selectedUser.shiftEnd || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, shiftEnd: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                    Bio
+                  </Typography>
                   <TextField
-                    label="First Name"
+                    placeholder="Enter a brief background, specialties, or bio details..."
+                    multiline
+                    rows={3}
                     fullWidth
-                    value={selectedUser.firstName || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, firstName: e.target.value })}
-                    sx={inputSx}
+                    value={selectedUser.bio || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, bio: e.target.value })}
+                    sx={{
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '20px',
+                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                        fontSize: '0.88rem',
+                        '& fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        },
+                      },
+                    }}
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Last Name"
-                    fullWidth
-                    value={selectedUser.lastName || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, lastName: e.target.value })}
-                    sx={inputSx}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Email"
-                    fullWidth
-                    value={selectedUser.email || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                    sx={inputSx}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    select
-                    label="Role"
-                    fullWidth
-                    value={selectedUser.role || 'user'}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
-                    sx={inputSx}
-                  >
-                    <MenuItem value={ROLES.USER}>User</MenuItem>
-                    {canPromoteRoles && <MenuItem value={ROLES.MANAGER}>Manager</MenuItem>}
-                    {canPromoteRoles && <MenuItem value={ROLES.ADMIN}>Admin</MenuItem>}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    select
-                    label="Status"
-                    fullWidth
-                    value={selectedUser.isActive ? 'active' : 'inactive'}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, isActive: e.target.value === 'active' })}
-                    sx={inputSx}
-                  >
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="inactive">Inactive</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Shift Start"
-                    type="time"
-                    fullWidth
-                    value={selectedUser.shiftStart || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, shiftStart: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Shift End"
-                    type="time"
-                    fullWidth
-                    value={selectedUser.shiftEnd || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, shiftEnd: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
-                  />
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             </DialogContent>
             <DialogActions sx={{ p: 3, pt: 1 }}>
               <Button
@@ -1088,13 +1264,13 @@ const TeamPage = () => {
               border: '1px solid rgba(255, 255, 255, 0.08)',
               boxShadow: isDarkMode
                 ? '0 8px 24px rgba(93, 26, 137, 0.4), inset 0 1px 0 rgba(255,255,255,0.15)'
-                : `0 8px 20px ${alpha(tokens.brand.primary, 0.25)}`,
+                : `0 8px 20px ${`color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`}`,
               transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
                 transform: 'translateY(-2px)',
                 boxShadow: isDarkMode
                   ? '0 12px 32px rgba(93, 26, 137, 0.55), inset 0 1px 0 rgba(255,255,255,0.2)'
-                  : `0 12px 28px ${alpha(tokens.brand.primary, 0.35)}`,
+                  : `0 12px 28px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
                 filter: 'brightness(1.05)',
               },
               '&:active': {
@@ -1145,7 +1321,7 @@ const TeamPage = () => {
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'transparent'}`,
               transition: 'border-color 0.2s',
               '&:hover': {
-                borderColor: alpha(tokens.brand.primary, 0.3),
+                borderColor: `color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`,
               },
             },
           }}
@@ -1312,11 +1488,11 @@ const TeamPage = () => {
                         }}
                       />
                       <Chip
-                        label={member.role === 'admin' ? 'Administrator' : 'Employee'}
+                        label={member.role === 'admin' ? 'Administrator' : member.role === 'manager' ? 'Manager' : 'Employee'}
                         size="small"
                         sx={{
-                          bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : 'rgba(93, 26, 137, 0.08)',
-                          color: member.role === 'admin' ? tokens.brand.accent : tokens.brand.primary,
+                          bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : member.role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                          color: member.role === 'admin' ? tokens.brand.accent : member.role === 'manager' ? '#10B981' : tokens.brand.primary,
                           fontWeight: 750,
                           fontSize: '0.68rem',
                           height: 22,
@@ -1466,11 +1642,11 @@ const TeamPage = () => {
                     }}
                   />
                   <Chip
-                    label={member.role === 'admin' ? 'Administrator' : 'Employee'}
+                    label={member.role === 'admin' ? 'Administrator' : member.role === 'manager' ? 'Manager' : 'Employee'}
                     size="small"
                     sx={{
-                      bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : 'rgba(93, 26, 137, 0.08)',
-                      color: member.role === 'admin' ? tokens.brand.accent : tokens.brand.primary,
+                      bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : member.role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                      color: member.role === 'admin' ? tokens.brand.accent : member.role === 'manager' ? '#10B981' : tokens.brand.primary,
                       fontWeight: 750,
                       fontSize: '0.68rem',
                       height: 22,
@@ -1560,211 +1736,211 @@ const TeamPage = () => {
                 }}
               />
             ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1.5 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1.5 }}>
 
-              {/* Row 1: Full Name & Email */}
-              <Grid container spacing={2.5}>
-                <Grid item xs={12} sm={6}>
+                {/* Row 1: Full Name & Email */}
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Full Name *
+                    </Typography>
+                    <TextField
+                      placeholder="John Doe"
+                      required
+                      fullWidth
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Email *
+                    </Typography>
+                    <TextField
+                      placeholder="john@leapsofts.com"
+                      required
+                      type="email"
+                      fullWidth
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Row 2: Password */}
+                <Box sx={{ width: '100%' }}>
                   <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Full Name *
+                    Password *
                   </Typography>
                   <TextField
-                    placeholder="John Doe"
+                    placeholder="Minimum 8 characters"
                     required
+                    type={showPassword ? 'text' : 'password'}
                     fullWidth
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    sx={inputSx}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Email *
-                  </Typography>
-                  <TextField
-                    placeholder="john@leapsofts.com"
-                    required
-                    type="email"
-                    fullWidth
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    sx={inputSx}
-                  />
-                </Grid>
-              </Grid>
-
-              {/* Row 2: Password */}
-              <Box sx={{ width: '100%' }}>
-                <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                  Password *
-                </Typography>
-                <TextField
-                  placeholder="Minimum 8 characters"
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  fullWidth
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          size="small"
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          sx={{ color: 'text.secondary' }}
-                        >
-                          {showPassword ? <VisibilityOffIcon sx={{ fontSize: 18 }} /> : <VisibilityIcon sx={{ fontSize: 18 }} />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={inputSx}
-                />
-              </Box>
-
-              {/* Row 3: Job Title & Phone */}
-              <Grid container spacing={2.5}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Job Title *
-                  </Typography>
-                  <TextField
-                    placeholder="Full Stack Developer"
-                    required
-                    fullWidth
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    sx={inputSx}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Phone
-                  </Typography>
-                  <TextField
-                    placeholder="+1 (786) 555-0100"
-                    fullWidth
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    sx={inputSx}
-                  />
-                </Grid>
-              </Grid>
-
-              {/* Row 4: Department & Role */}
-              <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Department
-                  </Typography>
-                  <FormControl fullWidth>
-                    <Select
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      input={
-                        <OutlinedInput
-                          sx={{
-                            borderRadius: '20px',
-                            height: 46,
-                            bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                            fontSize: '0.88rem',
-                            '& fieldset': {
-                              borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-                            },
-                          }}
-                        />
-                      }
-                    >
-                      <MenuItem value="Leadership">Leadership</MenuItem>
-                      <MenuItem value="Engineering">Engineering</MenuItem>
-                      <MenuItem value="Product">Product</MenuItem>
-                      <MenuItem value="Quality">Quality</MenuItem>
-                      <MenuItem value="Marketing">Marketing</MenuItem>
-                      <MenuItem value="Design">Design</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Role
-                  </Typography>
-
-                  {/* Role selection — admin only; managers always create employees */}
-                  {canPromoteRoles ? (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : '#fff',
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                      borderRadius: '24px',
-                      p: 0.5,
-                      width: '100%',
-                      height: 46,
-                      boxSizing: 'border-box',
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            sx={{ color: 'text.secondary' }}
+                          >
+                            {showPassword ? <VisibilityOffIcon sx={{ fontSize: 18 }} /> : <VisibilityIcon sx={{ fontSize: 18 }} />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
                     }}
-                  >
-                    {([
-                      { value: ROLES.USER, label: 'Employee' },
-                      { value: ROLES.MANAGER, label: 'Manager' },
-                      { value: ROLES.ADMIN, label: 'Admin' },
-                    ] as const).map(({ value, label }) => (
+                    sx={inputSx}
+                  />
+                </Box>
+
+                {/* Row 3: Job Title & Phone */}
+                <Grid container spacing={2.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Job Title *
+                    </Typography>
+                    <TextField
+                      placeholder="Full Stack Developer"
+                      required
+                      fullWidth
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Phone
+                    </Typography>
+                    <TextField
+                      placeholder="+1 (786) 555-0100"
+                      fullWidth
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Row 4: Department & Role */}
+                <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Department
+                    </Typography>
+                    <FormControl fullWidth>
+                      <Select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        input={
+                          <OutlinedInput
+                            sx={{
+                              borderRadius: '20px',
+                              height: 46,
+                              bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                              fontSize: '0.88rem',
+                              '& fieldset': {
+                                borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                              },
+                            }}
+                          />
+                        }
+                      >
+                        <MenuItem value="Leadership">Leadership</MenuItem>
+                        <MenuItem value="Engineering">Engineering</MenuItem>
+                        <MenuItem value="Product">Product</MenuItem>
+                        <MenuItem value="Quality">Quality</MenuItem>
+                        <MenuItem value="Marketing">Marketing</MenuItem>
+                        <MenuItem value="Design">Design</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Role
+                    </Typography>
+
+                    {/* Role selection — admin only; managers always create employees */}
+                    {canPromoteRoles ? (
                       <Box
-                        key={value}
-                        onClick={() => setRoleSelection(value)}
                         sx={{
-                          flex: 1,
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '20px',
-                          cursor: 'pointer',
-                          bgcolor: roleSelection === value ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-                          color: roleSelection === value ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
-                          fontWeight: 700,
-                          fontSize: '0.82rem',
-                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                          bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : '#fff',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                          borderRadius: '24px',
+                          p: 0.5,
+                          width: '100%',
+                          height: 46,
+                          boxSizing: 'border-box',
                         }}
                       >
-                        {label}
+                        {([
+                          { value: ROLES.USER, label: 'Employee' },
+                          { value: ROLES.MANAGER, label: 'Manager' },
+                          { value: ROLES.ADMIN, label: 'Admin' },
+                        ] as const).map(({ value, label }) => (
+                          <Box
+                            key={value}
+                            onClick={() => setRoleSelection(value)}
+                            sx={{
+                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '20px',
+                              cursor: 'pointer',
+                              bgcolor: roleSelection === value ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+                              color: roleSelection === value ? (isDarkMode ? '#1A1625' : '#fff') : tokens.text.secondary,
+                              fontWeight: 700,
+                              fontSize: '0.82rem',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                            }}
+                          >
+                            {label}
+                          </Box>
+                        ))}
                       </Box>
-                    ))}
-                  </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
-                      New members are added as employees on your team.
-                    </Typography>
-                  )}
+                    ) : (
+                      <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
+                        New members are added as employees on your team.
+                      </Typography>
+                    )}
+                  </Grid>
                 </Grid>
-              </Grid>
 
-              {/* Row 5: Bio (Scrollable Text Area) */}
-              <Box sx={{ width: '100%' }}>
-                <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                  Bio
-                </Typography>
-                <TextField
-                  placeholder="Enter a brief background, specialties, or bio details..."
-                  multiline
-                  rows={3}
-                  fullWidth
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  sx={{
-                    mb: 2,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '20px',
-                      bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                      fontSize: '0.88rem',
-                      '& fieldset': {
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                {/* Row 5: Bio (Scrollable Text Area) */}
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                    Bio
+                  </Typography>
+                  <TextField
+                    placeholder="Enter a brief background, specialties, or bio details..."
+                    multiline
+                    rows={3}
+                    fullWidth
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    sx={{
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '20px',
+                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                        fontSize: '0.88rem',
+                        '& fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        },
                       },
-                    },
-                  }}
-                />
+                    }}
+                  />
+                </Box>
               </Box>
-            </Box>
             )}
           </DialogContent>
 
@@ -1786,31 +1962,31 @@ const TeamPage = () => {
               {addMemberTab === 'existing' && canAddExistingMember ? 'Close' : 'Cancel'}
             </Button>
             {!(addMemberTab === 'existing' && canAddExistingMember) && (
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={createUserMutation.isPending}
-              sx={{
-                bgcolor: '#FFA08A', // Coral background matching mockup exactly
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                textTransform: 'none',
-                borderRadius: '24px',
-                px: 4,
-                py: 1,
-                boxShadow: 'none',
-                '&:hover': {
-                  bgcolor: '#FF8A6F', // slightly darker coral on hover
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={createUserMutation.isPending}
+                sx={{
+                  bgcolor: '#FFA08A', // Coral background matching mockup exactly
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  textTransform: 'none',
+                  borderRadius: '24px',
+                  px: 4,
+                  py: 1,
                   boxShadow: 'none',
-                },
-                '&:active': {
-                  transform: 'scale(0.98)',
-                },
-              }}
-            >
-              {createUserMutation.isPending ? 'Adding...' : 'Add Member'}
-            </Button>
+                  '&:hover': {
+                    bgcolor: '#FF8A6F', // slightly darker coral on hover
+                    boxShadow: 'none',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.98)',
+                  },
+                }}
+              >
+                {createUserMutation.isPending ? 'Adding...' : 'Add Member'}
+              </Button>
             )}
           </DialogActions>
         </Box>

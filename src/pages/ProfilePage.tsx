@@ -439,7 +439,7 @@ export default function ProfilePage() {
                 ? tokens.brand.primary
                 : 'transparent',
               boxShadow: activeTab === tab.key
-                ? `0 4px 12px ${alpha(tokens.brand.primary, 0.25)}`
+                ? `0 4px 12px ${`color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`}`
                 : 'none',
               transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
@@ -563,11 +563,11 @@ export default function ProfilePage() {
                       textTransform: 'none',
                       whiteSpace: 'nowrap',
                       fontSize: '0.86rem',
-                      boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
+                      boxShadow: `0 4px 14px ${`color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`}`,
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                       '&:hover': {
                         bgcolor: tokens.brand.primaryLight,
-                        boxShadow: `0 6px 20px ${alpha(tokens.brand.primary, 0.4)}`,
+                        boxShadow: `0 6px 20px ${`color-mix(in srgb, ${tokens.brand.primary} 40%, transparent)`}`,
                         transform: 'translateY(-1px)',
                       },
                       '&:active': { transform: 'translateY(1px)' },
@@ -703,11 +703,11 @@ export default function ProfilePage() {
                       textTransform: 'none',
                       whiteSpace: 'nowrap',
                       fontSize: '0.86rem',
-                      boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
+                      boxShadow: `0 4px 14px ${`color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`}`,
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                       '&:hover': {
                         bgcolor: tokens.brand.primaryLight,
-                        boxShadow: `0 6px 20px ${alpha(tokens.brand.primary, 0.4)}`,
+                        boxShadow: `0 6px 20px ${`color-mix(in srgb, ${tokens.brand.primary} 40%, transparent)`}`,
                         transform: 'translateY(-1px)',
                       },
                       '&:active': { transform: 'translateY(1px)' },
@@ -773,7 +773,7 @@ export default function ProfilePage() {
                         borderRadius: '12px',
                         textTransform: 'none',
                         whiteSpace: 'nowrap',
-                        boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
+                        boxShadow: `0 4px 14px ${`color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`}`,
                         '&:hover': { bgcolor: tokens.brand.primaryLight, transform: 'translateY(-1px)' },
                       }}
                     >
@@ -917,7 +917,7 @@ export default function ProfilePage() {
                         textTransform: 'none',
                         whiteSpace: 'nowrap',
                         fontSize: '0.86rem',
-                        boxShadow: `0 4px 14px ${alpha(tokens.brand.primary, 0.3)}`,
+                        boxShadow: `0 4px 14px ${`color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`}`,
                         transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                         '&:hover': {
                           bgcolor: tokens.brand.primaryLight,

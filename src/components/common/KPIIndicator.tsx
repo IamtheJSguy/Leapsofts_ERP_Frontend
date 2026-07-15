@@ -78,8 +78,8 @@ export const KPIIndicator = ({ title, current, target, unit = '' }: KPIIndicator
                 fontSize: '0.7rem',
                 fontWeight: 700,
                 color: trendColor,
-                bgcolor: alpha(trendColor, isDarkMode ? 0.12 : 0.08),
-                border: `1px solid ${alpha(trendColor, isDarkMode ? 0.2 : 0.1)}`,
+                bgcolor: `color-mix(in srgb, ${trendColor} ${(isDarkMode ? 0.12 : 0.08) * 100}%, transparent)`,
+                border: `1px solid ${`color-mix(in srgb, ${trendColor} ${(isDarkMode ? 0.2 : 0.1) * 100}%, transparent)`}`,
               }}
             >
               {trendText}
@@ -92,8 +92,8 @@ export const KPIIndicator = ({ title, current, target, unit = '' }: KPIIndicator
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                bgcolor: alpha(color, isDarkMode ? 0.12 : 0.08),
-                border: `1px solid ${alpha(color, isDarkMode ? 0.25 : 0.15)}`,
+                bgcolor: `color-mix(in srgb, ${color} ${(isDarkMode ? 0.12 : 0.08) * 100}%, transparent)`,
+                border: `1px solid ${`color-mix(in srgb, ${color} ${(isDarkMode ? 0.25 : 0.15) * 100}%, transparent)`}`,
               }}
             >
               {getIcon(title, color)}

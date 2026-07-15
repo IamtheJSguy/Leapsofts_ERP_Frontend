@@ -189,22 +189,23 @@ export const SalesPage = () => {
     const m = msg.toLowerCase();
     if (m.includes('sent') && !m.includes('not')) {
       return {
-        color: tokens.semantic.success,
-        bg: 'rgba(45, 138, 94, 0.08)',
-        border: '1px solid rgba(45, 138, 94, 0.15)',
+        color: isDarkMode ? '#34D399' : tokens.semantic.success,
+        bg: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : 'rgba(45, 138, 94, 0.08)',
+        border: isDarkMode ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(45, 138, 94, 0.15)',
       };
     }
     if (m.includes('pending') || m.includes('not')) {
       return {
-        color: tokens.semantic.warning,
-        bg: 'rgba(184, 134, 11, 0.08)',
-        border: '1px solid rgba(184, 134, 11, 0.15)',
+        color: isDarkMode ? '#FBBF24' : tokens.semantic.warning,
+        bg: isDarkMode ? 'rgba(251, 191, 36, 0.1)' : 'rgba(184, 134, 11, 0.08)',
+        border: isDarkMode ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(184, 134, 11, 0.15)',
       };
     }
+    // Default fallback
     return {
-      color: tokens.brand.primary,
-      bg: 'rgba(93, 26, 137, 0.08)',
-      border: '1px solid rgba(93, 26, 137, 0.15)',
+      color: isDarkMode ? '#A8A2B2' : tokens.text.secondary,
+      bg: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+      border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
     };
   };
 
@@ -1479,7 +1480,7 @@ export const SalesPage = () => {
                                 height: 20,
                                 textTransform: 'uppercase',
                                 borderRadius: '6px',
-                                border: `1px solid ${alpha(connToken.color, 0.12)}`,
+                                border: `1px solid ${`color-mix(in srgb, ${connToken.color} 12%, transparent)`}`,
                               }}
                             />
                             <Chip
@@ -1493,7 +1494,7 @@ export const SalesPage = () => {
                                 height: 20,
                                 textTransform: 'uppercase',
                                 borderRadius: '6px',
-                                border: `1px solid ${alpha(msgToken.color, 0.12)}`,
+                                border: `1px solid ${`color-mix(in srgb, ${msgToken.color} 12%, transparent)`}`,
                               }}
                             />
                           </Box>

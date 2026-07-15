@@ -92,7 +92,7 @@ const BrandMark = () => (
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
-      boxShadow: `0 4px 10px ${alpha(tokens.brand.primary, 0.35)}`,
+      boxShadow: `0 4px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
     }}
     aria-hidden
   >
@@ -253,7 +253,7 @@ export const Sidebar = () => {
                           },
                           ...(isActive && {
                             bgcolor: 'rgba(93, 26, 137, 0.12)',
-                            borderColor: alpha(tokens.brand.primary, 0.25),
+                            borderColor: `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`,
                             color: '#FFFFFF',
                             boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.02)',
                             '& .MuiListItemIcon-root': {
@@ -261,7 +261,7 @@ export const Sidebar = () => {
                             },
                             '&:hover': {
                               bgcolor: 'rgba(93, 26, 137, 0.16)',
-                              borderColor: alpha(tokens.brand.primary, 0.35),
+                              borderColor: `color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`,
                             }
                           }),
                         }}

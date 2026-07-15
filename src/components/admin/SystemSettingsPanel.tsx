@@ -131,8 +131,8 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
       sx={{
         p: { xs: 3, md: 5 },
         borderRadius: '28px',
-        border: `1px solid ${isDarkMode ? alpha('#fff', 0.05) : alpha(tokens.brand.primary, 0.05)}`,
-        bgcolor: isDarkMode ? alpha('#121212', 0.6) : '#ffffff',
+        border: `1px solid ${isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`}`,
+        bgcolor: isDarkMode ? `color-mix(in srgb, #121212 60%, transparent)` : '#ffffff',
         /* backdropFilter: 'blur(20px)' (removed for performance) */
         boxShadow: isDarkMode 
           ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
@@ -150,7 +150,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           width: 300,
           height: 300,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(tokens.brand.primary, 0.12)} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${`color-mix(in srgb, ${tokens.brand.primary} 12%, transparent)`} 0%, transparent 70%)`,
           zIndex: 0,
           pointerEvents: 'none',
         }}
@@ -166,9 +166,9 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
               width: 52,
               height: 52,
               borderRadius: '16px',
-              bgcolor: isDarkMode ? alpha(tokens.brand.primary, 0.15) : alpha(tokens.brand.primary, 0.08),
+              bgcolor: isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)`,
               color: tokens.brand.primary,
-              boxShadow: `inset 0 2px 10px ${alpha(tokens.brand.primary, 0.1)}`,
+              boxShadow: `inset 0 2px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`}`,
             }}
           >
             <SettingsOutlinedIcon sx={{ fontSize: 26 }} />
@@ -198,7 +198,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           </Box>
         </Box>
 
-        <Divider sx={{ my: 4, borderColor: isDarkMode ? alpha('#fff', 0.05) : alpha('#000', 0.05) }} />
+        <Divider sx={{ my: 4, borderColor: isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
 
         <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
@@ -220,22 +220,22 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '16px',
-                    bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02),
+                    bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
                     fontSize: '0.95rem',
                     transition: 'all 0.2s ease',
                     '& fieldset': {
                       borderColor: 'transparent',
                     },
                     '&:hover fieldset': {
-                      borderColor: alpha(tokens.brand.primary, 0.3),
+                      borderColor: `color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`,
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: tokens.brand.primary,
                       borderWidth: '2px',
                     },
                     '&.Mui-focused': {
-                      bgcolor: isDarkMode ? alpha(tokens.brand.primary, 0.05) : '#fff',
-                      boxShadow: `0 4px 20px ${alpha(tokens.brand.primary, 0.1)}`,
+                      bgcolor: isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)` : '#fff',
+                      boxShadow: `0 4px 20px ${`color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`}`,
                     }
                   },
                   '& .MuiInputLabel-root': {
@@ -250,7 +250,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           </Grid>
 
           <Grid item xs={12}>
-            <Divider sx={{ my: 1, borderColor: isDarkMode ? alpha('#fff', 0.05) : alpha('#000', 0.05) }} />
+            <Divider sx={{ my: 1, borderColor: isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
           </Grid>
 
           <Grid item xs={12} md={6}>
@@ -263,7 +263,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02) }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)` }}>
                   <Box>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Send daily user detail report</Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>Previous calendar day, every morning at 8 AM.</Typography>
@@ -276,7 +276,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                   />
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02) }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)` }}>
                   <Box>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Send weekly user detail report</Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>Previous 7 days ending yesterday, every Monday at 8 AM.</Typography>
@@ -293,7 +293,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           </Grid>
         </Grid>
 
-        <Divider sx={{ my: 4, borderColor: isDarkMode ? alpha('#fff', 0.05) : alpha('#000', 0.05) }} />
+        <Divider sx={{ my: 4, borderColor: isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
 
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
@@ -319,7 +319,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '14px',
-                  bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02),
+                  bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
                 },
               }}
             />
@@ -356,7 +356,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                     gap: 1,
                     p: 1.25,
                     borderRadius: '14px',
-                    bgcolor: isDarkMode ? alpha('#fff', 0.02) : alpha('#000', 0.02),
+                    bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
                   }}
                 >
                   {editingIcpId === icp._id ? (
@@ -376,7 +376,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: '10px',
-                            bgcolor: isDarkMode ? alpha('#000', 0.2) : '#fff',
+                            bgcolor: isDarkMode ? `color-mix(in srgb, #000 20%, transparent)` : '#fff',
                           },
                         }}
                       />
@@ -402,7 +402,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                         label={icp.name}
                         size="small"
                         sx={{
-                          bgcolor: alpha(tokens.brand.primary, 0.08),
+                          bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)`,
                           color: tokens.brand.primary,
                           fontWeight: 700,
                         }}
@@ -452,19 +452,19 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
               py: 1.5,
               borderRadius: '16px',
               textTransform: 'none',
-              boxShadow: `0 8px 24px ${alpha(tokens.brand.primary, 0.25)}`,
+              boxShadow: `0 8px 24px ${`color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`}`,
               transition: 'all 0.2s ease',
               '&:hover': {
                 bgcolor: tokens.brand.primaryDark,
                 transform: 'translateY(-2px)',
-                boxShadow: `0 12px 30px ${alpha(tokens.brand.primary, 0.35)}`,
+                boxShadow: `0 12px 30px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
               },
               '&:active': {
                 transform: 'translateY(0)',
               },
               '&.Mui-disabled': {
-                bgcolor: alpha(tokens.brand.primary, 0.5),
-                color: alpha('#fff', 0.7),
+                bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`,
+                color: `color-mix(in srgb, #fff 70%, transparent)`,
               }
             }}
           >

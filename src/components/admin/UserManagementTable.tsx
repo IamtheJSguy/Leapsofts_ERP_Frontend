@@ -285,7 +285,7 @@ export const UserManagementTable = () => {
                             '&:hover': {
                               bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
                               color: tokens.brand.primary,
-                              borderColor: alpha(tokens.brand.primary, 0.25),
+                              borderColor: `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`,
                             },
                           }}
                         >

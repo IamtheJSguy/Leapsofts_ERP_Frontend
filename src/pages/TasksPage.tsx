@@ -1973,10 +1973,10 @@ const TasksPage = () => {
                           fontSize: '0.82rem',
                           py: 1,
                           color: tokens.semantic.error,
-                          borderColor: alpha(tokens.semantic.error, 0.2),
+                          borderColor: `color-mix(in srgb, ${tokens.semantic.error} 20%, transparent)`,
                           '&:hover': {
                             borderColor: tokens.semantic.error,
-                            bgcolor: alpha(tokens.semantic.error, 0.05),
+                            bgcolor: `color-mix(in srgb, ${tokens.semantic.error} 5%, transparent)`,
                           },
                         }}
                       >
@@ -2946,10 +2946,10 @@ const TasksPage = () => {
                                   fontSize: '0.74rem',
                                   px: 2,
                                   color: tokens.semantic.error,
-                                  borderColor: alpha(tokens.semantic.error, 0.2),
+                                  borderColor: `color-mix(in srgb, ${tokens.semantic.error} 20%, transparent)`,
                                   '&:hover': {
                                     borderColor: tokens.semantic.error,
-                                    bgcolor: alpha(tokens.semantic.error, 0.05),
+                                    bgcolor: `color-mix(in srgb, ${tokens.semantic.error} 5%, transparent)`,
                                   },
                                 }}
                               >
@@ -2970,10 +2970,10 @@ const TasksPage = () => {
                                 fontSize: '0.74rem',
                                 px: 2,
                                 color: tokens.brand.primary,
-                                borderColor: alpha(tokens.brand.primary, 0.2),
+                                borderColor: `color-mix(in srgb, ${tokens.brand.primary} 20%, transparent)`,
                                 '&:hover': {
                                   borderColor: tokens.brand.primary,
-                                  bgcolor: alpha(tokens.brand.primary, 0.05),
+                                  bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`,
                                 },
                               }}
                             >
@@ -3134,10 +3134,10 @@ const TasksPage = () => {
                                 height: 30,
                                 fontWeight: 700,
                                 color: tokens.semantic.error,
-                                borderColor: alpha(tokens.semantic.error, 0.2),
+                                borderColor: `color-mix(in srgb, ${tokens.semantic.error} 20%, transparent)`,
                                 '&:hover': {
                                   borderColor: tokens.semantic.error,
-                                  bgcolor: alpha(tokens.semantic.error, 0.05),
+                                  bgcolor: `color-mix(in srgb, ${tokens.semantic.error} 5%, transparent)`,
                                 },
                               }}
                             >
@@ -3158,10 +3158,10 @@ const TasksPage = () => {
                               height: 30,
                               fontWeight: 700,
                               color: tokens.brand.primary,
-                              borderColor: alpha(tokens.brand.primary, 0.2),
+                              borderColor: `color-mix(in srgb, ${tokens.brand.primary} 20%, transparent)`,
                               '&:hover': {
                                 borderColor: tokens.brand.primary,
-                                bgcolor: alpha(tokens.brand.primary, 0.05),
+                                bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`,
                               },
                             }}
                           >
