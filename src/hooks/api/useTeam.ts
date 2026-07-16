@@ -8,6 +8,8 @@ export interface TeamMember {
   email: string;
   role: string;
   jobTitle?: string;
+  department?: string;
+  isActive?: boolean;
 }
 
 export interface Team {
