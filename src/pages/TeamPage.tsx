@@ -82,7 +82,7 @@ const TeamPage = () => {
   const { data: dbUsers = [], isLoading: isUsersLoading } = useUsers();
   const createUserMutation = useCreateUser();
 
-  const teamList = dbUsers;
+  const teamList = isManager ? (teamQuery.data?.members || []) : dbUsers;
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -1500,35 +1500,7 @@ const TeamPage = () => {
                       />
                     </Box>
 
-                    {/* Quick micro stats box */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-around',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                        width: '100%',
-                        mt: 3,
-                        py: 1.25,
-                        px: 1,
-                        borderRadius: '16px',
-                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)',
-                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.04)'}`,
-                      }}
-                    >
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650, display: 'block', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Tasks</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: tokens.brand.primaryMuted, fontSize: '0.8rem', mt: 0.25 }}>{member.role === 'admin' ? '0' : '1'}</Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'center', borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`, borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`, px: 2.5 }}>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650, display: 'block', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Projects</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: tokens.brand.primaryMuted, fontSize: '0.8rem', mt: 0.25 }}>1</Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650, display: 'block', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Meetings</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: tokens.brand.primaryMuted, fontSize: '0.8rem', mt: 0.25 }}>0</Typography>
-                      </Box>
-                    </Box>
+
                   </CardContent>
                 </Card>
               </Grid>
