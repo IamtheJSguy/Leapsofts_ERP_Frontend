@@ -403,13 +403,10 @@ export default function ProfilePage() {
           display: 'flex',
           gap: 1.5,
           p: 1,
-          flexWrap: { xs: 'nowrap', sm: 'wrap' },
-          overflowX: 'auto',
+          flexWrap: 'wrap',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.8)',
-          /* backdropFilter: 'blur(10px)' (removed for performance) */
           borderRadius: '20px',
-          width: { xs: '100%', sm: 'fit-content' },
-          maxWidth: '100%',
+          width: '100%',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)'}`,
           boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         }}
@@ -417,20 +414,21 @@ export default function ProfilePage() {
         {[
           { key: 'profile', label: 'User Profile', icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 18 }} /> },
           { key: 'preferences', label: 'Preferences & Schedule', icon: <ScheduleIcon sx={{ fontSize: 18 }} /> },
-          { key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> },
+          ...(user?.role === 'user' ? [{ key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> }] : []),
         ].map((tab) => (
           <Button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
             startIcon={tab.icon}
             sx={{
-              px: { xs: 2.5, sm: 3 },
-              py: 1.25,
+              px: { xs: 1.5, sm: 3 },
+              py: { xs: 1, sm: 1.25 },
               borderRadius: '14px',
               textTransform: 'none',
-              fontSize: '0.86rem',
+              fontSize: { xs: '0.75rem', sm: '0.86rem' },
               fontWeight: 700,
-              whiteSpace: 'nowrap',
+              whiteSpace: { xs: 'normal', sm: 'nowrap' },
+              textAlign: 'center',
               flexShrink: 0,
               color: activeTab === tab.key
                 ? '#fff'
@@ -847,7 +845,7 @@ export default function ProfilePage() {
         )}
 
         {/* Google Sheet Sync Tab */}
-        {activeTab === 'google-sheet' && (
+        {activeTab === 'google-sheet' && user?.role === 'user' && (
           <Fade in timeout={500}>
             <Grid container spacing={4}>
               <Grid item xs={12} lg={7}>

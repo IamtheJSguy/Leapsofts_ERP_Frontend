@@ -152,7 +152,7 @@ export const UserManagementTable = () => {
           borderRadius: '24px',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : tokens.surface.border}`,
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-          overflow: 'hidden',
+          overflowX: 'auto',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.01)',
         }}
       >
@@ -163,7 +163,7 @@ export const UserManagementTable = () => {
             </Typography>
           </Box>
         ) : (
-          <Table>
+          <Table sx={{ minWidth: 650 }}>
             <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.015)' }}>
               <TableRow>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>Name</TableCell>

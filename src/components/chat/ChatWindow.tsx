@@ -488,12 +488,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             transformOrigin={{ horizontal: 'left', vertical: 'bottom' }}
             anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
           >
-            <MenuItem onClick={() => { setAttachAnchorEl(null); }} sx={{ py: 1.5, px: 2 }}>
-              <ListItemIcon>
-                <ImageIcon fontSize="small" sx={{ color: tokens.brand.primary }} />
-              </ListItemIcon>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Media</Typography>
-            </MenuItem>
+
             <MenuItem onClick={() => { setAttachAnchorEl(null); setDrivePickerOpen(true); }} sx={{ py: 1.5, px: 2 }}>
               <ListItemIcon>
                 <AddToDriveIcon fontSize="small" sx={{ color: '#0F9D58' }} />
