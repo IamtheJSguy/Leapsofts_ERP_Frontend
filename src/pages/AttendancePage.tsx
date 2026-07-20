@@ -290,7 +290,7 @@ export const AttendancePage = () => {
   // --- Filtered Users for Admin Directory ---
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const nonAdminUsers = allUsers.filter((u: any) => u.role !== 'admin');
+    const nonAdminUsers = allUsers.filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
     const query = searchQuery.trim().toLowerCase();
     if (!query) return nonAdminUsers;
     return nonAdminUsers.filter((user: any) => {
@@ -337,82 +337,7 @@ export const AttendancePage = () => {
           </Box>
         </Box>
 
-        {/* KPI Widgets */}
-        <Grid container spacing={3.5} sx={{ mb: 4.5 }}>
-          {[
-            {
-              title: 'Active Now',
-              value: isTeamSummaryLoading ? '...' : `${teamSummary?.checkedIn || 0} / ${teamSummary?.totalUsers || 0}`,
-              icon: <PeopleIcon sx={{ fontSize: 26 }} />,
-              color: '#3B82F6',
-              bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
-              hoverBorder: '#3B82F6',
-              trend: 'Team members checked in today',
-            },
-            {
-              title: 'Punctuality Today',
-              value: isTeamSummaryLoading ? '...' : `${teamSummary?.punctualityRate || 100}%`,
-              icon: <CheckCircleOutlineIcon sx={{ fontSize: 26 }} />,
-              color: tokens.semantic.success,
-              bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
-              hoverBorder: tokens.semantic.success,
-              trend: 'Checked in within grace period',
-            },
-            {
-              title: 'Total Hours Today',
-              value: isTeamSummaryLoading ? '...' : formatHours(teamSummary?.totalMinutesWorkedToday || 0),
-              icon: <TimerIcon sx={{ fontSize: 26 }} />,
-              color: tokens.brand.primary,
-              bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.08)',
-              hoverBorder: tokens.brand.primary,
-              trend: 'Cumulative shift hours today',
-            },
-          ].map((kpi, index) => (
-            <Grid item xs={12} sm={4} key={index}>
-              <Card
-                sx={{
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                  borderRadius: '24px',
-                  p: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2.5,
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
-                  '&:hover': {
-                    transform: 'translateY(-3px)',
-                    boxShadow: tokens.shadow.cardHover,
-                    borderColor: kpi.hoverBorder,
-                  }
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: '16px',
-                    bgcolor: kpi.bgcolor,
-                    color: kpi.color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {kpi.icon}
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, fontSize: '0.68rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    {kpi.title}
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: kpi.color, mt: 0.5 }}>
-                    {kpi.value}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        {/* KPI Widgets removed as requested */}
 
         {/* Directory Header with Search */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3.5 }}>

@@ -18,7 +18,7 @@ export const CheckInReminder = () => {
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (!isAuthenticated || isCheckedIn || user?.role === 'admin') {
+    if (!isAuthenticated || isCheckedIn || user?.role === 'admin' || user?.role === 'manager') {
       setOpen(false);
       return;
     }
@@ -61,7 +61,7 @@ export const CheckInReminder = () => {
     setOpen(false);
   };
 
-  if (!isAuthenticated || isCheckedIn || user?.role === 'admin' || !open) return null;
+  if (!isAuthenticated || isCheckedIn || user?.role === 'admin' || user?.role === 'manager' || !open) return null;
 
   return (
     <Slide in={open} direction="up" mountOnEnter unmountOnExit>

@@ -54,7 +54,7 @@ export const NotificationPanel = () => {
         sx: {
           width: { xs: '100%', sm: 420 },
           bgcolor: isDarkMode ? `color-mix(in srgb, #1E1B24 85%, transparent)` : `color-mix(in srgb, #FFFFFF 90%, transparent)`,
-          backdropFilter: 'blur(24px)',
+          /* backdropFilter: 'blur(24px)', (removed for performance) */
           borderLeft: `1px solid ${isDarkMode ? `color-mix(in srgb, #FFFFFF 8%, transparent)` : `color-mix(in srgb, #000000 6%, transparent)`}`,
           backgroundImage: 'none',
           boxShadow: isDarkMode ? '-8px 0 32px rgba(0,0,0,0.5)' : '-8px 0 32px rgba(0,0,0,0.05)',
@@ -74,8 +74,8 @@ export const NotificationPanel = () => {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            bgcolor: isDarkMode ? `color-mix(in srgb, #1E1B24 60%, transparent)` : `color-mix(in srgb, #FFFFFF 60%, transparent)`,
-            backdropFilter: 'blur(12px)',
+            bgcolor: isDarkMode ? `color-mix(in srgb, #1E1B24 95%, transparent)` : `color-mix(in srgb, #FFFFFF 95%, transparent)`,
+            /* backdropFilter: 'blur(12px)', (removed for performance) */
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 } }}>

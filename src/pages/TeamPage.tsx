@@ -26,6 +26,7 @@ import {
   Badge,
   Tabs,
   Tab,
+  Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -147,7 +148,7 @@ const TeamPage = () => {
   const [password, setPassword] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [phone, setPhone] = useState('');
-  const [department, setDepartment] = useState('Engineering');
+  const [department, setDepartment] = useState(currentUser?.department || 'Engineering');
   const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
@@ -367,6 +368,12 @@ const TeamPage = () => {
             </Button>
           </Box>
         </Box>
+
+        {(isAdmin || isManager) && (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
+          <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
+            Shift timings are not defined for this user. Please edit their profile to add their shift details.
+          </Alert>
+        )}
 
         {/* User Summary Card */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
@@ -797,7 +804,6 @@ const TeamPage = () => {
                           />
                         }
                       >
-                        <MenuItem value="">None</MenuItem>
                         <MenuItem value="Leadership">Leadership</MenuItem>
                         <MenuItem value="Engineering">Engineering</MenuItem>
                         <MenuItem value="Product">Product</MenuItem>

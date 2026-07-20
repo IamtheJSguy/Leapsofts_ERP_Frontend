@@ -92,7 +92,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
     return creatorId === currentUser._id;
   };
 
-  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm<MeetingFormData>({
+  const { register, handleSubmit, reset, setValue, control, setError, formState: { errors } } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
   });
 
@@ -164,6 +164,15 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   };
 
   const onSubmit = (data: MeetingFormData) => {
+    if (!editingMeeting && (user?.role === 'admin' || user?.role === 'manager')) {
+      const scheduledDate = new Date(data.scheduledAt);
+      const now = new Date();
+      if (scheduledDate < now) {
+        setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
+        return;
+      }
+    }
+
     const payload = {
       title: data.title,
       description: data.description,
@@ -344,6 +353,12 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           onNavigate={(newDate) => setDate(newDate)}
           style={{ height: 600 }}
           onSelectSlot={(slot) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (slot.start < today && (user?.role === 'admin' || user?.role === 'manager')) {
+              addToast({ message: 'Cannot schedule meetings on past dates.', severity: 'warning' });
+              return;
+            }
             setSelectedSlot(slot.start);
             setDialogOpen(true);
           }}
@@ -527,6 +542,11 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               type="datetime-local"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              inputProps={{
+                min: !editingMeeting && (user?.role === 'admin' || user?.role === 'manager') 
+                  ? format(new Date(), "yyyy-MM-dd'T'HH:mm") 
+                  : undefined
+              }}
               error={!!errors.scheduledAt}
               helperText={errors.scheduledAt?.message}
               sx={{
