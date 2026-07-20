@@ -290,7 +290,7 @@ export const AttendancePage = () => {
   // --- Filtered Users for Admin Directory ---
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const nonAdminUsers = allUsers.filter((u: any) => u.role !== 'admin');
+    const nonAdminUsers = allUsers.filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
     const query = searchQuery.trim().toLowerCase();
     if (!query) return nonAdminUsers;
     return nonAdminUsers.filter((user: any) => {

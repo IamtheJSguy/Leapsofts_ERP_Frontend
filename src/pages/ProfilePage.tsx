@@ -781,7 +781,8 @@ export default function ProfilePage() {
                 </Card>
               </Grid>
 
-              <Grid item xs={12} lg={6}>
+              {user?.role !== 'admin' && user?.role !== 'manager' && (
+                <Grid item xs={12} lg={6}>
                 <Card sx={{ ...cardSx, height: '100%' }}>
                   <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1, letterSpacing: '-0.015em' }}>
                     Active Work Schedule
@@ -839,7 +840,8 @@ export default function ProfilePage() {
                     </Box>
                   </Box>
                 </Card>
-              </Grid>
+                </Grid>
+              )}
             </Grid>
           </Fade>
         )}
