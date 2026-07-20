@@ -249,7 +249,7 @@ export const SalesPage = () => {
   const [activeCard, setActiveCard] = useState('TOTAL PROSPECTS');
 
   const { data: usersData } = useUsers();
-  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
+  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
   const { data: profileUsersData } = useUsers({ role: 'admin,manager', limit: '100' });
@@ -341,9 +341,9 @@ export const SalesPage = () => {
   const handleEditSave = (id: string, originalProspect?: any) => {
     const dataToSave = editingLeads[id];
     if (!dataToSave) return;
-    
+
     if (originalProspect) {
-      const hasChanged = 
+      const hasChanged =
         dataToSave.firstName !== (originalProspect.firstName || '') ||
         dataToSave.lastName !== (originalProspect.lastName || '') ||
         dataToSave.email !== (originalProspect.email || '') ||
@@ -352,7 +352,7 @@ export const SalesPage = () => {
         dataToSave.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
         dataToSave.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
         dataToSave.linkedinMsg !== (originalProspect.linkedinMsg || '');
-        
+
       if (!hasChanged) {
         handleEditCancel(id);
         return;
@@ -1073,78 +1073,80 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Action Buttons */}
-            <Box sx={{ display: 'flex', gap: 1.5, alignSelf: { xs: 'stretch', sm: 'auto' }, flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setIsAddingInline(true)}
-                sx={{
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                  color: isDarkMode ? '#fff' : tokens.text.primary,
-                  textTransform: 'none',
-                  borderRadius: '24px',
-                  height: 42,
-                  px: 3,
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                  },
-                }}
-              >
-                Add Lead
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setIsBulkUploadOpen(true)}
-                sx={{
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                  color: isDarkMode ? '#fff' : tokens.text.primary,
-                  textTransform: 'none',
-                  borderRadius: '24px',
-                  height: 42,
-                  px: 3,
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                  },
-                }}
-              >
-                Bulk Upload
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={isElevated ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
-                onClick={() => {
-                  if (isElevated) {
-                    handleAdminSync();
-                  } else {
-                    setIsLinkDialogOpen(true);
-                  }
-                }}
-                sx={{
-                  bgcolor: tokens.brand.primary,
-                  color: '#fff',
-                  textTransform: 'none',
-                  borderRadius: '24px',
-                  height: 42,
-                  px: 3,
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    bgcolor: tokens.brand.primaryLight,
+            {user?.role !== 'admin' && user?.role !== 'manager' && (
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => setIsAddingInline(true)}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                    },
+                  }}
+                >
+                  Add Lead
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => setIsBulkUploadOpen(true)}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                    },
+                  }}
+                >
+                  Bulk Upload
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={isElevated ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => {
+                    if (isElevated) {
+                      handleAdminSync();
+                    } else {
+                      setIsLinkDialogOpen(true);
+                    }
+                  }}
+                  sx={{
+                    bgcolor: tokens.brand.primary,
+                    color: '#fff',
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
                     boxShadow: 'none',
-                  },
-                }}
-              >
-                {isElevated ? 'Sync Now' : 'Connect and sync'}
-              </Button>
-            </Box>
+                    '&:hover': {
+                      bgcolor: tokens.brand.primaryLight,
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isElevated ? 'Sync Now' : 'Connect and sync'}
+                </Button>
+              </Box>
+            )}
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
@@ -1374,16 +1376,16 @@ export const SalesPage = () => {
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
                             <Select size="small" value={editData.messageStatus} onChange={(e) => {
-                                handleEditChange(prospect._id, 'messageStatus', e.target.value);
-                                handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
-                              }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
-                                <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
-                                <MenuItem value="sent">Msg: Sent</MenuItem>
-                                <MenuItem value="replied">Msg: Replied</MenuItem>
-                                <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
-                                <MenuItem value="negative">Msg: Negative</MenuItem>
-                                <MenuItem value="positive">Msg: Positive</MenuItem>
-                                <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
+                              handleEditChange(prospect._id, 'messageStatus', e.target.value);
+                              handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
+                            }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
+                              <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
+                              <MenuItem value="sent">Msg: Sent</MenuItem>
+                              <MenuItem value="replied">Msg: Replied</MenuItem>
+                              <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
+                              <MenuItem value="negative">Msg: Negative</MenuItem>
+                              <MenuItem value="positive">Msg: Positive</MenuItem>
+                              <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
                             </Select>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
