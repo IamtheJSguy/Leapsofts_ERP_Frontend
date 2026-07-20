@@ -3285,7 +3285,7 @@ return (
               Assign to Team Member
             </Typography>
             <Autocomplete
-              options={dbUsers}
+              options={dbUsers.filter(u => u.role !== 'manager' && u.role !== 'admin')} 
               getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email}
               value={dbUsers.find((u) => u._id === selectedUserId) || null}
               onChange={(_, newValue) => setSelectedUserId(newValue ? newValue._id : null)}
