@@ -506,7 +506,7 @@ const LoginPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 fullWidth
                 error={!!errors.password || login.isError}
-                helperText={errors.password?.message || (login.isError ? 'Incorrect email or password' : '')}
+                helperText={errors.password?.message || (login.isError ? (login.error as any)?.response?.data?.error?.message || 'Incorrect email or password' : '')}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

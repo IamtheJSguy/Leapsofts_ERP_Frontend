@@ -5,13 +5,13 @@
 
 export const tokens = {
   brand: {
-    primary: 'var(--brand-primary, #5D1A89)',
-    primaryLight: 'var(--brand-primary-light, #7B3DA8)',
-    primaryDark: 'var(--brand-primary-dark, #451366)',
-    primaryMuted: 'var(--brand-primary-muted, #9563B8)',
-    primary50: 'var(--brand-primary-50, #FAF5FF)',
-    primary100: 'var(--brand-primary-100, #F3E8FF)',
-    primary200: 'var(--brand-primary-200, #E9D5FF)',
+    primary: '#5D1A89',
+    primaryLight: '#7B3DA8',
+    primaryDark: '#451366',
+    primaryMuted: '#9563B8',
+    primary50: '#FAF5FF',
+    primary100: '#F3E8FF',
+    primary200: '#E9D5FF',
     accent: '#FF7F11',
     accentLight: '#FF9A44',
     accentDark: '#E66D00',
@@ -38,7 +38,7 @@ export const tokens = {
     sidebarMuted: '#9A94A8',
   },
   semantic: {
-    success: 'var(--semantic-success, #2D8A5E)',
+    success: '#2D8A5E',
     successBg: '#ECFDF5',
     warning: '#B8860B',
     warningBg: '#FBF5E6',
