@@ -401,9 +401,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   // Tabs State
   const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
 
-  const addCommentMutation = useAddComment();
-  const editCommentMutation = useEditComment();
-  const deleteCommentMutation = useDeleteComment();
+  const addCommentMutation = useAddComment(boardId);
+  const editCommentMutation = useEditComment(boardId);
+  const deleteCommentMutation = useDeleteComment(boardId);
   const updateCardMutation = useUpdateCard(boardId);
   const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
@@ -426,8 +426,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       cardId: task.id,
       data: {
         assignedTo: pendingAssignees,
-        ...(pendingDueDate ? { dueDate: pendingDueDate } : {}),
-        ...(pendingKpiEndDate ? { kpiEndDate: pendingKpiEndDate } : {}),
+        ...(pendingDueDate ? { dueDate: pendingDueDate, kpiEndDate: pendingDueDate } : (pendingKpiEndDate ? { dueDate: pendingKpiEndDate, kpiEndDate: pendingKpiEndDate } : {})),
       },
     }, {
       onSuccess: () => {
@@ -835,31 +834,15 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           const y = date.getFullYear();
                           const m = String(date.getMonth() + 1).padStart(2, '0');
                           const d = String(date.getDate()).padStart(2, '0');
-                          setPendingDueDate(`${y}-${m}-${d}`);
+                          const formatted = `${y}-${m}-${d}`;
+                          setPendingDueDate(formatted);
+                          setPendingKpiEndDate(formatted);
                         } else {
                           setPendingDueDate('');
+                          setPendingKpiEndDate('');
                         }
                       }}
                     />
-                    <Box>
-                      <ModernDatePicker
-                        label="KPI tracking end date"
-                        value={(pendingKpiEndDate || rawCard?.kpiEndDate) ? new Date((pendingKpiEndDate || rawCard.kpiEndDate).split('T')[0] + 'T00:00:00') : null}
-                        onChange={(date) => {
-                          if (date) {
-                            const y = date.getFullYear();
-                            const m = String(date.getMonth() + 1).padStart(2, '0');
-                            const d = String(date.getDate()).padStart(2, '0');
-                            setPendingKpiEndDate(`${y}-${m}-${d}`);
-                          } else {
-                            setPendingKpiEndDate('');
-                          }
-                        }}
-                      />
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                        How long this task shows in daily KPIs (defaults to due date or 7 days)
-                      </Typography>
-                    </Box>
 
                     <Button
                       variant="contained"

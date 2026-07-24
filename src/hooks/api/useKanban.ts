@@ -81,6 +81,8 @@ export const useKanbanBoard = (id: string | undefined) =>
     queryKey: ['kanbanBoard', id],
     queryFn: () => kanbanApi.getBoard(id!).then((r) => r.data.data),
     enabled: !!id,
+    staleTime: 0,                  // Always re-fetch when invalidated
+    refetchOnWindowFocus: true,    // Catch missed socket updates when tab is refocused
   });
 
 export const useCreateBoard = () => {
@@ -135,22 +137,22 @@ export const useMoveCard = (boardId?: string) => {
   });
 };
 
-export const useAddComment = () => {
+export const useAddComment = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.addComment,
     onSuccess: (_res, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
     },
   });
 };
 
-export const useUpdateCardMembers = () => {
+export const useUpdateCardMembers = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.updateCardMembers,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] }),
   });
 };
 
@@ -265,22 +267,22 @@ export const useDeleteCard = (boardId?: string) => {
   });
 };
 
-export const useEditComment = () => {
+export const useEditComment = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.editComment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
     },
   });
 };
 
-export const useDeleteComment = () => {
+export const useDeleteComment = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.deleteComment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
     },
   });
 };
@@ -299,6 +301,7 @@ export const useShareBoard = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 };
