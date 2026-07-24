@@ -16,10 +16,10 @@ export const MESSAGE_STATUS = {
   FUTURE_LEAD: 'future_lead',
 } as const;
 
-export const KPI_TIMEFRAME = {
-  DAILY: 'daily',
-  WEEKLY: 'weekly',
-  MONTHLY: 'monthly',
+export const PIPELINE_METRIC = {
+  NEW_PROSPECTS: 'new_prospects',
+  FOLLOW_UPS: 'follow_ups',
+  MEETINGS_TAKEN: 'meetings_taken',
 } as const;
 
 export const NOTIFICATION_TYPE = {
@@ -61,6 +61,12 @@ export const SOCKET_EVENTS = {
 
 export const CONNECTION_STATUS_OPTIONS = Object.values(CONNECTION_STATUS);
 export const MESSAGE_STATUS_OPTIONS = Object.values(MESSAGE_STATUS);
-export const KPI_TIMEFRAME_OPTIONS = Object.values(KPI_TIMEFRAME);
+export const PIPELINE_METRIC_OPTIONS = Object.values(PIPELINE_METRIC);
+
+export const PIPELINE_METRIC_LABELS: Record<string, string> = {
+  new_prospects: 'New Prospects',
+  follow_ups: 'Follow-Ups',
+  meetings_taken: 'Meetings Taken',
+};
 
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'B2B Lead Gen';

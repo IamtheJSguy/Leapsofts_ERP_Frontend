@@ -24,9 +24,6 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from 'recharts';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -173,19 +170,6 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
     [metrics],
   );
 
-  // Timeframe pie chart
-  const timeframeData = useMemo(
-    () =>
-      metrics.byTimeframe.map((t) => ({
-        name: t.timeframe.charAt(0).toUpperCase() + t.timeframe.slice(1),
-        value: t.total,
-        rate: t.rate,
-      })),
-    [metrics],
-  );
-
-  const TIMEFRAME_COLORS = [tokens.brand.primary, tokens.brand.accent, tokens.semantic.success];
-
   return (
     <Box>
       {userName && (
@@ -297,7 +281,7 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
       {/* Charts Row */}
       <Grid container spacing={4} mb={4.5}>
         {/* Completion Trend */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12}>
           <Paper
             elevation={0}
             sx={{
@@ -356,47 +340,6 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
                     strokeWidth={2}
                   />
                 </AreaChart>
-              </ResponsiveContainer>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Timeframe Distribution Pie */}
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3.5,
-              borderRadius: '24px',
-              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.02)',
-              height: '100%',
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight={600} color={tokens.brand.primary} mb={2}>
-              By Timeframe
-            </Typography>
-            <Box sx={{ width: '100%', height: 250 }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={timeframeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, rate }) => `${name}: ${rate}%`}
-                  >
-                    {timeframeData.map((_, index) => (
-                      <Cell key={index} fill={TIMEFRAME_COLORS[index % TIMEFRAME_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <ChartTooltip />
-                </PieChart>
               </ResponsiveContainer>
             </Box>
           </Paper>

@@ -1,23 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { Shift } from '@/types';
+import type { Shift, PipelineMetric } from '@/types';
 
 export interface DailyKPIEntry {
   _id: string;
   userId: string;
-  kpiId?: { _id: string; name: string; description?: string; targetValue: number; timeFrame: string; priority?: string };
+  kpiId?: { _id: string; name: string; description?: string; targetValue?: number; priority?: string };
   assignmentId?: any;
   assignmentItemId?: string;
   kanbanCardId?: { _id: string; title: string; dueDate?: string; kpiEndDate?: string; boardId?: string };
   kpiName?: string;
   name?: string;
   description?: string;
-  targetValue: number;
+  /** Optional quantity target. Absent for simple done/not-done task-style entries. */
+  targetValue?: number;
   priority?: string;
-  timeFrame?: string;
-  periodStart?: string;
-  periodEnd?: string;
-  date: string;
+  /** Optional live pipeline metric this entry auto-tracks against. */
+  pipelineMetric?: PipelineMetric;
+  /** Live-computed value for pipeline-linked entries, merged in on read (does not replace stored actualValue). */
+  livePipelineValue?: number;
+  /** Due date for this entry (optional — may be open-ended). */
+  date?: string;
   isCompleted: boolean;
   completedAt?: string;
   actualValue?: number | null;

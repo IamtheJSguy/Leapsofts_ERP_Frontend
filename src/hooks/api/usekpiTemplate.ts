@@ -1,8 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KPITemplate, KpiPriority } from '@/types';
+import type { KPITemplate, KpiPriority, PipelineMetric } from '@/types';
 
-type ItemOverride = { itemIndex: number; targetValue?: number; priority?: KpiPriority };
+export type ItemOverride = {
+  itemIndex: number;
+  targetValue?: number;
+  priority?: KpiPriority;
+  dueDate?: string;
+  pipelineMetric?: PipelineMetric;
+};
 
 const kpiTemplateApi = {
   getKPITemplates: () => api.get<{ data: KPITemplate[] }>('/kpi-templates'),

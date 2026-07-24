@@ -15,7 +15,7 @@ export type MessageStatus =
   | 'positive'
   | 'future_lead';
 
-export type KpiTimeframe = 'daily' | 'weekly' | 'monthly';
+export type PipelineMetric = 'new_prospects' | 'follow_ups' | 'meetings_taken';
 
 export type KpiPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -128,8 +128,12 @@ export interface KPI {
   _id: string;
   name: string;
   description?: string;
-  targetValue: number;
-  timeFrame: KpiTimeframe;
+  /** Optional quantity target. Omitted for simple done/not-done task-style KPIs. */
+  targetValue?: number;
+  /** Optional deadline. Omitted for an open-ended KPI with no due date. */
+  dueDate?: string;
+  /** Optional live pipeline metric this KPI auto-tracks against (requires targetValue). */
+  pipelineMetric?: PipelineMetric;
   priority?: KpiPriority;
   metricType?: 'count' | 'ratio' | 'time' | 'duration';
   assignedTo?: string[] | User[];
@@ -140,8 +144,9 @@ export interface KPIAssignmentItem {
   templateItemId?: string;
   name: string;
   description?: string;
-  targetValue: number;
-  timeFrame: KpiTimeframe | string;
+  targetValue?: number;
+  dueDate?: string;
+  pipelineMetric?: PipelineMetric;
   priority?: KpiPriority;
 }
 
@@ -156,16 +161,17 @@ export interface KPIChangeRequest {
   kpiId?: string | KPI;
   kpiName?: string;
   currentTargetValue?: number;
-  currentTimeFrame?: KpiTimeframe;
+  currentDueDate?: string;
   currentPriority?: KpiPriority;
   requestedTargetValue?: number;
-  requestedTimeFrame?: KpiTimeframe;
+  requestedDueDate?: string;
   requestedPriority?: KpiPriority;
   proposedItem?: {
     name: string;
     description?: string;
-    targetValue: number;
-    timeFrame: KpiTimeframe;
+    targetValue?: number;
+    dueDate?: string;
+    pipelineMetric?: PipelineMetric;
     priority?: KpiPriority;
   };
   reason: string;
@@ -181,8 +187,8 @@ export interface KPITemplateItem {
   _id?: string;
   name: string;
   description?: string;
-  defaultTargetValue: number;
-  timeFrame: string;
+  defaultTargetValue?: number;
+  pipelineMetric?: PipelineMetric;
   assignedTo?: string[];
 }
 
@@ -213,8 +219,7 @@ export interface KPIRecord {
   actualValue: number;
   targetValue: number;
   status: 'met' | 'missed' | 'pending';
-  periodStart: string;
-  periodEnd: string;
+  dueDate?: string;
 }
 
 export interface Report {
@@ -268,13 +273,6 @@ export interface KpiPriorityBreakdown {
   rate: number;
 }
 
-export interface KpiTimeframeBreakdown {
-  timeframe: string;
-  total: number;
-  completed: number;
-  rate: number;
-}
-
 export interface KpiDailyTrend {
   date: string;
   total: number;
@@ -301,7 +299,6 @@ export interface KpiPerformanceMetrics {
   overallAttainmentRate?: number;
   byKpi?: KpiTargetActualRow[];
   byPriority: KpiPriorityBreakdown[];
-  byTimeframe: KpiTimeframeBreakdown[];
   dailyTrend: KpiDailyTrend[];
 }
 

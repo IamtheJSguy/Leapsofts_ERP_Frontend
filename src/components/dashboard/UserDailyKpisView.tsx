@@ -34,8 +34,9 @@ import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { sortByPriority } from '@/lib/priorityConfig';
+import { PIPELINE_METRIC_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
-import type { KpiTimeframe } from '@/types';
+import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
 
 const EMPTY_GROUPED = {
   active: [],
@@ -43,12 +44,6 @@ const EMPTY_GROUPED = {
   done: [],
   highPriority: [],
   counts: { active: 0, overdue: 0, done: 0, highPriority: 0 },
-};
-
-const formatDateRange = (start?: string, end?: string) => {
-  if (!start || !end) return null;
-  const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${fmt(start)} – ${fmt(end)}`;
 };
 
 export const UserDailyKpisView = () => {
@@ -151,8 +146,8 @@ export const UserDailyKpisView = () => {
 
   const openModifyModal = (kpi: any) => {
     const name = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'KPI';
-    const target = kpi.targetValue ?? kpi.kpiId?.targetValue ?? 0;
-    const timeFrame = (kpi.timeFrame || kpi.kpiId?.timeFrame || 'daily') as KpiTimeframe;
+    const target = kpi.targetValue ?? kpi.kpiId?.targetValue;
+    const dueDate = kpi.date;
     const priority = kpi.priority || kpi.kpiId?.priority || 'medium';
 
     if (kpi.assignmentId) {
@@ -164,7 +159,7 @@ export const UserDailyKpisView = () => {
         assignmentItemId: kpi.assignmentItemId,
         kpiName: name,
         currentTargetValue: target,
-        currentTimeFrame: timeFrame,
+        currentDueDate: dueDate,
         currentPriority: priority,
       });
     } else if (kpi.kpiId) {
@@ -175,7 +170,7 @@ export const UserDailyKpisView = () => {
         kpiId,
         kpiName: name,
         currentTargetValue: target,
-        currentTimeFrame: timeFrame,
+        currentDueDate: dueDate,
         currentPriority: priority,
       });
     }
@@ -278,8 +273,8 @@ export const UserDailyKpisView = () => {
             const isKpiLoading = loadingIds.has(kpi._id);
             const isOverdue = filter === 'overdue' || grouped.overdue.some((o: any) => o._id === kpi._id);
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
-            const periodRange = formatDateRange(kpi.periodStart, kpi.periodEnd);
-            const timeFrame = kpi.timeFrame || kpi.kpiId?.timeFrame;
+            const pipelineMetric = kpi.pipelineMetric || kpi.kpiId?.pipelineMetric;
+            const hasTarget = (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
 
             return (
               <Box
@@ -322,34 +317,38 @@ export const UserDailyKpisView = () => {
                     </Typography>
                     <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
                     {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
+                    {pipelineMetric && (
+                      <Chip
+                        icon={<TrackChangesOutlinedIcon sx={{ fontSize: 14 }} />}
+                        label={`Auto-tracked: ${PIPELINE_METRIC_LABELS[pipelineMetric] || pipelineMetric}`}
+                        size="small"
+                        sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                      />
+                    )}
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
-                    {kpi.targetValue !== undefined && (
+                    {hasTarget ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
                         <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>
                           {isChecked && getAttainmentLabel(kpi)
                             ? `Actual: ${getAttainmentLabel(kpi)}`
-                            : `Target: ${kpi.targetValue}`}
+                            : `Target: ${kpi.targetValue ?? kpi.kpiId?.targetValue}${kpi.livePipelineValue != null ? ` (live: ${kpi.livePipelineValue})` : ''}`}
                         </Typography>
                       </Box>
+                    ) : (
+                      <Chip label="Simple task" size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }} />
                     )}
-                    {periodRange ? (
+                    {kpi.date ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
-                          {periodRange}
-                          {timeFrame && timeFrame !== 'daily' ? ` · ${timeFrame}` : ''}
+                          Due {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Typography>
                       </Box>
-                    ) : kpi.date ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Typography>
-                      </Box>
-                    ) : null}
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">No due date</Typography>
+                    )}
                   </Box>
 
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
@@ -370,7 +369,7 @@ export const UserDailyKpisView = () => {
                   <Box sx={{ p: 2, px: { xs: 2, sm: 8.5 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
                     
                     <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                      {kpi.targetValue !== undefined && (
+                      {hasTarget && (
                         <Box>
                           <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {isChecked ? 'Actual / Target' : 'Target'}
@@ -378,8 +377,8 @@ export const UserDailyKpisView = () => {
                           <Typography sx={{ fontWeight: 800, color: tokens.brand.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <TrackChangesIcon sx={{ fontSize: 16 }} />
                             {isChecked && kpi.actualValue != null
-                              ? `${kpi.actualValue} / ${kpi.targetValue}`
-                              : kpi.targetValue}
+                              ? `${kpi.actualValue} / ${kpi.targetValue ?? kpi.kpiId?.targetValue}`
+                              : (kpi.targetValue ?? kpi.kpiId?.targetValue)}
                           </Typography>
                         </Box>
                       )}
