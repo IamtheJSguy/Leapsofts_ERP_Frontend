@@ -52,7 +52,7 @@ import {
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
   useEditComment, useDeleteComment
 } from '@/hooks/api/useKanban';
-import { useAddBoardMember } from '@/hooks/api/useProjects';
+import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
@@ -1149,10 +1149,11 @@ export const KanbanBoardPage = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedUserToShare, setSelectedUserToShare] = useState<string>('');
   const addBoardMemberMutation = useAddBoardMember(projectId, activeBoardId);
+  const removeBoardMemberMutation = useRemoveBoardMember(projectId, activeBoardId);
 
-  // Share Confirmation Dialog State
-  const [confirmShareOpen, setConfirmShareOpen] = useState(false);
-  const [pendingShareUserId, setPendingShareUserId] = useState<string>('');
+  // Remove Board Member Confirmation Dialog State
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [pendingRemoveUserId, setPendingRemoveUserId] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1343,33 +1344,42 @@ export const KanbanBoardPage = () => {
     }
   };
 
-  // Stage share then show confirmation dialog
+  // Invite member and keep share dialog open for more invites
   const handleShareSubmit = () => {
-    if (activeBoardId && selectedUserToShare) {
-      setPendingShareUserId(selectedUserToShare);
-      setIsShareDialogOpen(false);
-      setConfirmShareOpen(true);
-    }
-  };
-
-  // Executes actual share mutation after confirmation
-  const handleConfirmShare = () => {
-    if (activeBoardId && pendingShareUserId && projectId) {
+    if (activeBoardId && selectedUserToShare && projectId) {
       addBoardMemberMutation.mutate({
         id: projectId,
         boardId: activeBoardId,
-        userId: pendingShareUserId,
-        role: 'member'
+        userId: selectedUserToShare,
+        role: 'member',
       }, {
         onSuccess: () => {
           setSelectedUserToShare('');
-          setPendingShareUserId('');
-          setConfirmShareOpen(false);
+        },
+      });
+    }
+  };
+
+  const handleRemoveMemberClick = (userId: string) => {
+    setPendingRemoveUserId(userId);
+    setConfirmRemoveOpen(true);
+  };
+
+  const handleConfirmRemoveMember = () => {
+    if (activeBoardId && pendingRemoveUserId && projectId) {
+      removeBoardMemberMutation.mutate({
+        id: projectId,
+        boardId: activeBoardId,
+        userId: pendingRemoveUserId,
+      }, {
+        onSuccess: () => {
+          setPendingRemoveUserId('');
+          setConfirmRemoveOpen(false);
         },
         onError: () => {
-          setPendingShareUserId('');
-          setConfirmShareOpen(false);
-        }
+          setPendingRemoveUserId('');
+          setConfirmRemoveOpen(false);
+        },
       });
     }
   };
@@ -1964,8 +1974,87 @@ export const KanbanBoardPage = () => {
       <Dialog open={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}>
         <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem' }}>Share Board</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            Select a team member to invite to this project board.
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            Manage who can access this board.
+          </Typography>
+
+          {/* Current members */}
+          <Box
+            sx={{
+              mb: 3,
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: '16px',
+              overflow: 'hidden',
+              maxHeight: 220,
+              overflowY: 'auto',
+            }}
+          >
+            {boardMembers.length === 0 ? (
+              <Typography variant="body2" sx={{ color: 'text.secondary', p: 2, textAlign: 'center' }}>
+                No members yet
+              </Typography>
+            ) : (
+              boardMembers.map((member: any, idx: number) => {
+                const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
+                const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
+                const isOwner = member._id === actualBoard?.ownerId;
+                const isInMembersList = (actualBoard?.members || []).some((m: any) => {
+                  const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
+                  return uid === member._id;
+                });
+                const canRemove = canManageTeam && !isOwner && isInMembersList && member._id !== currentUser?._id;
+
+                return (
+                  <Box
+                    key={member._id || idx}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                      px: 2,
+                      py: 1.5,
+                      borderBottom:
+                        idx < boardMembers.length - 1
+                          ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+                          : 'none',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
+                        {initial}
+                      </Avatar>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {isOwner ? 'Owner' : member.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {canRemove && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveMemberClick(member._id)}
+                        disabled={removeBoardMemberMutation.isPending}
+                        sx={{
+                          color: 'text.secondary',
+                          flexShrink: 0,
+                          '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                );
+              })
+            )}
+          </Box>
+
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5 }}>
+            Invite member
           </Typography>
           <FormControl fullWidth size="small">
             <InputLabel>Select User</InputLabel>
@@ -1991,25 +2080,24 @@ export const KanbanBoardPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Share Board Confirmation Dialog */}
+      {/* Remove Board Member Confirmation Dialog */}
       {(() => {
-        const pendingUser = allUsers.find((u: any) => u._id === pendingShareUserId);
+        const pendingUser = allUsers.find((u: any) => u._id === pendingRemoveUserId);
         const pendingUserName = pendingUser
           ? (`${pendingUser.firstName || ''} ${pendingUser.lastName || ''}`.trim() || pendingUser.email)
           : 'this team member';
         return (
           <ConfirmDialog
-            open={confirmShareOpen}
-            title="Add Team Member"
-            message={`Are you sure you want to add ${pendingUserName} to this board? They will be able to view and interact with all cards on this board.`}
-            confirmLabel="Add Member"
+            open={confirmRemoveOpen}
+            title="Remove Board Member"
+            message={`Are you sure you want to remove ${pendingUserName} from this board? They will lose access to this board only.`}
+            confirmLabel="Remove"
             cancelLabel="Cancel"
-            isPending={addBoardMemberMutation.isPending}
-            onConfirm={handleConfirmShare}
+            isPending={removeBoardMemberMutation.isPending}
+            onConfirm={handleConfirmRemoveMember}
             onCancel={() => {
-              setConfirmShareOpen(false);
-              setPendingShareUserId('');
-              setSelectedUserToShare('');
+              setConfirmRemoveOpen(false);
+              setPendingRemoveUserId('');
             }}
           />
         );
