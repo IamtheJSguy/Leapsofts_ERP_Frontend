@@ -102,6 +102,17 @@ export const LeadDetailsPage = () => {
               {lead.messageStatus === 'sent' && (
                 <Chip label="Message: Sent" size="small" sx={{ bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning, fontWeight: 750 }} />
               )}
+              {lead.messageStatus === 'future_lead' && (
+                <Chip
+                  label={
+                    lead.futureLeadDate
+                      ? `Future Lead · ${new Date(lead.futureLeadDate).toLocaleDateString()}`
+                      : 'Future Lead'
+                  }
+                  size="small"
+                  sx={{ bgcolor: 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 750 }}
+                />
+              )}
             </Box>
           </Box>
         </Box>

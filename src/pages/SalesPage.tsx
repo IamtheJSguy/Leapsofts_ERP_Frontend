@@ -66,9 +66,13 @@ import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
 import EventIcon from '@mui/icons-material/Event';
-import DescriptionIcon from '@mui/icons-material/Description';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
+import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { format } from 'date-fns';
 import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -128,7 +132,7 @@ export const SalesPage = () => {
 
   const getCardTheme = (label: string) => {
     switch (label) {
-      case 'TOTAL PROSPECTS':
+      case 'TOTAL':
         return {
           icon: <SendIcon sx={{ fontSize: 20 }} />,
           color: tokens.brand.primary,
@@ -142,6 +146,20 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
           hoverBorder: tokens.brand.accent,
         };
+      case 'MESSAGE SENT':
+        return {
+          icon: <MarkEmailReadIcon sx={{ fontSize: 20 }} />,
+          color: '#0EA5E9',
+          bgcolor: isDarkMode ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)',
+          hoverBorder: '#0EA5E9',
+        };
+      case 'RESPONDED':
+        return {
+          icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />,
+          color: '#8B5CF6',
+          bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
+          hoverBorder: '#8B5CF6',
+        };
       case 'FOLLOW UP':
         return {
           icon: <ForumIcon sx={{ fontSize: 20 }} />,
@@ -149,26 +167,19 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
           hoverBorder: '#3B82F6',
         };
-      case 'QUALIFIED':
+      case 'NEGATIVE':
         return {
-          icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,
+          icon: <ThumbDownOffAltIcon sx={{ fontSize: 20 }} />,
+          color: tokens.semantic.error,
+          bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+          hoverBorder: tokens.semantic.error,
+        };
+      case 'POSITIVE':
+        return {
+          icon: <ThumbUpOffAltIcon sx={{ fontSize: 20 }} />,
           color: tokens.semantic.success,
           bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
           hoverBorder: tokens.semantic.success,
-        };
-      case 'NOT SENT':
-        return {
-          icon: <EventIcon sx={{ fontSize: 20 }} />,
-          color: '#F59E0B',
-          bgcolor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
-          hoverBorder: '#F59E0B',
-        };
-      case 'WAITING FOR REPLY':
-        return {
-          icon: <DescriptionIcon sx={{ fontSize: 20 }} />,
-          color: '#EC4899',
-          bgcolor: isDarkMode ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.08)',
-          hoverBorder: '#EC4899',
         };
       default:
         return {
@@ -265,7 +276,9 @@ export const SalesPage = () => {
   const [selectedIcp, setSelectedIcp] = useState('');
   const [selectedProfile, setSelectedProfile] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
-  const [activeCard, setActiveCard] = useState('TOTAL PROSPECTS');
+  const [activeCard, setActiveCard] = useState('TOTAL');
+  const [futureLeadWindow, setFutureLeadWindow] = useState<string>('');
+  const [messagedOnly, setMessagedOnly] = useState(false);
 
   const { data: usersData } = useUsers();
   const usersList = (usersData || []).filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
@@ -291,7 +304,8 @@ export const SalesPage = () => {
     profile: '',
     connectionStatus: 'pending',
     messageStatus: 'not_sent',
-    linkedinMsg: ''
+    linkedinMsg: '',
+    futureLeadDate: undefined,
   });
   const [addLeadErrors, setAddLeadErrors] = useState<Record<string, boolean>>({});
   const createLead = useCreateLead();
@@ -302,10 +316,18 @@ export const SalesPage = () => {
     if (!newLeadData.lastName?.trim()) errors.lastName = true;
     if (!newLeadData.icp?.trim()) errors.icp = true;
     if (!newLeadData.profile?.trim()) errors.profile = true;
+    if (newLeadData.messageStatus === 'future_lead' && !newLeadData.futureLeadDate) {
+      errors.futureLeadDate = true;
+    }
 
     if (Object.keys(errors).length > 0) {
       setAddLeadErrors(errors);
-      addToast({ message: 'Please fill in all required fields.', severity: 'error' });
+      addToast({
+        message: errors.futureLeadDate
+          ? 'Please select a Future Lead date.'
+          : 'Please fill in all required fields.',
+        severity: 'error',
+      });
       return;
     }
 
@@ -317,7 +339,8 @@ export const SalesPage = () => {
         setAddLeadErrors({});
         setNewLeadData({
           firstName: '', lastName: '', email: '', icp: '', profile: '',
-          connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: ''
+          connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
+          futureLeadDate: undefined,
         });
       },
       onError: (err: any) => {
@@ -342,7 +365,10 @@ export const SalesPage = () => {
         profile: prospect.profile || '',
         connectionStatus: prospect.connectionStatus || 'pending',
         messageStatus: prospect.messageStatus || 'not_sent',
-        linkedinMsg: prospect.linkedinMsg || ''
+        linkedinMsg: prospect.linkedinMsg || '',
+        futureLeadDate: prospect.futureLeadDate
+          ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
+          : undefined,
       }
     }));
   };
@@ -352,7 +378,8 @@ export const SalesPage = () => {
       ...prev,
       [id]: {
         ...prev[id],
-        [field]: value
+        [field]: value,
+        ...(field === 'messageStatus' && value !== 'future_lead' ? { futureLeadDate: undefined } : {}),
       }
     }));
   };
@@ -360,6 +387,11 @@ export const SalesPage = () => {
   const handleEditSave = (id: string, originalProspect?: any) => {
     const dataToSave = editingLeads[id];
     if (!dataToSave) return;
+
+    if (dataToSave.messageStatus === 'future_lead' && !dataToSave.futureLeadDate) {
+      addToast({ message: 'Please select a Future Lead date.', severity: 'error' });
+      return;
+    }
 
     if (originalProspect) {
       const hasChanged =
@@ -370,7 +402,12 @@ export const SalesPage = () => {
         dataToSave.profile !== (originalProspect.profile || '') ||
         dataToSave.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
         dataToSave.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
-        dataToSave.linkedinMsg !== (originalProspect.linkedinMsg || '');
+        dataToSave.linkedinMsg !== (originalProspect.linkedinMsg || '') ||
+        (dataToSave.futureLeadDate || '') !== (
+          originalProspect.futureLeadDate
+            ? format(new Date(originalProspect.futureLeadDate), 'yyyy-MM-dd')
+            : ''
+        );
 
       if (!hasChanged) {
         handleEditCancel(id);
@@ -409,7 +446,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -422,16 +459,22 @@ export const SalesPage = () => {
       ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
+      ...(messagedOnly ? { messaged: true } : {}),
+      ...(futureLeadWindow ? { futureLeadWindow } : {}),
     };
 
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
+    if (activeCard === 'MESSAGE SENT') {
+      filters.messaged = true;
+      delete filters.messageStatus;
+    }
+    if (activeCard === 'RESPONDED') filters.messageStatus = 'replied';
     if (activeCard === 'FOLLOW UP') filters.messageStatus = 'follow_up';
-    if (activeCard === 'QUALIFIED') filters.isQualified = true;
-    if (activeCard === 'NOT SENT') filters.messageStatus = 'not_sent';
-    if (activeCard === 'WAITING FOR REPLY') filters.messageStatus = 'sent';
+    if (activeCard === 'NEGATIVE') filters.messageStatus = 'negative';
+    if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   let prospects = leadsResponse?.data ?? [];
@@ -568,26 +611,42 @@ export const SalesPage = () => {
 
     if (!pipelineStats) {
       return [
-        { label: 'TOTAL PROSPECTS', value: '0', percent: null },
+        { label: 'TOTAL', value: '0', percent: null },
         { label: 'ACCEPTED', value: '0', percent: '0%' },
+        { label: 'MESSAGE SENT', value: '0', percent: '0%' },
+        { label: 'RESPONDED', value: '0', percent: '0%' },
         { label: 'FOLLOW UP', value: '0', percent: '0%' },
-        { label: 'QUALIFIED', value: '0', percent: '0%' },
-        { label: 'NOT SENT', value: '0', percent: '0%' },
-        { label: 'WAITING FOR REPLY', value: '0', percent: '0%' },
+        { label: 'NEGATIVE', value: '0', percent: '0%' },
+        { label: 'POSITIVE', value: '0', percent: '0%' },
       ];
     }
 
     const { conversionRates } = pipelineStats;
 
     return [
-      { label: 'TOTAL PROSPECTS', value: String(pipelineStats.totalProspects), percent: null },
+      { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
       { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
-      { label: 'FOLLOW UP', value: String(pipelineStats.messageStats?.follow_up || 0), percent: pct(conversionRates.conversationRate) },
-      { label: 'QUALIFIED', value: String(pipelineStats.qualified), percent: pct(conversionRates.qualifiedRate) },
-      { label: 'NOT SENT', value: String(pipelineStats.messageStats?.not_sent || 0), percent: pct(Math.round(((pipelineStats.messageStats?.not_sent || 0) / (pipelineStats.totalProspects || 1)) * 100)) },
-      { label: 'WAITING FOR REPLY', value: String(pipelineStats.messageStats?.sent || 0), percent: pct(Math.round(((pipelineStats.messageStats?.sent || 0) / (pipelineStats.totalProspects || 1)) * 100)) },
+      { label: 'MESSAGE SENT', value: String(pipelineStats.messageSent ?? 0), percent: pct(conversionRates.messageSentRate ?? 0) },
+      { label: 'RESPONDED', value: String(pipelineStats.responded ?? 0), percent: pct(conversionRates.respondedRate ?? 0) },
+      { label: 'FOLLOW UP', value: String(pipelineStats.followUp ?? pipelineStats.messageStats?.follow_up ?? 0), percent: pct(conversionRates.followUpRate ?? 0) },
+      { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
+      { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
     ];
   }, [pipelineStats]);
+
+  const applyFunnelCard = (label: string) => {
+    setActiveCard(label);
+    setFutureLeadWindow('');
+    setMessagedOnly(false);
+    if (label === 'MESSAGE SENT') {
+      setSelectedStatus('All statuses');
+      setMessagedOnly(true);
+    } else if (label === 'RESPONDED') setSelectedStatus('replied');
+    else if (label === 'FOLLOW UP') setSelectedStatus('follow_up');
+    else if (label === 'NEGATIVE') setSelectedStatus('negative');
+    else if (label === 'POSITIVE') setSelectedStatus('positive');
+    else setSelectedStatus('All statuses');
+  };
 
   // Styles for input selects
   const filterSelectSx = {
@@ -688,19 +747,14 @@ export const SalesPage = () => {
           <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
         </Box>
       ) : (
-        <Grid container spacing={2} sx={{ mb: 4.5 }}>
+        <>
+        <Grid container spacing={2} sx={{ mb: 1.5 }}>
           {stats.map((item, idx) => {
             const theme = getCardTheme(item.label);
             return (
-              <Grid item xs={6} sm={4} md={4} lg={2} key={idx}>
+              <Grid item xs={6} sm={4} md={3} lg={true} key={idx}>
                 <Card
-                  onClick={() => {
-                    setActiveCard(item.label);
-                    if (item.label === 'NOT SENT') setSelectedStatus('not_sent');
-                    else if (item.label === 'WAITING FOR REPLY') setSelectedStatus('sent');
-                    else if (item.label === 'FOLLOW UP') setSelectedStatus('follow_up');
-                    else setSelectedStatus('All statuses');
-                  }}
+                  onClick={() => applyFunnelCard(item.label)}
                   sx={{
                     bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                     border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
@@ -778,6 +832,81 @@ export const SalesPage = () => {
             );
           })}
         </Grid>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            flexWrap: 'wrap',
+            mb: 4.5,
+            mt: 0.5,
+          }}
+        >
+          <Chip
+            icon={<EventIcon sx={{ fontSize: '16px !important' }} />}
+            label={`Future leads: ${pipelineStats?.futureLeads ?? 0}`}
+            onClick={() => {
+              setActiveCard('TOTAL');
+              setMessagedOnly(false);
+              setSelectedStatus('future_lead');
+              setFutureLeadWindow('');
+            }}
+            sx={{
+              fontWeight: 700,
+              cursor: 'pointer',
+              bgcolor: futureLeadWindow === '' && selectedStatus === 'future_lead'
+                ? (isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.12)')
+                : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+              color: tokens.brand.primary,
+              border: `1px solid ${tokens.brand.primary}33`,
+            }}
+          />
+          <Chip
+            label={`Due soon: ${pipelineStats?.futureLeadsDueSoon ?? 0}`}
+            onClick={() => {
+              setActiveCard('TOTAL');
+              setMessagedOnly(false);
+              setSelectedStatus('All statuses');
+              setFutureLeadWindow('due_soon');
+            }}
+            sx={{
+              fontWeight: 700,
+              cursor: 'pointer',
+              bgcolor: futureLeadWindow === 'due_soon'
+                ? (isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.12)')
+                : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+              color: '#F59E0B',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <Select
+              value={futureLeadWindow}
+              displayEmpty
+              onChange={(e) => {
+                const val = e.target.value;
+                setFutureLeadWindow(val);
+                setActiveCard('TOTAL');
+                setMessagedOnly(false);
+                if (val) setSelectedStatus('All statuses');
+              }}
+              sx={{
+                height: 32,
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                borderRadius: '16px',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff',
+              }}
+            >
+              <MenuItem value="">Future window: All</MenuItem>
+              <MenuItem value="upcoming">Upcoming</MenuItem>
+              <MenuItem value="due">Due today</MenuItem>
+              <MenuItem value="overdue">Overdue</MenuItem>
+              <MenuItem value="due_soon">Due soon (3d)</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+        </>
       )}
 
       {/* Sub-Navigation Tabs Row */}
@@ -1074,10 +1203,13 @@ export const SalesPage = () => {
                 onChange={(e) => {
                   const val = e.target.value;
                   setSelectedStatus(val);
-                  if (val === 'not_sent') setActiveCard('NOT SENT');
-                  else if (val === 'sent') setActiveCard('WAITING FOR REPLY');
+                  setFutureLeadWindow('');
+                  setMessagedOnly(false);
+                  if (val === 'replied') setActiveCard('RESPONDED');
                   else if (val === 'follow_up') setActiveCard('FOLLOW UP');
-                  else setActiveCard('TOTAL PROSPECTS');
+                  else if (val === 'negative') setActiveCard('NEGATIVE');
+                  else if (val === 'positive') setActiveCard('POSITIVE');
+                  else setActiveCard('TOTAL');
                 }}
                 input={<OutlinedInput />}
               >
@@ -1327,15 +1459,43 @@ export const SalesPage = () => {
                         </Box>
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
-                        <Select size="small" value={newLeadData.messageStatus} onChange={(e) => setNewLeadData({ ...newLeadData, messageStatus: e.target.value as any, linkedinMsg: e.target.value })} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
-                          <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
-                          <MenuItem value="sent">Msg: Sent</MenuItem>
-                          <MenuItem value="replied">Msg: Replied</MenuItem>
-                          <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
-                          <MenuItem value="negative">Msg: Negative</MenuItem>
-                          <MenuItem value="positive">Msg: Positive</MenuItem>
-                          <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
-                        </Select>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Select
+                            size="small"
+                            value={newLeadData.messageStatus}
+                            onChange={(e) => {
+                              const messageStatus = e.target.value as Lead['messageStatus'];
+                              setNewLeadData({
+                                ...newLeadData,
+                                messageStatus,
+                                linkedinMsg: e.target.value,
+                                ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
+                              });
+                            }}
+                            sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}
+                          >
+                            <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
+                            <MenuItem value="sent">Msg: Sent</MenuItem>
+                            <MenuItem value="replied">Msg: Replied</MenuItem>
+                            <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
+                            <MenuItem value="negative">Msg: Negative</MenuItem>
+                            <MenuItem value="positive">Msg: Positive</MenuItem>
+                            <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
+                          </Select>
+                          {newLeadData.messageStatus === 'future_lead' && (
+                            <ModernDatePicker
+                              label="Reactivate on *"
+                              placeholder="Future lead date"
+                              value={newLeadData.futureLeadDate ? new Date(newLeadData.futureLeadDate) : null}
+                              onChange={(date) =>
+                                setNewLeadData({
+                                  ...newLeadData,
+                                  futureLeadDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                                })
+                              }
+                            />
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell sx={{ py: 2 }}>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
@@ -1395,18 +1555,34 @@ export const SalesPage = () => {
                             </Box>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
-                            <Select size="small" value={editData.messageStatus} onChange={(e) => {
-                              handleEditChange(prospect._id, 'messageStatus', e.target.value);
-                              handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
-                            }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
-                              <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
-                              <MenuItem value="sent">Msg: Sent</MenuItem>
-                              <MenuItem value="replied">Msg: Replied</MenuItem>
-                              <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
-                              <MenuItem value="negative">Msg: Negative</MenuItem>
-                              <MenuItem value="positive">Msg: Positive</MenuItem>
-                              <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
-                            </Select>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Select size="small" value={editData.messageStatus} onChange={(e) => {
+                                handleEditChange(prospect._id, 'messageStatus', e.target.value);
+                                handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
+                              }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
+                                <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
+                                <MenuItem value="sent">Msg: Sent</MenuItem>
+                                <MenuItem value="replied">Msg: Replied</MenuItem>
+                                <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
+                                <MenuItem value="negative">Msg: Negative</MenuItem>
+                                <MenuItem value="positive">Msg: Positive</MenuItem>
+                                <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
+                              </Select>
+                              {editData.messageStatus === 'future_lead' && (
+                                <ModernDatePicker
+                                  label="Reactivate on *"
+                                  placeholder="Future lead date"
+                                  value={editData.futureLeadDate ? new Date(editData.futureLeadDate) : null}
+                                  onChange={(date) =>
+                                    handleEditChange(
+                                      prospect._id,
+                                      'futureLeadDate',
+                                      date ? format(date, 'yyyy-MM-dd') : '',
+                                    )
+                                  }
+                                />
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
@@ -1551,6 +1727,11 @@ export const SalesPage = () => {
                                 border: `1px solid ${`color-mix(in srgb, ${msgToken.color} 12%, transparent)`}`,
                               }}
                             />
+                            {prospect.messageStatus === 'future_lead' && prospect.futureLeadDate && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                Due {format(new Date(prospect.futureLeadDate), 'MMM d, yyyy')}
+                              </Typography>
+                            )}
                           </Box>
                         </TableCell>
 

@@ -29,6 +29,7 @@ export type NotificationType =
   | 'kpi_miss'
   | 'follow_up'
   | 'meeting_reminder'
+  | 'future_lead_reminder'
   | 'data_sync'
   | 'approval_required'
   | 'system'
@@ -94,6 +95,8 @@ export interface Lead {
   followUp?: string;
   commentsAfterCall?: string;
   notes?: string;
+  futureLeadDate?: string;
+  futureLeadRemindersSent?: Record<string, string>;
 }
 
 export interface ProfileSection {
@@ -656,6 +659,9 @@ export interface LeadFilters {
   endDate?: string;
   connectionStatus?: string;
   messageStatus?: string;
+  /** When true, messageStatus is any of the messaged funnel statuses (not not_sent) */
+  messaged?: boolean;
+  futureLeadWindow?: 'upcoming' | 'due' | 'overdue' | 'due_soon';
   status?: string;
   location?: string;
   industry?: string;

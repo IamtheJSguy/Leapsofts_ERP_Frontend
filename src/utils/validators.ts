@@ -56,6 +56,7 @@ export const leadSchema = z.object({
   linkedinMsg: z.string().optional(),
   commentsAfterCall: z.string().optional(),
   notes: z.string().optional(),
+  futureLeadDate: z.string().optional(),
 });
 
 export const kpiSchema = z.object({
