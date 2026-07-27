@@ -69,8 +69,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
-import { useIcps } from '@/hooks/api/useSettings';
-import { getDisplayName } from '@/utils/formatters';
+import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
 export const SalesPage = () => {
@@ -252,8 +251,8 @@ export const SalesPage = () => {
   const usersList = (usersData || []).filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
-  const { data: profileUsersData } = useUsers({ role: 'admin,manager', limit: '100' });
-  const profileUsersList = profileUsersData || [];
+  const { data: profilesData } = useProfiles();
+  const profileUsersList = profilesData || [];
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -1039,9 +1038,9 @@ export const SalesPage = () => {
                 }}
               >
                 <MenuItem value="">All Profiles</MenuItem>
-                {profileUsersList.map((u: any) => (
-                  <MenuItem key={u._id} value={getDisplayName(u)}>
-                    {getDisplayName(u)}
+                {profileUsersList.map((p: any) => (
+                  <MenuItem key={p._id} value={p.name}>
+                    {p.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -1290,8 +1289,8 @@ export const SalesPage = () => {
                           </TextField>
                           <TextField error={addLeadErrors.profile} select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }}>
                             <MenuItem value=""><em>No Profile</em></MenuItem>
-                            {profileUsersList.map((u: any) => (
-                              <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
+                            {profileUsersList.map((p: any) => (
+                              <MenuItem key={p._id} value={p.name}>{p.name}</MenuItem>
                             ))}
                           </TextField>
                         </Box>
@@ -1358,8 +1357,8 @@ export const SalesPage = () => {
                               </TextField>
                               <TextField select size="small" placeholder="Profile" value={editData.profile || ''} onChange={(e) => handleEditChange(prospect._id, 'profile', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
                                 <MenuItem value=""><em>No Profile</em></MenuItem>
-                                {profileUsersList.map((u: any) => (
-                                  <MenuItem key={u._id} value={getDisplayName(u)}>{getDisplayName(u)}</MenuItem>
+                                {profileUsersList.map((p: any) => (
+                                  <MenuItem key={p._id} value={p.name}>{p.name}</MenuItem>
                                 ))}
                               </TextField>
                             </Box>

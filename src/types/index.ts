@@ -626,12 +626,20 @@ export interface IcpEntry {
   createdAt?: string;
 }
 
+export interface ProfileEntry {
+  _id: string;
+  name: string;
+  addedBy?: string;
+  createdAt?: string;
+}
+
 export interface SystemSettings {
   referenceSheetUrl?: string;
   chatRetentionMonths?: number;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
   icps?: IcpEntry[];
+  profiles?: ProfileEntry[];
 }
 
 export interface LeadValidationResult {
