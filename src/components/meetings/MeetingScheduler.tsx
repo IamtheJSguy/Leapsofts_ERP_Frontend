@@ -34,8 +34,25 @@ import EventIcon from '@mui/icons-material/Event';
 import GroupIcon from '@mui/icons-material/Group';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import BusinessIcon from '@mui/icons-material/Business';
+import type { Lead } from '@/types';
+
+const getLinkedLead = (leadId: Meeting['leadId']): { id: string; name: string; company?: string; email?: string } | null => {
+  if (!leadId) return null;
+  if (typeof leadId === 'string') return { id: leadId, name: 'Linked lead' };
+  const lead = leadId as Lead;
+  const name =
+    lead.prospectName ||
+    [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim() ||
+    lead.email ||
+    'Linked lead';
+  return { id: lead._id, name, company: lead.company, email: lead.email };
+};
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -69,7 +86,10 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
     const participantIds = (m.participants || []).map((p: any) =>
       typeof p === 'string' ? p : p._id
     );
-    return participantIds.includes(currentUser._id);
+    const createdById = m.createdBy
+      ? (typeof m.createdBy === 'string' ? m.createdBy : (m.createdBy as any)._id)
+      : null;
+    return participantIds.includes(currentUser._id) || createdById === currentUser._id;
   });
 
   // Check if the meeting was created by an admin
@@ -363,13 +383,8 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             setDialogOpen(true);
           }}
           onSelectEvent={(event) => {
-            const meeting: Meeting = event.resource;
-            if (canEditOrDelete(meeting)) {
-              setEditingMeeting(meeting);
-              setDialogOpen(true);
-            } else {
-              setSelectedMeeting(meeting);
-            }
+            // Always open detail first; edit is available from the detail dialog for organizer/admin
+            setSelectedMeeting(event.resource as Meeting);
           }}
           eventPropGetter={eventPropGetter}
           selectable
@@ -663,9 +678,30 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 }}>
                   Meeting Details
                 </Box>
-                <IconButton onClick={() => setSelectedMeeting(null)} size="small" sx={{ color: 'text.secondary' }}>
-                  <CloseIcon />
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {canEditOrDelete(selectedMeeting) && (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setEditingMeeting(selectedMeeting);
+                        setSelectedMeeting(null);
+                        setDialogOpen(true);
+                      }}
+                      sx={{
+                        color: tokens.brand.primaryLight,
+                        bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.12)' : 'rgba(93, 26, 137, 0.06)',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.2)' : 'rgba(93, 26, 137, 0.12)',
+                        },
+                      }}
+                    >
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                  <IconButton onClick={() => setSelectedMeeting(null)} size="small" sx={{ color: 'text.secondary' }}>
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: '-0.02em', lineHeight: 1.3, color: 'text.primary' }}>
                 {selectedMeeting.title}
@@ -710,6 +746,59 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                   </Box>
                 </Box>
               </Box>
+
+              {/* Linked Lead */}
+              {(() => {
+                const linked = getLinkedLead(selectedMeeting.leadId);
+                if (!linked) return null;
+                const initials = linked.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'L';
+                return (
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Linked Lead
+                    </Typography>
+                    <Box
+                      onClick={() => {
+                        window.open(`/sales/leads/${linked.id}`, '_blank', 'noopener,noreferrer');
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.25,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                        bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.08)' : 'rgba(93, 26, 137, 0.04)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.14)' : 'rgba(93, 26, 137, 0.08)',
+                        },
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: tokens.brand.primary, color: '#fff' }}>
+                        {initials}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {linked.name}
+                        </Typography>
+                        {(linked.company || linked.email) && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {linked.company ? (
+                              <>
+                                <BusinessIcon sx={{ fontSize: 12 }} />
+                                {linked.company}
+                              </>
+                            ) : linked.email}
+                          </Typography>
+                        )}
+                      </Box>
+                      <PersonOutlineIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
+                    </Box>
+                  </Box>
+                );
+              })()}
 
               {/* Organizer */}
               {(() => {
@@ -899,6 +988,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 pb: 2.5,
                 pt: 1,
                 display: 'flex',
+                flexWrap: 'wrap',
                 gap: 1.5,
                 justifyContent: 'flex-end',
               }}
@@ -919,15 +1009,18 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               >
                 Close
               </Button>
-              {(selectedMeeting.meetingLink || selectedMeeting.link) && (
+              {canEditOrDelete(selectedMeeting) && (
                 <Button
                   variant="contained"
-                  startIcon={<VideocamIcon />}
-                  endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
-                  onClick={() => window.open(selectedMeeting.meetingLink || selectedMeeting.link, '_blank', 'noopener,noreferrer')}
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={() => {
+                    setEditingMeeting(selectedMeeting);
+                    setSelectedMeeting(null);
+                    setDialogOpen(true);
+                  }}
                   sx={{
                     py: 1,
-                    px: 4,
+                    px: 3,
                     borderRadius: '14px',
                     textTransform: 'none',
                     fontWeight: 700,
@@ -936,7 +1029,57 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                     color: '#fff',
                     '&:hover': {
                       bgcolor: tokens.brand.primaryDark,
-                    }
+                    },
+                  }}
+                >
+                  Edit Meeting
+                </Button>
+              )}
+              {canEditOrDelete(selectedMeeting) && (
+                <Button
+                  variant="outlined"
+                  startIcon={<DeleteOutlineIcon />}
+                  onClick={() => {
+                    setEditingMeeting(selectedMeeting);
+                    setConfirmDeleteOpen(true);
+                  }}
+                  sx={{
+                    py: 1,
+                    px: 2,
+                    borderRadius: '14px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: tokens.semantic.error,
+                    borderColor: isDarkMode ? 'rgba(196, 69, 69, 0.35)' : 'rgba(196, 69, 69, 0.3)',
+                    '&:hover': {
+                      borderColor: tokens.semantic.error,
+                      bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.1)' : 'rgba(196, 69, 69, 0.05)',
+                    },
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+              {(selectedMeeting.meetingLink || selectedMeeting.link) && (
+                <Button
+                  variant="outlined"
+                  startIcon={<VideocamIcon />}
+                  endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                  onClick={() => window.open(selectedMeeting.meetingLink || selectedMeeting.link, '_blank', 'noopener,noreferrer')}
+                  sx={{
+                    py: 1,
+                    px: 3,
+                    borderRadius: '14px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    borderColor: tokens.brand.primaryLight,
+                    color: tokens.brand.primaryLight,
+                    '&:hover': {
+                      borderColor: tokens.brand.primaryDark,
+                      bgcolor: 'rgba(93, 26, 137, 0.04)',
+                    },
                   }}
                 >
                   Join Meeting

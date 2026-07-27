@@ -45,6 +45,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
@@ -95,15 +96,34 @@ export const SalesPage = () => {
   };
 
   const handleOpenQualifyConfirm = (leadId: string) => {
-    setLeadIdToQualify(leadId);
-    setConfirmQualifyOpen(true);
+    setLeadModalMode('qualify');
+    setLeadModalId(leadId);
+    setLeadModalOpen(true);
+  };
+
+  const handleOpenUpdateLead = (leadId: string) => {
+    setLeadModalMode('update');
+    setLeadModalId(leadId);
+    setLeadModalOpen(true);
+  };
+
+  const handleOpenLeadDetail = (leadId: string) => {
+    window.open(`/sales/leads/${leadId}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCloseLeadModal = () => {
+    setLeadModalOpen(false);
+    setLeadModalId('');
   };
 
   const handleQualifySuccess = (boardId?: string, projectId?: string) => {
     addToast({ message: 'Lead qualified successfully! Card created.', severity: 'success' });
-    setConfirmQualifyOpen(false);
-    setLeadIdToQualify('');
+    handleCloseLeadModal();
     if (boardId && projectId) navigate(`/projects/${projectId}/boards/${boardId}`);
+  };
+
+  const handleUpdateLeadSuccess = () => {
+    handleCloseLeadModal();
   };
 
   const getCardTheme = (label: string) => {
@@ -439,9 +459,10 @@ export const SalesPage = () => {
   const [isQualifyModalOpen, setIsQualifyModalOpen] = useState(false);
   const [selectedLeadToQualify, setSelectedLeadToQualify] = useState<string>('');
 
-  // Qualify Confirmation Dialog state
-  const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
-  const [leadIdToQualify, setLeadIdToQualify] = useState<string>('');
+  // Lead qualify/update modal (opened by Qualify button or name/avatar click)
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [leadModalId, setLeadModalId] = useState<string>('');
+  const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
 
   // Bulk Upload Modal state
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
@@ -1426,8 +1447,32 @@ export const SalesPage = () => {
                         }}
                       >
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75 }}>
+                        <TableCell
+                          sx={{ py: 2, borderBottom: 0, pl: 3, cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenUpdateLead(String(prospect._id));
+                          }}
+                        >
+                          <Box
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleOpenUpdateLead(String(prospect._id));
+                              }
+                            }}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.75,
+                              borderRadius: '12px',
+                              transition: 'opacity 0.15s',
+                              '&:hover': { opacity: 0.85 },
+                              outline: 'none',
+                            }}
+                          >
                             <Avatar
                               sx={{
                                 width: 38,
@@ -1442,7 +1487,15 @@ export const SalesPage = () => {
                               {initials}
                             </Avatar>
                             <Box>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 750, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.88rem' }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 750,
+                                  color: isDarkMode ? '#fff' : tokens.text.primary,
+                                  fontSize: '0.88rem',
+                                  '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                }}
+                              >
                                 {nameToUse}
                               </Typography>
                               {prospect.email && (
@@ -1534,6 +1587,21 @@ export const SalesPage = () => {
 
                         <TableCell align="right" sx={{ py: 2, borderBottom: 0, pr: 3 }}>
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <Tooltip title="View lead details" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenLeadDetail(String(prospect._id))}
+                                sx={{
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                    color: tokens.brand.primary,
+                                  }
+                                }}
+                              >
+                                <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Edit Prospect" arrow>
                               <IconButton
                                 size="small"
@@ -1881,16 +1949,16 @@ export const SalesPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Qualify Lead Enrichment Modal */}
-      <QualifyEnrichModal
-        open={confirmQualifyOpen}
-        leadId={leadIdToQualify}
-        onSuccess={handleQualifySuccess}
-        onClose={() => {
-          setConfirmQualifyOpen(false);
-          setLeadIdToQualify('');
-        }}
-      />
+      {/* Qualify / Update Lead Modal */}
+      {leadModalOpen && leadModalId ? (
+        <QualifyEnrichModal
+          open={leadModalOpen}
+          leadId={leadModalId}
+          mode={leadModalMode}
+          onSuccess={leadModalMode === 'update' ? handleUpdateLeadSuccess : handleQualifySuccess}
+          onClose={handleCloseLeadModal}
+        />
+      ) : null}
 
       <BulkUploadModal
         open={isBulkUploadOpen}

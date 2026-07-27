@@ -12,10 +12,14 @@ const meetingApi = {
   deleteMeeting: (id: string) => api.delete(`/meetings/${id}`),
 };
 
-export const useMeetings = (filters: Record<string, string> = {}) =>
+export const useMeetings = (
+  filters: Record<string, string> = {},
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: ['meetings', filters],
     queryFn: () => meetingApi.getMeetings(filters).then((r) => r.data.data),
+    enabled: options?.enabled ?? true,
   });
 
 export const useMeeting = (id: string | undefined) =>
@@ -32,6 +36,8 @@ export const useCreateMeeting = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
   });
 };
@@ -40,7 +46,11 @@ export const useUpdateMeeting = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: meetingApi.updateMeeting,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meetings'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
+    },
   });
 };
 

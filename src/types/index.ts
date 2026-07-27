@@ -80,6 +80,7 @@ export interface Lead {
   isQualified?: boolean;
   kanbanBoardId?: string;
   assignedTo?: string | User;
+  sharedWith?: string[] | User[];
   profileSections?: ProfileSection[];
   versionHistory?: VersionHistoryEntry[];
   createdAt?: string;
@@ -358,6 +359,7 @@ export interface Meeting {
   participants: string[] | User[];
   status?: 'scheduled' | 'completed' | 'cancelled';
   createdBy?: string | User; // the user who created this meeting
+  leadId?: string | Lead;
 }
 
 export interface KanbanColumn {

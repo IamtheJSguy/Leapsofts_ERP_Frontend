@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Box, Typography, Button, IconButton, Chip, Avatar, 
-  useTheme, CircularProgress, Divider, AvatarGroup, Tooltip
+import {
+  Box, Typography, Button, IconButton, Chip, Avatar,
+  useTheme, CircularProgress, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -10,12 +10,11 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import EditIcon from '@mui/icons-material/Edit';
 import LaunchIcon from '@mui/icons-material/Launch';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { useLead } from '@/hooks/api/useLeads';
-import { useAuthStore } from '@/store/useAuthStore';
+import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { tokens } from '@/styles/tokens';
 import { useUIStore } from '@/store/useUIStore';
 
@@ -25,7 +24,8 @@ export const LeadDetailsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
-  
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
   const { data: lead, isLoading } = useLead(id);
 
   if (isLoading) {
@@ -36,7 +36,7 @@ export const LeadDetailsPage = () => {
     );
   }
 
-  if (!lead) {
+  if (!lead || !id) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h5" color="error">Lead not found</Typography>
@@ -70,15 +70,15 @@ export const LeadDetailsPage = () => {
       </Button>
 
       {/* Hero Section */}
-      <Box sx={{ 
+      <Box sx={{
         mb: 4, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'space-between', alignItems: 'flex-start',
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
         borderRadius: '24px', p: 4, boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.03)'
       }}>
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Avatar sx={{ 
-            width: 80, height: 80, fontSize: '2rem', fontWeight: 800, 
+          <Avatar sx={{
+            width: 80, height: 80, fontSize: '2rem', fontWeight: 800,
             bgcolor: tokens.brand.primaryMuted, color: tokens.brand.primary,
             border: `2px solid ${tokens.brand.primary}30`
           }}>
@@ -91,7 +91,7 @@ export const LeadDetailsPage = () => {
             <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
               {lead.jobTitle || 'No Title'} {lead.company ? `at ${lead.company}` : ''}
             </Typography>
-            
+
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {lead.isQualified && (
                 <Chip label="Qualified" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: tokens.semantic.success, fontWeight: 750 }} />
@@ -110,6 +110,7 @@ export const LeadDetailsPage = () => {
           <Button
             variant="outlined"
             startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setEditModalOpen(true)}
             sx={{
               borderRadius: '24px', textTransform: 'none', fontWeight: 700, color: 'text.primary',
               borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
@@ -117,27 +118,17 @@ export const LeadDetailsPage = () => {
           >
             Edit Profile
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<MailOutlineIcon sx={{ fontSize: 16 }} />}
-            sx={{
-              bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none',
-              boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryDark, boxShadow: '0 4px 12px rgba(93,26,137,0.3)' }
-            }}
-          >
-            Send Message
-          </Button>
         </Box>
       </Box>
 
       {/* Main Content Grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 4 }}>
-        
+
         {/* Left Column (2/3) */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          
+
           {/* Strategic Alignment */}
-          <Box sx={{ 
+          <Box sx={{
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
             borderRadius: '24px', p: 3
@@ -163,7 +154,7 @@ export const LeadDetailsPage = () => {
 
           {/* Profile Sections & Enrichment */}
           {(!!lead.profileSections?.length || !!lead.notes) && (
-            <Box sx={{ 
+            <Box sx={{
               bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
               borderRadius: '24px', p: 3
@@ -171,7 +162,7 @@ export const LeadDetailsPage = () => {
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <FormatListBulletedIcon /> Profile Intelligence
               </Typography>
-              
+
               {lead.notes && (
                 <Box sx={{ mb: 3, p: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '12px' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>Notes</Typography>
@@ -191,9 +182,9 @@ export const LeadDetailsPage = () => {
 
         {/* Right Column (1/3) */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          
+
           {/* Contact Info Card */}
-          <Box sx={{ 
+          <Box sx={{
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
             borderRadius: '24px', p: 3
@@ -250,7 +241,7 @@ export const LeadDetailsPage = () => {
           </Box>
 
           {/* Additional Metadata */}
-          <Box sx={{ 
+          <Box sx={{
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
             borderRadius: '24px', p: 3
@@ -281,6 +272,16 @@ export const LeadDetailsPage = () => {
 
         </Box>
       </Box>
+
+      {editModalOpen && (
+        <QualifyEnrichModal
+          open={editModalOpen}
+          leadId={id}
+          mode="update"
+          onSuccess={() => setEditModalOpen(false)}
+          onClose={() => setEditModalOpen(false)}
+        />
+      )}
     </Box>
   );
 };
