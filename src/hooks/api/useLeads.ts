@@ -62,6 +62,7 @@ export const useCreateLead = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };
@@ -74,6 +75,7 @@ export const useUpdateLead = () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };
@@ -85,6 +87,7 @@ export const useDeleteLead = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };
@@ -96,6 +99,7 @@ export const useBulkUpload = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
     },
   });
 };

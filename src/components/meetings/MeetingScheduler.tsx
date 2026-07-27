@@ -164,7 +164,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   };
 
   const onSubmit = (data: MeetingFormData) => {
-    if (!editingMeeting && (user?.role === 'admin' || user?.role === 'manager')) {
+    if (!editingMeeting) {
       const scheduledDate = new Date(data.scheduledAt);
       const now = new Date();
       if (scheduledDate < now) {
@@ -355,7 +355,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           onSelectSlot={(slot) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            if (slot.start < today && (user?.role === 'admin' || user?.role === 'manager')) {
+            if (slot.start < today) {
               addToast({ message: 'Cannot schedule meetings on past dates.', severity: 'warning' });
               return;
             }
@@ -543,7 +543,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               fullWidth
               InputLabelProps={{ shrink: true }}
               inputProps={{
-                min: !editingMeeting && (user?.role === 'admin' || user?.role === 'manager') 
+                min: !editingMeeting 
                   ? format(new Date(), "yyyy-MM-dd'T'HH:mm") 
                   : undefined
               }}

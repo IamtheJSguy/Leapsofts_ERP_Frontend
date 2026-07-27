@@ -38,6 +38,7 @@ export const useProjects = () =>
   useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.getProjects().then((r) => r.data.data),
+    staleTime: 0,
   });
 
 export const useProject = (id: string | undefined) =>
@@ -154,9 +155,12 @@ export const useAddBoardMember = (id?: string, boardId?: string) => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.id, variables.boardId] });
       queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
       if (id && boardId) {
         queryClient.invalidateQueries({ queryKey: ['boardMembers', id, boardId] });
-        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
+        queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       }
     },
   });
@@ -169,9 +173,12 @@ export const useRemoveBoardMember = (id?: string, boardId?: string) => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['boardMembers', variables.id, variables.boardId] });
       queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
       if (id && boardId) {
         queryClient.invalidateQueries({ queryKey: ['boardMembers', id, boardId] });
-        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
+        queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       }
     },
   });

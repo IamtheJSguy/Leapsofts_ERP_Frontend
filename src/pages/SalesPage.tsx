@@ -1153,7 +1153,7 @@ export const SalesPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
               <CircularProgress sx={{ color: tokens.brand.primary }} />
             </Box>
-          ) : prospects.length === 0 ? (
+          ) : prospects.length === 0 && !isAddingInline ? (
             /* Unlinked Prospects View - Show Empty State Graphic below the toolbar */
             <Box
               sx={{
