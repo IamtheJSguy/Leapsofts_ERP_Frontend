@@ -131,7 +131,7 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {diffLine('Target', request.currentTargetValue, request.requestedTargetValue)}
-              {diffLine('Timeframe', request.currentTimeFrame, request.requestedTimeFrame)}
+              {diffLine('Due Date', request.currentDueDate, request.requestedDueDate)}
               {(request.requestedPriority && request.requestedPriority !== request.currentPriority) && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body2"><strong>Priority:</strong></Typography>
@@ -142,7 +142,9 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
               )}
               {request.proposedItem && (
                 <Typography variant="body2" sx={{ bgcolor: 'rgba(45, 138, 94, 0.1)', p: 1, borderRadius: 1, color: tokens.semantic.success }}>
-                  <strong>New item:</strong> {request.proposedItem.name} — target {request.proposedItem.targetValue} ({request.proposedItem.timeFrame})
+                  <strong>New item:</strong> {request.proposedItem.name}
+                  {request.proposedItem.targetValue != null && ` — target ${request.proposedItem.targetValue}`}
+                  {request.proposedItem.dueDate && ` (due ${new Date(request.proposedItem.dueDate).toLocaleDateString()})`}
                 </Typography>
               )}
             </Box>

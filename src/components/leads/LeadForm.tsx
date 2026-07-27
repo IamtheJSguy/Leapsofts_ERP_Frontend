@@ -13,9 +13,7 @@ import {
 } from '@mui/material';
 import { leadSchema, type LeadFormData } from '@/utils/validators';
 import type { Lead } from '@/types';
-import { useIcps } from '@/hooks/api/useSettings';
-import { useUsers } from '@/hooks/api/useUsers';
-import { getDisplayName } from '@/utils/formatters';
+import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 
 interface LeadFormProps {
   open: boolean;
@@ -36,7 +34,7 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
     defaultValues: lead || {},
   });
   const { data: icps } = useIcps();
-  const { data: profileUsers } = useUsers({ role: 'admin,manager', limit: '100' });
+  const { data: profiles } = useProfiles();
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -119,9 +117,9 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
                     <MenuItem value="">
                       <em>None</em>
                     </MenuItem>
-                    {(profileUsers || []).map((u) => (
-                      <MenuItem key={u._id} value={getDisplayName(u)}>
-                        {getDisplayName(u)}
+                    {(profiles || []).map((p) => (
+                      <MenuItem key={p._id} value={p.name}>
+                        {p.name}
                       </MenuItem>
                     ))}
                   </TextField>

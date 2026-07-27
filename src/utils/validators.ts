@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   CONNECTION_STATUS_OPTIONS,
   MESSAGE_STATUS_OPTIONS,
-  KPI_TIMEFRAME_OPTIONS,
+  PIPELINE_METRIC_OPTIONS,
   ROLES,
 } from '@/lib/constants';
 
@@ -56,12 +56,14 @@ export const leadSchema = z.object({
   linkedinMsg: z.string().optional(),
   commentsAfterCall: z.string().optional(),
   notes: z.string().optional(),
+  futureLeadDate: z.string().optional(),
 });
 
 export const kpiSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  targetValue: z.coerce.number().min(0),
-  timeFrame: z.enum(KPI_TIMEFRAME_OPTIONS as [string, ...string[]]),
+  targetValue: z.coerce.number().min(0).optional(),
+  dueDate: z.string().optional(),
+  pipelineMetric: z.enum(PIPELINE_METRIC_OPTIONS as [string, ...string[]]).optional(),
   metricType: z.enum(['count', 'ratio', 'time', 'duration']),
 });
 

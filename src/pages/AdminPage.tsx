@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
+import { SalesSettingsPanel } from '@/components/admin/SalesSettingsPanel';
 import { tokens } from '@/styles/tokens';
 
 const AdminPage = () => {
@@ -88,11 +89,36 @@ const AdminPage = () => {
         >
           System Settings
         </Button>
+        <Button
+          onClick={() => setTab(2)}
+          sx={{
+            borderRadius: '16px',
+            px: 3,
+            py: 0.75,
+            bgcolor: tab === 2 ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+            color: tab === 2 ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
+            fontWeight: 700,
+            textTransform: 'none',
+            fontSize: '0.84rem',
+            '&:hover': {
+              bgcolor: tab === 2 ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
+            },
+            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          Sales Settings
+        </Button>
       </Box>
 
       {/* Render Active Config Panel */}
       <Box sx={{ mt: 1 }}>
-        {tab === 0 ? <UserManagementTable /> : <SystemSettingsPanel readOnly={!canManageSystemSettings} />}
+        {tab === 0 ? (
+          <UserManagementTable />
+        ) : tab === 1 ? (
+          <SystemSettingsPanel readOnly={!canManageSystemSettings} />
+        ) : (
+          <SalesSettingsPanel readOnly={!canManageSystemSettings} />
+        )}
       </Box>
     </Box>
   );

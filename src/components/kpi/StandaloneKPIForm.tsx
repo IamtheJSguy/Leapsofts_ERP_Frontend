@@ -10,16 +10,19 @@ import {
   Autocomplete,
   Box,
   IconButton,
+  Typography,
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useCreateKPI, useUpdateKPI } from '@/hooks/api/useKPIs';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
-import type { KPI, KpiTimeframe, KpiPriority, User } from '@/types';
+import { PIPELINE_METRIC_LABELS, PIPELINE_METRIC_OPTIONS } from '@/lib/constants';
+import type { KPI, KpiPriority, PipelineMetric, User } from '@/types';
 import { tokens } from '@/styles/tokens';
 
 interface Props {
@@ -38,8 +41,9 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [targetValue, setTargetValue] = useState('50');
-  const [timeFrame, setTimeFrame] = useState<KpiTimeframe>('daily');
+  const [targetValue, setTargetValue] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [pipelineMetric, setPipelineMetric] = useState<PipelineMetric | ''>('');
   const [priority, setPriority] = useState<KpiPriority>('medium');
   const [assignedUsers, setAssignedUsers] = useState<User[]>([]);
 
@@ -47,8 +51,9 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
     if (kpi) {
       setName(kpi.name);
       setDescription(kpi.description ?? '');
-      setTargetValue(String(kpi.targetValue));
-      setTimeFrame(kpi.timeFrame);
+      setTargetValue(kpi.targetValue != null ? String(kpi.targetValue) : '');
+      setDueDate(kpi.dueDate ? kpi.dueDate.slice(0, 10) : '');
+      setPipelineMetric(kpi.pipelineMetric ?? '');
       setPriority(kpi.priority ?? 'medium');
       const assigned = (kpi.assignedTo ?? [])
         .map((id) => (typeof id === 'string' ? users.find((u) => u._id === id) : id))
@@ -57,19 +62,28 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
     } else {
       setName('');
       setDescription('');
-      setTargetValue('50');
-      setTimeFrame('daily');
+      setTargetValue('');
+      setDueDate('');
+      setPipelineMetric('');
       setPriority('medium');
       setAssignedUsers([]);
     }
   }, [kpi, open, users]);
 
+  const targetValueMissing = pipelineMetric !== '' && targetValue.trim() === '';
+
   const handleSave = async () => {
+    if (targetValueMissing) {
+      addToast({ message: 'A target value is required when linking to a pipeline metric.', severity: 'error' });
+      return;
+    }
+
     const payload = {
       name: name.trim(),
       description: description.trim() || undefined,
-      targetValue: Number(targetValue),
-      timeFrame,
+      targetValue: targetValue.trim() === '' ? undefined : Number(targetValue),
+      dueDate: dueDate || undefined,
+      pipelineMetric: pipelineMetric || undefined,
       priority,
       assignedTo: assignedUsers.map((u) => u._id),
     };
@@ -138,18 +152,51 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required sx={textFieldStyle} />
         <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline rows={2} sx={textFieldStyle} />
         <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
-          <TextField label="Target" type="number" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} sx={{ flex: 1, minWidth: 100, ...textFieldStyle }} />
-          <TextField select label="Timeframe" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value as KpiTimeframe)} sx={{ flex: 1, minWidth: 100, ...textFieldStyle }}>
-            <MenuItem value="daily">Daily</MenuItem>
-            <MenuItem value="weekly">Weekly</MenuItem>
-            <MenuItem value="monthly">Monthly</MenuItem>
-          </TextField>
+          <TextField
+            label="Target (optional)"
+            type="number"
+            value={targetValue}
+            onChange={(e) => setTargetValue(e.target.value)}
+            placeholder="Leave blank for a simple task"
+            sx={{ flex: 1, minWidth: 100, ...textFieldStyle }}
+          />
+          <TextField
+            label="Due Date (optional)"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ flex: 1, minWidth: 140, ...textFieldStyle }}
+          />
           <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as KpiPriority)} sx={{ flex: 1, minWidth: 100, ...textFieldStyle }}>
             {KPI_PRIORITY_OPTIONS.map((p) => (
               <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
             ))}
           </TextField>
         </Box>
+        <TextField
+          select
+          label="Link to pipeline metric (optional)"
+          value={pipelineMetric}
+          onChange={(e) => setPipelineMetric(e.target.value as PipelineMetric | '')}
+          fullWidth
+          error={targetValueMissing}
+          helperText={targetValueMissing ? 'A target value is required when linking to a pipeline metric.' : ' '}
+          sx={textFieldStyle}
+        >
+          <MenuItem value="">None</MenuItem>
+          {PIPELINE_METRIC_OPTIONS.map((m) => (
+            <MenuItem key={m} value={m}>{PIPELINE_METRIC_LABELS[m]}</MenuItem>
+          ))}
+        </TextField>
+        {pipelineMetric && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', p: 1.5, borderRadius: '12px', bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.1)' : 'rgba(93, 26, 137, 0.05)' }}>
+            <InfoOutlinedIcon sx={{ fontSize: 18, color: tokens.brand.primary, mt: 0.1 }} />
+            <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 600 }}>
+              This KPI's progress will auto-track from live pipeline data; you can still adjust manually.
+            </Typography>
+          </Box>
+        )}
         <Autocomplete
           multiple
           options={users.filter((u) => u.role === 'user')}
@@ -169,7 +216,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         <Button 
           variant="contained" 
           onClick={handleSave} 
-          disabled={isPending || !name.trim()} 
+          disabled={isPending || !name.trim() || targetValueMissing} 
           sx={{ 
             textTransform: 'none', 
             borderRadius: '12px', 

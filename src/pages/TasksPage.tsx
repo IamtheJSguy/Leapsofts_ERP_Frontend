@@ -39,6 +39,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { MobileDateTimePicker } from '@mui/x-date-pickers/MobileDateTimePicker';
 
 import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -57,7 +58,8 @@ import { StandaloneKPIForm } from '@/components/kpi/StandaloneKPIForm';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
-import type { KpiPriority, KPI } from '@/types';
+import { PIPELINE_METRIC_LABELS, PIPELINE_METRIC_OPTIONS } from '@/lib/constants';
+import type { KpiPriority, KPI, PipelineMetric } from '@/types';
 import api from '@/lib/axios';
 import type { User } from '@/types';
 
@@ -65,8 +67,8 @@ import type { User } from '@/types';
 interface UIKPITemplateItem {
   name: string;
   description: string;
-  targetValue: number;
-  timeFrame: string;
+  targetValue?: number;
+  pipelineMetric?: PipelineMetric | '';
   assignedTo: string[];
 }
 
@@ -82,8 +84,9 @@ interface ActiveAssignmentItem {
   itemId?: string;
   name: string;
   description: string;
-  targetValue: number;
-  timeFrame: string;
+  targetValue?: number;
+  dueDate?: string;
+  pipelineMetric?: PipelineMetric;
   priority?: KpiPriority;
   assignedTo: string[];
   completed: boolean;
@@ -137,7 +140,7 @@ const TasksPage = () => {
         name: item.name,
         description: item.description || '',
         targetValue: item.defaultTargetValue,
-        timeFrame: item.timeFrame || 'daily',
+        pipelineMetric: item.pipelineMetric || '',
         assignedTo: item.assignedTo || [],
       })),
     }));
@@ -168,8 +171,9 @@ const TasksPage = () => {
         itemId: k._id || k.templateItemId,
         name: k.name,
         description: k.description || '',
-        targetValue: k.targetValue || k.defaultTargetValue || 0,
-        timeFrame: k.timeFrame || 'daily',
+        targetValue: k.targetValue ?? k.defaultTargetValue,
+        dueDate: k.dueDate,
+        pipelineMetric: k.pipelineMetric,
         priority: k.priority || 'medium',
         assignedTo: k.assignedTo || assignedTo,
         completed: k.completed || false,
@@ -349,7 +353,7 @@ const TasksPage = () => {
   const [wizardStep, setWizardStep] = useState(0);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
-  const [newKpis, setNewKpis] = useState<UIKPITemplateItem[]>([{ name: '', description: '', targetValue: 50, timeFrame: 'daily', assignedTo: [] }]);
+  const [newKpis, setNewKpis] = useState<UIKPITemplateItem[]>([{ name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
 
   // Assignment dialog state
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -365,7 +369,7 @@ const TasksPage = () => {
 
   // Confirm dialog state for assign template
   const [confirmAssignOpen, setConfirmAssignOpen] = useState(false);
-  const [assignItemOverrides, setAssignItemOverrides] = useState<Record<number, { targetValue?: number; priority?: KpiPriority }>>({});
+  const [assignItemOverrides, setAssignItemOverrides] = useState<Record<number, { targetValue?: number; priority?: KpiPriority; dueDate?: string; pipelineMetric?: PipelineMetric }>>({});
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [standaloneFormOpen, setStandaloneFormOpen] = useState(false);
   const [editingStandaloneKpi, setEditingStandaloneKpi] = useState<KPI | null>(null);
@@ -389,7 +393,7 @@ const TasksPage = () => {
 
   // Dynamic KPI Builder handlers
   const handleAddKpiField = () => {
-    setNewKpis((prev) => [...prev, { name: '', description: '', targetValue: 50, timeFrame: 'daily', assignedTo: [] }]);
+    setNewKpis((prev) => [...prev, { name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
   };
 
   const handleRemoveKpiField = (index: number) => {
@@ -410,7 +414,7 @@ const TasksPage = () => {
   const handleResetWizard = () => {
     setNewTemplateName('');
     setNewTemplateDesc('');
-    setNewKpis([{ name: '', description: '', targetValue: 50, timeFrame: 'daily', assignedTo: [] }]);
+    setNewKpis([{ name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
     setWizardStep(0);
     setEditingTemplateId(null);
   };
@@ -430,8 +434,8 @@ const TasksPage = () => {
     const payloadItems = validKpis.map((k) => ({
       name: k.name.trim(),
       description: k.description.trim() || 'No description provided.',
-      defaultTargetValue: Number(k.targetValue) || 0,
-      timeFrame: k.timeFrame || 'daily',
+      defaultTargetValue: k.targetValue != null && k.targetValue !== ('' as any) ? Number(k.targetValue) : undefined,
+      pipelineMetric: k.pipelineMetric || undefined,
     }));
 
     if (editingTemplateId) {
@@ -454,8 +458,8 @@ const TasksPage = () => {
               kpis: validKpis.map((k) => ({
                 name: k.name.trim(),
                 description: k.description.trim() || 'No description provided.',
-                targetValue: Number(k.targetValue) || 0,
-                timeFrame: k.timeFrame || 'daily',
+                targetValue: k.targetValue,
+                pipelineMetric: k.pipelineMetric || undefined,
                 assignedTo: [],
               })),
             });
@@ -582,6 +586,8 @@ const TasksPage = () => {
       itemIndex,
       targetValue: assignItemOverrides[itemIndex]?.targetValue ?? k.targetValue,
       priority: assignItemOverrides[itemIndex]?.priority ?? ('medium' as KpiPriority),
+      dueDate: assignItemOverrides[itemIndex]?.dueDate,
+      pipelineMetric: assignItemOverrides[itemIndex]?.pipelineMetric ?? (k.pipelineMetric || undefined),
     }));
 
     assignTemplateMutation.mutate(
@@ -596,7 +602,7 @@ const TasksPage = () => {
             name: k.name,
             description: k.description,
             targetValue: k.targetValue,
-            timeFrame: k.timeFrame || 'daily',
+            pipelineMetric: k.pipelineMetric || undefined,
             assignedTo: [selectedUserId],
             completed: false,
           }));
@@ -1044,13 +1050,12 @@ const TasksPage = () => {
                         </Grid>
                         <Grid item xs={12} sm={3}>
                           <TextField
-                            label="Target Value"
+                            label="Target (optional)"
                             type="number"
                             placeholder="e.g. 50"
-                            required
                             fullWidth
-                            value={kpi.targetValue}
-                            onChange={(e) => handleKpiFieldChange(idx, 'targetValue', Number(e.target.value) || 0)}
+                            value={kpi.targetValue ?? ''}
+                            onChange={(e) => handleKpiFieldChange(idx, 'targetValue', e.target.value === '' ? undefined : Number(e.target.value))}
                             InputLabelProps={{ shrink: true }}
                             variant="outlined"
                             sx={{
@@ -1064,10 +1069,10 @@ const TasksPage = () => {
                         <Grid item xs={12} sm={4}>
                           <TextField
                             select
-                            label="Time Frame"
+                            label="Pipeline Metric (optional)"
                             fullWidth
-                            value={kpi.timeFrame || 'daily'}
-                            onChange={(e) => handleKpiFieldChange(idx, 'timeFrame', e.target.value)}
+                            value={kpi.pipelineMetric || ''}
+                            onChange={(e) => handleKpiFieldChange(idx, 'pipelineMetric', e.target.value)}
                             variant="outlined"
                             sx={{
                               '& .MuiOutlinedInput-root': {
@@ -1076,9 +1081,10 @@ const TasksPage = () => {
                               },
                             }}
                           >
-                            <MenuItem value="daily">Daily</MenuItem>
-                            <MenuItem value="weekly">Weekly</MenuItem>
-                            <MenuItem value="monthly">Monthly</MenuItem>
+                            <MenuItem value="">None</MenuItem>
+                            {PIPELINE_METRIC_OPTIONS.map((m) => (
+                              <MenuItem key={m} value={m}>{PIPELINE_METRIC_LABELS[m]}</MenuItem>
+                            ))}
                           </TextField>
                         </Grid>
                       </Grid>
@@ -1190,7 +1196,9 @@ const TasksPage = () => {
                           />
                           <Box>
                             <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 750, fontSize: '0.84rem' }}>
-                              {kpi.name || '(Empty Name)'} — Target: {kpi.targetValue} ({kpi.timeFrame ? kpi.timeFrame.charAt(0).toUpperCase() + kpi.timeFrame.slice(1) : 'Daily'})
+                              {kpi.name || '(Empty Name)'}
+                              {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
+                              {kpi.pipelineMetric ? ` (Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric})` : ''}
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem', mt: 0.25 }}>
                               {kpi.description || '(Empty Description)'}
@@ -1329,7 +1337,7 @@ const TasksPage = () => {
                         name: k.name,
                         description: k.description || '',
                         targetValue: k.targetValue,
-                        timeFrame: k.timeFrame,
+                        pipelineMetric: k.pipelineMetric || '',
                         assignedTo: k.assignedTo,
                       }))
                     );
@@ -1468,7 +1476,9 @@ const TasksPage = () => {
                           }}
                         />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.9rem' }}>
-                          {kpi.name} — Target: {kpi.targetValue} ({kpi.timeFrame ? kpi.timeFrame.charAt(0).toUpperCase() + kpi.timeFrame.slice(1) : 'Daily'})
+                          {kpi.name}
+                          {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
+                          {kpi.pipelineMetric ? ` (Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric})` : ''}
                         </Typography>
                       </Box>
                       <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.84rem', pl: 0.5 }}>
@@ -1488,11 +1498,6 @@ const TasksPage = () => {
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, fontSize: '0.84rem' }}>Timeframe</Typography>
-                    <Chip label={selectedTemplate.kpis.every(k => k.timeFrame === selectedTemplate.kpis[0]?.timeFrame) ? (selectedTemplate.kpis[0]?.timeFrame?.toUpperCase() || 'DAILY') : 'MIXED'} size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.primary100, color: tokens.brand.primary }} />
-                  </Box>
-                  <Divider sx={{ opacity: 0.5 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, fontSize: '0.84rem' }}>Total KPIs</Typography>
                     <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 700 }}>{selectedTemplate.kpis.length} KPIs</Typography>
@@ -1804,9 +1809,14 @@ const TasksPage = () => {
                                 textDecoration: isChecked ? 'line-through' : 'none',
                               }}
                             >
-                              {kpi.name} — Target: {kpi.targetValue} ({kpi.timeFrame || 'daily'})
+                              {kpi.name}
+                              {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
+                              {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ''}
                             </Typography>
                             <PriorityBadge priority={kpi.priority} />
+                            {kpi.pipelineMetric && (
+                              <Chip label={`Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric}`} size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }} />
+                            )}
                             {isPending && <Chip label="Pending review" size="small" color="warning" />}
                           </Box>
                           <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}>
@@ -1826,7 +1836,7 @@ const TasksPage = () => {
                                 assignmentItemId: (kpi.itemId || kpi._id)!,
                                 kpiName: kpi.name,
                                 currentTargetValue: kpi.targetValue,
-                                currentTimeFrame: (kpi.timeFrame || 'daily') as import('@/types').KpiTimeframe,
+                                currentDueDate: kpi.dueDate,
                                 currentPriority: kpi.priority,
                               })}
                             >
@@ -1935,11 +1945,6 @@ const TasksPage = () => {
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, fontSize: '0.84rem' }}>Timeframe</Typography>
-                    <Chip label="DAILY" size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.primary100, color: tokens.brand.primary }} />
-                  </Box>
-                  <Divider sx={{ opacity: 0.5 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, fontSize: '0.84rem' }}>Total KPIs</Typography>
                     <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 700 }}>{selectedAssignment.kpis.length} KPIs</Typography>
@@ -2261,9 +2266,13 @@ const TasksPage = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>{kpi.name}</Typography>
                     <PriorityBadge priority={kpi.priority} />
+                    {kpi.pipelineMetric && (
+                      <Chip label={`Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric}`} size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }} />
+                    )}
                   </Box>
                   <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
-                    Target: {kpi.targetValue} · <span style={{ textTransform: 'capitalize' }}>{kpi.timeFrame}</span>
+                    {kpi.targetValue != null ? `Target: ${kpi.targetValue}` : 'Simple task'}
+                    {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ' · No due date'}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -3251,10 +3260,10 @@ return (
                       size="small"
                       label="Target"
                       type="number"
-                      defaultValue={kpi.targetValue}
+                      defaultValue={kpi.targetValue ?? ''}
                       onChange={(e) => setAssignItemOverrides((prev) => ({
                         ...prev,
-                        [idx]: { ...prev[idx], targetValue: Number(e.target.value) },
+                        [idx]: { ...prev[idx], targetValue: e.target.value === '' ? undefined : Number(e.target.value) },
                       }))}
                       sx={{ width: 100 }}
                     />
@@ -3271,6 +3280,56 @@ return (
                     >
                       {KPI_PRIORITY_OPTIONS.map((p) => (
                         <MenuItem key={p} value={p}>{p}</MenuItem>
+                      ))}
+                    </TextField>
+                    <MobileDateTimePicker
+                      label="Due Date & Time"
+                      ampm={false}
+                      value={assignItemOverrides[idx]?.dueDate ? new Date(assignItemOverrides[idx]!.dueDate!) : null}
+                      onChange={(newValue) => setAssignItemOverrides((prev) => ({
+                        ...prev,
+                        [idx]: { ...prev[idx], dueDate: newValue ? newValue.toISOString() : undefined },
+                      }))}
+                      slotProps={{
+                        textField: { size: 'small', sx: { width: 200 } },
+                        dialog: {
+                          sx: {
+                            '& .MuiPickersDay-root.Mui-selected': {
+                              bgcolor: tokens.brand.primary,
+                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                            },
+                            '& .MuiClock-pin, & .MuiClockPointer-root': {
+                              bgcolor: tokens.brand.primary,
+                            },
+                            '& .MuiClockPointer-thumb': {
+                              border: `16px solid ${tokens.brand.primary}`,
+                              bgcolor: tokens.brand.primary,
+                            },
+                            '& .MuiPickersYear-yearButton.Mui-selected, & .MuiPickersMonth-monthButton.Mui-selected': {
+                              bgcolor: tokens.brand.primary,
+                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                            },
+                            '& .MuiDialogActions-root .MuiButton-text': {
+                              color: tokens.brand.primary,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                    <TextField
+                      select
+                      size="small"
+                      label="Pipeline Metric"
+                      defaultValue={kpi.pipelineMetric || ''}
+                      onChange={(e) => setAssignItemOverrides((prev) => ({
+                        ...prev,
+                        [idx]: { ...prev[idx], pipelineMetric: (e.target.value || undefined) as PipelineMetric | undefined },
+                      }))}
+                      sx={{ width: 160 }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {PIPELINE_METRIC_OPTIONS.map((m) => (
+                        <MenuItem key={m} value={m}>{PIPELINE_METRIC_LABELS[m]}</MenuItem>
                       ))}
                     </TextField>
                   </Box>

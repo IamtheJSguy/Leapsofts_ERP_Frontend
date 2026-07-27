@@ -5,15 +5,24 @@ import type { ConnectionStatus } from '@/types';
 export interface SalesPipelineStats {
   totalProspects: number;
   acceptedConnections: number;
-  inConversation: number;
-  qualified: number;
-  pending: number;
-  declined: number;
-  noResponse: number;
+  messageSent: number;
+  responded: number;
+  followUp: number;
+  negative: number;
+  positive: number;
+  futureLeads: number;
+  futureLeadsDueSoon: number;
+  inConversation?: number;
+  qualified?: number;
   conversionRates: {
     acceptRate: number;
-    conversationRate: number;
-    qualifiedRate: number;
+    messageSentRate: number;
+    respondedRate: number;
+    followUpRate: number;
+    negativeRate: number;
+    positiveRate: number;
+    conversationRate?: number;
+    qualifiedRate?: number;
   };
   messageStats?: Record<string, number>;
 }

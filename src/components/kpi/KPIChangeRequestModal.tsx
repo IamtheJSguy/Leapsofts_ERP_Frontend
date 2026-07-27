@@ -19,7 +19,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useSubmitKPIChangeRequest, type SubmitChangeRequestPayload } from '@/hooks/api/useKPIChangeRequests';
 import { useUIStore } from '@/store/useUIStore';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
-import type { KpiTimeframe, KpiPriority } from '@/types';
+import type { KpiPriority } from '@/types';
 import { tokens } from '@/styles/tokens';
 
 export type ChangeRequestModalMode =
@@ -29,8 +29,8 @@ export type ChangeRequestModalMode =
       assignmentId: string;
       assignmentItemId: string;
       kpiName: string;
-      currentTargetValue: number;
-      currentTimeFrame: KpiTimeframe;
+      currentTargetValue?: number;
+      currentDueDate?: string;
       currentPriority?: KpiPriority;
     }
   | { sourceType: 'assignment'; type: 'add'; assignmentId: string }
@@ -46,8 +46,8 @@ export type ChangeRequestModalMode =
       type: 'modify';
       kpiId: string;
       kpiName: string;
-      currentTargetValue: number;
-      currentTimeFrame: KpiTimeframe;
+      currentTargetValue?: number;
+      currentDueDate?: string;
       currentPriority?: KpiPriority;
     };
 
@@ -64,7 +64,7 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
   const submitMutation = useSubmitKPIChangeRequest();
 
   const [targetValue, setTargetValue] = useState('');
-  const [timeFrame, setTimeFrame] = useState<KpiTimeframe>('daily');
+  const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<KpiPriority>('medium');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -73,14 +73,14 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
   useEffect(() => {
     if (!mode) return;
     if (mode.type === 'modify') {
-      setTargetValue(String(mode.currentTargetValue));
-      setTimeFrame(mode.currentTimeFrame);
+      setTargetValue(mode.currentTargetValue != null ? String(mode.currentTargetValue) : '');
+      setDueDate(mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '');
       setPriority(mode.currentPriority ?? 'medium');
     } else if (mode.type === 'add') {
       setName('');
       setDescription('');
-      setTargetValue('50');
-      setTimeFrame('daily');
+      setTargetValue('');
+      setDueDate('');
       setPriority('medium');
     }
     setReason('');
@@ -101,8 +101,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
         assignmentId: mode.assignmentId,
         assignmentItemId: mode.assignmentItemId,
         reason: reason.trim(),
-        requestedTargetValue: Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
-        requestedTimeFrame: timeFrame !== mode.currentTimeFrame ? timeFrame : undefined,
+        requestedTargetValue: targetValue !== '' && Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
+        requestedDueDate: dueDate && dueDate !== (mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '') ? dueDate : undefined,
         requestedPriority: priority !== (mode.currentPriority ?? 'medium') ? priority : undefined,
       };
     } else if (mode.sourceType === 'assignment' && mode.type === 'add') {
@@ -114,8 +114,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
         proposedItem: {
           name: name.trim(),
           description: description.trim() || undefined,
-          targetValue: Number(targetValue),
-          timeFrame,
+          targetValue: targetValue === '' ? undefined : Number(targetValue),
+          dueDate: dueDate || undefined,
           priority,
         },
       };
@@ -133,8 +133,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
         type: 'modify',
         kpiId: mode.kpiId,
         reason: reason.trim(),
-        requestedTargetValue: Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
-        requestedTimeFrame: timeFrame !== mode.currentTimeFrame ? timeFrame : undefined,
+        requestedTargetValue: targetValue !== '' && Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
+        requestedDueDate: dueDate && dueDate !== (mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '') ? dueDate : undefined,
         requestedPriority: priority !== (mode.currentPriority ?? 'medium') ? priority : undefined,
       };
     }
@@ -215,17 +215,20 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
         {(mode?.type === 'modify' || mode?.type === 'add') && (
           <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
             <TextField
-              label="Target Value"
+              label="Target Value (optional)"
               type="number"
               value={targetValue}
               onChange={(e) => setTargetValue(e.target.value)}
               sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}
             />
-            <TextField select label="Timeframe" value={timeFrame} onChange={(e) => setTimeFrame(e.target.value as KpiTimeframe)} sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}>
-              <MenuItem value="daily">Daily</MenuItem>
-              <MenuItem value="weekly">Weekly</MenuItem>
-              <MenuItem value="monthly">Monthly</MenuItem>
-            </TextField>
+            <TextField
+              label="Due Date (optional)"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}
+            />
             <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as KpiPriority)} sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}>
               {KPI_PRIORITY_OPTIONS.map((p) => (
                 <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>

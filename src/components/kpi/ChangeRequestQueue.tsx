@@ -32,8 +32,8 @@ const formatChange = (r: KPIChangeRequest) => {
   if (r.requestedTargetValue !== undefined && r.requestedTargetValue !== r.currentTargetValue) {
     parts.push(`${r.currentTargetValue ?? '?'} → ${r.requestedTargetValue}`);
   }
-  if (r.requestedTimeFrame && r.requestedTimeFrame !== r.currentTimeFrame) {
-    parts.push(`${r.currentTimeFrame} → ${r.requestedTimeFrame}`);
+  if (r.requestedDueDate && r.requestedDueDate !== r.currentDueDate) {
+    parts.push(`Due: ${r.currentDueDate ? new Date(r.currentDueDate).toLocaleDateString() : 'none'} → ${new Date(r.requestedDueDate).toLocaleDateString()}`);
   }
   if (r.requestedPriority && r.requestedPriority !== r.currentPriority) {
     parts.push(`${r.currentPriority ?? 'medium'} → ${r.requestedPriority}`);

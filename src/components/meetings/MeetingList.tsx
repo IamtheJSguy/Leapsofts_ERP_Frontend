@@ -27,6 +27,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import LabelIcon from '@mui/icons-material/Label';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useMeetings, useDeleteMeeting, useUpdateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
@@ -38,12 +39,26 @@ import { isPast, isFuture, isToday, format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import type { Meeting } from '@/types';
+import type { Meeting, Lead } from '@/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { meetingSchema, type MeetingFormData } from '@/utils/validators';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import BusinessIcon from '@mui/icons-material/Business';
+
+const getLinkedLead = (leadId: Meeting['leadId']): { id: string; name: string; company?: string; email?: string } | null => {
+  if (!leadId) return null;
+  if (typeof leadId === 'string') return { id: leadId, name: 'Linked lead' };
+  const lead = leadId as Lead;
+  const name =
+    lead.prospectName ||
+    [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim() ||
+    lead.email ||
+    'Linked lead';
+  return { id: lead._id, name, company: lead.company, email: lead.email };
+};
 
 interface MeetingListProps {
   onScheduleTrigger?: () => void;
@@ -68,7 +83,10 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
       const participantIds = (m.participants || []).map((p: any) =>
         typeof p === 'string' ? p : p._id
       );
-      return participantIds.includes(currentUser._id);
+      const createdById = m.createdBy
+        ? (typeof m.createdBy === 'string' ? m.createdBy : (m.createdBy as any)._id)
+        : null;
+      return participantIds.includes(currentUser._id) || createdById === currentUser._id;
     });
   }, [meetings, currentUser]);
 
@@ -358,6 +376,27 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                         >
                           {meeting.title}
                         </Typography>
+                        {(() => {
+                          const linked = getLinkedLead(meeting.leadId);
+                          if (!linked) return null;
+                          return (
+                            <Chip
+                              size="small"
+                              icon={<PersonOutlineIcon sx={{ fontSize: '14px !important' }} />}
+                              label={linked.name}
+                              sx={{
+                                mt: 0.75,
+                                height: 22,
+                                fontWeight: 700,
+                                fontSize: '0.68rem',
+                                bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                                color: tokens.brand.primaryLight,
+                                maxWidth: 200,
+                                '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+                              }}
+                            />
+                          );
+                        })()}
                         <Box sx={{ mt: 0.5 }}><MeetingReminderBadge scheduledAt={meeting.scheduledAt} /></Box>
                       </Box>
                     </Box>
@@ -564,9 +603,31 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
             <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                 <MeetingReminderBadge scheduledAt={selectedMeeting.scheduledAt} />
-                <IconButton onClick={handleCloseMeeting} size="small" sx={{ color: 'text.secondary' }}>
-                  <CloseIcon />
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {canEditOrDelete(selectedMeeting) && (
+                    <Tooltip title="Edit meeting" arrow>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setEditMeeting(selectedMeeting);
+                          handleCloseMeeting();
+                        }}
+                        sx={{
+                          color: tokens.brand.primaryLight,
+                          bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.12)' : 'rgba(93, 26, 137, 0.06)',
+                          '&:hover': {
+                            bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.2)' : 'rgba(93, 26, 137, 0.12)',
+                          },
+                        }}
+                      >
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <IconButton onClick={handleCloseMeeting} size="small" sx={{ color: 'text.secondary' }}>
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: '-0.02em', lineHeight: 1.3, color: 'text.primary' }}>
                 {selectedMeeting.title}
@@ -611,6 +672,59 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Box>
                 </Box>
               </Box>
+
+              {/* Linked Lead */}
+              {(() => {
+                const linked = getLinkedLead(selectedMeeting.leadId);
+                if (!linked) return null;
+                const initials = linked.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'L';
+                return (
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
+                      Linked Lead
+                    </Typography>
+                    <Box
+                      onClick={() => {
+                        window.open(`/sales/leads/${linked.id}`, '_blank', 'noopener,noreferrer');
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.25,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                        bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.08)' : 'rgba(93, 26, 137, 0.04)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.14)' : 'rgba(93, 26, 137, 0.08)',
+                        },
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: tokens.brand.primary, color: '#fff' }}>
+                        {initials}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {linked.name}
+                        </Typography>
+                        {(linked.company || linked.email) && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {linked.company ? (
+                              <>
+                                <BusinessIcon sx={{ fontSize: 12 }} />
+                                {linked.company}
+                              </>
+                            ) : linked.email}
+                          </Typography>
+                        )}
+                      </Box>
+                      <PersonOutlineIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
+                    </Box>
+                  </Box>
+                );
+              })()}
 
               {/* Organizer */}
               {(() => {
@@ -844,7 +958,8 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                 </Button>
                 {selectedMeeting && canEditOrDelete(selectedMeeting) && (
                   <Button
-                    variant="outlined"
+                    variant="contained"
+                    startIcon={<EditOutlinedIcon />}
                     onClick={() => {
                       setEditMeeting(selectedMeeting);
                       handleCloseMeeting();
@@ -856,20 +971,19 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       textTransform: 'none',
                       fontWeight: 700,
                       fontSize: '0.85rem',
-                      borderColor: tokens.brand.primaryLight,
-                      color: tokens.brand.primaryLight,
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
                       '&:hover': {
-                        borderColor: tokens.brand.primaryDark,
-                        bgcolor: 'rgba(93, 26, 137, 0.04)',
+                        bgcolor: tokens.brand.primaryDark,
                       }
                     }}
                   >
-                    Edit Details
+                    Edit Meeting
                   </Button>
                 )}
                 {(selectedMeeting.meetingLink || selectedMeeting.link) && (
                   <Button
-                    variant="contained"
+                    variant={canEditOrDelete(selectedMeeting) ? 'outlined' : 'contained'}
                     startIcon={<VideocamIcon />}
                     endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
                     onClick={() => window.open(selectedMeeting.meetingLink || selectedMeeting.link, '_blank', 'noopener,noreferrer')}
@@ -880,11 +994,22 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       textTransform: 'none',
                       fontWeight: 700,
                       fontSize: '0.85rem',
-                      bgcolor: tokens.brand.primary,
-                      color: '#fff',
-                      '&:hover': {
-                        bgcolor: tokens.brand.primaryDark,
-                      }
+                      ...(canEditOrDelete(selectedMeeting)
+                        ? {
+                            borderColor: tokens.brand.primaryLight,
+                            color: tokens.brand.primaryLight,
+                            '&:hover': {
+                              borderColor: tokens.brand.primaryDark,
+                              bgcolor: 'rgba(93, 26, 137, 0.04)',
+                            },
+                          }
+                        : {
+                            bgcolor: tokens.brand.primary,
+                            color: '#fff',
+                            '&:hover': {
+                              bgcolor: tokens.brand.primaryDark,
+                            },
+                          }),
                     }}
                   >
                     Join Meeting
