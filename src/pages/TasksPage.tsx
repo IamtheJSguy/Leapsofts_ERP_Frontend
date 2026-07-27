@@ -39,6 +39,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { MobileDateTimePicker } from '@mui/x-date-pickers/MobileDateTimePicker';
 
 import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -1810,7 +1811,7 @@ const TasksPage = () => {
                             >
                               {kpi.name}
                               {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
-                              {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleDateString()}` : ''}
+                              {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ''}
                             </Typography>
                             <PriorityBadge priority={kpi.priority} />
                             {kpi.pipelineMetric && (
@@ -2271,7 +2272,7 @@ const TasksPage = () => {
                   </Box>
                   <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
                     {kpi.targetValue != null ? `Target: ${kpi.targetValue}` : 'Simple task'}
-                    {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleDateString()}` : ' · No due date'}
+                    {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ' · No due date'}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -3281,16 +3282,39 @@ return (
                         <MenuItem key={p} value={p}>{p}</MenuItem>
                       ))}
                     </TextField>
-                    <TextField
-                      size="small"
-                      label="Due Date"
-                      type="date"
-                      InputLabelProps={{ shrink: true }}
-                      onChange={(e) => setAssignItemOverrides((prev) => ({
+                    <MobileDateTimePicker
+                      label="Due Date & Time"
+                      ampm={false}
+                      value={assignItemOverrides[idx]?.dueDate ? new Date(assignItemOverrides[idx]!.dueDate!) : null}
+                      onChange={(newValue) => setAssignItemOverrides((prev) => ({
                         ...prev,
-                        [idx]: { ...prev[idx], dueDate: e.target.value || undefined },
+                        [idx]: { ...prev[idx], dueDate: newValue ? newValue.toISOString() : undefined },
                       }))}
-                      sx={{ width: 150 }}
+                      slotProps={{
+                        textField: { size: 'small', sx: { width: 200 } },
+                        dialog: {
+                          sx: {
+                            '& .MuiPickersDay-root.Mui-selected': {
+                              bgcolor: tokens.brand.primary,
+                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                            },
+                            '& .MuiClock-pin, & .MuiClockPointer-root': {
+                              bgcolor: tokens.brand.primary,
+                            },
+                            '& .MuiClockPointer-thumb': {
+                              border: `16px solid ${tokens.brand.primary}`,
+                              bgcolor: tokens.brand.primary,
+                            },
+                            '& .MuiPickersYear-yearButton.Mui-selected, & .MuiPickersMonth-monthButton.Mui-selected': {
+                              bgcolor: tokens.brand.primary,
+                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                            },
+                            '& .MuiDialogActions-root .MuiButton-text': {
+                              color: tokens.brand.primary,
+                            },
+                          },
+                        },
+                      }}
                     />
                     <TextField
                       select

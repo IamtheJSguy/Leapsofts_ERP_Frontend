@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, CssBaseline } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import { queryClient } from '@/lib/queryClient';
 import { router } from '@/router';
 import { ToastProvider } from '@/components/common/ToastProvider';
@@ -23,8 +25,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
         <CssBaseline />
-        <RouterProvider router={router} />
-        <ToastProvider />
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <RouterProvider router={router} />
+          <ToastProvider />
+        </LocalizationProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
