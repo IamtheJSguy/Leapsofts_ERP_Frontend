@@ -98,7 +98,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
     const meetingId = searchParams.get('meetingId');
     if (meetingId && myMeetings.length > 0) {
       const found = myMeetings.find(m => m._id === meetingId);
-      if (found && (!selectedMeeting || selectedMeeting._id !== found._id)) {
+      if (found) {
         setSelectedMeeting(found);
       }
     } else if (!meetingId && selectedMeeting) {
@@ -143,9 +143,12 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   };
 
   // Can the current user edit or delete this meeting?
-  // - Admins can always
+  // - Past / cancelled meetings are read-only
+  // - Admins can always (for upcoming scheduled)
   // - Users can only if THEY created it AND it was NOT created by an admin
   const canEditOrDelete = (meeting: Meeting) => {
+    if (meeting.status === 'cancelled') return false;
+    if (isPast(new Date(meeting.scheduledAt))) return false;
     if (isElevated) return true;
     if (isCreatedByAdmin(meeting)) return false;
     if (!currentUser) return false;
@@ -256,7 +259,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
       ) : (
         <Grid container spacing={3}>
           {filteredMeetings.map((meeting) => {
-            const isMeetingPast = isPast(new Date(meeting.scheduledAt));
+            const isMeetingPast = meeting.status === 'cancelled' || isPast(new Date(meeting.scheduledAt));
 
             return (
               <Grid item xs={12} sm={viewMode === 'grid' ? 6 : 12} md={viewMode === 'grid' ? 4 : 12} key={meeting._id}>
@@ -334,7 +337,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       >
                         <VideocamIcon sx={{ fontSize: 22 }} />
                       </Box>
-                      <MeetingReminderBadge scheduledAt={meeting.scheduledAt} />
+                      <MeetingReminderBadge scheduledAt={meeting.scheduledAt} status={meeting.status} />
                     </Box>
                   )}
 
@@ -397,7 +400,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                             />
                           );
                         })()}
-                        <Box sx={{ mt: 0.5 }}><MeetingReminderBadge scheduledAt={meeting.scheduledAt} /></Box>
+                        <Box sx={{ mt: 0.5 }}><MeetingReminderBadge scheduledAt={meeting.scheduledAt} status={meeting.status} /></Box>
                       </Box>
                     </Box>
                   )}
@@ -602,7 +605,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
           <>
             <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                <MeetingReminderBadge scheduledAt={selectedMeeting.scheduledAt} />
+                <MeetingReminderBadge scheduledAt={selectedMeeting.scheduledAt} status={selectedMeeting.status} />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {canEditOrDelete(selectedMeeting) && (
                     <Tooltip title="Edit meeting" arrow>
@@ -1056,12 +1059,19 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
         message="Are you sure you want to cancel this meeting?"
         onConfirm={() => {
           if (deleteId) {
-            deleteMeeting.mutate(deleteId, {
+            const cancelledId = deleteId;
+            deleteMeeting.mutate(cancelledId, {
               onSuccess: () => {
                 addToast({ message: 'Meeting canceled successfully', severity: 'success' });
                 setDeleteId(null);
-                setSelectedMeeting(null);
                 setEditMeeting(null);
+                // Keep detail open for the cancelled meeting
+                setSelectedMeeting((prev) =>
+                  prev && prev._id === cancelledId ? { ...prev, status: 'cancelled' } : prev,
+                );
+                if (!searchParams.get('meetingId')) {
+                  setSearchParams({ meetingId: cancelledId });
+                }
               }
             });
           }

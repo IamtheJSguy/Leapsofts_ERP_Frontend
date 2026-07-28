@@ -41,6 +41,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import BusinessIcon from '@mui/icons-material/Business';
 import type { Lead } from '@/types';
+import { MeetingReminderBadge } from './MeetingReminderBadge';
 
 const getLinkedLead = (leadId: Meeting['leadId']): { id: string; name: string; company?: string; email?: string } | null => {
   if (!leadId) return null;
@@ -102,7 +103,10 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   };
 
   // Can the current user edit or delete this meeting?
+  // Past / cancelled meetings are read-only (no edit / cancel).
   const canEditOrDelete = (meeting: Meeting) => {
+    if (meeting.status === 'cancelled') return false;
+    if (isPast(new Date(meeting.scheduledAt))) return false;
     if (isElevated) return true;
     if (isCreatedByAdmin(meeting)) return false;
     if (!currentUser) return false;
@@ -170,11 +174,14 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
   const handleConfirmDelete = () => {
     if (!editingMeeting) return;
+    const cancelledMeeting = editingMeeting;
     deleteMeeting.mutate(editingMeeting._id, {
       onSuccess: () => {
         addToast({ message: 'Meeting canceled successfully', severity: 'success' });
         setConfirmDeleteOpen(false);
         handleClose();
+        // Re-open detail so the cancelled meeting can still be viewed
+        setSelectedMeeting({ ...cancelledMeeting, status: 'cancelled' });
       },
       onError: () => {
         setConfirmDeleteOpen(false);
@@ -225,20 +232,27 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   };
 
   const eventPropGetter = (event: any) => {
+    const meeting = event.resource as Meeting | undefined;
+    const cancelled = meeting?.status === 'cancelled';
     const past = isPast(new Date(event.start));
     return {
       style: {
-        backgroundColor: past
-          ? (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)')
-          : tokens.brand.primary,
-        color: past
-          ? (isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)')
-          : '#fff',
+        backgroundColor: cancelled
+          ? (isDarkMode ? 'rgba(196, 69, 69, 0.2)' : 'rgba(196, 69, 69, 0.12)')
+          : past
+            ? (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)')
+            : tokens.brand.primary,
+        color: cancelled
+          ? tokens.semantic.error
+          : past
+            ? (isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)')
+            : '#fff',
         borderRadius: '8px',
         border: 'none',
         fontSize: '0.8rem',
         fontWeight: 600,
         padding: '2px 8px',
+        textDecoration: cancelled ? 'line-through' : 'none',
       },
     };
   };
@@ -666,17 +680,20 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           <>
             <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                <Box sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '10px',
-                  bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)',
-                  color: tokens.brand.primaryLight,
-                  border: `1px solid ${isDarkMode ? 'rgba(123, 61, 168, 0.25)' : 'rgba(93, 26, 137, 0.08)'}`,
-                }}>
-                  Meeting Details
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Box sx={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: '10px',
+                    bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                    color: tokens.brand.primaryLight,
+                    border: `1px solid ${isDarkMode ? 'rgba(123, 61, 168, 0.25)' : 'rgba(93, 26, 137, 0.08)'}`,
+                  }}>
+                    Meeting Details
+                  </Box>
+                  <MeetingReminderBadge scheduledAt={selectedMeeting.scheduledAt} status={selectedMeeting.status} />
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {canEditOrDelete(selectedMeeting) && (
