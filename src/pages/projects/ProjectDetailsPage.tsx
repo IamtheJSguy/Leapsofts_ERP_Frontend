@@ -97,6 +97,7 @@ export const ProjectDetailsPage = () => {
   
   const [isDeleteBoardConfirmOpen, setIsDeleteBoardConfirmOpen] = useState(false);
   const [boardToDelete, setBoardToDelete] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<{ userId: string; name: string } | null>(null);
 
   // New board input states
   const [newBoardName, setNewBoardName] = useState('');
@@ -159,9 +160,19 @@ export const ProjectDetailsPage = () => {
     }
   };
 
-  const handleRemoveMember = (userId: string) => {
-    if (projectId) {
-      removeProjectMemberMutation.mutate({ id: projectId, userId });
+  const handleRemoveMemberClick = (userId: string, name: string) => {
+    setMemberToRemove({ userId, name });
+  };
+
+  const handleConfirmRemoveMember = () => {
+    if (projectId && memberToRemove) {
+      removeProjectMemberMutation.mutate(
+        { id: projectId, userId: memberToRemove.userId },
+        {
+          onSuccess: () => setMemberToRemove(null),
+          onError: () => setMemberToRemove(null),
+        },
+      );
     }
   };
 
@@ -636,7 +647,7 @@ export const ProjectDetailsPage = () => {
                       {canManageProject && !isOwner && member.userId !== currentUser?._id && (
                         <IconButton
                           size="small"
-                          onClick={() => handleRemoveMember(id)}
+                          onClick={() => handleRemoveMemberClick(id!, name)}
                           sx={{
                             color: 'text.secondary',
                             '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
@@ -689,6 +700,17 @@ export const ProjectDetailsPage = () => {
           setIsDeleteBoardConfirmOpen(false);
           setBoardToDelete(null);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!memberToRemove}
+        title="Remove Member"
+        message={`Are you sure you want to remove ${memberToRemove?.name || 'this user'} from this project? They will lose access to the project and its boards.`}
+        confirmLabel="Yes, Remove"
+        cancelLabel="Cancel"
+        isPending={removeProjectMemberMutation.isPending}
+        onConfirm={handleConfirmRemoveMember}
+        onCancel={() => setMemberToRemove(null)}
       />
 
       {/* CREATE BOARD DIALOG */}
