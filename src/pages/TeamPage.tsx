@@ -66,7 +66,7 @@ import { CreateTeamModal } from '@/components/team/CreateTeamModal';
 import { AddExistingTeamMemberPanel } from '@/components/team/AddExistingTeamMemberPanel';
 import { useMyTeam } from '@/hooks/api/useTeam';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ROLES } from '@/lib/constants';
+import { ROLES, DEPARTMENT, DEPARTMENT_OPTIONS } from '@/lib/constants';
 
 /* ─── Modern Shift Time Picker ──────────────────────────────────────────────── */
 interface ShiftTimePickerProps {
@@ -403,7 +403,7 @@ const TeamPage = () => {
   const [password, setPassword] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [phone, setPhone] = useState('');
-  const [department, setDepartment] = useState(currentUser?.department || 'Engineering');
+  const [department, setDepartment] = useState(currentUser?.department || DEPARTMENT.ENGINEERING);
   const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
@@ -434,7 +434,7 @@ const TeamPage = () => {
     setPassword('');
     setJobTitle('');
     setPhone('');
-    setDepartment('Engineering');
+    setDepartment(DEPARTMENT.ENGINEERING);
     setRoleSelection(ROLES.USER);
     setAddMemberTab('create');
     setBio('');
@@ -819,7 +819,7 @@ const TeamPage = () => {
           }}
         >
           {[
-            { label: 'Department', value: selectedUser.department || 'Engineering', icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
+            { label: 'Department', value: selectedUser.department || DEPARTMENT.ENGINEERING, icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
             { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : selectedUser.role === 'manager' ? 'MANAGER' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
             { label: 'Shift', value: `${formatTime12Hour(selectedUser.shiftStart) || '09:00 AM'} - ${formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM'}`, icon: <AccessTimeIcon sx={{ fontSize: 20, color: '#3B82F6' }} /> },
             { label: 'Start Date', value: 'Jun 3, 2026', icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
@@ -1063,12 +1063,9 @@ const TeamPage = () => {
                           />
                         }
                       >
-                        <MenuItem value="Leadership">Leadership</MenuItem>
-                        <MenuItem value="Engineering">Engineering</MenuItem>
-                        <MenuItem value="Product">Product</MenuItem>
-                        <MenuItem value="Quality">Quality</MenuItem>
-                        <MenuItem value="Marketing">Marketing</MenuItem>
-                        <MenuItem value="Design">Design</MenuItem>
+                        {DEPARTMENT_OPTIONS.map((dept) => (
+                          <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </Grid>
@@ -2087,12 +2084,9 @@ const TeamPage = () => {
                           />
                         }
                       >
-                        <MenuItem value="Leadership">Leadership</MenuItem>
-                        <MenuItem value="Engineering">Engineering</MenuItem>
-                        <MenuItem value="Product">Product</MenuItem>
-                        <MenuItem value="Quality">Quality</MenuItem>
-                        <MenuItem value="Marketing">Marketing</MenuItem>
-                        <MenuItem value="Design">Design</MenuItem>
+                        {DEPARTMENT_OPTIONS.map((dept) => (
+                          <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </Grid>
