@@ -881,33 +881,35 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 )}
               </Box>
 
-              {/* Description Section */}
-              <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
-                  <DescriptionOutlinedIcon fontSize="small" />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prospect Details</Typography>
+              {/* Prospect Details — only when a lead is linked to the card */}
+              {lead && (
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+                    <DescriptionOutlinedIcon fontSize="small" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prospect Details</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                      Name: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{authorName}</Box>
+                    </Typography>
+                    {lead.email && (
+                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                        Email: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.email}</Box>
+                      </Typography>
+                    )}
+                    {lead.title && (
+                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                        Title: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.title}</Box>
+                      </Typography>
+                    )}
+                    {lead.location && (
+                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                        Location: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.location}</Box>
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                    Name: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{authorName}</Box>
-                  </Typography>
-                  {lead?.email && (
-                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                      Email: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.email}</Box>
-                    </Typography>
-                  )}
-                  {lead?.title && (
-                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                      Title: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.title}</Box>
-                    </Typography>
-                  )}
-                  {lead?.location && (
-                    <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                      Location: <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{lead.location}</Box>
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
+              )}
 
               {/* Enrichment Profiles */}
               {rawCard?.enrichment && rawCard.enrichment.length > 0 && (
