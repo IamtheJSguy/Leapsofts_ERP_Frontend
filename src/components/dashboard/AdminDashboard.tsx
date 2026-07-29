@@ -24,11 +24,15 @@ import { useNavigate } from 'react-router-dom';
 import { ChartSkeleton } from './DashboardSkeletons';
 import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
+import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
+import type { Meeting } from '@/types';
+
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { data: pipelineOverview, isLoading: isPipelineOverviewLoading, refetch } = useAdminDashboard();
   const { data: teamAnalysis, isLoading: isTeamAnalysisLoading } = useTeamAnalysis('week');
   const { data: allMeetings = [] } = useMeetings();
+  const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
 
 
   if (isPipelineOverviewLoading || isTeamAnalysisLoading) {
@@ -48,7 +52,7 @@ export const AdminDashboard = () => {
   const boardLabel = tasksOverview?.boardName?.toUpperCase() ?? 'TEAM BOARD';
 
   const upcomingMeetings = allMeetings
-    .filter((m: any) => new Date(m.scheduledAt).getTime() > Date.now())
+    .filter((m: any) => m.status !== 'cancelled' && new Date(m.scheduledAt).getTime() > Date.now())
     .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 3);
 
@@ -280,10 +284,7 @@ export const AdminDashboard = () => {
         </Grid>
       </Box>
 
-      {/* 2. Team Connections & Charts Split View */}
-      <TeamConnectionsSplitView />
-
-      {/* 3. Bottom Grid */}
+      {/* 2. Tasks Overview, Upcoming Meetings & Deadlines Grid */}
       <Grid container spacing={3.5}>
         {/* Column 1: My Tasks list (60%) */}
         <Grid item xs={12} md={7}>
@@ -437,39 +438,24 @@ export const AdminDashboard = () => {
 
               {/* Reminders / upcoming meetings */}
               {upcomingMeetings.length === 0 ? (
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  py: 4,
-                  flex: 1
-                }}
-              >
-                <NotificationsNoneOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
-                <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted, mb: 0.5 }}>
-                  No upcoming meetings
-                </Typography>
-                <Typography 
-                  onClick={() => navigate('/meetings')}
-                  sx={{ 
-                    fontSize: '0.8rem', 
-                    fontWeight: 700, 
-                    color: tokens.brand.accent,
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' }
-                  }}
-                >
-                  Create one →
-                </Typography>
-              </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto' }}>
+                  <NotificationsNoneOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1, opacity: 0.5 }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.muted }}>
+                    No upcoming meetings
+                  </Typography>
+                  <Typography 
+                    onClick={() => navigate('/meetings')}
+                    sx={{ fontWeight: 700, fontSize: '0.78rem', color: tokens.brand.accent, cursor: 'pointer', mt: 0.5, '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    Create one →
+                  </Typography>
+                </Box>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
                   {upcomingMeetings.map((meeting: any) => (
                     <Box
                       key={meeting._id}
-                      onClick={() => meeting.meetingLink && window.open(meeting.meetingLink, '_blank')}
+                      onClick={() => setSelectedMeetingModal(meeting)}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -478,7 +464,7 @@ export const AdminDashboard = () => {
                         borderRadius: '12px',
                         bgcolor: 'rgba(0,0,0,0.006)',
                         border: '1px solid rgba(0,0,0,0.02)',
-                        cursor: meeting.meetingLink ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         '&:hover': {
                           bgcolor: 'rgba(0,0,0,0.015)',
@@ -535,23 +521,14 @@ export const AdminDashboard = () => {
 
               {/* Deadlines */}
               {upcomingDeadlines.length === 0 ? (
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  py: 4,
-                  flex: 1
-                }}
-              >
-                <AccessTimeOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
-                <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
-                  No upcoming deadlines
-                </Typography>
-              </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto' }}>
+                  <AccessTimeOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1, opacity: 0.5 }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.muted }}>
+                    No upcoming deadlines
+                  </Typography>
+                </Box>
               ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
                   {upcomingDeadlines.map((deadline) => (
                     <Box
                       key={deadline.id}
@@ -573,10 +550,10 @@ export const AdminDashboard = () => {
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255, 127, 17, 0.35)' }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255,127,17,0.3)' }} />
                         <Box>
                           <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                            {deadline.title}
+                            {deadline.title || (deadline as any).taskTitle}
                           </Typography>
                           <Typography sx={{ fontWeight: 500, fontSize: '0.75rem', color: tokens.text.muted }}>
                             {deadline.userName}
@@ -595,7 +572,15 @@ export const AdminDashboard = () => {
         </Grid>
       </Grid>
 
+      {/* 3. Team Connections & Charts Split View */}
+      <TeamConnectionsSplitView />
 
+
+      <MeetingDetailModal
+        meeting={selectedMeetingModal}
+        open={!!selectedMeetingModal}
+        onClose={() => setSelectedMeetingModal(null)}
+      />
     </Box>
   );
 };

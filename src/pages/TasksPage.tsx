@@ -2428,22 +2428,27 @@ const TasksPage = () => {
                     }}
                   >
                     <Box sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <Chip
-                          label="DAILY"
-                          size="small"
-                          sx={{
-                            bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.12)' : 'rgba(93, 26, 137, 0.05)',
-                            color: tokens.brand.primary,
-                            border: `1px solid ${isDarkMode ? 'rgba(155, 107, 184, 0.25)' : 'rgba(93, 26, 137, 0.15)'}`,
-                            fontWeight: 800,
-                            fontSize: '0.62rem',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            height: 22,
-                            borderRadius: '4px',
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5, gap: 1 }}>
+                        <Typography
+                          variant="h6"
+                          onClick={() => {
+                            setSelectedTemplate(tpl);
+                            setViewMode('details');
                           }}
-                        />
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '1.05rem',
+                            letterSpacing: '-0.015em',
+                            color: isDarkMode ? '#fff' : tokens.text.primary,
+                            lineHeight: 1.3,
+                            cursor: 'pointer',
+                            '&:hover': {
+                              color: tokens.brand.primary,
+                            },
+                          }}
+                        >
+                          {tpl.name}
+                        </Typography>
                         <Chip
                           label={`${tpl.kpis.length} KPIs`}
                           size="small"
@@ -2452,31 +2457,10 @@ const TasksPage = () => {
                             fontSize: '0.65rem',
                             height: 20,
                             borderRadius: '4px',
+                            flexShrink: 0,
                           }}
                         />
                       </Box>
-
-                      <Typography
-                        variant="h6"
-                        onClick={() => {
-                          setSelectedTemplate(tpl);
-                          setViewMode('details');
-                        }}
-                        sx={{
-                          fontWeight: 800,
-                          fontSize: '1.05rem',
-                          letterSpacing: '-0.015em',
-                          color: isDarkMode ? '#fff' : tokens.text.primary,
-                          lineHeight: 1.3,
-                          mb: 1.5,
-                          cursor: 'pointer',
-                          '&:hover': {
-                            color: tokens.brand.primary,
-                          },
-                        }}
-                      >
-                        {tpl.name}
-                      </Typography>
 
                       <Typography
                         variant="body2"
@@ -2590,19 +2574,6 @@ const TasksPage = () => {
                         >
                           {tpl.name}
                         </Typography>
-                        <Chip
-                          label="DAILY"
-                          size="small"
-                          sx={{
-                            bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.12)' : 'rgba(93, 26, 137, 0.05)',
-                            color: tokens.brand.primary,
-                            border: `1px solid ${isDarkMode ? 'rgba(155, 107, 184, 0.25)' : 'rgba(93, 26, 137, 0.15)'}`,
-                            fontWeight: 800,
-                            fontSize: '0.58rem',
-                            height: 18,
-                            borderRadius: '4px',
-                          }}
-                        />
                       </Box>
                       <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.78rem', mt: 0.5 }} noWrap>
                         {tpl.description || 'No description.'}

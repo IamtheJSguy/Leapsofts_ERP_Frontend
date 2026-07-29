@@ -18,7 +18,10 @@ import {
   Chip,
   Avatar,
   IconButton,
+  Grid,
 } from '@mui/material';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -565,31 +568,61 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               )}
             />
 
-            <TextField
-              {...register('scheduledAt')}
-              label="Date & Time *"
-              type="datetime-local"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              inputProps={{
-                min: !editingMeeting 
-                  ? format(new Date(), "yyyy-MM-dd'T'HH:mm") 
-                  : undefined
-              }}
-              error={!!errors.scheduledAt}
-              helperText={errors.scheduledAt?.message}
-              sx={{
-                mb: 1,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '16px',
+            <Controller
+              name="scheduledAt"
+              control={control}
+              render={({ field, fieldState }) => {
+                let dateObj: Date | null = null;
+                let time24 = '09:00';
+                if (field.value) {
+                  const parsed = new Date(field.value);
+                  if (!isNaN(parsed.getTime())) {
+                    dateObj = parsed;
+                    time24 = format(parsed, 'HH:mm');
+                  }
                 }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EventIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                  </InputAdornment>
-                ),
+
+                const handleDateChange = (newDate: Date | null) => {
+                  if (!newDate) {
+                    field.onChange('');
+                    return;
+                  }
+                  const datePart = format(newDate, 'yyyy-MM-dd');
+                  field.onChange(`${datePart}T${time24}`);
+                };
+
+                const handleTimeChange = (newTime24: string) => {
+                  const currentDate = dateObj || new Date();
+                  const datePart = format(currentDate, 'yyyy-MM-dd');
+                  field.onChange(`${datePart}T${newTime24}`);
+                };
+
+                return (
+                  <Box sx={{ mb: fieldState.error ? 1.5 : 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ModernDatePicker
+                          label="Meeting Date *"
+                          value={dateObj}
+                          onChange={handleDateChange}
+                          minDate={!editingMeeting ? new Date() : undefined}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ModernTimePicker
+                          label="Meeting Time *"
+                          value={time24}
+                          onChange={handleTimeChange}
+                        />
+                      </Grid>
+                    </Grid>
+                    {fieldState.error && (
+                      <Typography variant="caption" sx={{ color: 'error.main', mt: 0.75, display: 'block', fontWeight: 600 }}>
+                        {fieldState.error.message}
+                      </Typography>
+                    )}
+                  </Box>
+                );
               }}
             />
           </DialogContent>

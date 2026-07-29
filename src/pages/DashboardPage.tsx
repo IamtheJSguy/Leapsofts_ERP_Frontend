@@ -7,19 +7,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { UserDashboard } from '@/components/dashboard/UserDashboard';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
+import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import type { Meeting } from '@/types';
 
 const DashboardPage = () => {
   const { isElevated, user } = useAuth();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
 
   // Fetch scheduled meetings
   const { data: meetings } = useMeetings({ status: 'scheduled' });
 
-  // Get closest upcoming meeting
-  const upcomingMeeting = meetings?.find(m => new Date(m.scheduledAt).getTime() > Date.now());
+  // Get closest upcoming meeting (excluding cancelled)
+  const upcomingMeeting = meetings?.find(m => m.status !== 'cancelled' && new Date(m.scheduledAt).getTime() > Date.now());
 
   const joinUrl = upcomingMeeting ? ((upcomingMeeting as any).meetingLink || (upcomingMeeting as any).link || null) : null;
 
@@ -306,9 +309,9 @@ const DashboardPage = () => {
             <Button
               variant="contained"
               disableElevation
-              disabled={!joinUrl}
+              disabled={!upcomingMeeting}
               onClick={() => {
-                if (joinUrl) window.open(joinUrl, '_blank', 'noopener,noreferrer');
+                if (upcomingMeeting) setSelectedMeetingModal(upcomingMeeting);
               }}
               sx={{
                 background: joinUrl
@@ -446,6 +449,12 @@ const DashboardPage = () => {
 
       {/* Main Dashboard Render */}
       {isElevated ? <AdminDashboard /> : <UserDashboard />}
+
+      <MeetingDetailModal
+        meeting={selectedMeetingModal}
+        open={!!selectedMeetingModal}
+        onClose={() => setSelectedMeetingModal(null)}
+      />
     </Box>
   );
 };
