@@ -2092,7 +2092,7 @@ export const KanbanBoardPage = () => {
           <ConfirmDialog
             open={confirmRemoveOpen}
             title="Remove Board Member"
-            message={`Are you sure you want to remove ${pendingUserName} from this board? They will lose access to this board only.`}
+            message={`Are you sure you want to remove ${pendingUserName} from this board? They will lose access, be unassigned from their cards on this board, and those cards will be removed from their daily tasks. If any cards are left with no assignee, board managers will be notified to reassign them.`}
             confirmLabel="Remove"
             cancelLabel="Cancel"
             isPending={removeBoardMemberMutation.isPending}

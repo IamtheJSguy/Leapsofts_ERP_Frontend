@@ -207,6 +207,10 @@ export const NotificationPanel = () => {
                       setNotificationPanelOpen(false);
                       const m = (n as any).metadata;
                       navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
+                    } else if (n.type === NOTIFICATION_TYPE.KANBAN_UNASSIGNED_CARDS && (n as any).metadata?.boardId) {
+                      setNotificationPanelOpen(false);
+                      const m = (n as any).metadata;
+                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}`);
                     }
                   }}
                   sx={{
