@@ -28,6 +28,9 @@ import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
 import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
 
+import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
+import type { Meeting } from '@/types';
+
 export const UserDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, refetch } = useDashboard();
@@ -39,6 +42,7 @@ export const UserDashboard = () => {
   const [logType, setLogType] = useState('connection');
   const [logCount, setLogCount] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
 
   // Keyboard shortcut listener for ⌘L / Ctrl+L
   useEffect(() => {
@@ -70,9 +74,9 @@ export const UserDashboard = () => {
   const boardsList = boards || [];
   const totalBoardsCount = boardsList.length;
 
-  // Meetings for Upcoming Meetings section
+  // Meetings for Upcoming Meetings section (excluding cancelled)
   const upcomingMeetings = allMeetings
-    .filter((m: any) => new Date(m.scheduledAt).getTime() > Date.now())
+    .filter((m: any) => m.status !== 'cancelled' && new Date(m.scheduledAt).getTime() > Date.now())
     .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 3);
 
@@ -686,7 +690,7 @@ export const UserDashboard = () => {
                   {upcomingMeetings.map((meeting: any) => (
                     <Box
                       key={meeting._id}
-                      onClick={() => meeting.meetingLink && window.open(meeting.meetingLink, '_blank')}
+                      onClick={() => setSelectedMeetingModal(meeting)}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -695,7 +699,7 @@ export const UserDashboard = () => {
                         borderRadius: '12px',
                         bgcolor: 'rgba(0,0,0,0.006)',
                         border: '1px solid rgba(0,0,0,0.02)',
-                        cursor: meeting.meetingLink ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         '&:hover': {
                           bgcolor: 'rgba(0,0,0,0.015)',
@@ -917,6 +921,12 @@ export const UserDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <MeetingDetailModal
+        meeting={selectedMeetingModal}
+        open={!!selectedMeetingModal}
+        onClose={() => setSelectedMeetingModal(null)}
+      />
     </Box>
   );
 };
