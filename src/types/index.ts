@@ -540,14 +540,6 @@ export interface PipelineVelocityPoint {
   completed: number;
 }
 
-export interface TeamAnalysisMetrics {
-  doneThisWeek: number;
-  moved: number;
-  overdue: number;
-  idleMembers: number;
-  attentionCount: number;
-}
-
 export interface TeamTaskItem {
   id: string;
   title: string;
@@ -571,7 +563,6 @@ export interface TeamTasksOverview {
 }
 
 export interface TeamAnalysisData {
-  metrics: TeamAnalysisMetrics;
   tasks: TeamTasksOverview;
   deadlines: TeamDeadlineItem[];
 }

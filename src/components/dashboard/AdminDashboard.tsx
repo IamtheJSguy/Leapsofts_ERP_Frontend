@@ -12,19 +12,16 @@ import {
   MenuItem
 } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
-import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
-import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAdminDashboard } from '@/hooks/api/useDashboard';
 import { useTeamAnalysis } from '@/hooks/api/useAdminTeamDashboard';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
-import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
+import { ChartSkeleton } from './DashboardSkeletons';
 import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
 export const AdminDashboard = () => {
@@ -38,12 +35,6 @@ export const AdminDashboard = () => {
     return (
       <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <ChartSkeleton height={180} />
-        <Grid container spacing={3.5}>
-          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
-          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
-          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
-          <Grid item xs={12} sm={6} md={3}><StatCardSkeleton /></Grid>
-        </Grid>
       </Box>
     );
   }
@@ -62,15 +53,6 @@ export const AdminDashboard = () => {
     .slice(0, 3);
 
   const upcomingDeadlines = teamAnalysis?.deadlines ?? [];
-
-  const analysisMetrics = [
-    { label: 'Done this week', count: teamAnalysis?.metrics.doneThisWeek ?? 0, color: tokens.semantic.success, bg: 'rgba(45, 138, 94, 0.03)', border: 'rgba(45, 138, 94, 0.08)' },
-    { label: 'Moved', count: teamAnalysis?.metrics.moved ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-    { label: 'Overdue', count: teamAnalysis?.metrics.overdue ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-    { label: 'Idle members', count: teamAnalysis?.metrics.idleMembers ?? 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-  ];
-
-  const attentionCount = teamAnalysis?.metrics.attentionCount ?? 0;
 
   const pipelineStats = [
     {
@@ -301,56 +283,7 @@ export const AdminDashboard = () => {
       {/* 2. Team Connections & Charts Split View */}
       <TeamConnectionsSplitView />
 
-      {/* 3. Team Analysis & Warnings Section */}
-      <Box
-        sx={{
-          p: 3.5,
-          borderRadius: '24px',
-          bgcolor: tokens.surface.card,
-          border: `1px solid ${tokens.surface.border}`,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-          '&:hover': { 
-            boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
-            borderColor: 'rgba(0,0,0,0.06)'
-          }
-        }}
-      >
-
-        {/* Analysis numbers row */}
-        <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-          {analysisMetrics.map((item) => (
-            <Grid item xs={6} sm={3} key={item.label}>
-              <Box 
-                sx={{ 
-                  p: 2, 
-                  borderRadius: '16px', 
-                  border: `1px solid ${item.border}`,
-                  bgcolor: item.bg,
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  '&:hover': {
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
-                  }
-                }}
-              >
-                <Typography sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.74rem', mb: 1 }}>
-                  {item.label}
-                </Typography>
-                <Typography sx={{ fontSize: '1.6rem', fontWeight: 850, color: item.color, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                  {item.count}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-
-
-      </Box>
-
-
-
-      {/* 5. Bottom Grid */}
+      {/* 3. Bottom Grid */}
       <Grid container spacing={3.5}>
         {/* Column 1: My Tasks list (60%) */}
         <Grid item xs={12} md={7}>

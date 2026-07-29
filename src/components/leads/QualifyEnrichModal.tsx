@@ -42,6 +42,13 @@ const userIdOf = (u: string | User): string => (typeof u === 'string' ? u : u?._
 const userLabel = (u: User) =>
   `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'User';
 
+/** Local datetime-local min value (yyyy-MM-dd'T'HH:mm) so past times cannot be chosen. */
+const getMinDateTimeLocal = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+};
+
 const formatMeetingWhen = (iso: string) => {
   try {
     const d = new Date(iso);
@@ -279,6 +286,7 @@ const SharingMeetingsColumn = memo(({
     bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
     '& fieldset': { border: 'none' },
   };
+  const minDateTimeLocal = getMinDateTimeLocal();
 
   return (
     <Box sx={{ flex: 1, p: 5, maxHeight: '75vh', overflowY: 'auto' }}>
@@ -378,6 +386,7 @@ const SharingMeetingsColumn = memo(({
             onChange={(e) => onMeetingFormChange('scheduledAt', e.target.value)}
             disabled={creatingMeeting}
             InputLabelProps={{ shrink: true }}
+            inputProps={{ min: minDateTimeLocal }}
             InputProps={{ sx: fieldSx }}
           />
           <TextField
@@ -665,13 +674,18 @@ export const QualifyEnrichModal = ({
 
   const handleCreateMeeting = async () => {
     if (!leadId) return;
+    const scheduledDate = new Date(meetingForm.scheduledAt);
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate < new Date()) {
+      addToast({ message: 'Cannot schedule meetings in the past.', severity: 'warning' });
+      return;
+    }
     try {
       const participantIds = meetingParticipants.map((u) => u._id);
       await createMeeting.mutateAsync({
         title: meetingForm.title,
         description: meetingForm.description || undefined,
         meetingLink: meetingForm.meetingLink,
-        scheduledAt: new Date(meetingForm.scheduledAt).toISOString(),
+        scheduledAt: scheduledDate.toISOString(),
         participants: participantIds,
         leadId,
       } as Partial<Meeting>);

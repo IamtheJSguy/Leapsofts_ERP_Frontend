@@ -4,12 +4,30 @@ import { tokens } from '@/styles/tokens';
 
 interface MeetingReminderBadgeProps {
   scheduledAt: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
 }
 
-export const MeetingReminderBadge = ({ scheduledAt }: MeetingReminderBadgeProps) => {
+export const MeetingReminderBadge = ({ scheduledAt, status }: MeetingReminderBadgeProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const date = new Date(scheduledAt);
+
+  if (status === 'cancelled') {
+    return (
+      <Chip
+        label="Cancelled"
+        size="small"
+        sx={{
+          bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : 'rgba(196, 69, 69, 0.08)',
+          color: tokens.semantic.error,
+          border: '1px solid',
+          borderColor: isDarkMode ? 'rgba(196, 69, 69, 0.3)' : 'rgba(196, 69, 69, 0.2)',
+          fontWeight: 600,
+          fontSize: '0.75rem',
+        }}
+      />
+    );
+  }
 
   if (isPast(date)) {
     return (
@@ -81,4 +99,3 @@ export const MeetingReminderBadge = ({ scheduledAt }: MeetingReminderBadgeProps)
     />
   );
 };
-

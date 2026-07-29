@@ -41,6 +41,24 @@ export const ROLES = {
   USER: 'user',
 } as const;
 
+export const DEPARTMENT = {
+  LEADERSHIP: 'Leadership',
+  ENGINEERING: 'Engineering',
+  PRODUCT: 'Product',
+  QUALITY: 'Quality',
+  MARKETING: 'Marketing',
+  SALES: 'Sales',
+  DESIGN: 'Design',
+} as const;
+
+export const DEPARTMENT_OPTIONS = Object.values(DEPARTMENT);
+
+/** Departments included in sales-team dashboard metrics (connections / progress). */
+export const SALES_DASHBOARD_DEPARTMENTS = [
+  DEPARTMENT.MARKETING,
+  DEPARTMENT.SALES,
+] as const;
+
 export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
   MESSAGE_READ: 'message:read',
