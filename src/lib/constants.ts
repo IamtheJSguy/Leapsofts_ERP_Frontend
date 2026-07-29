@@ -33,6 +33,8 @@ export const NOTIFICATION_TYPE = {
   KPI_END_OF_SHIFT: 'kpi_end_of_shift',
   SHEET_UPDATE_REMINDER: 'sheet_update_reminder',
   KANBAN_COMMENT_MENTION: 'kanban_comment_mention',
+  KANBAN_UNASSIGNED_CARDS: 'kanban_unassigned_cards',
+  REPORT_READY: 'report_ready',
 } as const;
 
 export const ROLES = {

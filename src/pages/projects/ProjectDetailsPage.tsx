@@ -705,7 +705,7 @@ export const ProjectDetailsPage = () => {
       <ConfirmDialog
         open={!!memberToRemove}
         title="Remove Member"
-        message={`Are you sure you want to remove ${memberToRemove?.name || 'this user'} from this project? They will lose access to the project and its boards.`}
+        message={`Are you sure you want to remove ${memberToRemove?.name || 'this user'} from this project? They will lose access to the project and its boards, be unassigned from their cards, and those cards will be removed from their daily tasks. Board managers will be notified about any cards left with no assignee.`}
         confirmLabel="Yes, Remove"
         cancelLabel="Cancel"
         isPending={removeProjectMemberMutation.isPending}
