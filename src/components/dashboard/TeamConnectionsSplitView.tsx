@@ -47,6 +47,7 @@ const formatDateParam = (date: Date | null) =>
   date ? date.toISOString().split('T')[0] : undefined;
 
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
+  if (!label?.toString().trim()) return null;
   if (active && payload && payload.length) {
     return (
       <Box
@@ -131,6 +132,17 @@ export const TeamConnectionsSplitView = () => {
     return teamProgressRows.filter((member) => selectedTeamMemberIds.includes(member.userId));
   }, [teamProgressRows, selectedTeamMemberIds]);
 
+  // Recharts mis-centers single/few category groups; pad with empty slots so bars sit over the label.
+  const chartProgressData = useMemo(() => {
+    if (filteredProgressData.length === 0) return filteredProgressData;
+    if (filteredProgressData.length > 2) return filteredProgressData;
+    const spacer = { name: '', doneTasks: 0, pendingTasks: 0, overdueTasks: 0, userId: '' };
+    if (filteredProgressData.length === 1) {
+      return [spacer, filteredProgressData[0]!, { ...spacer, name: ' ' }];
+    }
+    return [spacer, ...filteredProgressData, { ...spacer, name: ' ' }];
+  }, [filteredProgressData]);
+
   const cardStyles = {
     p: { xs: 2.5, sm: 3.5 },
     borderRadius: '24px',
@@ -169,10 +181,10 @@ export const TeamConnectionsSplitView = () => {
           <Box sx={cardStyles}>
             <Box sx={{ mb: 3 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', color: isDark ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em', mb: 0.5 }}>
-                Team Connections
+                Team Tasks
               </Typography>
               <Typography sx={{ color: isDark ? 'rgba(255,255,255,0.5)' : tokens.text.muted, fontSize: '0.85rem', fontWeight: 600 }}>
-                Individual connection breakdown
+                Done, pending, and overdue KPIs by member
               </Typography>
             </Box>
 
@@ -359,13 +371,31 @@ export const TeamConnectionsSplitView = () => {
                           </Typography>
                         </Box>
                       </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography sx={{ fontWeight: 850, color: isDark ? '#fff' : tokens.text.primary, fontSize: '1.1rem' }}>
-                          {user.totalLeads}
-                        </Typography>
-                        <Typography sx={{ fontWeight: 700, color: tokens.brand.primary, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Leads
-                        </Typography>
+                      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <Box sx={{ textAlign: 'center', minWidth: 40 }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: tokens.semantic.success, lineHeight: 1.2 }}>
+                            {user.doneTasks ?? 0}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 700, fontSize: '0.55rem', color: isDark ? 'rgba(255,255,255,0.45)' : tokens.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Done
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'center', minWidth: 40 }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: tokens.semantic.warning, lineHeight: 1.2 }}>
+                            {user.pendingTasks ?? 0}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 700, fontSize: '0.55rem', color: isDark ? 'rgba(255,255,255,0.45)' : tokens.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Pending
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'center', minWidth: 40 }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: tokens.semantic.error, lineHeight: 1.2 }}>
+                            {user.overdueTasks ?? 0}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 700, fontSize: '0.55rem', color: isDark ? 'rgba(255,255,255,0.45)' : tokens.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Overdue
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
                   );
@@ -384,7 +414,7 @@ export const TeamConnectionsSplitView = () => {
                   Team Progress
                 </Typography>
                 <Typography sx={{ color: isDark ? 'rgba(255,255,255,0.5)' : tokens.text.muted, fontSize: '0.85rem', fontWeight: 600 }}>
-                  Compare individual lead generation performance
+                  Compare individual KPI task status
                 </Typography>
               </Box>
 
@@ -478,22 +508,37 @@ export const TeamConnectionsSplitView = () => {
               </Select>
             </Box>
 
-            <Box sx={{ flexGrow: 1, minHeight: 300, ml: -2 }}>
+            <Box sx={{ flexGrow: 1, minHeight: 300 }}>
               {progressLoading ? (
                 <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 8, fontWeight: 600 }}>
                   Loading progress...
                 </Typography>
               ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredProgressData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <BarChart
+                  data={chartProgressData}
+                  margin={{ top: 10, right: 20, left: 8, bottom: 8 }}
+                  barCategoryGap={filteredProgressData.length <= 2 ? '28%' : filteredProgressData.length <= 4 ? '25%' : '18%'}
+                  barGap={6}
+                  maxBarSize={28}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-                  <XAxis dataKey="name" {...chartAxisProps} dy={10} />
-                  <YAxis {...chartAxisProps} dx={-10} />
-                  <Tooltip content={<CustomTooltip isDark={isDark} />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }} />
+                  <XAxis
+                    dataKey="name"
+                    {...chartAxisProps}
+                    dy={10}
+                    interval={0}
+                    tickFormatter={(value: string) => value?.trim() ? value : ''}
+                  />
+                  <YAxis {...chartAxisProps} width={36} />
+                  <Tooltip
+                    content={<CustomTooltip isDark={isDark} />}
+                    cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
+                  />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                  <Bar dataKey="totalLeads" name="Total Leads" fill={tokens.brand.primary} radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="meetingsBooked" name="Meetings Booked" fill={tokens.brand.accent} radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="dealsClosed" name="Qualified Leads" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="doneTasks" name="Done" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pendingTasks" name="Pending" fill={tokens.semantic.warning} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="overdueTasks" name="Overdue" fill={tokens.semantic.error} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               )}
