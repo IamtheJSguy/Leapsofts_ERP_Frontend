@@ -19,6 +19,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useCreateKPI, useUpdateKPI } from '@/hooks/api/useKPIs';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { PIPELINE_METRIC_LABELS, PIPELINE_METRIC_OPTIONS } from '@/lib/constants';
@@ -35,6 +36,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
+  const { isAdmin } = useAuth();
   const { data: users = [] } = useUsers();
   const createMutation = useCreateKPI();
   const updateMutation = useUpdateKPI();
@@ -199,7 +201,9 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         )}
         <Autocomplete
           multiple
-          options={users.filter((u) => u.role === 'user')}
+          options={users.filter((u) =>
+            isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user'
+          )}
           getOptionLabel={(u) => `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email}
           value={assignedUsers}
           onChange={(_, v) => setAssignedUsers(v)}
