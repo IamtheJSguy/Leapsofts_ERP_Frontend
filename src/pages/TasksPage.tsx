@@ -55,6 +55,7 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { ChangeRequestQueue } from '@/components/kpi/ChangeRequestQueue';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { StandaloneKPIForm } from '@/components/kpi/StandaloneKPIForm';
+import { SalesKpiPanel } from '@/components/kpi/SalesKpiPanel';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
@@ -277,7 +278,7 @@ const TasksPage = () => {
   }, [activeAssignments, dbUsers]);
 
   // Tabs navigation
-  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
+  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'sales_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('templates');
 
   // Set default tab to assignments for non-admin users
@@ -2218,6 +2219,7 @@ const TasksPage = () => {
         <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
           <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
+          <Button onClick={() => setDashboardTab('sales_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
           <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
           </Button>
@@ -2238,6 +2240,10 @@ const TasksPage = () => {
 
       {dashboardTab === 'change_requests' && isElevated && viewMode === 'list' && (
         <ChangeRequestQueue />
+      )}
+
+      {dashboardTab === 'sales_kpis' && isElevated && viewMode === 'list' && (
+        <SalesKpiPanel />
       )}
 
       {dashboardTab === 'standalone_kpis' && isElevated && viewMode === 'list' && (

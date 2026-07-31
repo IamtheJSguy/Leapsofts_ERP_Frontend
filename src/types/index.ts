@@ -218,6 +218,157 @@ export interface KPITemplate {
   updatedAt?: string;
 }
 
+/** Sales KPI subsystem — day-of-week scheduled, auto-generated, auto-progressed. */
+export type SalesKpiMetric = 'new_prospects' | 'messages_sent' | 'responses' | 'follow_ups';
+
+export type SalesKpiScheduleMode = 'per_day' | 'span';
+
+export type SalesKpiTargetMode = 'manual' | 'auto_snapshot';
+
+export type SalesKpiStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'completed_on_time'
+  | 'completed_late'
+  | 'missed'
+  | 'partial';
+
+export interface SalesKpiTemplateItem {
+  _id?: string;
+  name: string;
+  description?: string;
+  metric: SalesKpiMetric;
+  /** 0 = Sunday … 6 = Saturday. */
+  daysOfWeek: number[];
+  scheduleMode: SalesKpiScheduleMode;
+  targetMode: SalesKpiTargetMode;
+  /** Only meaningful when targetMode is 'manual'; otherwise snapshotted from the pipeline. */
+  targetValue?: number;
+  priority: KpiPriority;
+}
+
+export interface SalesKpiTemplate {
+  _id: string;
+  name: string;
+  description?: string;
+  items: SalesKpiTemplateItem[];
+  createdBy?: string | { _id: string; email: string; firstName?: string; lastName?: string };
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Per-user copy of a template item; days/target/priority are editable at any time (holidays). */
+export interface SalesKpiAssignmentItem extends SalesKpiTemplateItem {
+  /** Subdocument id — used as the key for PUT assignment item updates. */
+  _id: string;
+  /** Original template item this was copied from (read-only lineage). */
+  templateItemId: string;
+  isActive?: boolean;
+}
+
+export interface SalesKpiAssignment {
+  _id: string;
+  templateId?: string | SalesKpiTemplate;
+  userId: string | User;
+  assignedBy?: string | User;
+  isActive?: boolean;
+  items: SalesKpiAssignmentItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** GET /sales-kpi-templates/:id */
+export interface SalesKpiTemplateDetail {
+  template: SalesKpiTemplate;
+  assignments: SalesKpiAssignment[];
+}
+
+/**
+ * Payload for editing a single assignment item (PUT /sales-kpi-templates/assignments/:id).
+ * Items are keyed by assignment item `_id`, not `templateItemId`.
+ */
+export interface SalesKpiAssignmentItemUpdate {
+  _id: string;
+  daysOfWeek?: number[];
+  scheduleMode?: SalesKpiScheduleMode;
+  targetMode?: SalesKpiTargetMode;
+  targetValue?: number;
+  priority?: KpiPriority;
+  isActive?: boolean;
+}
+
+export interface SalesKpiAssignmentUpdatePayload {
+  isActive?: boolean;
+  items?: SalesKpiAssignmentItemUpdate[];
+}
+
+/** Per-user overrides applied at assign time, keyed by the item's position in the template. */
+export interface SalesKpiItemOverride {
+  itemIndex: number;
+  daysOfWeek?: number[];
+  scheduleMode?: SalesKpiScheduleMode;
+  targetMode?: SalesKpiTargetMode;
+  targetValue?: number;
+  priority?: KpiPriority;
+  isActive?: boolean;
+}
+
+export interface SalesKpiAssignResult {
+  templateId: string;
+  templateName: string;
+  results: { userId: string; status: 'created' | 'already_assigned' }[];
+}
+
+/** A generated sales KPI task. Read-only for the user — progress comes from pipeline hooks. */
+export interface SalesKpiEntry {
+  _id: string;
+  assignmentId?: string;
+  assignmentItemId?: string;
+  userId: string;
+  metric: SalesKpiMetric;
+  kpiName: string;
+  description?: string;
+  scheduleMode: SalesKpiScheduleMode;
+  priority: KpiPriority;
+  periodStart: string;
+  periodEnd: string;
+  targetValue: number;
+  currentValue: number;
+  status: SalesKpiStatus;
+  completedAt?: string | null;
+  /** Set once the deadline passed; frozen entries never increment again. */
+  frozenAt?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GroupedSalesKpis {
+  active: SalesKpiEntry[];
+  overdue: SalesKpiEntry[];
+  incomplete: SalesKpiEntry[];
+  done: SalesKpiEntry[];
+  counts: {
+    active: number;
+    overdue: number;
+    incomplete: number;
+    done: number;
+  };
+}
+
+export interface SalesKpiSummary {
+  total: number;
+  completed: number;
+  pending: number;
+  overdue: number;
+  incomplete: number;
+  totalTarget: number;
+  totalCurrent: number;
+  attainmentRate: number;
+  counts: GroupedSalesKpis['counts'];
+}
+
 export interface ChangeRequest {
   _id: string;
   userId: string | User;
