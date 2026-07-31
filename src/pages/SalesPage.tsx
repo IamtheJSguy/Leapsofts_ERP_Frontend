@@ -280,7 +280,7 @@ export const SalesPage = () => {
   const [messagedOnly, setMessagedOnly] = useState(false);
 
   const { data: usersData } = useUsers();
-  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
+  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
   const { data: profilesData } = useProfiles();
@@ -476,17 +476,13 @@ export const SalesPage = () => {
   }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
-  let prospects = leadsResponse?.data ?? [];
-  if (selectedUserId !== 'All Users') {
-    prospects = prospects.filter((p: any) =>
-      p.assignedTo === selectedUserId || p.assignedTo?._id === selectedUserId
-    );
-  }
-  const totalProspects = selectedUserId !== 'All Users' ? prospects.length : (leadsResponse?.meta.total ?? 0);
+  const prospects = leadsResponse?.data ?? [];
+  const totalProspects = leadsResponse?.meta.total ?? 0;
   const pipelineFilters = useMemo(() => ({
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
-  }), [startDate, endDate]);
+    ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
+  }), [startDate, endDate, selectedUserId]);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
   // Google Sheet Dialog and Sync Loading state
