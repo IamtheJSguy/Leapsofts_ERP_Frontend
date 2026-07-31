@@ -49,7 +49,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
-import { useLeads, useQualifyLead, useCreateLead, useUpdateLead } from '@/hooks/api/useLeads';
+import { useLeads, useQualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -308,6 +308,7 @@ export const SalesPage = () => {
   });
   const [addLeadErrors, setAddLeadErrors] = useState<Record<string, boolean>>({});
   const createLead = useCreateLead();
+  const logFollowUp = useLogFollowUp();
 
   const handleInlineSave = () => {
     const errors: Record<string, boolean> = {};
@@ -1589,6 +1590,49 @@ export const SalesPage = () => {
                                   }
                                 />
                               )}
+                              {editData.messageStatus === 'follow_up' &&
+                                prospect.messageStatus === 'follow_up' && (
+                                <Select
+                                  size="small"
+                                  displayEmpty
+                                  value={prospect.followUpCount || ''}
+                                  disabled={logFollowUp.isPending}
+                                  onChange={(e) => {
+                                    const number = Number(e.target.value);
+                                    if (!number || number === (prospect.followUpCount ?? 0)) return;
+                                    logFollowUp.mutate(
+                                      { id: prospect._id, number },
+                                      {
+                                        onSuccess: () =>
+                                          addToast({
+                                            message: `FollowUp #${number} selected`,
+                                            severity: 'success',
+                                          }),
+                                        onError: () =>
+                                          addToast({
+                                            message: 'Failed to update follow-up',
+                                            severity: 'error',
+                                          }),
+                                      },
+                                    );
+                                  }}
+                                  sx={{
+                                    borderRadius: '8px',
+                                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff',
+                                    '& .MuiSelect-select': { py: 0.75, fontSize: '0.75rem', fontWeight: 700 },
+                                    minWidth: 130,
+                                  }}
+                                >
+                                  <MenuItem value="" disabled>
+                                    <em>FollowUp #</em>
+                                  </MenuItem>
+                                  {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
+                                    <MenuItem key={n} value={n}>
+                                      FollowUp #{n}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              )}
                             </Box>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
@@ -1734,6 +1778,67 @@ export const SalesPage = () => {
                                 border: `1px solid ${`color-mix(in srgb, ${msgToken.color} 12%, transparent)`}`,
                               }}
                             />
+                            {(prospect.followUpCount ?? 0) > 0 && (
+                              <Chip
+                                label={`FollowUp #${prospect.followUpCount}`}
+                                size="small"
+                                sx={{
+                                  bgcolor: messageStatusTokens.follow_up.bg,
+                                  color: messageStatusTokens.follow_up.color,
+                                  fontWeight: 750,
+                                  fontSize: '0.64rem',
+                                  height: 20,
+                                  borderRadius: '6px',
+                                }}
+                              />
+                            )}
+                            {prospect.messageStatus === 'follow_up' && (
+                              <Select
+                                size="small"
+                                displayEmpty
+                                value={prospect.followUpCount || ''}
+                                disabled={logFollowUp.isPending}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  const number = Number(e.target.value);
+                                  if (!number || number === (prospect.followUpCount ?? 0)) return;
+                                  logFollowUp.mutate(
+                                    { id: prospect._id, number },
+                                    {
+                                      onSuccess: () =>
+                                        addToast({
+                                          message: `FollowUp #${number} selected`,
+                                          severity: 'success',
+                                        }),
+                                      onError: () =>
+                                        addToast({
+                                          message: 'Failed to update follow-up',
+                                          severity: 'error',
+                                        }),
+                                    },
+                                  );
+                                }}
+                                sx={{
+                                  borderRadius: '8px',
+                                  minWidth: 120,
+                                  '& .MuiSelect-select': {
+                                    py: 0.5,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                  },
+                                }}
+                              >
+                                <MenuItem value="" disabled>
+                                  <em>FollowUp #</em>
+                                </MenuItem>
+                                {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
+                                  <MenuItem key={n} value={n}>
+                                    FollowUp #{n}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            )}
                             {prospect.messageStatus === 'future_lead' && prospect.futureLeadDate && (
                               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                                 Due {format(new Date(prospect.futureLeadDate), 'MMM d, yyyy')}
