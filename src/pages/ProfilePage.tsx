@@ -781,7 +781,7 @@ export default function ProfilePage() {
                 </Card>
               </Grid>
 
-              {user?.role !== 'admin' && user?.role !== 'manager' && (
+              {user?.role !== 'admin' && (
                 <Grid item xs={12} lg={6}>
                 <Card sx={{ ...cardSx, height: '100%' }}>
                   <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1, letterSpacing: '-0.015em' }}>

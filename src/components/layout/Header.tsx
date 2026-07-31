@@ -123,7 +123,7 @@ export const Header = () => {
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {/* Time Capsule Widget */}
-          {user?.role !== 'admin' && user?.role !== 'manager' && (
+          {user?.role !== 'admin' && (
             <Box
               sx={{
                 display: 'flex',

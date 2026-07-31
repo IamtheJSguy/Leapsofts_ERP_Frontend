@@ -4,7 +4,6 @@ import {
   Box,
   Typography,
   Button,
-  Grid,
   Card,
   Avatar,
   Chip,
@@ -281,7 +280,7 @@ export const SalesPage = () => {
   const [messagedOnly, setMessagedOnly] = useState(false);
 
   const { data: usersData } = useUsers();
-  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
+  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
   const { data: profilesData } = useProfiles();
@@ -477,17 +476,13 @@ export const SalesPage = () => {
   }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
-  let prospects = leadsResponse?.data ?? [];
-  if (selectedUserId !== 'All Users') {
-    prospects = prospects.filter((p: any) =>
-      p.assignedTo === selectedUserId || p.assignedTo?._id === selectedUserId
-    );
-  }
-  const totalProspects = selectedUserId !== 'All Users' ? prospects.length : (leadsResponse?.meta.total ?? 0);
+  const prospects = leadsResponse?.data ?? [];
+  const totalProspects = leadsResponse?.meta.total ?? 0;
   const pipelineFilters = useMemo(() => ({
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
-  }), [startDate, endDate]);
+    ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
+  }), [startDate, endDate, selectedUserId]);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
   // Google Sheet Dialog and Sync Loading state
@@ -748,90 +743,102 @@ export const SalesPage = () => {
         </Box>
       ) : (
         <>
-        <Grid container spacing={2} sx={{ mb: 1.5 }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(2, minmax(0, 1fr))',
+              sm: 'repeat(3, minmax(0, 1fr))',
+              md: 'repeat(4, minmax(0, 1fr))',
+              lg: 'repeat(7, minmax(0, 1fr))',
+            },
+            gap: 2,
+            mb: 1.5,
+          }}
+        >
           {stats.map((item, idx) => {
             const theme = getCardTheme(item.label);
             return (
-              <Grid item xs={6} sm={4} md={3} lg={true} key={idx}>
-                <Card
-                  onClick={() => applyFunnelCard(item.label)}
+              <Card
+                key={idx}
+                onClick={() => applyFunnelCard(item.label)}
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
+                  borderRadius: '24px',
+                  p: 2.25,
+                  height: '100%',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row', lg: 'column', xl: 'row' },
+                  alignItems: { xs: 'flex-start', sm: 'center', lg: 'flex-start', xl: 'center' },
+                  gap: { xs: 1.2, sm: 1.75 },
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: theme.hoverBorder,
+                    transform: 'translateY(-3px)',
+                    boxShadow: tokens.shadow.cardHover,
+                  },
+                }}
+              >
+                <Box
                   sx={{
-                    bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                    border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
-                    borderRadius: '24px',
-                    p: 2.25,
-                    height: '100%',
+                    width: 42,
+                    height: 42,
+                    borderRadius: '12px',
+                    bgcolor: theme.bgcolor,
+                    color: theme.color,
                     display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row', lg: 'column', xl: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center', lg: 'flex-start', xl: 'center' },
-                    gap: { xs: 1.2, sm: 1.75 },
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                    boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      borderColor: theme.hoverBorder,
-                      transform: 'translateY(-3px)',
-                      boxShadow: tokens.shadow.cardHover,
-                    },
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
                   }}
                 >
-                  <Box
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: '12px',
-                      bgcolor: theme.bgcolor,
-                      color: theme.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {theme.icon}
-                  </Box>
-                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: 'text.secondary',
-                          fontWeight: 750,
-                          fontSize: '0.6rem',
-                          letterSpacing: '0.04em',
-                          lineHeight: 1.2,
-                          textOverflow: 'ellipsis',
-                          overflow: 'hidden',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {item.label}
-                      </Typography>
-                      {item.percent && (
-                        <Chip
-                          label={item.percent}
-                          size="small"
-                          sx={{
-                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                            color: 'text.secondary',
-                            fontSize: '0.58rem',
-                            height: 16,
-                            fontWeight: 800,
-                            px: 0.2,
-                            '& .MuiChip-label': { px: 0.75 }
-                          }}
-                        />
-                      )}
-                    </Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
-                      {item.value}
+                  {theme.icon}
+                </Box>
+                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                        fontWeight: 750,
+                        fontSize: '0.6rem',
+                        letterSpacing: '0.04em',
+                        lineHeight: 1.2,
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.label}
                     </Typography>
+                    {item.percent && (
+                      <Chip
+                        label={item.percent}
+                        size="small"
+                        sx={{
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                          color: 'text.secondary',
+                          fontSize: '0.58rem',
+                          height: 16,
+                          fontWeight: 800,
+                          px: 0.2,
+                          '& .MuiChip-label': { px: 0.75 }
+                        }}
+                      />
+                    )}
                   </Box>
-                </Card>
-              </Grid>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
+                    {item.value}
+                  </Typography>
+                </Box>
+              </Card>
             );
           })}
-        </Grid>
+        </Box>
         <Box
           sx={{
             display: 'flex',

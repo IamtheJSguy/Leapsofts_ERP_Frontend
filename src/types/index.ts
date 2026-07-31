@@ -524,15 +524,17 @@ export interface TeamConnectionRow {
   lastName?: string;
   email: string;
   role: string;
-  totalLeads: number;
+  doneTasks: number;
+  pendingTasks: number;
+  overdueTasks: number;
 }
 
 export interface TeamProgressRow {
   userId: string;
   name: string;
-  totalLeads: number;
-  meetingsBooked: number;
-  dealsClosed: number;
+  doneTasks: number;
+  pendingTasks: number;
+  overdueTasks: number;
 }
 
 export interface PipelineVelocityPoint {

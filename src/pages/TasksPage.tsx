@@ -106,7 +106,7 @@ interface ActiveAssignment {
 
 const TasksPage = () => {
   const { user } = useAuth();
-  const { isElevated } = usePermissions();
+  const { isElevated, isAdmin, isManager } = usePermissions();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -277,7 +277,7 @@ const TasksPage = () => {
   }, [activeAssignments, dbUsers]);
 
   // Tabs navigation
-  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'change_requests' | 'daily_progress';
+  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('templates');
 
   // Set default tab to assignments for non-admin users
@@ -2222,7 +2222,14 @@ const TasksPage = () => {
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
           </Button>
           <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Daily Progress</Button>
+          {isManager && (
+            <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+          )}
         </Box>
+      )}
+
+      {dashboardTab === 'my_tasks' && isManager && viewMode === 'list' && (
+        <UserDailyKpisView />
       )}
 
       {dashboardTab === 'daily_progress' && isElevated && viewMode === 'list' && (
@@ -3315,7 +3322,9 @@ return (
               Assign to Team Member
             </Typography>
             <Autocomplete
-              options={dbUsers.filter(u => u.role !== 'manager' && u.role !== 'admin')} 
+              options={dbUsers.filter((u) =>
+                isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user'
+              )} 
               getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email}
               value={dbUsers.find((u) => u._id === selectedUserId) || null}
               onChange={(_, newValue) => setSelectedUserId(newValue ? newValue._id : null)}
