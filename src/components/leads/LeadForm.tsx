@@ -58,7 +58,6 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
                 ['phone', 'Phone'],
                 ['leadStatus', 'Lead Status'],
                 ['date', 'Date'],
-                ['followUp', 'Follow Up'],
                 ['linkedinMsg', 'LinkedIn Msg'],
                 ['commentsAfterCall', 'Comments after Call'],
                 ['notes', 'Notes'],

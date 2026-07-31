@@ -26,6 +26,11 @@ const leadApi = {
     api.post<{ data: ValidationResult }>('/leads/validate', data),
   qualifyLead: ({ id, boardId, ...data }: { id: string; boardId?: string } & Partial<Lead>) =>
     api.post(`/leads/${id}/qualify`, boardId ? { ...data, boardId } : data),
+  logFollowUp: ({ id, note, number }: { id: string; note?: string; number?: number }) =>
+    api.post<{ data: Lead }>(`/leads/${id}/follow-ups`, {
+      ...(note ? { note } : {}),
+      ...(number !== undefined ? { number } : {}),
+    }),
   getLeadHistory: (id: string) => api.get(`/leads/${id}/history`),
 };
 
@@ -130,3 +135,17 @@ export const useLeadHistory = (id: string | undefined) =>
     queryFn: () => leadApi.getLeadHistory(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+
+export const useLogFollowUp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.logFollowUp,
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+    },
+  });
+};

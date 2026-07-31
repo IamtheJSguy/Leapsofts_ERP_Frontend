@@ -52,7 +52,6 @@ export const leadSchema = z.object({
   icp: z.string().optional(),
   leadStatus: z.string().optional(),
   date: z.string().optional(),
-  followUp: z.string().optional(),
   linkedinMsg: z.string().optional(),
   commentsAfterCall: z.string().optional(),
   notes: z.string().optional(),

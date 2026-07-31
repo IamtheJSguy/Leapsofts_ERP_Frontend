@@ -93,11 +93,21 @@ export interface Lead {
   leadStatus?: string;
   date?: string;
   linkedinMsg?: string;
+  /** @deprecated Legacy sheet free-text */
   followUp?: string;
+  followUps?: FollowUpEntry[];
+  followUpCount?: number;
   commentsAfterCall?: string;
   notes?: string;
   futureLeadDate?: string;
   futureLeadRemindersSent?: Record<string, string>;
+}
+
+export interface FollowUpEntry {
+  number: number;
+  note?: string;
+  loggedAt: string;
+  loggedBy: string | User;
 }
 
 export interface ProfileSection {
