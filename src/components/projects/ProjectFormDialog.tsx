@@ -26,6 +26,8 @@ interface ProjectFormDialogProps {
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => void;
   isSubmitting?: boolean;
+  /** When true, project name cannot be changed (e.g. default Leads project). */
+  lockName?: boolean;
   initialData?: {
     name: string;
     description: string;
@@ -39,6 +41,7 @@ export const ProjectFormDialog = ({
   onClose,
   onSubmit,
   isSubmitting,
+  lockName = false,
   initialData,
 }: ProjectFormDialogProps) => {
   const theme = useTheme();
@@ -133,6 +136,8 @@ export const ProjectFormDialog = ({
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             variant="outlined"
             size="small"
+            disabled={lockName}
+            helperText={lockName ? 'Default system project name cannot be changed' : undefined}
             InputProps={{
               sx: { borderRadius: '12px' },
             }}
