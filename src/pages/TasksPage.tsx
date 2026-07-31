@@ -2007,71 +2007,30 @@ const TasksPage = () => {
     return (
       <>
       {/* Page Title Header */}
-      <Box
-        sx={{
-          mb: 4,
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          justifyContent: 'space-between',
-          gap: 2,
-          position: 'relative',
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.025em',
-              mb: 0.5,
-              color: isDarkMode ? '#fff' : tokens.text.primary,
-            }}
-          >
-            Performance Targets
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{
-              color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
-              fontWeight: 500,
-              fontSize: '0.92rem',
-            }}
-          >
-            {isElevated
-              ? 'Manage reusable templates, allocate targets, and monitor agent performance.'
-              : 'Review your active objective targets and complete daily checklist milestones.'}
-          </Typography>
-        </Box>
-
-        {isElevated && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setViewMode('create');
-              setWizardStep(0);
-            }}
-            sx={{
-              bgcolor: tokens.brand.primary,
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              px: 3.5,
-              py: 1,
-              borderRadius: '24px',
-              boxShadow: 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: tokens.brand.primary, 
-                transform: 'translateY(-1px)',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Create Template
-          </Button>
-        )}
+      <Box sx={{ mb: 4, position: 'relative' }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: '-0.025em',
+            mb: 0.5,
+            color: isDarkMode ? '#fff' : tokens.text.primary,
+          }}
+        >
+          Performance Targets
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
+            fontWeight: 500,
+            fontSize: '0.92rem',
+          }}
+        >
+          {isElevated
+            ? 'Manage reusable templates, allocate targets, and monitor agent performance.'
+            : 'Review your active objective targets and complete daily checklist milestones.'}
+        </Typography>
       </Box>
 
       {/* Mini stats counters grid */}
@@ -2352,6 +2311,35 @@ const TasksPage = () => {
         />
 
         <Box sx={{ display: 'flex', gap: 1.5, ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' }, alignItems: 'center' }}>
+          {dashboardTab === 'templates' && isElevated && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setViewMode('create');
+                setWizardStep(0);
+              }}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                px: 3.5,
+                py: 1,
+                borderRadius: '24px',
+                boxShadow: 'none',
+                height: 42,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: tokens.brand.primary,
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              Create Template
+            </Button>
+          )}
           <ToggleButtonGroup
             value={viewLayout}
             exclusive
