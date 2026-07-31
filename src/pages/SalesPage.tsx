@@ -1126,83 +1126,79 @@ export const SalesPage = () => {
               />
             )}
 
-            {/* ICP Filter - Admin Only */}
-            {isElevated && (
-              <TextField
-                select
-                size="small"
-                placeholder="Filter by Campaign (ICP)"
-                value={selectedIcp}
-                onChange={(e) => setSelectedIcp(e.target.value)}
-                SelectProps={{ displayEmpty: true }}
-                sx={{
-                  flexGrow: 1,
-                  minWidth: { xs: '100%', sm: 180 },
-                  maxWidth: { sm: 240 },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '20px',
-                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                    height: 42,
-                    fontSize: '0.84rem',
-                    '& fieldset': {
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: tokens.brand.primary,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: tokens.brand.primary,
-                    },
+            {/* ICP Filter — available to all roles */}
+            <TextField
+              select
+              size="small"
+              placeholder="Filter by Campaign (ICP)"
+              value={selectedIcp}
+              onChange={(e) => setSelectedIcp(e.target.value)}
+              SelectProps={{ displayEmpty: true }}
+              sx={{
+                flexGrow: 1,
+                minWidth: { xs: '100%', sm: 180 },
+                maxWidth: { sm: 240 },
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '20px',
+                  bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                  height: 42,
+                  fontSize: '0.84rem',
+                  '& fieldset': {
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
                   },
-                }}
-              >
-                <MenuItem value="">All ICPs</MenuItem>
-                {icpsList.map((icp) => (
-                  <MenuItem key={icp._id} value={icp.name}>
-                    {icp.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
+                  '&:hover fieldset': {
+                    borderColor: tokens.brand.primary,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: tokens.brand.primary,
+                  },
+                },
+              }}
+            >
+              <MenuItem value="">All ICPs</MenuItem>
+              {icpsList.map((icp) => (
+                <MenuItem key={icp._id} value={icp.name}>
+                  {icp.name}
+                </MenuItem>
+              ))}
+            </TextField>
 
-            {/* Profile Filter - Admin Only */}
-            {isElevated && (
-              <TextField
-                select
-                size="small"
-                placeholder="Filter by Profile"
-                value={selectedProfile}
-                onChange={(e) => setSelectedProfile(e.target.value)}
-                SelectProps={{ displayEmpty: true }}
-                sx={{
-                  flexGrow: 1,
-                  minWidth: { xs: '100%', sm: 180 },
-                  maxWidth: { sm: 240 },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '20px',
-                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                    height: 42,
-                    fontSize: '0.84rem',
-                    '& fieldset': {
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: tokens.brand.primary,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: tokens.brand.primary,
-                    },
+            {/* Profile Filter — available to all roles */}
+            <TextField
+              select
+              size="small"
+              placeholder="Filter by Profile"
+              value={selectedProfile}
+              onChange={(e) => setSelectedProfile(e.target.value)}
+              SelectProps={{ displayEmpty: true }}
+              sx={{
+                flexGrow: 1,
+                minWidth: { xs: '100%', sm: 180 },
+                maxWidth: { sm: 240 },
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '20px',
+                  bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                  height: 42,
+                  fontSize: '0.84rem',
+                  '& fieldset': {
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
                   },
-                }}
-              >
-                <MenuItem value="">All Profiles</MenuItem>
-                {profileUsersList.map((p: any) => (
-                  <MenuItem key={p._id} value={p.name}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
+                  '&:hover fieldset': {
+                    borderColor: tokens.brand.primary,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: tokens.brand.primary,
+                  },
+                },
+              }}
+            >
+              <MenuItem value="">All Profiles</MenuItem>
+              {profileUsersList.map((p: any) => (
+                <MenuItem key={p._id} value={p.name}>
+                  {p.name}
+                </MenuItem>
+              ))}
+            </TextField>
 
             {/* Status Select Dropdown */}
             <FormControl sx={filterSelectSx}>
@@ -1232,8 +1228,8 @@ export const SalesPage = () => {
               </Select>
             </FormControl>
 
-            {/* Action Buttons */}
-            {user?.role !== 'admin' && user?.role !== 'manager' && (
+            {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
+            {user?.role !== 'admin' && (
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
                 <Button
                   variant="outlined"
@@ -1256,55 +1252,53 @@ export const SalesPage = () => {
                 >
                   Add Lead
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
-                  onClick={() => setIsBulkUploadOpen(true)}
-                  sx={{
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                    color: isDarkMode ? '#fff' : tokens.text.primary,
-                    textTransform: 'none',
-                    borderRadius: '24px',
-                    height: 42,
-                    px: 3,
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    '&:hover': {
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                    },
-                  }}
-                >
-                  Bulk Upload
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={isElevated ? <SyncIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
-                  onClick={() => {
-                    if (isElevated) {
-                      handleAdminSync();
-                    } else {
-                      setIsLinkDialogOpen(true);
-                    }
-                  }}
-                  sx={{
-                    bgcolor: tokens.brand.primary,
-                    color: '#fff',
-                    textTransform: 'none',
-                    borderRadius: '24px',
-                    height: 42,
-                    px: 3,
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    boxShadow: 'none',
-                    '&:hover': {
-                      bgcolor: tokens.brand.primaryLight,
-                      boxShadow: 'none',
-                    },
-                  }}
-                >
-                  {isElevated ? 'Sync Now' : 'Connect and sync'}
-                </Button>
+                {user?.role !== 'manager' && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
+                      onClick={() => setIsBulkUploadOpen(true)}
+                      sx={{
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                        textTransform: 'none',
+                        borderRadius: '24px',
+                        height: 42,
+                        px: 3,
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                        },
+                      }}
+                    >
+                      Bulk Upload
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                      onClick={() => setIsLinkDialogOpen(true)}
+                      sx={{
+                        bgcolor: tokens.brand.primary,
+                        color: '#fff',
+                        textTransform: 'none',
+                        borderRadius: '24px',
+                        height: 42,
+                        px: 3,
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        boxShadow: 'none',
+                        '&:hover': {
+                          bgcolor: tokens.brand.primaryLight,
+                          boxShadow: 'none',
+                        },
+                      }}
+                    >
+                      Connect and sync
+                    </Button>
+                  </>
+                )}
               </Box>
             )}
           </Box>
@@ -1636,8 +1630,12 @@ export const SalesPage = () => {
                             </Box>
                           </TableCell>
                           <TableCell sx={{ py: 2 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
-                            <Typography variant="caption" sx={{ color: 'text.disabled' }}>Just now</Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                              {getAssignedName(prospect.assignedTo)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                              Added: {formatDate(prospect.date || prospect.createdAt)}
+                            </Typography>
                           </TableCell>
                           <TableCell align="right" sx={{ py: 2, pr: 3 }}>
                             <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
