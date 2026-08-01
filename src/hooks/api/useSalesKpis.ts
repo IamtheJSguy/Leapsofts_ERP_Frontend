@@ -5,6 +5,7 @@ import type {
   SalesKpiAssignment,
   SalesKpiAssignResult,
   SalesKpiAssignmentUpdatePayload,
+  SalesKpiEntry,
   SalesKpiItemOverride,
   SalesKpiSummary,
   SalesKpiTemplate,
@@ -23,11 +24,19 @@ export interface SalesKpiWindowParams {
   days?: number;
 }
 
+export interface TeamSalesKpisParams {
+  startDate: string;
+  endDate: string;
+  userId?: string;
+}
+
 const salesKpiApi = {
   getMySalesKpis: (params?: SalesKpiWindowParams) =>
     api.get<{ success: boolean; data: GroupedSalesKpis }>('/sales-kpis/my', { params }),
   getSalesKpiSummary: (params?: SalesKpiWindowParams) =>
     api.get<{ success: boolean; data: SalesKpiSummary }>('/sales-kpis/summary', { params }),
+  getTeamSalesKpis: (params: TeamSalesKpisParams) =>
+    api.get<{ success: boolean; data: SalesKpiEntry[] }>('/sales-kpis/team', { params }),
 
   getTemplates: () => api.get<{ success: boolean; data: SalesKpiTemplate[] }>('/sales-kpi-templates'),
   getTemplate: (id: string) =>
@@ -78,6 +87,17 @@ export const useSalesKpiSummary = (params?: SalesKpiWindowParams, options?: { en
     queryKey: ['salesKpiSummary', params?.days ?? null],
     queryFn: () => salesKpiApi.getSalesKpiSummary(params).then((r) => r.data.data),
     enabled: options?.enabled,
+  });
+
+/** Elevated team progress: sales KPIs overlapping / completed in a date range. */
+export const useTeamSalesKpis = (
+  params: TeamSalesKpisParams | null,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: ['salesKpis', 'team', params],
+    queryFn: () => salesKpiApi.getTeamSalesKpis(params!).then((r) => r.data.data),
+    enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
   });
 
 export const useMySalesKpiAssignments = (options?: { enabled?: boolean }) =>

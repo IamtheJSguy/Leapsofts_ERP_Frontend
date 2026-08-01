@@ -107,7 +107,9 @@ export const LeadDetailDrawer = ({
         {lead.date && <Typography variant="body2"><strong>Date:</strong> {lead.date}</Typography>}
         <Typography variant="body2" sx={{ mt: 1 }}>
           <strong>Follow-ups done:</strong> {followUpCount}
-          {followUpCount > 0 ? ` · Current: FollowUp #${followUpCount}` : ''}
+          {lead.messageStatus === 'follow_up' && followUpCount > 0
+            ? ` · Current: FollowUp #${followUpCount}`
+            : ''}
         </Typography>
         {lead.linkedinMsg && <Typography variant="body2"><strong>LinkedIn Msg (Raw):</strong> {lead.linkedinMsg}</Typography>}
         {lead.commentsAfterCall && <Typography variant="body2"><strong>Comments after call:</strong> {lead.commentsAfterCall}</Typography>}
