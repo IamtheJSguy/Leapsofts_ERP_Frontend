@@ -325,7 +325,8 @@ export interface SalesKpiEntry {
   _id: string;
   assignmentId?: string;
   assignmentItemId?: string;
-  userId: string;
+  /** Populated on elevated team endpoints. */
+  userId: string | User;
   metric: SalesKpiMetric;
   kpiName: string;
   description?: string;

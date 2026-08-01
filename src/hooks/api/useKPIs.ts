@@ -11,15 +11,26 @@ const kpiApi = {
   updateKPI: ({ id, data }: { id: string; data: Partial<KPI> }) =>
     api.put(`/kpis/${id}`, data),
   deleteKPI: (id: string) => api.delete(`/kpis/${id}`),
-  getDailyEntries: (params: { date: string; userId?: string }) =>
-    api.get<{ data: any[] }>('/kpis/daily-entries', { params }),
+  getDailyEntries: (params: {
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+    userId?: string;
+  }) => api.get<{ data: any[] }>('/kpis/daily-entries', { params }),
 };
 
-export const useDailyKpiEntries = (params: { date: string; userId?: string }) =>
+export type DailyKpiEntriesParams = {
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  userId?: string;
+};
+
+export const useDailyKpiEntries = (params: DailyKpiEntriesParams) =>
   useQuery({
     queryKey: ['dailyKpiEntries', params],
     queryFn: () => kpiApi.getDailyEntries(params).then((r) => r.data.data),
-    enabled: !!params.date,
+    enabled: !!(params.date || (params.startDate && params.endDate)),
   });
 
 export const useKPIs = (options?: { enabled?: boolean }) =>

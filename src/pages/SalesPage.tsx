@@ -275,6 +275,7 @@ export const SalesPage = () => {
   const [selectedIcp, setSelectedIcp] = useState('');
   const [selectedProfile, setSelectedProfile] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All statuses');
+  const [selectedConnectionStatus, setSelectedConnectionStatus] = useState('');
   const [activeCard, setActiveCard] = useState('TOTAL');
   const [futureLeadWindow, setFutureLeadWindow] = useState<string>('');
   const [messagedOnly, setMessagedOnly] = useState(false);
@@ -446,7 +447,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -457,6 +458,7 @@ export const SalesPage = () => {
       ...(selectedIcp ? { icp: selectedIcp } : {}),
       ...(selectedProfile ? { profile: selectedProfile } : {}),
       ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
+      ...(selectedConnectionStatus ? { connectionStatus: selectedConnectionStatus } : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
       ...(messagedOnly ? { messaged: true } : {}),
@@ -474,7 +476,7 @@ export const SalesPage = () => {
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
@@ -637,11 +639,26 @@ export const SalesPage = () => {
     if (label === 'MESSAGE SENT') {
       setSelectedStatus('All statuses');
       setMessagedOnly(true);
-    } else if (label === 'RESPONDED') setSelectedStatus('replied');
-    else if (label === 'FOLLOW UP') setSelectedStatus('follow_up');
-    else if (label === 'NEGATIVE') setSelectedStatus('negative');
-    else if (label === 'POSITIVE') setSelectedStatus('positive');
-    else setSelectedStatus('All statuses');
+      setSelectedConnectionStatus('');
+    } else if (label === 'RESPONDED') {
+      setSelectedStatus('replied');
+      setSelectedConnectionStatus('');
+    } else if (label === 'FOLLOW UP') {
+      setSelectedStatus('follow_up');
+      setSelectedConnectionStatus('');
+    } else if (label === 'NEGATIVE') {
+      setSelectedStatus('negative');
+      setSelectedConnectionStatus('');
+    } else if (label === 'POSITIVE') {
+      setSelectedStatus('positive');
+      setSelectedConnectionStatus('');
+    } else if (label === 'ACCEPTED') {
+      setSelectedStatus('All statuses');
+      setSelectedConnectionStatus('accepted');
+    } else {
+      setSelectedStatus('All statuses');
+      setSelectedConnectionStatus('');
+    }
   };
 
   // Styles for input selects
@@ -1199,6 +1216,27 @@ export const SalesPage = () => {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Connection Status Filter */}
+            <FormControl sx={filterSelectSx}>
+              <Select
+                value={selectedConnectionStatus}
+                displayEmpty
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedConnectionStatus(val);
+                  if (val === 'accepted') setActiveCard('ACCEPTED');
+                  else if (activeCard === 'ACCEPTED') setActiveCard('TOTAL');
+                }}
+                input={<OutlinedInput />}
+              >
+                <MenuItem value="">All Connection Statuses</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="accepted">Accepted</MenuItem>
+                <MenuItem value="declined">Declined</MenuItem>
+                <MenuItem value="no_response">No Response</MenuItem>
+              </Select>
+            </FormControl>
 
             {/* Status Select Dropdown */}
             <FormControl sx={filterSelectSx}>
@@ -1776,7 +1814,8 @@ export const SalesPage = () => {
                                 border: `1px solid ${`color-mix(in srgb, ${msgToken.color} 12%, transparent)`}`,
                               }}
                             />
-                            {(prospect.followUpCount ?? 0) > 0 && (
+                            {prospect.messageStatus === 'follow_up' &&
+                              (prospect.followUpCount ?? 0) > 0 && (
                               <Chip
                                 label={`FollowUp #${prospect.followUpCount}`}
                                 size="small"
