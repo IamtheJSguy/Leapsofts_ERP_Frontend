@@ -150,6 +150,9 @@ export const useMarkDailyKpiComplete = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
       queryClient.invalidateQueries({ queryKey: ['dailyKpiSummary'] });
+      // Completing a kanban-linked task moves the card into a done column.
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoardCards'] });
     },
   });
 };
@@ -161,6 +164,8 @@ export const useMarkDailyKpiIncomplete = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
       queryClient.invalidateQueries({ queryKey: ['dailyKpiSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoardCards'] });
     },
   });
 };

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   Box,
   Typography,
-  LinearProgress,
   AvatarGroup,
   Avatar,
   Tooltip,
@@ -27,20 +26,12 @@ export const BoardCard = ({ board, onClick, onDelete }: BoardCardProps) => {
   const { data: dbUsers = [] } = useUsers();
 
   const totalCards = useMemo(() => {
-    return board.columns?.reduce((acc, col) => acc + (col.cards?.length || 0), 0) || 0;
-  }, [board.columns]);
-
-  const closedCards = useMemo(() => {
-    const doneColumn = board.columns?.find(
-      (col) =>
-        col.name.toLowerCase() === 'closed' ||
-        col.name.toLowerCase() === 'done' ||
-        col.name.toLowerCase() === 'completed'
-    );
-    return doneColumn?.cards?.length || 0;
-  }, [board.columns]);
-
-  const progress = totalCards > 0 ? Math.round((closedCards / totalCards) * 100) : 0;
+    if (typeof board.totalCards === 'number') return board.totalCards;
+    return board.columns?.reduce(
+      (acc, col) => acc + (col.totalCards ?? col.cards?.length ?? 0),
+      0,
+    ) || 0;
+  }, [board.columns, board.totalCards]);
 
   // Resolve member users
   const boardMembers = useMemo(() => {
@@ -97,32 +88,6 @@ export const BoardCard = ({ board, onClick, onDelete }: BoardCardProps) => {
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
         {board.columns?.length || 0} columns · {totalCards} tasks
       </Typography>
-
-      {totalCards > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-              Progress
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.primary', fontWeight: 800 }}>
-              {progress}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{
-              height: 6,
-              borderRadius: '3px',
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-              '& .MuiLinearProgress-bar': {
-                bgcolor: tokens.brand.primary,
-                borderRadius: '3px',
-              },
-            }}
-          />
-        </Box>
-      )}
 
       {/* Footer */}
       <Box

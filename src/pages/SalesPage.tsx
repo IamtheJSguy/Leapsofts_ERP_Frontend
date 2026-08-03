@@ -1290,6 +1290,27 @@ export const SalesPage = () => {
                 >
                   Add Lead
                 </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<GroupAddIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => navigate('/sales/add-leads')}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                    },
+                  }}
+                >
+                  Add Multiple
+                </Button>
                 {user?.role !== 'manager' && (
                   <>
                     <Button

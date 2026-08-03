@@ -531,8 +531,12 @@ export interface Meeting {
 export interface KanbanColumn {
   _id: string;
   name: string;
-  position: number;
-  cards: KanbanCard[];
+  position?: number;
+  order?: number;
+  isActive?: boolean;
+  cards?: KanbanCard[];
+  /** Active card count for this column (from project board listing) */
+  totalCards?: number;
 }
 
 export interface KanbanCard {
@@ -544,6 +548,9 @@ export interface KanbanCard {
   description?: string;
   priority?: string;
   dueDate?: string;
+  /** Explicit done status on the card (independent of column) */
+  isDone?: boolean;
+  completedAt?: string | null;
   members?: string[] | User[];
   comments?: KanbanComment[];
   activityLog?: ActivityLogEntry[];
@@ -581,6 +588,8 @@ export interface KanbanBoard {
   leadId?: string | Lead;
   isDefault: boolean;
   isActive: boolean;
+  /** Active card count across all columns (from project board listing) */
+  totalCards?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -862,4 +871,11 @@ export interface BulkUploadSummary {
 export interface BulkUploadResponse {
   summary: BulkUploadSummary;
   results: BulkUploadRowResult[];
+}
+
+export interface BulkCreateResponse {
+  created: number;
+  updated: number;
+  duplicates: number;
+  skipped: number;
 }

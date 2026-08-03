@@ -9,7 +9,7 @@ export const optimisticMoveCard = (
 
   let movedCard: KanbanCard | null = null;
   const columns = board.columns.map((col) => {
-    const filtered = col.cards.filter((c) => {
+    const filtered = (col.cards ?? []).filter((c) => {
       if (c._id === cardId) {
         movedCard = { ...c, columnId: data.columnId, position: data.position };
         return false;
@@ -25,7 +25,7 @@ export const optimisticMoveCard = (
     ...board,
     columns: columns.map((col) => {
       if (col._id !== data.columnId) return col;
-      const cards = [...col.cards, movedCard!].sort((a, b) => a.position - b.position);
+      const cards = [...(col.cards ?? []), movedCard!].sort((a, b) => a.position - b.position);
       return { ...col, cards };
     }),
   };

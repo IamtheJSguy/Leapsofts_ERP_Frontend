@@ -123,6 +123,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
   const companyName = task.lead?.company || (task.lead ? 'Lead Prospect' : null);
   const priority = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.medium;
   const hasDueDate = task.dueDate;
+  const isDone = Boolean(task.isDone ?? task.rawCard?.isDone);
   const commentsCount = Array.isArray(task.rawCard?.comments)
     ? task.rawCard.comments.filter((c: any) => c.isActive !== false).length
     : (task.comments || 0);
@@ -149,7 +150,12 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
         boxShadow: isDarkMode
           ? '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)'
           : '0 4px 16px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.01)',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+        border: `1px solid ${
+          isDone
+            ? (isDarkMode ? 'rgba(34,197,94,0.35)' : 'rgba(22,163,74,0.3)')
+            : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
+        }`,
+        opacity: isDone ? 0.88 : 1,
         position: 'relative',
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         '&:hover': {
@@ -190,6 +196,22 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
               }}
             />
           )}
+          {isDone && (
+            <Chip
+              icon={<CheckIcon sx={{ fontSize: '12px !important' }} />}
+              label="Done"
+              size="small"
+              sx={{
+                bgcolor: isDarkMode ? 'rgba(34,197,94,0.15)' : 'rgba(22,163,74,0.1)',
+                color: isDarkMode ? '#4ade80' : '#15803d',
+                fontWeight: 800,
+                fontSize: '0.65rem',
+                height: 22,
+                border: `1px solid ${isDarkMode ? 'rgba(34,197,94,0.3)' : 'rgba(22,163,74,0.25)'}`,
+                '& .MuiChip-icon': { color: 'inherit' },
+              }}
+            />
+          )}
         </Box>
 
         {/* Priority Badge */}
@@ -210,7 +232,18 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
       </Box>
 
       {/* Title */}
-      <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', mb: task.description ? 1 : 2, lineHeight: 1.45, letterSpacing: '-0.01em' }}>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 700,
+          color: 'text.primary',
+          mb: task.description ? 1 : 2,
+          lineHeight: 1.45,
+          letterSpacing: '-0.01em',
+          textDecoration: isDone ? 'line-through' : 'none',
+          textDecorationColor: isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
+        }}
+      >
         {task.title}
       </Typography>
 
@@ -1192,6 +1225,7 @@ export const KanbanBoardPage = () => {
         description: card.description,
         priority: card.priority || 'medium',
         dueDate: card.dueDate,
+        isDone: Boolean(card.isDone),
         comments: card.comments?.filter((c: any) => c.isActive !== false).length || 0,
         attachments: 0,
         assignedUsers: cardAssignees,
