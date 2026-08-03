@@ -68,6 +68,8 @@ export const useCreateLead = () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
     },
   });
 };
@@ -81,6 +83,8 @@ export const useUpdateLead = () => {
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
     },
   });
 };
@@ -105,6 +109,8 @@ export const useBulkUpload = () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
     },
   });
 };
@@ -125,6 +131,8 @@ export const useQualifyLead = () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
     },
   });
 };
@@ -146,6 +154,8 @@ export const useLogFollowUp = () => {
       queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
     },
   });
 };
