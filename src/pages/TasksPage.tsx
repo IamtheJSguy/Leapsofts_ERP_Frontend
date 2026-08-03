@@ -107,7 +107,7 @@ interface ActiveAssignment {
 
 const TasksPage = () => {
   const { user } = useAuth();
-  const { isElevated, isAdmin, isManager } = usePermissions();
+  const { isElevated, isAdmin } = usePermissions();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -2183,13 +2183,11 @@ const TasksPage = () => {
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
           </Button>
           <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
-          {isManager && (
-            <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
-          )}
+          <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
         </Box>
       )}
 
-      {dashboardTab === 'my_tasks' && isManager && viewMode === 'list' && (
+      {dashboardTab === 'my_tasks' && isElevated && viewMode === 'list' && (
         <UserDailyKpisView />
       )}
 

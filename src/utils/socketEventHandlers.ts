@@ -66,6 +66,8 @@ export const setupSocketEventHandlers = (
   socket.on(SOCKET_EVENTS.LEAD_STATUS_CHANGED, () => {
     queryClient.invalidateQueries({ queryKey: ['leads'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+    queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
