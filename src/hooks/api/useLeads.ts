@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type {
   ApiResponse,
+  BulkCreateResponse,
   BulkUploadResponse,
   Lead,
   LeadFilters,
@@ -18,6 +19,8 @@ const leadApi = {
   updateLead: ({ id, data }: { id: string; data: Partial<Lead> }) =>
     api.put(`/leads/${id}`, data),
   deleteLead: (id: string) => api.delete(`/leads/${id}`),
+  bulkCreateLeads: (data: { leads: Partial<Lead>[]; updateDuplicates?: boolean }) =>
+    api.post<ApiResponse<BulkCreateResponse>>('/leads/bulk', data),
   bulkUpload: (formData: FormData) =>
     api.post<ApiResponse<BulkUploadResponse>>('/leads/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -105,6 +108,20 @@ export const useBulkUpload = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: leadApi.bulkUpload,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
+    },
+  });
+};
+
+export const useBulkCreateLeads = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.bulkCreateLeads,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });

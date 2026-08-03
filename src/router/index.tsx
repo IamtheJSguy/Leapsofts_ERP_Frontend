@@ -25,6 +25,7 @@ import {
   AttendancePage,
   MemberProgressPage,
   LeadDetailsPage,
+  BulkAddLeadsPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -147,6 +148,14 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <SalesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'sales/add-leads',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+            <BulkAddLeadsPage />
           </ProtectedRoute>,
         ),
       },
