@@ -30,6 +30,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useConversations, useCreateConversation, useUpdatePresence } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
 import { getDisplayName, formatDateTime, getPresenceLabel } from '@/utils/formatters';
+import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { EmptyState } from '@/components/common/EmptyState';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
@@ -340,7 +341,7 @@ export const ChatSidebar = () => {
             {filteredConversations.map((conv: any) => {
               const active = activeConversationId === conv._id;
               const details = conv.details;
-              const unreadCount = Math.max(conv.unreadCount || 0, unreadCounts[conv._id] || 0);
+              const unreadCount = getMergedUnreadCount(conv, unreadCounts);
               const typingUsersInConv = typingUsers[conv._id] || [];
               const otherTypingUsers = typingUsersInConv.filter((id) => id !== currentUser?._id);
 

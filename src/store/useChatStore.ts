@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Message, PresenceStatus, UserPresence } from '@/types';
+import type { Conversation, Message, PresenceStatus, UserPresence } from '@/types';
 
 interface ChatState {
   activeConversationId: string | null;
@@ -9,6 +9,8 @@ interface ChatState {
   presenceByUserId: Record<string, UserPresence>;
   setActiveConversation: (id: string | null) => void;
   setUnreadCount: (conversationId: string, count: number) => void;
+  syncUnreadFromConversations: (conversations: Pick<Conversation, '_id' | 'unreadCount'>[]) => void;
+  resetUnreadCounts: () => void;
   incrementUnread: (conversationId: string) => void;
   clearUnread: (conversationId: string) => void;
   addTypingUser: (conversationId: string, userId: string) => void;
@@ -29,6 +31,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((s) => ({
       unreadCounts: { ...s.unreadCounts, [conversationId]: count },
     })),
+  syncUnreadFromConversations: (conversations) =>
+    set((s) => {
+      if (!conversations.length) return s;
+      const next = { ...s.unreadCounts };
+      for (const conv of conversations) {
+        const apiCount = conv.unreadCount || 0;
+        next[conv._id] = Math.max(next[conv._id] || 0, apiCount);
+      }
+      return { unreadCounts: next };
+    }),
+  resetUnreadCounts: () => set({ unreadCounts: {} }),
   incrementUnread: (conversationId) =>
     set((s) => ({
       unreadCounts: {

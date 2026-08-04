@@ -29,6 +29,7 @@ export const useSocket = () => {
     if (!isAuthenticated) {
       disconnectSocket();
       eventHandlersInitialized = false;
+      useChatStore.getState().resetUnreadCounts();
       return;
     }
 
