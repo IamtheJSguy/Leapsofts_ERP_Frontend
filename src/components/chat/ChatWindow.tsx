@@ -97,6 +97,26 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       .filter((id: string) => id && id !== user._id);
   }, [activeConversationId, conversations, user?._id]);
 
+  const isGroupConversation = useMemo(() => {
+    if (!activeConversationId) return false;
+    const activeConversation = conversations.find((c) => c._id === activeConversationId);
+    return Boolean(activeConversation?.isGroup);
+  }, [activeConversationId, conversations]);
+
+  const otherParticipants = useMemo(() => {
+    return otherParticipantIds.map((id) => {
+      const fromConv = conversations
+        .find((c) => c._id === activeConversationId)
+        ?.participants.find((p: any) => (typeof p === 'string' ? p : p._id) === id);
+      const userObj =
+        (typeof fromConv === 'object' && fromConv) || dbUsers.find((u) => u._id === id);
+      return {
+        id,
+        name: getDisplayName(typeof userObj === 'object' ? userObj : undefined),
+      };
+    });
+  }, [otherParticipantIds, conversations, activeConversationId, dbUsers]);
+
   useEffect(() => {
     if (!otherParticipantIds.length) return;
     subscribePresence(otherParticipantIds);
@@ -503,6 +523,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 message={msg}
                 isOwn={isOwn}
                 otherParticipantIds={otherParticipantIds}
+                otherParticipants={otherParticipants}
+                isGroup={isGroupConversation}
                 onReply={handleReply}
                 onQuoteClick={handleQuoteClick}
               />

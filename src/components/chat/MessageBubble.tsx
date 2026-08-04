@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Paper, Avatar, useTheme, IconButton, Tooltip } from '@mui/material';
 import type { Message } from '@/types';
 import { getDisplayName } from '@/utils/formatters';
@@ -10,6 +10,10 @@ import {
   resolveReplySnippet,
   type TickStatus,
 } from '@/utils/chatMessageUtils';
+import {
+  MessageInfoDialog,
+  type MessageInfoParticipant,
+} from './MessageInfoDialog';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -58,6 +62,8 @@ interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
   otherParticipantIds?: string[];
+  otherParticipants?: MessageInfoParticipant[];
+  isGroup?: boolean;
   onReply?: (message: Message) => void;
   onQuoteClick?: (messageId: string) => void;
 }
@@ -66,11 +72,14 @@ export const MessageBubble = React.memo(({
   message,
   isOwn,
   otherParticipantIds = [],
+  otherParticipants = [],
+  isGroup = false,
   onReply,
   onQuoteClick,
 }: MessageBubbleProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const [infoOpen, setInfoOpen] = useState(false);
 
   // Resolve participant initial and details
   const senderName = getDisplayName(typeof message.sender === 'object' ? message.sender : undefined);
@@ -101,6 +110,7 @@ export const MessageBubble = React.memo(({
     : '';
 
   return (
+    <>
     <Box
       data-message-id={message._id}
       sx={{
@@ -324,7 +334,38 @@ export const MessageBubble = React.memo(({
               >
                 {messageTime}
               </Typography>
-              {isOwn && <TickIcon status={tickStatus} isOwn={isOwn} />}
+              {isOwn && (
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label="Message info"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setInfoOpen(true);
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 0,
+                    m: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    lineHeight: 0,
+                    borderRadius: '4px',
+                    '&:hover': { opacity: 1 },
+                    '&:focus-visible': {
+                      outline: '1px solid rgba(255,255,255,0.7)',
+                      outlineOffset: 1,
+                    },
+                  }}
+                >
+                  <TickIcon status={tickStatus} isOwn={isOwn} />
+                </Box>
+              )}
             </Box>
           </Paper>
 
@@ -355,5 +396,20 @@ export const MessageBubble = React.memo(({
         </Box>
       </Box>
     </Box>
+
+    {isOwn && (
+      <MessageInfoDialog
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        message={message}
+        participants={
+          otherParticipants.length
+            ? otherParticipants
+            : otherParticipantIds.map((id) => ({ id, name: 'Participant' }))
+        }
+        isGroup={isGroup}
+      />
+    )}
+    </>
   );
 });

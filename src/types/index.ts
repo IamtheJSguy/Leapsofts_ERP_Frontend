@@ -700,6 +700,10 @@ export interface Message {
   driveIconLink?: string;
   readBy?: string[];
   deliveredTo?: string[];
+  /** Per-recipient first delivery time (userId → ISO datetime). */
+  deliveredAt?: Record<string, string>;
+  /** Per-recipient first read time (userId → ISO datetime). */
+  readAt?: Record<string, string>;
   replyTo?: string | MessageReplySnippet;
   createdAt: string;
 }

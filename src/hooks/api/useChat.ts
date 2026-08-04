@@ -3,6 +3,7 @@ import api from '@/lib/axios';
 import type { Conversation, Message, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { normalizeMessageReceipts } from '@/utils/chatMessageUtils';
 
 const chatApi = {
   getConversations: () => api.get<{ data: Conversation[] }>('/chat/conversations'),
@@ -68,7 +69,8 @@ export const useConversations = () =>
 export const useMessages = (conversationId: string | null, params: Record<string, string> = {}) =>
   useQuery({
     queryKey: ['messages', conversationId, params],
-    queryFn: () => chatApi.getMessages(conversationId!, params).then((r) => r.data.data),
+    queryFn: () =>
+      chatApi.getMessages(conversationId!, params).then((r) => r.data.data.map(normalizeMessageReceipts)),
     enabled: !!conversationId,
     refetchOnWindowFocus: true,
   });
@@ -78,7 +80,7 @@ export const useSendMessage = () => {
   return useMutation({
     mutationFn: chatApi.sendMessage,
     onSuccess: (res, variables) => {
-      const message = (res.data as { data: Message }).data;
+      const message = normalizeMessageReceipts((res.data as { data: Message }).data);
       if (message) {
         queryClient.setQueriesData<Message[]>(
           { queryKey: ['messages', variables.conversationId] },

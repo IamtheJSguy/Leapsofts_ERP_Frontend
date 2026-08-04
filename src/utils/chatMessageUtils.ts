@@ -56,3 +56,38 @@ export const addUserToIdList = (
   next.add(userId);
   return Array.from(next);
 };
+
+/** Normalize per-user receipt maps from API/socket (string keys → ISO datetimes). */
+export const serializeReceiptMap = (
+  map?: Record<string, unknown> | null,
+): Record<string, string> => {
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(map)) {
+    if (value == null) continue;
+    out[String(key)] =
+      typeof value === 'string' ? value : value instanceof Date ? value.toISOString() : String(value);
+  }
+  return out;
+};
+
+/** Resolve a receipt timestamp for a participant id (handles string/ObjectId key mismatches). */
+export const getReceiptTime = (
+  map: Record<string, string> | undefined,
+  userId: string,
+): string | undefined => {
+  if (!map || !userId) return undefined;
+  const direct = map[userId];
+  if (direct) return direct;
+  const target = userId.toLowerCase();
+  for (const [key, value] of Object.entries(map)) {
+    if (key.toLowerCase() === target) return value;
+  }
+  return undefined;
+};
+
+export const normalizeMessageReceipts = (message: Message): Message => ({
+  ...message,
+  deliveredAt: serializeReceiptMap(message.deliveredAt as Record<string, unknown> | undefined),
+  readAt: serializeReceiptMap(message.readAt as Record<string, unknown> | undefined),
+});

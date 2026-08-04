@@ -4,7 +4,7 @@ import type { Conversation, Message, Notification, PresenceStatus, User } from '
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
-import { addUserToIdList } from '@/utils/chatMessageUtils';
+import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap } from '@/utils/chatMessageUtils';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -40,7 +40,12 @@ const patchMessagesReceipt = (
   messageIds: string[] | undefined,
   userId: string,
   field: 'deliveredTo' | 'readBy',
+  at?: string,
 ) => {
+  const timeField = field === 'deliveredTo' ? 'deliveredAt' : 'readAt';
+  const atIso = at || new Date().toISOString();
+  const userKey = String(userId);
+
   queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
     if (!old?.length) return old;
     const targetIds = messageIds?.length ? new Set(messageIds) : null;
@@ -49,11 +54,20 @@ const patchMessagesReceipt = (
       if (targetIds && !targetIds.has(msg._id)) return msg;
       const current = msg[field];
       const alreadyHas = (current || []).some((id) =>
-        typeof id === 'string' ? id === userId : (id as User)?._id === userId,
+        typeof id === 'string' ? id === userKey : (id as User)?._id === userKey,
       );
-      if (alreadyHas) return msg;
+      const existingMap = serializeReceiptMap(msg[timeField] as Record<string, unknown> | undefined);
+      const existingAt = existingMap[userKey];
+      if (alreadyHas && existingAt) return msg;
       changed = true;
-      return { ...msg, [field]: addUserToIdList(current, userId) };
+      return {
+        ...msg,
+        [field]: alreadyHas ? current : addUserToIdList(current, userKey),
+        [timeField]: {
+          ...existingMap,
+          [userKey]: existingAt || atIso,
+        },
+      };
     });
     return changed ? next : old;
   });
@@ -126,7 +140,7 @@ export const setupSocketEventHandlers = (
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
-    const message = data as Message;
+    const message = normalizeMessageReceipts(data as Message);
     const messageId = message._id;
 
     // Guard against double-delivery: the backend emits to both the conversation
@@ -215,20 +229,22 @@ export const setupSocketEventHandlers = (
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, (data: unknown) => {
-    const { conversationId, userId, messageIds } = data as {
+    const { conversationId, userId, messageIds, at } = data as {
       conversationId: string;
       userId: string;
       messageIds?: string[];
+      at?: string;
     };
     if (!conversationId || !userId) return;
-    patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo');
+    patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo', at);
   });
 
   socket.on(SOCKET_EVENTS.MESSAGE_READ, (data: unknown) => {
-    const { conversationId, userId, messageIds } = data as {
+    const { conversationId, userId, messageIds, at } = data as {
       conversationId: string;
       userId: string;
       messageIds?: string[];
+      at?: string;
     };
     const currentUserId = useAuthStore.getState().user?._id;
 
@@ -243,9 +259,9 @@ export const setupSocketEventHandlers = (
     }
 
     if (conversationId && userId) {
-      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'readBy');
-      // Reading implies delivery for that user
-      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo');
+      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'readBy', at);
+      // Reading implies delivery for that user (preserve earlier deliveredAt if present)
+      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo', at);
     }
   });
 
