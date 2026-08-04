@@ -84,11 +84,15 @@ export const SALES_DASHBOARD_DEPARTMENTS = [
 export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
   MESSAGE_READ: 'message:read',
+  MESSAGE_DELIVERED: 'message:delivered',
   NOTIFICATION_NEW: 'notification:new',
   KANBAN_CARD_MOVED: 'kanban:card_moved',
   KANBAN_COMMENT_ADDED: 'kanban:comment_added',
   LEAD_STATUS_CHANGED: 'lead:status_changed',
   USER_ONLINE: 'user:online',
+  USER_PRESENCE: 'user:presence',
+  PRESENCE_ACTIVITY: 'presence:activity',
+  PRESENCE_SUBSCRIBE: 'presence:subscribe',
   CONVERSATION_NEW: 'conversation:new',
   CONVERSATION_UPDATED: 'conversation:updated',
   JOIN_ROOM: 'join:room',
@@ -98,6 +102,14 @@ export const SOCKET_EVENTS = {
   CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
 } as const;
+
+export const PRESENCE_COLORS = {
+  online: '#2D8A5E',
+  away: '#F59E0B',
+  offline: '#9CA3AF',
+} as const;
+
+export const MESSAGE_SEEN_TICK_COLOR = '#53bdeb';
 
 export const CONNECTION_STATUS_OPTIONS = Object.values(CONNECTION_STATUS);
 export const MESSAGE_STATUS_OPTIONS = Object.values(MESSAGE_STATUS);

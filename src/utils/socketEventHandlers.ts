@@ -1,9 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { SOCKET_EVENTS } from '@/lib/constants';
-import type { Conversation, Message, Notification } from '@/types';
+import type { Conversation, Message, Notification, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
+import { addUserToIdList } from '@/utils/chatMessageUtils';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -33,8 +34,58 @@ const getConversationId = (message: Message): string => {
   return String(message.conversationId);
 };
 
+const patchMessagesReceipt = (
+  queryClient: QueryClient,
+  conversationId: string,
+  messageIds: string[] | undefined,
+  userId: string,
+  field: 'deliveredTo' | 'readBy',
+) => {
+  queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
+    if (!old?.length) return old;
+    const targetIds = messageIds?.length ? new Set(messageIds) : null;
+    let changed = false;
+    const next = old.map((msg) => {
+      if (targetIds && !targetIds.has(msg._id)) return msg;
+      const current = msg[field];
+      const alreadyHas = (current || []).some((id) =>
+        typeof id === 'string' ? id === userId : (id as User)?._id === userId,
+      );
+      if (alreadyHas) return msg;
+      changed = true;
+      return { ...msg, [field]: addUserToIdList(current, userId) };
+    });
+    return changed ? next : old;
+  });
+};
+
+const applyUserPresence = (
+  queryClient: QueryClient,
+  userId: string,
+  status: PresenceStatus,
+  lastSeenAt?: string,
+) => {
+  useChatStore.getState().setPresence(userId, status, lastSeenAt);
+  queryClient.setQueriesData<User[]>({ queryKey: ['users'] }, (oldUsers) => {
+    if (!oldUsers) return oldUsers;
+    return oldUsers.map((u) =>
+      u._id === userId
+        ? {
+            ...u,
+            presenceStatus: status,
+            lastSeenAt: lastSeenAt ?? u.lastSeenAt,
+            isOnline: status === 'online',
+          }
+        : u,
+    );
+  });
+};
+
 export const setupSocketEventHandlers = (
-  socket: { on: (event: string, handler: (...args: unknown[]) => void) => void },
+  socket: {
+    on: (event: string, handler: (...args: unknown[]) => void) => void;
+    emit: (event: string, ...args: unknown[]) => void;
+  },
   queryClient: QueryClient,
 ): void => {
   socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, () => {
@@ -49,10 +100,14 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.USER_ONLINE, (data: unknown) => {
     const payload = data as { userId: string; online: boolean };
-    queryClient.setQueriesData<any[]>({ queryKey: ['users'] }, (oldUsers) => {
-      if (!oldUsers) return oldUsers;
-      return oldUsers.map((u) => (u._id === payload.userId ? { ...u, isOnline: payload.online } : u));
-    });
+    const status: PresenceStatus = payload.online ? 'online' : 'offline';
+    applyUserPresence(queryClient, payload.userId, status);
+  });
+
+  socket.on(SOCKET_EVENTS.USER_PRESENCE, (data: unknown) => {
+    const payload = data as { userId: string; status: PresenceStatus; lastSeenAt?: string };
+    if (!payload?.userId || !payload.status) return;
+    applyUserPresence(queryClient, payload.userId, payload.status, payload.lastSeenAt);
   });
 
   socket.on(SOCKET_EVENTS.KANBAN_CARD_MOVED, () => {
@@ -86,6 +141,12 @@ export const setupSocketEventHandlers = (
     const currentUserId = useAuthStore.getState().user?._id;
     const senderId = getSenderId(message);
     const chatStore = useChatStore.getState();
+
+    // C→S delivery ACK so the sender can advance to double-grey ticks even when
+    // we received via `user:<id>` outside the conversation room.
+    if (conversationId && senderId && senderId !== currentUserId) {
+      socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, { conversationId });
+    }
 
     queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
       if (!old) return [message];
@@ -153,8 +214,22 @@ export const setupSocketEventHandlers = (
     }
   });
 
+  socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, (data: unknown) => {
+    const { conversationId, userId, messageIds } = data as {
+      conversationId: string;
+      userId: string;
+      messageIds?: string[];
+    };
+    if (!conversationId || !userId) return;
+    patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo');
+  });
+
   socket.on(SOCKET_EVENTS.MESSAGE_READ, (data: unknown) => {
-    const { conversationId, userId } = data as { conversationId: string; userId: string };
+    const { conversationId, userId, messageIds } = data as {
+      conversationId: string;
+      userId: string;
+      messageIds?: string[];
+    };
     const currentUserId = useAuthStore.getState().user?._id;
 
     if (userId === currentUserId) {
@@ -165,6 +240,12 @@ export const setupSocketEventHandlers = (
           conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
         );
       });
+    }
+
+    if (conversationId && userId) {
+      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'readBy');
+      // Reading implies delivery for that user
+      patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo');
     }
   });
 

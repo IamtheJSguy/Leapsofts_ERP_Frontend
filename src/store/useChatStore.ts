@@ -1,22 +1,30 @@
 import { create } from 'zustand';
+import type { Message, PresenceStatus, UserPresence } from '@/types';
 
 interface ChatState {
   activeConversationId: string | null;
   unreadCounts: Record<string, number>;
   typingUsers: Record<string, string[]>;
+  replyingTo: Message | null;
+  presenceByUserId: Record<string, UserPresence>;
   setActiveConversation: (id: string | null) => void;
   setUnreadCount: (conversationId: string, count: number) => void;
   incrementUnread: (conversationId: string) => void;
   clearUnread: (conversationId: string) => void;
   addTypingUser: (conversationId: string, userId: string) => void;
   removeTypingUser: (conversationId: string, userId: string) => void;
+  setReplyingTo: (message: Message | null) => void;
+  setPresence: (userId: string, status: PresenceStatus, lastSeenAt?: string) => void;
+  getPresence: (userId: string) => UserPresence;
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   activeConversationId: null,
   unreadCounts: {},
   typingUsers: {},
-  setActiveConversation: (id) => set({ activeConversationId: id }),
+  replyingTo: null,
+  presenceByUserId: {},
+  setActiveConversation: (id) => set({ activeConversationId: id, replyingTo: null }),
   setUnreadCount: (conversationId, count) =>
     set((s) => ({
       unreadCounts: { ...s.unreadCounts, [conversationId]: count },
@@ -50,4 +58,16 @@ export const useChatStore = create<ChatState>((set) => ({
         },
       };
     }),
+  setReplyingTo: (message) => set({ replyingTo: message }),
+  setPresence: (userId, status, lastSeenAt) =>
+    set((s) => ({
+      presenceByUserId: {
+        ...s.presenceByUserId,
+        [userId]: {
+          status,
+          lastSeenAt: lastSeenAt ?? s.presenceByUserId[userId]?.lastSeenAt,
+        },
+      },
+    })),
+  getPresence: (userId) => get().presenceByUserId[userId] || { status: 'offline' },
 }));

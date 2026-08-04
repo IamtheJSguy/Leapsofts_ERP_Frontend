@@ -43,3 +43,29 @@ export const formatTime12Hour = (timeStr?: string): string => {
   hour = hour ? hour : 12;
   return `${hour.toString().padStart(2, '0')}:${minuteStr} ${ampm}`;
 };
+
+export const formatLastSeen = (lastSeenAt?: string | null): string => {
+  if (!lastSeenAt) return 'Offline';
+  try {
+    const date = typeof lastSeenAt === 'string' ? parseISO(lastSeenAt) : lastSeenAt;
+    const diffMs = Date.now() - date.getTime();
+    if (Number.isNaN(diffMs) || diffMs < 0) return 'Offline';
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return 'Last seen just now';
+    if (minutes < 60) return `Last seen ${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Last seen ${hours}h ago`;
+    return `Last seen ${format(date, 'MMM d')}`;
+  } catch {
+    return 'Offline';
+  }
+};
+
+export const getPresenceLabel = (
+  status: 'online' | 'away' | 'offline' | undefined,
+  lastSeenAt?: string | null,
+): string => {
+  if (status === 'online') return 'Active now';
+  if (status === 'away') return 'Away';
+  return formatLastSeen(lastSeenAt);
+};

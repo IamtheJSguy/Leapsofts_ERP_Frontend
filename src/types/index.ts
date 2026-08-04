@@ -40,6 +40,13 @@ export type NotificationType =
   | 'kanban_unassigned_cards'
   | 'report_ready';
 
+export type PresenceStatus = 'online' | 'away' | 'offline';
+
+export interface UserPresence {
+  status: PresenceStatus;
+  lastSeenAt?: string;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -47,6 +54,9 @@ export interface User {
   lastName?: string;
   role: Role;
   isActive?: boolean;
+  isOnline?: boolean;
+  presenceStatus?: PresenceStatus;
+  lastSeenAt?: string;
   phone?: string;
   jobTitle?: string;
   department?: string;
@@ -666,6 +676,15 @@ export interface DriveFile {
   size?: string;
 }
 
+export interface MessageReplySnippet {
+  _id: string;
+  content: string;
+  type: 'text' | 'file' | 'drive_file';
+  senderId?: string | User;
+  sender?: string | User;
+  driveFileName?: string;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
@@ -680,6 +699,8 @@ export interface Message {
   driveWebViewLink?: string;
   driveIconLink?: string;
   readBy?: string[];
+  deliveredTo?: string[];
+  replyTo?: string | MessageReplySnippet;
   createdAt: string;
 }
 
