@@ -73,7 +73,7 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
   const driveAuth = useDriveAuthUrl();
   const disconnectDrive = useDisconnectDrive();
   const sendMessage = useSendMessage();
-  const { activeConversationId } = useChatStore();
+  const { activeConversationId, replyingTo, setReplyingTo } = useChatStore();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -114,8 +114,14 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
         driveMimeType: file.mimeType,
         driveWebViewLink: file.webViewLink,
         driveIconLink: file.iconLink,
+        ...(replyingTo?._id ? { replyTo: replyingTo._id } : {}),
       },
-      { onSuccess: () => onClose() },
+      {
+        onSuccess: () => {
+          setReplyingTo(null);
+          onClose();
+        },
+      },
     );
   };
 
