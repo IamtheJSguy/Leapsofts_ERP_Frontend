@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KanbanBoard, KanbanBoardResponse, KanbanCard } from '@/types';
+import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink } from '@/types';
+
+export type CreateMeetingOnCardPayload = {
+  title: string;
+  meetingLink?: string;
+  scheduledAt: string;
+  participants: string[];
+  description?: string;
+  leadId?: string;
+};
 
 const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
@@ -40,14 +49,43 @@ const kanbanApi = {
     api.post('/kanban/cards', data),
   assignCard: ({ cardId, data }: { cardId: string; data: { assignedTo: string[]; dueDate?: string; kpiEndDate?: string } }) =>
     api.patch(`/kanban/cards/${cardId}/assign`, data),
-  updateCard: ({ cardId, data }: { cardId: string; data: Partial<KanbanCard> & { assignedTo?: string[] } }) =>
-    api.patch(`/kanban/cards/${cardId}`, data),
+  updateCard: ({
+    cardId,
+    data,
+  }: {
+    cardId: string;
+    data: Partial<KanbanCard> & {
+      assignedTo?: string[];
+      labelIds?: string[];
+      links?: KanbanCardLink[];
+      meetingIds?: string[];
+    };
+  }) => api.patch(`/kanban/cards/${cardId}`, data),
   deleteCard: (cardId: string) =>
     api.delete(`/kanban/cards/${cardId}`),
   editComment: ({ cardId, commentId, text }: { cardId: string; commentId: string; text: string }) =>
     api.patch(`/kanban/cards/${cardId}/comments/${commentId}`, { text }),
   deleteComment: ({ cardId, commentId }: { cardId: string; commentId: string }) =>
     api.delete(`/kanban/cards/${cardId}/comments/${commentId}`),
+  createLabel: ({ boardId, data }: { boardId: string; data: { name: string; color: string } }) =>
+    api.post(`/kanban/boards/${boardId}/labels`, data),
+  updateLabel: ({
+    boardId,
+    labelId,
+    data,
+  }: {
+    boardId: string;
+    labelId: string;
+    data: { name?: string; color?: string };
+  }) => api.patch(`/kanban/boards/${boardId}/labels/${labelId}`, data),
+  deleteLabel: ({ boardId, labelId }: { boardId: string; labelId: string }) =>
+    api.delete(`/kanban/boards/${boardId}/labels/${labelId}`),
+  attachMeeting: ({ cardId, meetingId }: { cardId: string; meetingId: string }) =>
+    api.post(`/kanban/cards/${cardId}/meetings`, { meetingId }),
+  detachMeeting: ({ cardId, meetingId }: { cardId: string; meetingId: string }) =>
+    api.delete(`/kanban/cards/${cardId}/meetings/${meetingId}`),
+  createMeetingOnCard: ({ cardId, data }: { cardId: string; data: CreateMeetingOnCardPayload }) =>
+    api.post<{ data: KanbanCard }>(`/kanban/cards/${cardId}/meetings/create`, data),
 };
 
 const optimisticMoveCard = (
@@ -302,6 +340,70 @@ export const useShareBoard = () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+};
+
+const invalidateBoard = (queryClient: ReturnType<typeof useQueryClient>, boardId?: string) => {
+  if (boardId) queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+};
+
+export const useCreateLabel = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.createLabel,
+    onSuccess: () => invalidateBoard(queryClient, boardId),
+  });
+};
+
+export const useUpdateLabel = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.updateLabel,
+    onSuccess: () => invalidateBoard(queryClient, boardId),
+  });
+};
+
+export const useDeleteLabel = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.deleteLabel,
+    onSuccess: () => invalidateBoard(queryClient, boardId),
+  });
+};
+
+export const useAttachCardMeeting = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.attachMeeting,
+    onSuccess: () => {
+      invalidateBoard(queryClient, boardId);
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    },
+  });
+};
+
+export const useDetachCardMeeting = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.detachMeeting,
+    onSuccess: () => {
+      invalidateBoard(queryClient, boardId);
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    },
+  });
+};
+
+export const useCreateMeetingOnCard = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.createMeetingOnCard,
+    onSuccess: () => {
+      invalidateBoard(queryClient, boardId);
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
   });
 };

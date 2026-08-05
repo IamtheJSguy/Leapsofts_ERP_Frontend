@@ -538,6 +538,18 @@ export interface Meeting {
   leadId?: string | Lead;
 }
 
+export interface KanbanLabel {
+  _id: string;
+  name: string;
+  color: string;
+}
+
+export interface KanbanCardLink {
+  _id?: string;
+  title?: string;
+  url: string;
+}
+
 export interface KanbanColumn {
   _id: string;
   name: string;
@@ -566,6 +578,12 @@ export interface KanbanCard {
   activityLog?: ActivityLogEntry[];
   profileSections?: ProfileSection[];
   enrichment?: ProfileSection[];
+  /** Board label ids applied to this card */
+  labelIds?: string[];
+  /** External URL links on the card */
+  links?: KanbanCardLink[];
+  /** Linked meetings (ids or populated Meeting objects) */
+  meetingIds?: string[] | Meeting[];
 }
 
 export interface KanbanComment {
@@ -595,6 +613,7 @@ export interface KanbanBoard {
   projectId: string;
   ownerId: string;
   members: BoardMember[];
+  labels?: KanbanLabel[];
   leadId?: string | Lead;
   isDefault: boolean;
   isActive: boolean;

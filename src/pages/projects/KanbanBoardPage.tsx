@@ -5,7 +5,8 @@ import {
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, Drawer, CircularProgress,
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
-  InputLabel, Select, OutlinedInput, Tooltip, Divider
+  InputLabel, Select, OutlinedInput, Tooltip, Divider,
+  Popover, Checkbox, Autocomplete, Collapse,
 } from '@mui/material';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -28,8 +29,15 @@ import CheckIcon from '@mui/icons-material/Check';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FlagIcon from '@mui/icons-material/Flag';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
+import LinkIcon from '@mui/icons-material/Link';
+import EventIcon from '@mui/icons-material/Event';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import { tokens } from '@/styles/tokens';
+import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { ModernTimePicker } from '@/components/common/ModernTimePicker';
+import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 
 import {
   DndContext, DragOverlay, closestCorners, KeyboardSensor,
@@ -50,8 +58,11 @@ import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
-  useEditComment, useDeleteComment
+  useEditComment, useDeleteComment,
+  useCreateLabel, useDeleteLabel,
+  useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
 } from '@/hooks/api/useKanban';
+import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -60,6 +71,14 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+
+const getLinkHostname = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
 
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
@@ -237,7 +256,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
         sx={{
           fontWeight: 700,
           color: 'text.primary',
-          mb: task.description ? 1 : 2,
+          mb: (task.labels?.length || task.description) ? 1 : 2,
           lineHeight: 1.45,
           letterSpacing: '-0.01em',
           textDecoration: isDone ? 'line-through' : 'none',
@@ -246,6 +265,35 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
       >
         {task.title}
       </Typography>
+
+      {/* Board label chips */}
+      {Array.isArray(task.labels) && task.labels.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: task.description ? 1 : 2 }}>
+          {task.labels.map((label: KanbanLabel) => (
+            <Box
+              key={label._id}
+              title={label.name}
+              sx={{
+                bgcolor: label.color,
+                color: '#fff',
+                borderRadius: '4px',
+                px: 0.75,
+                py: 0.15,
+                fontSize: '0.65rem',
+                fontWeight: 750,
+                lineHeight: 1.4,
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textShadow: '0 1px 1px rgba(0,0,0,0.25)',
+              }}
+            >
+              {label.name || '\u00A0'}
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {/* Description preview */}
       {task.description && (
@@ -398,6 +446,836 @@ const SortableBoardColumn = ({
   );
 };
 
+const sectionBoxSx = (isDarkMode: boolean) => ({
+  p: 2.5,
+  bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+  borderRadius: '16px',
+  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+});
+
+const CardLabelsSection = ({
+  isDarkMode,
+  canEdit,
+  boardId,
+  cardId,
+  boardLabels = [],
+  selectedLabelIds = [],
+  updateCardMutation,
+  createLabelMutation,
+  deleteLabelMutation,
+  addToast,
+}: {
+  isDarkMode: boolean;
+  canEdit: boolean;
+  boardId: string;
+  cardId: string;
+  boardLabels: KanbanLabel[];
+  selectedLabelIds: string[];
+  updateCardMutation: any;
+  createLabelMutation: any;
+  deleteLabelMutation: any;
+  addToast: (t: { message: string; severity: 'success' | 'error' | 'info' | 'warning' }) => void;
+}) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [mode, setMode] = useState<'list' | 'create'>('list');
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState<string>(KANBAN_LABEL_COLORS[5]);
+
+  const open = Boolean(anchorEl);
+  const selectedLabels = boardLabels.filter((l) => selectedLabelIds.includes(l._id));
+
+  const resetCreate = () => {
+    setMode('list');
+    setNewName('');
+    setNewColor(KANBAN_LABEL_COLORS[5]);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+    resetCreate();
+  };
+
+  const toggleLabel = (labelId: string) => {
+    if (!canEdit) return;
+    const next = selectedLabelIds.includes(labelId)
+      ? selectedLabelIds.filter((id) => id !== labelId)
+      : [...selectedLabelIds, labelId];
+    updateCardMutation.mutate(
+      { cardId, data: { labelIds: next } },
+      {
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to update labels', severity: 'error' }),
+      },
+    );
+  };
+
+  const handleCreate = () => {
+    const name = newName.trim();
+    if (!name || !newColor) return;
+    createLabelMutation.mutate(
+      { boardId, data: { name, color: newColor } },
+      {
+        onSuccess: (res: any) => {
+          // createLabel returns the full board; pick the newly created label
+          const boardLabels: KanbanLabel[] = res?.data?.data?.labels || [];
+          const created =
+            boardLabels.find((l) => l.name === name && l.color === newColor) ||
+            boardLabels[boardLabels.length - 1];
+          if (created?._id) {
+            updateCardMutation.mutate({
+              cardId,
+              data: { labelIds: [...selectedLabelIds, created._id] },
+            });
+          }
+          addToast({ message: 'Label created', severity: 'success' });
+          resetCreate();
+        },
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to create label', severity: 'error' }),
+      },
+    );
+  };
+
+  return (
+    <Box sx={sectionBoxSx(isDarkMode)}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LabelOutlinedIcon fontSize="small" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Labels
+          </Typography>
+        </Box>
+        {canEdit && (
+          <Button
+            size="small"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            onClick={(e) => setAnchorEl(e.currentTarget)}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}
+          >
+            Labels
+          </Button>
+        )}
+      </Box>
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, minHeight: 24 }}>
+        {selectedLabels.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+            No labels
+          </Typography>
+        ) : (
+          selectedLabels.map((label) => (
+            <Chip
+              key={label._id}
+              label={label.name}
+              size="small"
+              onClick={canEdit ? (e) => setAnchorEl(e.currentTarget) : undefined}
+              sx={{
+                bgcolor: label.color,
+                color: '#fff',
+                fontWeight: 750,
+                fontSize: '0.72rem',
+                height: 24,
+                textShadow: '0 1px 1px rgba(0,0,0,0.2)',
+                cursor: canEdit ? 'pointer' : 'default',
+                '& .MuiChip-label': { px: 1 },
+              }}
+            />
+          ))
+        )}
+      </Box>
+
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            width: 280,
+            borderRadius: '12px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            bgcolor: isDarkMode ? '#1e1b24' : '#fff',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            p: 1.5,
+          },
+        }}
+      >
+        {mode === 'list' ? (
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 750, color: 'text.secondary', px: 0.5, mb: 1, display: 'block' }}>
+              Labels
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: 240, overflowY: 'auto', mb: 1 }}>
+              {boardLabels.length === 0 && (
+                <Typography variant="body2" sx={{ color: 'text.secondary', px: 0.5, py: 1 }}>
+                  No board labels yet
+                </Typography>
+              )}
+              {boardLabels.map((label) => {
+                const checked = selectedLabelIds.includes(label._id);
+                return (
+                  <Box
+                    key={label._id}
+                    onClick={() => toggleLabel(label._id)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      cursor: 'pointer',
+                      borderRadius: '8px',
+                      pr: 0.5,
+                      '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' },
+                    }}
+                  >
+                    <Checkbox size="small" checked={checked} sx={{ p: 0.5 }} />
+                    <Box
+                      sx={{
+                        flex: 1,
+                        bgcolor: label.color,
+                        color: '#fff',
+                        borderRadius: '4px',
+                        px: 1,
+                        py: 0.6,
+                        fontSize: '0.8rem',
+                        fontWeight: 750,
+                        textShadow: '0 1px 1px rgba(0,0,0,0.25)',
+                      }}
+                    >
+                      {label.name}
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteLabelMutation.mutate(
+                          { boardId, labelId: label._id },
+                          {
+                            onSuccess: () => addToast({ message: 'Label deleted', severity: 'success' }),
+                            onError: (err: any) =>
+                              addToast({ message: err.response?.data?.message || 'Failed to delete label', severity: 'error' }),
+                          },
+                        );
+                      }}
+                      sx={{ opacity: 0.6, '&:hover': { opacity: 1, color: 'error.main' } }}
+                    >
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                );
+              })}
+            </Box>
+            <Button
+              fullWidth
+              size="small"
+              onClick={() => setMode('create')}
+              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px', mt: 0.5 }}
+            >
+              Create a new label
+            </Button>
+          </Box>
+        ) : (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <IconButton size="small" onClick={resetCreate}>
+                <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+              <Typography variant="subtitle2" sx={{ fontWeight: 750 }}>Create label</Typography>
+              <IconButton size="small" onClick={handleClose}>
+                <CloseIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
+
+            <Box
+              sx={{
+                bgcolor: newColor || (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
+                color: newColor ? '#fff' : 'text.secondary',
+                borderRadius: '4px',
+                px: 1.5,
+                py: 1.25,
+                mb: 1.5,
+                fontWeight: 750,
+                textAlign: 'center',
+                textShadow: newColor ? '0 1px 1px rgba(0,0,0,0.25)' : 'none',
+                minHeight: 40,
+              }}
+            >
+              {newName.trim() || 'Label preview'}
+            </Box>
+
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+              Title
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Label name"
+              sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+            />
+
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', mb: 0.75, display: 'block' }}>
+              Select a color
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.75, mb: 1.5 }}>
+              {KANBAN_LABEL_COLORS.map((color) => (
+                <Box
+                  key={color}
+                  onClick={() => setNewColor(color)}
+                  sx={{
+                    bgcolor: color,
+                    aspectRatio: '1',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outline: newColor === color ? `2px solid ${isDarkMode ? '#fff' : '#111'}` : 'none',
+                    outlineOffset: 1,
+                  }}
+                >
+                  {newColor === color && <CheckIcon sx={{ fontSize: 16, color: '#fff' }} />}
+                </Box>
+              ))}
+            </Box>
+
+            <Button
+              fullWidth
+              size="small"
+              onClick={() => setNewColor('')}
+              sx={{ textTransform: 'none', fontWeight: 650, mb: 1.5, color: 'text.secondary' }}
+            >
+              Remove color
+            </Button>
+
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={!newName.trim() || !newColor || createLabelMutation.isPending}
+              onClick={handleCreate}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 750,
+                borderRadius: '8px',
+                bgcolor: tokens.brand.primary,
+                '&:hover': { bgcolor: tokens.brand.primaryDark },
+              }}
+            >
+              {createLabelMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </Box>
+        )}
+      </Popover>
+    </Box>
+  );
+};
+
+const CardLinksSection = ({
+  isDarkMode,
+  canEdit,
+  cardId,
+  links = [],
+  updateCardMutation,
+  addToast,
+}: {
+  isDarkMode: boolean;
+  canEdit: boolean;
+  cardId: string;
+  links: KanbanCardLink[];
+  updateCardMutation: any;
+  addToast: (t: { message: string; severity: 'success' | 'error' | 'info' | 'warning' }) => void;
+}) => {
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+
+  const persistLinks = (next: KanbanCardLink[], successMsg?: string) => {
+    updateCardMutation.mutate(
+      { cardId, data: { links: next.map(({ title: t, url: u }) => ({ ...(t ? { title: t } : {}), url: u })) } },
+      {
+        onSuccess: () => {
+          if (successMsg) addToast({ message: successMsg, severity: 'success' });
+        },
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to update links', severity: 'error' }),
+      },
+    );
+  };
+
+  const handleAdd = () => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    let normalized = trimmed;
+    if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`;
+    persistLinks([...links, { title: title.trim() || undefined, url: normalized }], 'Link added');
+    setTitle('');
+    setUrl('');
+    setShowAdd(false);
+  };
+
+  const handleRemove = (index: number) => {
+    persistLinks(links.filter((_, i) => i !== index), 'Link removed');
+  };
+
+  return (
+    <Box sx={sectionBoxSx(isDarkMode)}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LinkIcon fontSize="small" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Links
+          </Typography>
+        </Box>
+        {canEdit && (
+          <Button
+            size="small"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setShowAdd((v) => !v)}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}
+          >
+            Add
+          </Button>
+        )}
+      </Box>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {links.length === 0 && !showAdd && (
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+            No links
+          </Typography>
+        )}
+        {links.map((link, index) => (
+          <Box
+            key={link._id || `${link.url}-${index}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              p: 1.25,
+              borderRadius: '12px',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                component="a"
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="body2"
+                sx={{
+                  fontWeight: 700,
+                  color: tokens.brand.primary,
+                  textDecoration: 'none',
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                {link.title || getLinkHostname(link.url)}
+              </Typography>
+              {link.title && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {getLinkHostname(link.url)}
+                </Typography>
+              )}
+            </Box>
+            <Tooltip title="Open">
+              <IconButton size="small" component="a" href={link.url} target="_blank" rel="noopener noreferrer">
+                <OpenInNewIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            {canEdit && (
+              <Tooltip title="Remove">
+                <IconButton size="small" onClick={() => handleRemove(index)} sx={{ color: 'error.main' }}>
+                  <DeleteIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        ))}
+      </Box>
+
+      <Collapse in={showAdd && canEdit}>
+        <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <TextField
+            size="small"
+            label="Title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          />
+          <TextField
+            size="small"
+            label="URL"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={!url.trim() || updateCardMutation.isPending}
+              onClick={handleAdd}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 750,
+                borderRadius: '10px',
+                bgcolor: tokens.brand.primary,
+                '&:hover': { bgcolor: tokens.brand.primaryDark },
+              }}
+            >
+              Save link
+            </Button>
+            <Button size="small" onClick={() => setShowAdd(false)} sx={{ textTransform: 'none', fontWeight: 650 }}>
+              Cancel
+            </Button>
+          </Box>
+        </Box>
+      </Collapse>
+    </Box>
+  );
+};
+
+const CardMeetingsSection = ({
+  isDarkMode,
+  canEdit,
+  cardId,
+  leadId,
+  meetingIds = [],
+  boardMembers = [],
+  attachMutation,
+  detachMutation,
+  createOnCardMutation,
+  addToast,
+}: {
+  isDarkMode: boolean;
+  canEdit: boolean;
+  cardId: string;
+  leadId?: string;
+  meetingIds: string[] | Meeting[];
+  boardMembers: any[];
+  attachMutation: any;
+  detachMutation: any;
+  createOnCardMutation: any;
+  addToast: (t: { message: string; severity: 'success' | 'error' | 'info' | 'warning' }) => void;
+}) => {
+  const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
+  const needsMeetingLookup = Array.isArray(meetingIds) && meetingIds.some((m) => typeof m === 'string');
+  const { data: allMeetings = [] } = useMeetings({}, { enabled: canEdit || needsMeetingLookup });
+
+  const linkedMeetings = useMemo(() => {
+    if (!Array.isArray(meetingIds)) return [];
+    return meetingIds
+      .map((m) => {
+        if (typeof m === 'object' && m?._id) return m as Meeting;
+        const id = typeof m === 'string' ? m : '';
+        return allMeetings.find((am) => am._id === id);
+      })
+      .filter(Boolean) as Meeting[];
+  }, [meetingIds, allMeetings]);
+
+  const [pickMeeting, setPickMeeting] = useState<Meeting | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createTitle, setCreateTitle] = useState('');
+  const [createLink, setCreateLink] = useState('');
+  const [createDate, setCreateDate] = useState<Date | null>(null);
+  const [createTime, setCreateTime] = useState('09:00');
+  const [createParticipants, setCreateParticipants] = useState<string[]>([]);
+
+  const linkedIds = useMemo(
+    () => new Set(linkedMeetings.map((m) => m._id)),
+    [linkedMeetings],
+  );
+
+  const availableMeetings = useMemo(
+    () =>
+      allMeetings.filter((m) => {
+        if (linkedIds.has(m._id) || m.status === 'cancelled') return false;
+        if (new Date(m.scheduledAt).getTime() <= Date.now()) return false;
+        if (!currentUser) return false;
+        const participantIds = (m.participants || []).map((p: any) =>
+          typeof p === 'string' ? p : p._id,
+        );
+        const createdById = m.createdBy
+          ? typeof m.createdBy === 'string'
+            ? m.createdBy
+            : (m.createdBy as any)._id
+          : null;
+        return participantIds.includes(currentUser._id) || createdById === currentUser._id;
+      }),
+    [allMeetings, linkedIds, currentUser],
+  );
+
+  const handleAttach = () => {
+    if (!pickMeeting) return;
+    attachMutation.mutate(
+      { cardId, meetingId: pickMeeting._id },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Meeting linked', severity: 'success' });
+          setPickMeeting(null);
+        },
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to link meeting', severity: 'error' }),
+      },
+    );
+  };
+
+  const handleDetach = (meetingId: string) => {
+    detachMutation.mutate(
+      { cardId, meetingId },
+      {
+        onSuccess: () => addToast({ message: 'Meeting unlinked', severity: 'success' }),
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to unlink meeting', severity: 'error' }),
+      },
+    );
+  };
+
+  const buildScheduledAt = () => {
+    if (!createDate) return null;
+    const d = new Date(createDate);
+    const [hStr = '9', mStr = '0'] = createTime.split(':');
+    d.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
+    return d.toISOString();
+  };
+
+  const handleCreate = () => {
+    const scheduledAt = buildScheduledAt();
+    if (!createTitle.trim() || !createLink.trim() || !scheduledAt || createParticipants.length === 0) {
+      addToast({ message: 'Title, meeting link, date, and at least one participant are required', severity: 'error' });
+      return;
+    }
+    let meetingLink = createLink.trim();
+    if (!/^https?:\/\//i.test(meetingLink)) meetingLink = `https://${meetingLink}`;
+    createOnCardMutation.mutate(
+      {
+        cardId,
+        data: {
+          title: createTitle.trim(),
+          meetingLink,
+          scheduledAt,
+          participants: createParticipants,
+          ...(leadId ? { leadId } : {}),
+        },
+      },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Meeting created and linked', severity: 'success' });
+          setShowCreate(false);
+          setCreateTitle('');
+          setCreateLink('');
+          setCreateDate(null);
+          setCreateTime('09:00');
+          setCreateParticipants([]);
+        },
+        onError: (err: any) =>
+          addToast({ message: err.response?.data?.message || 'Failed to create meeting', severity: 'error' }),
+      },
+    );
+  };
+
+  const statusColor = (status?: string) => {
+    if (status === 'completed') return tokens.semantic.success;
+    if (status === 'cancelled') return '#ef4444';
+    return tokens.brand.primary;
+  };
+
+  return (
+    <Box sx={sectionBoxSx(isDarkMode)}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EventIcon fontSize="small" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Meetings
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: canEdit ? 1.5 : 0 }}>
+        {linkedMeetings.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+            No meetings linked
+          </Typography>
+        ) : (
+          linkedMeetings.map((meeting) => (
+            <Box
+              key={meeting._id}
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1,
+                p: 1.25,
+                borderRadius: '12px',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 750 }} noWrap>
+                  {meeting.title}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  {new Date(meeting.scheduledAt).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </Typography>
+                {meeting.status && (
+                  <Chip
+                    label={meeting.status}
+                    size="small"
+                    sx={{
+                      mt: 0.5,
+                      height: 20,
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'capitalize',
+                      bgcolor: `${statusColor(meeting.status)}18`,
+                      color: statusColor(meeting.status),
+                    }}
+                  />
+                )}
+              </Box>
+              <Tooltip title="Open meeting">
+                <IconButton
+                  size="small"
+                  onClick={() => navigate(`/meetings?meetingId=${meeting._id}`)}
+                >
+                  <OpenInNewIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              {canEdit && (
+                <Tooltip title="Unlink">
+                  <IconButton size="small" onClick={() => handleDetach(meeting._id)} sx={{ color: 'error.main' }}>
+                    <LinkOffIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          ))
+        )}
+      </Box>
+
+      {canEdit && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={availableMeetings}
+              value={pickMeeting}
+              onChange={(_, v) => setPickMeeting(v)}
+              getOptionLabel={(o) => o.title || 'Untitled'}
+              filterOptions={(options, { inputValue }) => {
+                const q = inputValue.toLowerCase();
+                return options.filter((o) => o.title?.toLowerCase().includes(q));
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Link existing meeting"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              )}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!pickMeeting || attachMutation.isPending}
+              onClick={handleAttach}
+              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px', mt: 0.5, whiteSpace: 'nowrap' }}
+            >
+              Link
+            </Button>
+          </Box>
+
+          <Button
+            size="small"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setShowCreate((v) => !v)}
+            sx={{ textTransform: 'none', fontWeight: 700, alignSelf: 'flex-start', borderRadius: '10px' }}
+          >
+            {showCreate ? 'Cancel create' : 'Create meeting'}
+          </Button>
+
+          <Collapse in={showCreate}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <TextField
+                size="small"
+                label="Title"
+                value={createTitle}
+                onChange={(e) => setCreateTitle(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              />
+              <TextField
+                size="small"
+                label="Meeting link"
+                value={createLink}
+                onChange={(e) => setCreateLink(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              />
+              <ModernDatePicker
+                label="Date"
+                value={createDate}
+                onChange={(d) => setCreateDate(d)}
+              />
+              <ModernTimePicker
+                label="Time"
+                value={createTime}
+                onChange={(t) => setCreateTime(t)}
+              />
+              <Autocomplete
+                multiple
+                size="small"
+                options={boardMembers}
+                value={boardMembers.filter((u: any) => createParticipants.includes(u._id))}
+                onChange={(_, selected) => setCreateParticipants(selected.map((u: any) => u._id))}
+                getOptionLabel={(u: any) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || u._id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Participants"
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                )}
+              />
+              <Button
+                variant="contained"
+                size="small"
+                disabled={createOnCardMutation.isPending}
+                onClick={handleCreate}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 750,
+                  borderRadius: '10px',
+                  bgcolor: tokens.brand.primary,
+                  '&:hover': { bgcolor: tokens.brand.primaryDark },
+                }}
+              >
+                {createOnCardMutation.isPending ? 'Creating...' : 'Create & attach'}
+              </Button>
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard }: any) => {
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -440,6 +1318,11 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const updateCardMutation = useUpdateCard(boardId);
   const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
+  const createLabelMutation = useCreateLabel(boardId);
+  const deleteLabelMutation = useDeleteLabel(boardId);
+  const attachMeetingMutation = useAttachCardMeeting(boardId);
+  const detachMeetingMutation = useDetachCardMeeting(boardId);
+  const createMeetingOnCardMutation = useCreateMeetingOnCard(boardId);
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
@@ -495,6 +1378,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
     : [];
+  const boardLabels: KanbanLabel[] = actualBoard?.labels || [];
+  const selectedLabelIds: string[] = Array.isArray(rawCard?.labelIds)
+    ? rawCard.labelIds.map((id: any) => (typeof id === 'object' ? id._id : id))
+    : [];
+  const cardLinks: KanbanCardLink[] = Array.isArray(rawCard?.links) ? rawCard.links : [];
+  const cardLeadId =
+    typeof rawCard?.leadId === 'object' && rawCard?.leadId
+      ? rawCard.leadId._id
+      : typeof rawCard?.leadId === 'string'
+        ? rawCard.leadId
+        : lead?._id;
 
   const handleSendComment = () => {
     if (commentText.trim() && !addCommentMutation.isPending) {
@@ -914,6 +1808,41 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 )}
               </Box>
 
+              <CardLabelsSection
+                isDarkMode={isDarkMode}
+                canEdit={isAdminOrOwner}
+                boardId={boardId}
+                cardId={task.id}
+                boardLabels={boardLabels}
+                selectedLabelIds={selectedLabelIds}
+                updateCardMutation={updateCardMutation}
+                createLabelMutation={createLabelMutation}
+                deleteLabelMutation={deleteLabelMutation}
+                addToast={addToast}
+              />
+
+              <CardLinksSection
+                isDarkMode={isDarkMode}
+                canEdit={isAdminOrOwner}
+                cardId={task.id}
+                links={cardLinks}
+                updateCardMutation={updateCardMutation}
+                addToast={addToast}
+              />
+
+              <CardMeetingsSection
+                isDarkMode={isDarkMode}
+                canEdit={isAdminOrOwner}
+                cardId={task.id}
+                leadId={cardLeadId}
+                meetingIds={rawCard?.meetingIds || []}
+                boardMembers={boardMembers}
+                attachMutation={attachMeetingMutation}
+                detachMutation={detachMeetingMutation}
+                createOnCardMutation={createMeetingOnCardMutation}
+                addToast={addToast}
+              />
+
               {/* Prospect Details — only when a lead is linked to the card */}
               {lead && (
                 <Box>
@@ -1209,6 +2138,7 @@ export const KanbanBoardPage = () => {
   const tasks = useMemo(() => {
     if (!actualBoard || !actualBoard.columns) return [];
     const tList: any[] = [];
+    const boardLabels: KanbanLabel[] = actualBoard.labels || [];
 
     cardsList.forEach((card: any) => {
       const lead = typeof card.leadId === 'object' ? card.leadId : null;
@@ -1216,6 +2146,12 @@ export const KanbanBoardPage = () => {
       const cardAssignees = Array.isArray(card.assignedTo)
         ? card.assignedTo.map((u: any) => typeof u === 'object' ? u : allUsers.find((au: any) => au._id === u)).filter(Boolean)
         : [];
+      const cardLabelIds: string[] = Array.isArray(card.labelIds)
+        ? card.labelIds.map((id: any) => (typeof id === 'object' ? id._id : id))
+        : [];
+      const resolvedLabels = cardLabelIds
+        .map((id) => boardLabels.find((l) => l._id === id))
+        .filter(Boolean) as KanbanLabel[];
 
       tList.push({
         id: card._id,
@@ -1229,6 +2165,7 @@ export const KanbanBoardPage = () => {
         comments: card.comments?.filter((c: any) => c.isActive !== false).length || 0,
         attachments: 0,
         assignedUsers: cardAssignees,
+        labels: resolvedLabels,
         rawCard: card,
         position: card.order ?? card.position ?? 0,
       });
