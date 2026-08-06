@@ -34,6 +34,7 @@ const getConversationId = (message: Message): string => {
   return String(message.conversationId);
 };
 
+<<<<<<< Updated upstream
 const patchMessagesReceipt = (
   queryClient: QueryClient,
   conversationId: string,
@@ -94,6 +95,10 @@ const applyUserPresence = (
     );
   });
 };
+=======
+const systemNotificationSound = new Audio('/faahh.mp3');
+systemNotificationSound.preload = 'auto';
+>>>>>>> Stashed changes
 
 export const setupSocketEventHandlers = (
   socket: {
@@ -105,6 +110,13 @@ export const setupSocketEventHandlers = (
   socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, () => {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+    
+    try {
+      systemNotificationSound.currentTime = 0;
+      systemNotificationSound.play().catch(e => console.error("Audio playback failed:", e));
+    } catch (e) {
+      console.error("Audio not supported");
+    }
   });
 
   socket.on(SOCKET_EVENTS.SHIFT_UPDATED, () => {
