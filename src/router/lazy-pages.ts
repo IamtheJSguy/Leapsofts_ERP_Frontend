@@ -19,3 +19,4 @@ export const AttendancePage = lazy(() => import('@/pages/AttendancePage'));
 export const MemberProgressPage = lazy(() => import('@/pages/MemberProgressPage'));
 export const LeadDetailsPage = lazy(() => import('@/pages/leads/LeadDetailsPage'));
 export const BulkAddLeadsPage = lazy(() => import('@/pages/BulkAddLeadsPage'));
+export const AssistantPage = lazy(() => import('@/pages/AssistantPage'));

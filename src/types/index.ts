@@ -923,3 +923,67 @@ export interface BulkCreateResponse {
   duplicates: number;
   skipped: number;
 }
+
+/** Work Monitor assistant AI provider identifiers */
+export type AiProvider = 'gemini' | 'openai' | 'anthropic' | 'grok' | 'kimi';
+
+/** GET /users/me/ai-keys — presence flags only (never plaintext secrets) */
+export interface AiProviderKeysStatus {
+  gemini: boolean;
+  openai: boolean;
+  anthropic: boolean;
+  grok: boolean;
+  kimi: boolean;
+  preferredAiProvider: AiProvider | null;
+}
+
+/** PUT /users/me/ai-keys — empty string clears a key */
+export interface UpdateAiProviderKeysPayload {
+  gemini?: string;
+  openai?: string;
+  anthropic?: string;
+  grok?: string;
+  kimi?: string;
+  preferredAiProvider?: AiProvider | null;
+}
+
+export type AssistantEntityType = 'lead' | 'meeting' | 'task';
+
+export interface AssistantEntity {
+  type: AssistantEntityType;
+  id: string;
+  title: string;
+  route: string;
+}
+
+export interface AssistantMessage {
+  _id: string;
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  entities?: AssistantEntity[];
+  provider?: AiProvider;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AssistantConversation {
+  _id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssistantConversationDetail {
+  conversation: AssistantConversation;
+  messages: AssistantMessage[];
+}
+
+/** POST /assistant/chat response payload */
+export interface AssistantChatResponse {
+  conversationId: string;
+  message: string;
+  provider: AiProvider;
+  entities: AssistantEntity[];
+}

@@ -24,6 +24,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -73,6 +74,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
       { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Work Monitor', path: '/assistant', icon: <SmartToyOutlinedIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {

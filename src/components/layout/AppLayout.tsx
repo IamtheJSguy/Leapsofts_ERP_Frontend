@@ -5,6 +5,7 @@ import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { NotificationPanel } from './NotificationPanel';
 import { CheckInReminder } from '@/components/common/CheckInReminder';
+import { AssistantBubble } from '@/components/assistant/AssistantBubble';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -86,6 +87,7 @@ export const AppLayout = () => {
       </Box>
       <NotificationPanel />
       <CheckInReminder />
+      <AssistantBubble />
     </Box>
   );
 };

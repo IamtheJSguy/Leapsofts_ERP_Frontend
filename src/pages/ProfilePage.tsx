@@ -16,6 +16,12 @@ import {
   Switch,
   Fade,
   alpha,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  type SelectChangeEvent,
 } from '@mui/material';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -33,16 +39,52 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import WebAssetIcon from '@mui/icons-material/WebAsset';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
+import ClearIcon from '@mui/icons-material/Clear';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUpdateMe, useMe, useChangePassword } from '@/hooks/api/useUsers';
 import { useSystemSettings } from '@/hooks/api/useSettings';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
+import { useAiProviderKeys, useUpdateAiProviderKeys } from '@/hooks/api/useAssistant';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
 import { changePasswordSchema } from '@/utils/validators';
+import type { AiProvider, UpdateAiProviderKeysPayload } from '@/types';
+
+const AI_PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
+  { value: 'gemini', label: 'Google Gemini' },
+  { value: 'kimi', label: 'Kimi (Moonshot)' },
+  { value: 'grok', label: 'Grok (xAI)' },
+  { value: 'openai', label: 'OpenAI (GPT)' },
+  { value: 'anthropic', label: 'Anthropic (Claude)' },
+];
+
+const AI_KEY_FIELDS: { key: AiProvider; label: string; placeholder: string }[] = [
+  { key: 'gemini', label: 'Google Gemini API Key', placeholder: 'AIza...' },
+  { key: 'openai', label: 'OpenAI API Key', placeholder: 'sk-...' },
+  { key: 'anthropic', label: 'Anthropic API Key', placeholder: 'sk-ant-...' },
+  { key: 'grok', label: 'Grok (xAI) API Key', placeholder: 'xai-...' },
+  { key: 'kimi', label: 'Kimi (Moonshot) API Key', placeholder: 'sk-...' },
+];
+
+const EMPTY_AI_KEY_INPUTS: Record<AiProvider, string> = {
+  gemini: '',
+  openai: '',
+  anthropic: '',
+  grok: '',
+  kimi: '',
+};
+
+const EMPTY_SHOW_AI_KEYS: Record<AiProvider, boolean> = {
+  gemini: false,
+  openai: false,
+  anthropic: false,
+  grok: false,
+  kimi: false,
+};
 
 export default function ProfilePage() {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -58,12 +100,20 @@ export default function ProfilePage() {
   const isDarkMode = muiTheme.palette.mode === 'dark';
 
   // Active sub-tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'google-sheet'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'google-sheet' | 'ai-providers'>('profile');
 
   // Profile Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+
+  // AI Providers state
+  const { data: aiKeysStatus, isLoading: aiKeysLoading } = useAiProviderKeys();
+  const updateAiKeysMutation = useUpdateAiProviderKeys();
+  const [preferredAiProvider, setPreferredAiProvider] = useState<AiProvider | ''>('');
+  const [aiKeyInputs, setAiKeyInputs] = useState<Record<AiProvider, string>>(EMPTY_AI_KEY_INPUTS);
+  const [showAiKeys, setShowAiKeys] = useState<Record<AiProvider, boolean>>(EMPTY_SHOW_AI_KEYS);
+  const [keysToClear, setKeysToClear] = useState<Set<AiProvider>>(new Set());
 
   // Password Form State
   const [oldPassword, setOldPassword] = useState('');
@@ -112,6 +162,14 @@ export default function ProfilePage() {
     }
   }, [settings, user, sheetUrl]);
 
+  useEffect(() => {
+    if (aiKeysStatus) {
+      setPreferredAiProvider(aiKeysStatus.preferredAiProvider ?? '');
+      setKeysToClear(new Set());
+      setAiKeyInputs({ ...EMPTY_AI_KEY_INPUTS });
+    }
+  }, [aiKeysStatus]);
+
   const displayName = getDisplayName(user);
   const initials = displayName
     .split(' ')
@@ -128,6 +186,40 @@ export default function ProfilePage() {
       return match[1];
     }
     return input.trim();
+  };
+
+  const handleAiKeysSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: UpdateAiProviderKeysPayload = {
+      preferredAiProvider: preferredAiProvider || null,
+    };
+
+    (Object.keys(aiKeyInputs) as AiProvider[]).forEach((key) => {
+      if (keysToClear.has(key)) {
+        payload[key] = '';
+      } else if (aiKeyInputs[key].trim()) {
+        payload[key] = aiKeyInputs[key].trim();
+      }
+    });
+
+    updateAiKeysMutation.mutate(payload, {
+      onSuccess: () => {
+        addToast({ message: 'AI provider settings saved.', severity: 'success' });
+        setAiKeyInputs({ ...EMPTY_AI_KEY_INPUTS });
+        setKeysToClear(new Set());
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || 'Failed to save AI provider settings.',
+          severity: 'error',
+        });
+      },
+    });
+  };
+
+  const markKeyForClear = (key: AiProvider) => {
+    setKeysToClear((prev) => new Set(prev).add(key));
+    setAiKeyInputs((prev) => ({ ...prev, [key]: '' }));
   };
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -414,6 +506,7 @@ export default function ProfilePage() {
         {[
           { key: 'profile', label: 'User Profile', icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 18 }} /> },
           { key: 'preferences', label: 'Preferences & Schedule', icon: <ScheduleIcon sx={{ fontSize: 18 }} /> },
+          { key: 'ai-providers', label: 'AI Providers', icon: <SmartToyOutlinedIcon sx={{ fontSize: 18 }} /> },
           ...(user?.role === 'user' ? [{ key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> }] : []),
         ].map((tab) => (
           <Button
@@ -843,6 +936,215 @@ export default function ProfilePage() {
                 </Grid>
               )}
             </Grid>
+          </Fade>
+        )}
+
+        {/* AI Providers Tab */}
+        {activeTab === 'ai-providers' && (
+          <Fade in timeout={500}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Card sx={cardSx}>
+                <Box component="form" onSubmit={handleAiKeysSave}>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3.5 }}>
+                    <Box
+                      sx={{
+                        p: 1.25,
+                        borderRadius: '12px',
+                        bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                        color: tokens.brand.primary,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <SmartToyOutlinedIcon sx={{ fontSize: 24 }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em', mb: 0.25 }}>
+                        AI Providers
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Prefer your own keys for the Work Monitor assistant. Without keys, platform Gemini then Kimi then Grok is used.
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Divider sx={{ mb: 4, opacity: 0.08 }} />
+
+                  {aiKeysLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
+                    </Box>
+                  ) : (
+                    <>
+                      <Alert
+                        severity="info"
+                        icon={<InfoOutlinedIcon />}
+                        sx={{ mb: 3.5, borderRadius: '12px' }}
+                      >
+                        Keys are stored encrypted and never shown again. Leave a field blank to keep the existing key; use Clear to remove it.
+                      </Alert>
+
+                      <FormControl fullWidth sx={{ ...textFieldSx, mb: 3.5 }}>
+                        <InputLabel id="preferred-ai-provider-label">Preferred provider</InputLabel>
+                        <Select
+                          labelId="preferred-ai-provider-label"
+                          label="Preferred provider"
+                          value={preferredAiProvider}
+                          onChange={(e: SelectChangeEvent) =>
+                            setPreferredAiProvider(e.target.value as AiProvider | '')
+                          }
+                          sx={{ borderRadius: '16px' }}
+                        >
+                          <MenuItem value="">
+                            <em>Platform default (Kimi → Grok)</em>
+                          </MenuItem>
+                          {AI_PROVIDER_OPTIONS.map((opt) => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                              {aiKeysStatus?.[opt.value] ? ' · configured' : ''}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <Grid container spacing={3}>
+                        {AI_KEY_FIELDS.map((field) => {
+                          const configured = !!aiKeysStatus?.[field.key] && !keysToClear.has(field.key);
+                          const markedClear = keysToClear.has(field.key);
+                          return (
+                            <Grid item xs={12} md={6} key={field.key}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
+                                  {field.label}
+                                </Typography>
+                                {configured && (
+                                  <Chip
+                                    size="small"
+                                    icon={<CheckCircleOutlineIcon sx={{ fontSize: '16px !important' }} />}
+                                    label="Configured"
+                                    sx={{
+                                      height: 24,
+                                      fontWeight: 700,
+                                      fontSize: '0.7rem',
+                                      bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : tokens.semantic.successBg,
+                                      color: tokens.semantic.success,
+                                      '& .MuiChip-icon': { color: tokens.semantic.success },
+                                    }}
+                                  />
+                                )}
+                                {markedClear && (
+                                  <Chip
+                                    size="small"
+                                    label="Will clear"
+                                    sx={{
+                                      height: 24,
+                                      fontWeight: 700,
+                                      fontSize: '0.7rem',
+                                      bgcolor: isDarkMode ? 'rgba(196, 69, 69, 0.15)' : tokens.semantic.errorBg,
+                                      color: tokens.semantic.error,
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                              <TextField
+                                fullWidth
+                                type={showAiKeys[field.key] ? 'text' : 'password'}
+                                placeholder={configured ? '••••••••••••' : field.placeholder}
+                                value={aiKeyInputs[field.key]}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setAiKeyInputs((prev) => ({ ...prev, [field.key]: value }));
+                                  if (value) {
+                                    setKeysToClear((prev) => {
+                                      const next = new Set(prev);
+                                      next.delete(field.key);
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                autoComplete="new-password"
+                                InputProps={{
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <LockOutlinedIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                                    </InputAdornment>
+                                  ),
+                                  endAdornment: (
+                                    <InputAdornment position="end">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() =>
+                                          setShowAiKeys((prev) => ({
+                                            ...prev,
+                                            [field.key]: !prev[field.key],
+                                          }))
+                                        }
+                                        edge="end"
+                                        aria-label={`Toggle ${field.label} visibility`}
+                                      >
+                                        {showAiKeys[field.key] ? (
+                                          <VisibilityOff sx={{ fontSize: 18 }} />
+                                        ) : (
+                                          <Visibility sx={{ fontSize: 18 }} />
+                                        )}
+                                      </IconButton>
+                                      {(configured || markedClear) && (
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => markKeyForClear(field.key)}
+                                          edge="end"
+                                          aria-label={`Clear ${field.label}`}
+                                          sx={{ ml: 0.5 }}
+                                        >
+                                          <ClearIcon sx={{ fontSize: 18, color: tokens.semantic.error }} />
+                                        </IconButton>
+                                      )}
+                                    </InputAdornment>
+                                  ),
+                                }}
+                                sx={{ ...textFieldSx, mb: 0 }}
+                              />
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          disabled={updateAiKeysMutation.isPending}
+                          startIcon={
+                            updateAiKeysMutation.isPending ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : (
+                              <SaveOutlinedIcon />
+                            )
+                          }
+                          sx={{
+                            bgcolor: tokens.brand.primary,
+                            color: '#fff',
+                            fontWeight: 700,
+                            px: 4,
+                            py: 1.25,
+                            borderRadius: '14px',
+                            textTransform: 'none',
+                            fontSize: '0.86rem',
+                            boxShadow: `0 4px 14px ${`color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`}`,
+                            '&:hover': {
+                              bgcolor: tokens.brand.primaryLight,
+                              transform: 'translateY(-1px)',
+                            },
+                          }}
+                        >
+                          {updateAiKeysMutation.isPending ? 'Saving...' : 'Save AI settings'}
+                        </Button>
+                      </Box>
+                    </>
+                  )}
+                </Box>
+              </Card>
+            </Box>
           </Fade>
         )}
 
