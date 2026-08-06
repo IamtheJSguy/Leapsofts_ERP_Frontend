@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   List,
@@ -15,34 +15,46 @@ import {
   IconButton,
   Dialog,
   Button,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Tooltip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import { useConversations } from '@/hooks/api/useChat';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import { useConversations, useCreateConversation, useUpdatePresence } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
-import { getDisplayName, formatDateTime } from '@/utils/formatters';
+import { getDisplayName, formatDateTime, getPresenceLabel } from '@/utils/formatters';
+import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { EmptyState } from '@/components/common/EmptyState';
 import { tokens } from '@/styles/tokens';
+import { PRESENCE_COLORS } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
-
 import { useUsers } from '@/hooks/api/useUsers';
-import { useCreateConversation } from '@/hooks/api/useChat';
+import { useSocket } from '@/hooks/useSocket';
+import type { PresenceStatus } from '@/types';
 
 export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
-  const { activeConversationId, setActiveConversation, typingUsers, unreadCounts, clearUnread } = useChatStore();
+  const { activeConversationId, setActiveConversation, typingUsers, unreadCounts, clearUnread, presenceByUserId } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { subscribePresence } = useSocket();
+  const updatePresence = useUpdatePresence();
 
   const { mutate: createConversation, isPending: isCreating } = useCreateConversation();
   const [selectedUserToChat, setSelectedUserToChat] = useState<any>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
 
   // Group chat states
@@ -51,11 +63,43 @@ export const ChatSidebar = () => {
   const [groupDesc, setGroupDesc] = useState('');
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
 
+  const ownPresence = currentUser?._id
+    ? presenceByUserId[currentUser._id] || { status: 'online' as PresenceStatus }
+    : { status: 'offline' as PresenceStatus };
+
+  const participantIds = useMemo(() => {
+    const ids = new Set<string>();
+    conversations.forEach((conv) => {
+      conv.participants.forEach((p: any) => {
+        const id = typeof p === 'string' ? p : p._id;
+        if (id && id !== currentUser?._id) ids.add(id);
+      });
+    });
+    if (currentUser?._id) ids.add(currentUser._id);
+    return Array.from(ids);
+  }, [conversations, currentUser?._id]);
+
+  useEffect(() => {
+    if (participantIds.length) subscribePresence(participantIds);
+  }, [participantIds, subscribePresence]);
+
   const getChatDetails = (conv: any) => {
     if (conv.isGroup) {
       const name = conv.name || 'Group Chat';
       const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
-      return { name, email: `${conv.participants.length} members`, initial, isOnline: true, isGroup: true };
+      const onlineCount = conv.participants.filter((p: any) => {
+        const id = typeof p === 'string' ? p : p._id;
+        if (!id || id === currentUser?._id) return false;
+        return (presenceByUserId[id]?.status || p?.presenceStatus || 'offline') === 'online';
+      }).length;
+      return {
+        name,
+        email: `${conv.participants.length} members`,
+        initial,
+        status: (onlineCount > 0 ? 'online' : 'offline') as PresenceStatus,
+        presenceLabel: onlineCount > 0 ? `${onlineCount} online` : 'Group',
+        isGroup: true,
+      };
     }
 
     const otherParticipants = conv.participants.filter((p: any) => p._id !== currentUser?._id);
@@ -63,9 +107,22 @@ export const ChatSidebar = () => {
     const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
     const email = mainParticipant?.email || '';
     const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
-    const isOnline = mainParticipant?.isActive || mainParticipant?.status === 'active' || false;
+    const mainId = typeof mainParticipant === 'object' ? mainParticipant?._id : mainParticipant;
+    const fromStore = mainId ? presenceByUserId[mainId] : undefined;
+    const status: PresenceStatus =
+      fromStore?.status ||
+      mainParticipant?.presenceStatus ||
+      (mainParticipant?.isOnline ? 'online' : 'offline');
+    const lastSeenAt = fromStore?.lastSeenAt || mainParticipant?.lastSeenAt;
 
-    return { name, email, initial, isOnline, isGroup: false };
+    return {
+      name,
+      email,
+      initial,
+      status,
+      presenceLabel: getPresenceLabel(status, lastSeenAt),
+      isGroup: false,
+    };
   };
 
   // Filter existing conversations based on search query
@@ -80,7 +137,12 @@ export const ChatSidebar = () => {
       return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()));
     }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
-  }, [conversations, searchQuery, currentUser]);
+  }, [conversations, searchQuery, currentUser, presenceByUserId]);
+
+  const handleSetPresence = (status: 'away' | 'offline' | null) => {
+    updatePresence.mutate(status);
+    setStatusMenuAnchor(null);
+  };
 
   // Filter dbUsers based on New Chat Search
   const filteredNewChatUsers = useMemo(() => {
@@ -165,6 +227,67 @@ export const ChatSidebar = () => {
     >
       {/* Sidebar Header & Search Bar */}
       <Box sx={{ p: 2, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Tooltip title={`Your status: ${getPresenceLabel(ownPresence.status, ownPresence.lastSeenAt)}`} arrow>
+          <IconButton
+            onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+            sx={{
+              width: 38,
+              height: 38,
+              position: 'relative',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+              color: tokens.brand.primary,
+              fontWeight: 800,
+              fontSize: '0.8rem',
+            }}
+            aria-label="Set chat status"
+          >
+            {(currentUser ? getDisplayName(currentUser) : 'Me').charAt(0).toUpperCase()}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                bgcolor: PRESENCE_COLORS[ownPresence.status] || PRESENCE_COLORS.offline,
+                border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
+              }}
+            />
+          </IconButton>
+        </Tooltip>
+        <Menu
+          anchorEl={statusMenuAnchor}
+          open={Boolean(statusMenuAnchor)}
+          onClose={() => setStatusMenuAnchor(null)}
+          PaperProps={{
+            sx: {
+              borderRadius: '14px',
+              minWidth: 180,
+              bgcolor: isDarkMode ? '#25212e' : '#fff',
+              backgroundImage: 'none',
+            },
+          }}
+        >
+          <MenuItem onClick={() => handleSetPresence('away')} sx={{ py: 1.25 }}>
+            <ListItemIcon>
+              <AccessTimeIcon fontSize="small" sx={{ color: PRESENCE_COLORS.away }} />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>Away</Typography>
+          </MenuItem>
+          <MenuItem onClick={() => handleSetPresence('offline')} sx={{ py: 1.25 }}>
+            <ListItemIcon>
+              <DoNotDisturbOnIcon fontSize="small" sx={{ color: PRESENCE_COLORS.offline }} />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>Offline</Typography>
+          </MenuItem>
+          <MenuItem onClick={() => handleSetPresence(null)} sx={{ py: 1.25 }}>
+            <ListItemIcon>
+              <RestartAltIcon fontSize="small" sx={{ color: PRESENCE_COLORS.online }} />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>Clear (auto)</Typography>
+          </MenuItem>
+        </Menu>
         <TextField
           size="small"
           placeholder="Search chats..."
@@ -218,7 +341,7 @@ export const ChatSidebar = () => {
             {filteredConversations.map((conv: any) => {
               const active = activeConversationId === conv._id;
               const details = conv.details;
-              const unreadCount = Math.max(conv.unreadCount || 0, unreadCounts[conv._id] || 0);
+              const unreadCount = getMergedUnreadCount(conv, unreadCounts);
               const typingUsersInConv = typingUsers[conv._id] || [];
               const otherTypingUsers = typingUsersInConv.filter((id) => id !== currentUser?._id);
 
@@ -273,7 +396,7 @@ export const ChatSidebar = () => {
                     >
                       {details.initial}
                     </Avatar>
-                    {details.isOnline && (
+                    {!details.isGroup && (
                       <Box
                         sx={{
                           position: 'absolute',
@@ -282,9 +405,11 @@ export const ChatSidebar = () => {
                           width: 11,
                           height: 11,
                           borderRadius: '50%',
-                          bgcolor: tokens.semantic.success,
+                          bgcolor: PRESENCE_COLORS[details.status as PresenceStatus] || PRESENCE_COLORS.offline,
                           border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
-                          animation: 'pulse 1.8s infinite ease-in-out',
+                          animation: details.status === 'online'
+                            ? 'pulse 1.8s infinite ease-in-out'
+                            : 'none',
                           '@keyframes pulse': {
                             '0%': { transform: 'scale(0.95)', opacity: 0.8 },
                             '50%': { transform: 'scale(1.2)', opacity: 1 },

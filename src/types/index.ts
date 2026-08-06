@@ -40,6 +40,13 @@ export type NotificationType =
   | 'kanban_unassigned_cards'
   | 'report_ready';
 
+export type PresenceStatus = 'online' | 'away' | 'offline';
+
+export interface UserPresence {
+  status: PresenceStatus;
+  lastSeenAt?: string;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -47,6 +54,9 @@ export interface User {
   lastName?: string;
   role: Role;
   isActive?: boolean;
+  isOnline?: boolean;
+  presenceStatus?: PresenceStatus;
+  lastSeenAt?: string;
   phone?: string;
   jobTitle?: string;
   department?: string;
@@ -528,11 +538,27 @@ export interface Meeting {
   leadId?: string | Lead;
 }
 
+export interface KanbanLabel {
+  _id: string;
+  name: string;
+  color: string;
+}
+
+export interface KanbanCardLink {
+  _id?: string;
+  title?: string;
+  url: string;
+}
+
 export interface KanbanColumn {
   _id: string;
   name: string;
-  position: number;
-  cards: KanbanCard[];
+  position?: number;
+  order?: number;
+  isActive?: boolean;
+  cards?: KanbanCard[];
+  /** Active card count for this column (from project board listing) */
+  totalCards?: number;
 }
 
 export interface KanbanCard {
@@ -544,11 +570,20 @@ export interface KanbanCard {
   description?: string;
   priority?: string;
   dueDate?: string;
+  /** Explicit done status on the card (independent of column) */
+  isDone?: boolean;
+  completedAt?: string | null;
   members?: string[] | User[];
   comments?: KanbanComment[];
   activityLog?: ActivityLogEntry[];
   profileSections?: ProfileSection[];
   enrichment?: ProfileSection[];
+  /** Board label ids applied to this card */
+  labelIds?: string[];
+  /** External URL links on the card */
+  links?: KanbanCardLink[];
+  /** Linked meetings (ids or populated Meeting objects) */
+  meetingIds?: string[] | Meeting[];
 }
 
 export interface KanbanComment {
@@ -578,9 +613,12 @@ export interface KanbanBoard {
   projectId: string;
   ownerId: string;
   members: BoardMember[];
+  labels?: KanbanLabel[];
   leadId?: string | Lead;
   isDefault: boolean;
   isActive: boolean;
+  /** Active card count across all columns (from project board listing) */
+  totalCards?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -657,6 +695,15 @@ export interface DriveFile {
   size?: string;
 }
 
+export interface MessageReplySnippet {
+  _id: string;
+  content: string;
+  type: 'text' | 'file' | 'drive_file';
+  senderId?: string | User;
+  sender?: string | User;
+  driveFileName?: string;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
@@ -671,6 +718,12 @@ export interface Message {
   driveWebViewLink?: string;
   driveIconLink?: string;
   readBy?: string[];
+  deliveredTo?: string[];
+  /** Per-recipient first delivery time (userId → ISO datetime). */
+  deliveredAt?: Record<string, string>;
+  /** Per-recipient first read time (userId → ISO datetime). */
+  readAt?: Record<string, string>;
+  replyTo?: string | MessageReplySnippet;
   createdAt: string;
 }
 
@@ -862,4 +915,11 @@ export interface BulkUploadSummary {
 export interface BulkUploadResponse {
   summary: BulkUploadSummary;
   results: BulkUploadRowResult[];
+}
+
+export interface BulkCreateResponse {
+  created: number;
+  updated: number;
+  duplicates: number;
+  skipped: number;
 }

@@ -29,6 +29,8 @@ import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
+import { useConversations } from '@/hooks/api/useChat';
+import { countConversationsWithUnread } from '@/utils/chatUnreadUtils';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 
@@ -114,7 +116,9 @@ export const Sidebar = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const unreadChatsCount = Object.values(useChatStore((s) => s.unreadCounts)).filter((c) => c > 0).length;
+  const { data: conversations = [] } = useConversations();
+  const unreadCounts = useChatStore((s) => s.unreadCounts);
+  const unreadChatsCount = countConversationsWithUnread(conversations, unreadCounts);
 
   const user = useAuthStore((s) => s.user);
   const userInitial = user?.firstName

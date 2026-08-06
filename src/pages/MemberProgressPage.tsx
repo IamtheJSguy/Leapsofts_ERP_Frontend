@@ -402,7 +402,7 @@ export default function MemberProgressPage() {
                       borderRadius: '12px',
                     }}
                   />
-                  <Bar dataKey="Target" fill={isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'} radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="Target" fill={isDarkMode ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.28)'} radius={[6, 6, 0, 0]} maxBarSize={28} />
                   <Bar dataKey="Achieved" fill={tokens.brand.primary} radius={[6, 6, 0, 0]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>

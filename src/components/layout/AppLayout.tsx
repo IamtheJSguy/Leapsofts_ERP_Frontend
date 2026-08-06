@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useConversations } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
+import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { tokens } from '@/styles/tokens';
 
 export const AppLayout = () => {
@@ -22,6 +23,13 @@ export const AppLayout = () => {
 
   const { data: conversations = [] } = useConversations();
   const unreadCounts = useChatStore((s) => s.unreadCounts);
+  const syncUnreadFromConversations = useChatStore((s) => s.syncUnreadFromConversations);
+
+  useEffect(() => {
+    if (conversations.length > 0) {
+      syncUnreadFromConversations(conversations);
+    }
+  }, [conversations, syncUnreadFromConversations]);
 
   useEffect(() => {
     if (!isCheckedIn || user?.role === 'admin') return;
@@ -38,8 +46,8 @@ export const AppLayout = () => {
 
   useEffect(() => {
     let totalUnread = 0;
-    conversations.forEach((conv: any) => {
-      const count = Math.max(conv.unreadCount || 0, unreadCounts[conv._id] || 0);
+    conversations.forEach((conv) => {
+      const count = getMergedUnreadCount(conv, unreadCounts);
       if (count > 0) totalUnread++;
     });
 

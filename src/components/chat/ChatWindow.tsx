@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -18,9 +18,10 @@ import FolderIcon from '@mui/icons-material/Folder';
 import ForumIcon from '@mui/icons-material/Forum';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddToDriveIcon from '@mui/icons-material/AddToDrive';
-import ImageIcon from '@mui/icons-material/Image';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CloseIcon from '@mui/icons-material/Close';
+import ReplyIcon from '@mui/icons-material/Reply';
 import { useMessages, useSendMessage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
@@ -30,7 +31,10 @@ import { MessageBubble } from './MessageBubble';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
 import { tokens } from '@/styles/tokens';
-import { getDisplayName } from '@/utils/formatters';
+import { PRESENCE_COLORS } from '@/lib/constants';
+import { getDisplayName, getPresenceLabel } from '@/utils/formatters';
+import { getReplyPreviewText } from '@/utils/chatMessageUtils';
+import type { Message, PresenceStatus } from '@/types';
 
 interface ChatWindowProps {
   onSearchOpen?: () => void;
@@ -38,7 +42,9 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
-  const { activeConversationId, setActiveConversation, clearUnread } = useChatStore();
+  const { activeConversationId, setActiveConversation, clearUnread, setReplyingTo } = useChatStore();
+  const replyingTo = useChatStore((s) => s.replyingTo);
+  const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const { user } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
@@ -48,7 +54,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const markRead = useMarkConversationRead();
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { joinChat, leaveChat, emitTyping } = useSocket();
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const { joinChat, leaveChat, emitTyping, subscribePresence } = useSocket();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -77,6 +84,52 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     return () => leaveChat(activeConversationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when conversation changes
   }, [activeConversationId, joinChat, leaveChat, clearUnread]);
+
+  const otherParticipantIds = useMemo(() => {
+    if (!activeConversationId || !user?._id) return [] as string[];
+    if (activeConversationId.startsWith('mock-conv-')) {
+      return [activeConversationId.replace('mock-conv-', '')];
+    }
+    const activeConversation = conversations.find((c) => c._id === activeConversationId);
+    if (!activeConversation) return [];
+    return activeConversation.participants
+      .map((p: any) => (typeof p === 'string' ? p : p._id))
+      .filter((id: string) => id && id !== user._id);
+  }, [activeConversationId, conversations, user?._id]);
+
+  const isGroupConversation = useMemo(() => {
+    if (!activeConversationId) return false;
+    const activeConversation = conversations.find((c) => c._id === activeConversationId);
+    return Boolean(activeConversation?.isGroup);
+  }, [activeConversationId, conversations]);
+
+  const otherParticipants = useMemo(() => {
+    return otherParticipantIds.map((id) => {
+      const fromConv = conversations
+        .find((c) => c._id === activeConversationId)
+        ?.participants.find((p: any) => (typeof p === 'string' ? p : p._id) === id);
+      const userObj =
+        (typeof fromConv === 'object' && fromConv) || dbUsers.find((u) => u._id === id);
+      return {
+        id,
+        name: getDisplayName(typeof userObj === 'object' ? userObj : undefined),
+      };
+    });
+  }, [otherParticipantIds, conversations, activeConversationId, dbUsers]);
+
+  useEffect(() => {
+    if (!otherParticipantIds.length) return;
+    subscribePresence(otherParticipantIds);
+  }, [otherParticipantIds, subscribePresence]);
+
+  const handleReply = useCallback((message: Message) => {
+    setReplyingTo(message);
+  }, [setReplyingTo]);
+
+  const handleQuoteClick = useCallback((messageId: string) => {
+    const el = messagesContainerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   // Mark as read when new messages arrive while this conversation is open
   const lastMarkedMessageId = useRef<string | null>(null);
@@ -158,7 +211,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       const senderRef = msg.sender || msg.senderId;
       const senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
       const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
-      return { msg: { ...msg, sender: senderObj }, isOwn };
+
+      let replyTo = msg.replyTo;
+      if (replyTo && typeof replyTo === 'object') {
+        const replySenderRef = replyTo.sender || replyTo.senderId;
+        const replySenderObj =
+          typeof replySenderRef === 'string'
+            ? userMap.get(replySenderRef) || replySenderRef
+            : replySenderRef;
+        replyTo = { ...replyTo, sender: replySenderObj, senderId: replySenderObj };
+      }
+
+      return { msg: { ...msg, sender: senderObj, replyTo }, isOwn };
     });
   }, [displayMessages, userMap, user?._id]);
 
@@ -168,6 +232,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const handleSend = () => {
     if (!activeConversationId || !text.trim()) return;
+    const replyToId = replyingTo?._id;
+    const payload = {
+      content: text,
+      ...(replyToId ? { replyTo: replyToId } : {}),
+    };
 
     if (activeConversationId.startsWith('mock-conv-')) {
       const targetUserId = activeConversationId.replace('mock-conv-', '');
@@ -178,7 +247,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             const newConvId = response.data?.data?._id || response.data?._id;
             if (newConvId) {
               setActiveConversation(newConvId);
-              sendMessage.mutate({ conversationId: newConvId, content: text });
+              sendMessage.mutate({ conversationId: newConvId, ...payload });
             }
           },
           onError: (err) => {
@@ -187,14 +256,25 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         }
       );
     } else {
-      sendMessage.mutate({ conversationId: activeConversationId, content: text });
+      sendMessage.mutate({ conversationId: activeConversationId, ...payload });
     }
     setText('');
+    setReplyingTo(null);
   };
 
   // Resolve current active conversation details
   const chatHeaderDetails = useMemo(() => {
     if (!activeConversationId) return null;
+
+    const resolvePresence = (userId?: string, fallbackUser?: any) => {
+      const fromStore = userId ? presenceByUserId[userId] : undefined;
+      const status: PresenceStatus =
+        fromStore?.status ||
+        fallbackUser?.presenceStatus ||
+        (fallbackUser?.isOnline ? 'online' : 'offline');
+      const lastSeenAt = fromStore?.lastSeenAt || fallbackUser?.lastSeenAt;
+      return { status, lastSeenAt, presenceLabel: getPresenceLabel(status, lastSeenAt) };
+    };
 
     if (activeConversationId.startsWith('mock-conv-')) {
       const targetUserId = activeConversationId.replace('mock-conv-', '');
@@ -202,12 +282,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       if (!targetUser) return null;
       const name = `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.email || 'Agent';
       const initial = name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U';
-      const isOnline = targetUser.isActive || (targetUser as any).status === 'active' || false;
-      return { name, initial, isOnline };
+      const presence = resolvePresence(targetUserId, targetUser);
+      return { name, initial, isGroup: false, ...presence };
     }
 
     if (activeConversationId === 'dummy-chat-1') {
-      return { name: 'Emily Chen', initial: 'EC', isOnline: true };
+      return { name: 'Emily Chen', initial: 'EC', isGroup: false, status: 'online' as PresenceStatus, lastSeenAt: undefined, presenceLabel: 'Active now' };
     }
 
     const activeConversation = conversations.find((c) => c._id === activeConversationId);
@@ -216,17 +296,31 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (activeConversation.isGroup) {
       const name = activeConversation.name || 'Group Chat';
       const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
-      return { name, initial, isOnline: true };
+      const onlineCount = otherParticipantIds.filter((id) => {
+        const p = presenceByUserId[id];
+        return (p?.status || 'offline') === 'online';
+      }).length;
+      return {
+        name,
+        initial,
+        isGroup: true,
+        status: (onlineCount > 0 ? 'online' : 'offline') as PresenceStatus,
+        lastSeenAt: undefined,
+        presenceLabel: `${activeConversation.participants.length} members${onlineCount ? ` · ${onlineCount} online` : ''}`,
+      };
     }
 
     const otherParticipants = activeConversation.participants.filter((p: any) => p._id !== user?._id);
     const mainParticipant = otherParticipants[0] || activeConversation.participants[0] || user;
-    if (otherParticipants.length === 0) return { name: 'Me', initial: 'M', isOnline: true };
+    if (otherParticipants.length === 0) {
+      return { name: 'Me', initial: 'M', isGroup: false, status: 'online' as PresenceStatus, lastSeenAt: undefined, presenceLabel: 'Active now' };
+    }
     const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
     const initial = name.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
-    const isOnline = mainParticipant?.isActive || (mainParticipant as any)?.status === 'active' || false;
-    return { name, initial, isOnline };
-  }, [activeConversationId, conversations, dbUsers, user]);
+    const mainId = typeof mainParticipant === 'object' ? mainParticipant?._id : mainParticipant;
+    const presence = resolvePresence(mainId, mainParticipant);
+    return { name, initial, isGroup: false, ...presence };
+  }, [activeConversationId, conversations, dbUsers, user, presenceByUserId, otherParticipantIds]);
 
   if (!activeConversationId) {
     return (
@@ -307,7 +401,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               >
                 {chatHeaderDetails.initial}
               </Avatar>
-              {chatHeaderDetails.isOnline && (
+              {!chatHeaderDetails.isGroup && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -316,7 +410,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    bgcolor: tokens.semantic.success,
+                    bgcolor: PRESENCE_COLORS[chatHeaderDetails.status] || PRESENCE_COLORS.offline,
                     border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
                   }}
                 />
@@ -326,8 +420,21 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
                 {chatHeaderDetails.name}
               </Typography>
-              <Typography variant="caption" noWrap sx={{ display: 'block', color: chatHeaderDetails.isOnline ? tokens.semantic.success : 'text.secondary', fontWeight: 600 }}>
-                {chatHeaderDetails.isOnline ? 'Active now' : 'Offline'}
+              <Typography
+                variant="caption"
+                noWrap
+                sx={{
+                  display: 'block',
+                  color:
+                    chatHeaderDetails.status === 'online'
+                      ? PRESENCE_COLORS.online
+                      : chatHeaderDetails.status === 'away'
+                        ? PRESENCE_COLORS.away
+                        : 'text.secondary',
+                  fontWeight: 600,
+                }}
+              >
+                {chatHeaderDetails.presenceLabel}
               </Typography>
             </Box>
           </Box>
@@ -379,7 +486,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         </Box>
       </Box>
 
-      <Box sx={{
+      <Box
+        ref={messagesContainerRef}
+        sx={{
         flex: 1,
         overflowY: 'auto',
         transform: 'translateZ(0)',
@@ -413,6 +522,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 key={msg._id}
                 message={msg}
                 isOwn={isOwn}
+                otherParticipantIds={otherParticipantIds}
+                otherParticipants={otherParticipants}
+                isGroup={isGroupConversation}
+                onReply={handleReply}
+                onQuoteClick={handleQuoteClick}
               />
             ))}
             <div ref={bottomRef} />
@@ -433,6 +547,39 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
       {/* Floating Capsule Composer Area */}
       <Box sx={{ p: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 2, md: 3 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+        {replyingTo && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              mb: 1,
+              mx: 0.5,
+              px: 2,
+              py: 1.25,
+              borderRadius: '18px',
+              bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.75)' : 'rgba(255,255,255,0.9)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.08)'}`,
+              borderLeft: `3px solid ${tokens.brand.primary}`,
+            }}
+          >
+            <ReplyIcon sx={{ fontSize: 18, color: tokens.brand.primary }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, display: 'block' }}>
+                Replying to{' '}
+                {getDisplayName(
+                  typeof replyingTo.sender === 'object' ? replyingTo.sender : undefined,
+                )}
+              </Typography>
+              <Typography variant="body2" noWrap sx={{ fontSize: '0.8rem', color: 'text.secondary', fontWeight: 500 }}>
+                {getReplyPreviewText(replyingTo)}
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setReplyingTo(null)} aria-label="Cancel reply">
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        )}
         <Box
           sx={{
             display: 'flex',

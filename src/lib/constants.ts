@@ -84,11 +84,15 @@ export const SALES_DASHBOARD_DEPARTMENTS = [
 export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
   MESSAGE_READ: 'message:read',
+  MESSAGE_DELIVERED: 'message:delivered',
   NOTIFICATION_NEW: 'notification:new',
   KANBAN_CARD_MOVED: 'kanban:card_moved',
   KANBAN_COMMENT_ADDED: 'kanban:comment_added',
   LEAD_STATUS_CHANGED: 'lead:status_changed',
   USER_ONLINE: 'user:online',
+  USER_PRESENCE: 'user:presence',
+  PRESENCE_ACTIVITY: 'presence:activity',
+  PRESENCE_SUBSCRIBE: 'presence:subscribe',
   CONVERSATION_NEW: 'conversation:new',
   CONVERSATION_UPDATED: 'conversation:updated',
   JOIN_ROOM: 'join:room',
@@ -98,6 +102,14 @@ export const SOCKET_EVENTS = {
   CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
 } as const;
+
+export const PRESENCE_COLORS = {
+  online: '#2D8A5E',
+  away: '#F59E0B',
+  offline: '#9CA3AF',
+} as const;
+
+export const MESSAGE_SEEN_TICK_COLOR = '#53bdeb';
 
 export const CONNECTION_STATUS_OPTIONS = Object.values(CONNECTION_STATUS);
 export const MESSAGE_STATUS_OPTIONS = Object.values(MESSAGE_STATUS);
@@ -136,3 +148,13 @@ export const WEEKDAY_SHORT_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', '
 export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'B2B Lead Gen';
+
+/** Fixed Trello-like board label palette (5×6 grid) */
+export const KANBAN_LABEL_COLORS = [
+  '#b7ddb0', '#f5ea92', '#fad29c', '#efb3ab', '#dfc0eb',
+  '#7bc86c', '#f5dd29', '#ffaf3f', '#ef7564', '#cd8de5',
+  '#5aac44', '#e6c60d', '#e79217', '#cf513d', '#a86cc1',
+  '#8bbdd9', '#8fdfeb', '#b3f1d0', '#ea94bb', '#505f79',
+  '#5ba4cf', '#29cce5', '#6deca9', '#ff8ed4', '#344563',
+  '#026aa7', '#00aecc', '#4ed583', '#e568af', '#091e42',
+] as const;

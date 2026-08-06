@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -19,12 +20,16 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { WeekdayPicker } from '@/components/kpi/WeekdayPicker';
 import {
+  useAssignSalesKpiTemplate,
   useCreateSalesKpiTemplate,
   useUpdateSalesKpiTemplate,
   type SalesKpiTemplatePayload,
 } from '@/hooks/api/useSalesKpis';
+import { useUsers } from '@/hooks/api/useUsers';
+import { useAuth } from '@/hooks/useAuth';
 import { SALES_KPI_METRIC_LABELS, SALES_KPI_METRIC_OPTIONS } from '@/lib/constants';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { defaultTargetModeForMetric, isManualTarget } from '@/lib/salesKpi';
@@ -37,6 +42,7 @@ import type {
   SalesKpiTargetMode,
   SalesKpiTemplate,
   SalesKpiTemplateItem,
+  User,
 } from '@/types';
 
 interface Props {
@@ -93,13 +99,22 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
+  const { isAdmin } = useAuth();
+  const { data: users = [] } = useUsers();
   const createMutation = useCreateSalesKpiTemplate();
   const updateMutation = useUpdateSalesKpiTemplate();
+  const assignMutation = useAssignSalesKpiTemplate();
 
+  const isEditing = !!template;
   const [name, setName] = useState(template?.name ?? '');
   const [description, setDescription] = useState(template?.description ?? '');
   const [items, setItems] = useState<DraftItem[]>(() =>
     template?.items?.length ? template.items.map(toDraft) : [makeItem()],
+  );
+  const [assignUsers, setAssignUsers] = useState<User[]>([]);
+
+  const assignableUsers = users.filter((u) =>
+    isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user',
   );
 
   const patchItem = (index: number, patch: Partial<DraftItem>) =>
@@ -121,7 +136,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   );
 
   const canSave = !!name.trim() && items.length > 0 && !invalidItem;
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending =
+    createMutation.isPending || updateMutation.isPending || assignMutation.isPending;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -149,8 +165,27 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
         await updateMutation.mutateAsync({ id: template._id, data: payload });
         addToast({ message: 'Sales KPI template updated.', severity: 'success' });
       } else {
-        await createMutation.mutateAsync(payload);
-        addToast({ message: 'Sales KPI template created.', severity: 'success' });
+        const created = await createMutation.mutateAsync(payload);
+        const createdTemplate = created.data.data;
+        if (assignUsers.length > 0) {
+          try {
+            await assignMutation.mutateAsync({
+              id: createdTemplate._id,
+              userIds: assignUsers.map((u) => u._id),
+            });
+            addToast({
+              message: `Sales KPI template created and assigned to ${assignUsers.length} user${assignUsers.length === 1 ? '' : 's'}.`,
+              severity: 'success',
+            });
+          } catch {
+            addToast({
+              message: 'Template created, but assignment failed. You can assign it from the list.',
+              severity: 'warning',
+            });
+          }
+        } else {
+          addToast({ message: 'Sales KPI template created.', severity: 'success' });
+        }
       }
       onClose();
     } catch {
@@ -351,6 +386,47 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
         >
           Add item
         </Button>
+
+        {!isEditing && (
+          <Box
+            sx={{
+              mt: 1,
+              p: 2,
+              borderRadius: '20px',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <PersonAddAlt1Icon sx={{ fontSize: 20, color: tokens.brand.primary }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                Assign after creating
+              </Typography>
+            </Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+              Optional — pick users now, or leave empty and assign later from the template list.
+            </Typography>
+            <Autocomplete
+              multiple
+              options={assignableUsers}
+              getOptionLabel={(u) => `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email}
+              value={assignUsers}
+              onChange={(_, v) => setAssignUsers(v)}
+              renderInput={(params) => (
+                <TextField {...params} label="Assign to users" sx={textFieldStyle} />
+              )}
+              sx={{
+                '& .MuiChip-root': {
+                  borderRadius: '8px',
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                },
+              }}
+            />
+          </Box>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 4, pb: 4, pt: 1, gap: 1.5 }}>
@@ -373,7 +449,9 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
             transition: 'all 0.2s',
           }}
         >
-          {isPending ? 'Saving...' : 'Save Template'}
+          {isPending
+            ? (assignMutation.isPending ? 'Assigning...' : 'Saving...')
+            : (!isEditing && assignUsers.length > 0 ? 'Save & Assign' : 'Save Template')}
         </Button>
       </DialogActions>
     </Dialog>

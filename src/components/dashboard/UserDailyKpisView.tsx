@@ -111,17 +111,32 @@ export const UserDailyKpisView = () => {
     setCompleteDialog(kpi);
   };
 
+  /** Kanban board tasks are done/not-done — never require a quantity. */
+  const requiresQuantity = (kpi: any) => {
+    if (kpi?.kanbanCardId) return false;
+    const target = kpi?.targetValue ?? kpi?.kpiId?.targetValue ?? 0;
+    return target > 0;
+  };
+
   const handleCompleteSubmit = () => {
     if (!completeDialog) return;
-    const target = completeDialog.targetValue ?? completeDialog.kpiId?.targetValue ?? 0;
     const parsedActual = actualValueInput === '' ? undefined : Number(actualValueInput);
-    if (target > 0 && (parsedActual === undefined || Number.isNaN(parsedActual) || parsedActual < 0)) return;
+    if (
+      requiresQuantity(completeDialog)
+      && (parsedActual === undefined || Number.isNaN(parsedActual) || parsedActual < 0)
+    ) {
+      return;
+    }
 
     const id = completeDialog._id;
     setLoadingIds((prev) => new Set(prev).add(id));
     setCompleteDialog(null);
     markComplete.mutate(
-      { id, actualValue: parsedActual, notes: notesInput || undefined },
+      {
+        id,
+        actualValue: requiresQuantity(completeDialog) ? parsedActual : undefined,
+        notes: notesInput || undefined,
+      },
       {
         onSettled: () => setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }),
       },
@@ -129,6 +144,7 @@ export const UserDailyKpisView = () => {
   };
 
   const getAttainmentLabel = (kpi: any) => {
+    if (kpi?.kanbanCardId) return null;
     const target = kpi.targetValue ?? kpi.kpiId?.targetValue ?? 0;
     const actual = kpi.actualValue ?? 0;
     if (!kpi.isCompleted || target <= 0) return null;
@@ -321,7 +337,7 @@ export const UserDailyKpisView = () => {
             const isOverdue = filter === 'overdue' || grouped.overdue.some((o: any) => o._id === kpi._id);
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
             const pipelineMetric = kpi.pipelineMetric || kpi.kpiId?.pipelineMetric;
-            const hasTarget = (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
+            const hasTarget = !kpi.kanbanCardId && (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
 
             return (
               <Box
@@ -530,7 +546,7 @@ export const UserDailyKpisView = () => {
           <Typography variant="body2" color="text.secondary">
             {completeDialog?.kpiName || completeDialog?.name || completeDialog?.kpiId?.name || 'KPI'}
           </Typography>
-          {(completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue ?? 0) > 0 && (
+          {requiresQuantity(completeDialog) && (
             <>
               <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.text.muted }}>
                 Target: {completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue}
@@ -554,6 +570,7 @@ export const UserDailyKpisView = () => {
             fullWidth
             multiline
             minRows={2}
+            autoFocus={!requiresQuantity(completeDialog)}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -562,7 +579,7 @@ export const UserDailyKpisView = () => {
             variant="contained"
             onClick={handleCompleteSubmit}
             disabled={
-              (completeDialog?.targetValue ?? completeDialog?.kpiId?.targetValue ?? 0) > 0
+              requiresQuantity(completeDialog)
               && (actualValueInput === '' || Number.isNaN(Number(actualValueInput)) || Number(actualValueInput) < 0)
             }
             sx={{ textTransform: 'none' }}
