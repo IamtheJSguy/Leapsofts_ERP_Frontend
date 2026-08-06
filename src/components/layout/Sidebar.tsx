@@ -147,6 +147,12 @@ export const Sidebar = () => {
       {/* Workspace Selector Dropdown Header */}
       <Box sx={{ px: 2, pt: 3, pb: 2 }}>
         <Box
+          onClick={() => {
+            navigate('/');
+            if (isMobile && sidebarOpen) {
+              toggleSidebar();
+            }
+          }}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -154,6 +160,12 @@ export const Sidebar = () => {
             borderRadius: '12px',
             bgcolor: 'rgba(255, 255, 255, 0.02)',
             border: '1px solid rgba(255, 255, 255, 0.05)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
+            },
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>

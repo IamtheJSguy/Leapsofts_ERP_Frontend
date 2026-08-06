@@ -419,18 +419,20 @@ export const AttendancePage = () => {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
                       <Avatar sx={{ width: 46, height: 46, bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
-                      <Chip
-                        label={isOnline ? 'Online' : 'Offline'}
-                        size="small"
-                        sx={{
-                          height: 20,
-                          fontSize: '0.62rem',
-                          fontWeight: 800,
-                          bgcolor: isOnline ? 'rgba(16, 185, 129, 0.08)' : 'rgba(113, 113, 122, 0.08)',
-                          color: isOnline ? tokens.semantic.success : 'text.secondary',
-                          border: `1px solid ${isOnline ? 'rgba(16,185,129,0.15)' : 'rgba(113,113,122,0.15)'}`,
-                        }}
-                      />
+                      {isOnline && (
+                        <Chip
+                          label="Online"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            bgcolor: 'rgba(16, 185, 129, 0.08)',
+                            color: tokens.semantic.success,
+                            border: '1px solid rgba(16,185,129,0.15)',
+                          }}
+                        />
+                      )}
                     </Box>
 
                     <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary' }}>
