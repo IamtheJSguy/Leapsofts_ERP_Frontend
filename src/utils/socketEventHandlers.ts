@@ -34,7 +34,6 @@ const getConversationId = (message: Message): string => {
   return String(message.conversationId);
 };
 
-<<<<<<< Updated upstream
 const patchMessagesReceipt = (
   queryClient: QueryClient,
   conversationId: string,
@@ -95,10 +94,9 @@ const applyUserPresence = (
     );
   });
 };
-=======
+
 const systemNotificationSound = new Audio('/faahh.mp3');
 systemNotificationSound.preload = 'auto';
->>>>>>> Stashed changes
 
 export const setupSocketEventHandlers = (
   socket: {
