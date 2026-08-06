@@ -55,6 +55,7 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { ChangeRequestQueue } from '@/components/kpi/ChangeRequestQueue';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { StandaloneKPIForm } from '@/components/kpi/StandaloneKPIForm';
+import { SalesKpiPanel } from '@/components/kpi/SalesKpiPanel';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
@@ -277,7 +278,7 @@ const TasksPage = () => {
   }, [activeAssignments, dbUsers]);
 
   // Tabs navigation
-  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
+  type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'sales_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('templates');
 
   // Set default tab to assignments for non-admin users
@@ -2006,71 +2007,30 @@ const TasksPage = () => {
     return (
       <>
       {/* Page Title Header */}
-      <Box
-        sx={{
-          mb: 4,
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          justifyContent: 'space-between',
-          gap: 2,
-          position: 'relative',
-        }}
-      >
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.025em',
-              mb: 0.5,
-              color: isDarkMode ? '#fff' : tokens.text.primary,
-            }}
-          >
-            Performance Targets
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{
-              color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
-              fontWeight: 500,
-              fontSize: '0.92rem',
-            }}
-          >
-            {isElevated
-              ? 'Manage reusable templates, allocate targets, and monitor agent performance.'
-              : 'Review your active objective targets and complete daily checklist milestones.'}
-          </Typography>
-        </Box>
-
-        {isElevated && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setViewMode('create');
-              setWizardStep(0);
-            }}
-            sx={{
-              bgcolor: tokens.brand.primary,
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              px: 3.5,
-              py: 1,
-              borderRadius: '24px',
-              boxShadow: 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: tokens.brand.primary, 
-                transform: 'translateY(-1px)',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Create Template
-          </Button>
-        )}
+      <Box sx={{ mb: 4, position: 'relative' }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: '-0.025em',
+            mb: 0.5,
+            color: isDarkMode ? '#fff' : tokens.text.primary,
+          }}
+        >
+          Performance Targets
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
+            fontWeight: 500,
+            fontSize: '0.92rem',
+          }}
+        >
+          {isElevated
+            ? 'Manage reusable templates, allocate targets, and monitor agent performance.'
+            : 'Review your active objective targets and complete daily checklist milestones.'}
+        </Typography>
       </Box>
 
       {/* Mini stats counters grid */}
@@ -2218,10 +2178,11 @@ const TasksPage = () => {
         <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
           <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
+          <Button onClick={() => setDashboardTab('sales_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
           <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
           </Button>
-          <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Daily Progress</Button>
+          <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
           {isManager && (
             <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
           )}
@@ -2238,6 +2199,10 @@ const TasksPage = () => {
 
       {dashboardTab === 'change_requests' && isElevated && viewMode === 'list' && (
         <ChangeRequestQueue />
+      )}
+
+      {dashboardTab === 'sales_kpis' && isElevated && viewMode === 'list' && (
+        <SalesKpiPanel />
       )}
 
       {dashboardTab === 'standalone_kpis' && isElevated && viewMode === 'list' && (
@@ -2346,6 +2311,35 @@ const TasksPage = () => {
         />
 
         <Box sx={{ display: 'flex', gap: 1.5, ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' }, alignItems: 'center' }}>
+          {dashboardTab === 'templates' && isElevated && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setViewMode('create');
+                setWizardStep(0);
+              }}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                px: 3.5,
+                py: 1,
+                borderRadius: '24px',
+                boxShadow: 'none',
+                height: 42,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: tokens.brand.primary,
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              Create Template
+            </Button>
+          )}
           <ToggleButtonGroup
             value={viewLayout}
             exclusive

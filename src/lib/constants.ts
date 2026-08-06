@@ -22,6 +22,26 @@ export const PIPELINE_METRIC = {
   MEETINGS_TAKEN: 'meetings_taken',
 } as const;
 
+export const SALES_KPI_METRIC = {
+  NEW_PROSPECTS: 'new_prospects',
+  MESSAGES_SENT: 'messages_sent',
+  RESPONSES: 'responses',
+  FOLLOW_UPS: 'follow_ups',
+} as const;
+
+export const SALES_KPI_SCHEDULE_MODE = { PER_DAY: 'per_day', SPAN: 'span' } as const;
+
+export const SALES_KPI_TARGET_MODE = { MANUAL: 'manual', AUTO_SNAPSHOT: 'auto_snapshot' } as const;
+
+export const SALES_KPI_STATUS = {
+  PENDING: 'pending',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED_ON_TIME: 'completed_on_time',
+  COMPLETED_LATE: 'completed_late',
+  MISSED: 'missed',
+  PARTIAL: 'partial',
+} as const;
+
 export const NOTIFICATION_TYPE = {
   KPI_MISS: 'kpi_miss',
   FOLLOW_UP: 'follow_up',
@@ -88,5 +108,31 @@ export const PIPELINE_METRIC_LABELS: Record<string, string> = {
   follow_ups: 'Follow-Ups',
   meetings_taken: 'Meetings Taken',
 };
+
+export const SALES_KPI_METRIC_OPTIONS = Object.values(SALES_KPI_METRIC);
+
+export const SALES_KPI_METRIC_LABELS: Record<string, string> = {
+  new_prospects: 'New Prospects',
+  messages_sent: 'Messages Sent',
+  responses: 'Responses',
+  follow_ups: 'Follow-Ups',
+};
+
+/** Only these metrics take an admin-entered target; the rest are snapshotted from the pipeline. */
+export const SALES_KPI_MANUAL_TARGET_METRICS: string[] = [SALES_KPI_METRIC.NEW_PROSPECTS];
+
+export const SALES_KPI_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  in_progress: 'In Progress',
+  completed_on_time: 'On time',
+  completed_late: 'Late',
+  missed: 'Missed',
+  partial: 'Partial',
+};
+
+/** Index matches the daysOfWeek convention: 0 = Sunday … 6 = Saturday. */
+export const WEEKDAY_SHORT_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'B2B Lead Gen';

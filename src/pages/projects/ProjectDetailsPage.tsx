@@ -110,8 +110,16 @@ export const ProjectDetailsPage = () => {
   const project = data?.project;
   const boards = data?.boards || [];
 
-  const isProjectOwner = project?.ownerId === currentUser?._id;
-  const canManageProject = isProjectOwner || isElevated;
+  const ownerId =
+    typeof project?.ownerId === 'string'
+      ? project.ownerId
+      : (project?.ownerId as { _id?: string } | undefined)?._id;
+  const isProjectOwner = !!ownerId && ownerId === currentUser?._id;
+  const isProjectAdminMember = !!project?.members?.some((m) => {
+    const memberId = typeof m.userId === 'string' ? m.userId : m.userId?._id;
+    return memberId === currentUser?._id && (m.role === 'owner' || m.role === 'admin');
+  });
+  const canManageProject = isProjectOwner || isProjectAdminMember || isElevated;
 
   const handleTabChange = (index: number) => {
     setActiveTab(index);
@@ -119,8 +127,9 @@ export const ProjectDetailsPage = () => {
   };
 
   const handleEditSubmit = (formData: any) => {
-    if (projectId) {
-      updateProjectMutation.mutate({
+    if (!projectId) return;
+    updateProjectMutation.mutate(
+      {
         id: projectId,
         data: {
           name: formData.name,
@@ -128,8 +137,11 @@ export const ProjectDetailsPage = () => {
           status: formData.status,
           tags: formData.tags,
         },
-      });
-    }
+      },
+      {
+        onSuccess: () => setIsEditOpen(false),
+      },
+    );
   };
 
   const handleDeleteConfirm = () => {
@@ -208,7 +220,11 @@ export const ProjectDetailsPage = () => {
   };
 
   const projectOwnerUser = useMemo(() => {
-    return dbUsers.find((u) => u._id === project?.ownerId);
+    const id =
+      typeof project?.ownerId === 'string'
+        ? project.ownerId
+        : (project?.ownerId as { _id?: string } | undefined)?._id;
+    return dbUsers.find((u) => u._id === id);
   }, [project?.ownerId, dbUsers]);
 
   if (isLoading) {
@@ -292,7 +308,7 @@ export const ProjectDetailsPage = () => {
           </Box>
         </Box>
 
-        {canManageProject && !project.isDefault && (
+        {canManageProject && (
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <Button
               variant="outlined"
@@ -310,26 +326,28 @@ export const ProjectDetailsPage = () => {
                 },
               }}
             >
-              Edit
+              Edit Details
             </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setIsDeleteConfirmOpen(true)}
-              sx={{
-                borderRadius: '24px',
-                textTransform: 'none',
-                fontWeight: 700,
-                color: tokens.semantic.error,
-                borderColor: 'rgba(239, 68, 68, 0.2)',
-                '&:hover': {
-                  borderColor: tokens.semantic.error,
-                  bgcolor: 'rgba(239, 68, 68, 0.04)',
-                },
-              }}
-            >
-              Delete
-            </Button>
+            {!project.isDefault && (
+              <Button
+                variant="outlined"
+                startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                sx={{
+                  borderRadius: '24px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  color: tokens.semantic.error,
+                  borderColor: 'rgba(239, 68, 68, 0.2)',
+                  '&:hover': {
+                    borderColor: tokens.semantic.error,
+                    bgcolor: 'rgba(239, 68, 68, 0.04)',
+                  },
+                }}
+              >
+                Delete
+              </Button>
+            )}
           </Box>
         )}
       </Box>
@@ -475,20 +493,54 @@ export const ProjectDetailsPage = () => {
                 p: 4,
               }}
             >
-              <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
-                Project Description
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                  Project Description
+                </Typography>
+                {canManageProject && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setIsEditOpen(true)}
+                    sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 700 }}
+                  >
+                    Edit Details
+                  </Button>
+                )}
+              </Box>
               <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4, lineHeight: 1.7 }}>
                 {project.description || 'No description provided.'}
               </Typography>
               <Divider sx={{ mb: 4 }} />
               <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
-                Status Details
+                Status & Tags
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 2 }}>
                 This is a <strong>{project.isDefault ? 'default system' : 'custom'}</strong> project currently in the{' '}
                 <strong>{project.status.replace('_', ' ')}</strong> phase.
               </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {(project.tags?.length ? project.tags : []).map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    sx={{
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      color: 'text.secondary',
+                      fontWeight: 650,
+                      fontSize: '0.68rem',
+                      borderRadius: '6px',
+                    }}
+                  />
+                ))}
+                {!project.tags?.length && (
+                  <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                    No tags yet — use Edit Details to add some.
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             {/* Sidebar metadata */}
@@ -671,6 +723,7 @@ export const ProjectDetailsPage = () => {
         onClose={() => setIsEditOpen(false)}
         onSubmit={handleEditSubmit}
         isSubmitting={updateProjectMutation.isPending}
+        lockName={project.isDefault}
         initialData={{
           name: project.name,
           description: project.description || '',

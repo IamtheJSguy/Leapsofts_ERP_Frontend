@@ -30,13 +30,16 @@ import AddIcon from '@mui/icons-material/Add';
 import { useDailyKpis, useMarkDailyKpiComplete, useMarkDailyKpiIncomplete } from '@/hooks/api/useShifts';
 import { useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { useMyAssignments } from '@/hooks/api/usekpiTemplate';
+import { useMySalesKpis } from '@/hooks/api/useSalesKpis';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
+import { SalesKpiEntryCard } from '@/components/kpi/SalesKpiEntryCard';
 import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { sortByPriority } from '@/lib/priorityConfig';
 import { PIPELINE_METRIC_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
+import type { GroupedSalesKpis, SalesKpiEntry } from '@/types';
 
 const EMPTY_GROUPED = {
   active: [],
@@ -46,11 +49,21 @@ const EMPTY_GROUPED = {
   counts: { active: 0, overdue: 0, done: 0, highPriority: 0 },
 };
 
+const EMPTY_SALES_GROUPED: GroupedSalesKpis = {
+  active: [],
+  overdue: [],
+  incomplete: [],
+  done: [],
+  counts: { active: 0, overdue: 0, incomplete: 0, done: 0 },
+};
+
+const isHighPrioritySalesKpi = (entry: SalesKpiEntry) => entry.priority === 'high' || entry.priority === 'urgent';
+
 export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const [filter, setFilter] = useState<'active' | 'overdue' | 'high' | 'done' | 'requests'>('active');
+  const [filter, setFilter] = useState<'active' | 'overdue' | 'incomplete' | 'high' | 'done' | 'requests'>('active');
   const [expandedKpiId, setExpandedKpiId] = useState<string | null>(null);
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -60,6 +73,7 @@ export const UserDailyKpisView = () => {
   const [notesInput, setNotesInput] = useState('');
 
   const { data: grouped = EMPTY_GROUPED, isLoading } = useDailyKpis();
+  const { data: salesGrouped = EMPTY_SALES_GROUPED } = useMySalesKpis();
   const { data: myRequests = [] } = useMyKPIChangeRequests();
   const { data: myAssignments = [] } = useMyAssignments();
 
@@ -136,11 +150,29 @@ export const UserDailyKpisView = () => {
     });
   }, [grouped, filter]);
 
+  const salesKpis = useMemo(() => {
+    const bucket =
+      filter === 'active' ? salesGrouped.active
+      : filter === 'overdue' ? salesGrouped.overdue
+      : filter === 'incomplete' ? salesGrouped.incomplete
+      : filter === 'high' ? salesGrouped.active.filter(isHighPrioritySalesKpi)
+      : filter === 'done' ? salesGrouped.done
+      : [];
+
+    return [...bucket].sort(sortByPriority);
+  }, [salesGrouped, filter]);
+
+  const salesHighPriorityCount = useMemo(
+    () => salesGrouped.active.filter(isHighPrioritySalesKpi).length,
+    [salesGrouped],
+  );
+
   const filters = [
-    { id: 'active', label: 'Active', count: grouped.counts.active },
-    { id: 'overdue', label: 'Overdue', count: grouped.counts.overdue },
-    { id: 'high', label: 'High priority', count: grouped.counts.highPriority },
-    { id: 'done', label: 'Done', count: grouped.counts.done },
+    { id: 'active', label: 'Active', count: grouped.counts.active + salesGrouped.counts.active },
+    { id: 'overdue', label: 'Overdue', count: grouped.counts.overdue + salesGrouped.counts.overdue },
+    { id: 'incomplete', label: 'Incomplete', count: salesGrouped.counts.incomplete },
+    { id: 'high', label: 'High priority', count: grouped.counts.highPriority + salesHighPriorityCount },
+    { id: 'done', label: 'Done', count: grouped.counts.done + salesGrouped.counts.done },
     { id: 'requests', label: 'Requests', count: myRequests.length },
   ];
 
@@ -261,12 +293,27 @@ export const UserDailyKpisView = () => {
 
       {filter === 'requests' ? (
         <MyChangeRequestsPanel />
-      ) : filteredKpis.length === 0 ? (
+      ) : filteredKpis.length === 0 && salesKpis.length === 0 ? (
         <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, py: 8 }}>
           <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success, mb: 2 }} />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>All caught up</Typography>
         </Box>
       ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {salesKpis.length > 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <TrackChangesOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
+              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Sales KPIs · tracked automatically
+              </Typography>
+            </Box>
+            {salesKpis.map((entry) => (
+              <SalesKpiEntryCard key={entry._id} entry={entry} />
+            ))}
+          </Box>
+        )}
+        {filteredKpis.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           {filteredKpis.map((kpi: any) => {
             const isChecked = kpi.isCompleted;
@@ -422,6 +469,8 @@ export const UserDailyKpisView = () => {
               </Box>
             );
           })}
+        </Box>
+        )}
         </Box>
       )}
 
