@@ -1473,7 +1473,25 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     handlePriorityClose();
   };
 
-
+  const handleToggleDone = () => {
+    if (!isAdminOrOwner || updateCardMutation.isPending) return;
+    const nextDone = !Boolean(rawCard?.isDone);
+    updateCardMutation.mutate(
+      { cardId: task.id, data: { isDone: nextDone } },
+      {
+        onSuccess: () =>
+          addToast({
+            message: nextDone ? 'Card marked as done' : 'Card marked as not done',
+            severity: 'success',
+          }),
+        onError: (err: any) =>
+          addToast({
+            message: err.response?.data?.message || 'Failed to update done status',
+            severity: 'error',
+          }),
+      },
+    );
+  };
 
   const authorName = lead ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : 'Unnamed Lead';
 
@@ -1565,6 +1583,39 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   </Box>
                 );
               })()}
+              {(isAdminOrOwner || Boolean(rawCard?.isDone)) && (
+                <Chip
+                  icon={<CheckIcon sx={{ fontSize: '14px !important' }} />}
+                  label={rawCard?.isDone ? 'Done' : 'Mark Done'}
+                  size="small"
+                  onClick={isAdminOrOwner ? handleToggleDone : undefined}
+                  disabled={isAdminOrOwner && updateCardMutation.isPending}
+                  sx={{
+                    bgcolor: rawCard?.isDone
+                      ? (isDarkMode ? 'rgba(34,197,94,0.15)' : 'rgba(22,163,74,0.1)')
+                      : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                    color: rawCard?.isDone
+                      ? (isDarkMode ? '#4ade80' : '#15803d')
+                      : 'text.secondary',
+                    fontWeight: 750,
+                    fontSize: '0.7rem',
+                    height: 24,
+                    border: `1px solid ${rawCard?.isDone
+                      ? (isDarkMode ? 'rgba(34,197,94,0.3)' : 'rgba(22,163,74,0.25)')
+                      : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')}`,
+                    cursor: isAdminOrOwner ? 'pointer' : 'default',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    '&:hover': isAdminOrOwner
+                      ? {
+                          transform: 'translateY(-1px)',
+                          boxShadow: rawCard?.isDone
+                            ? '0 4px 12px rgba(22,163,74,0.25)'
+                            : '0 4px 12px rgba(0,0,0,0.08)',
+                        }
+                      : {},
+                  }}
+                />
+              )}
             </Box>
             {isAdminOrOwner ? (
               <TextField
@@ -2127,8 +2178,9 @@ export const KanbanBoardPage = () => {
   // Transform board columns and cards into flattened lists for dnd-kit
   const columns = useMemo(() => {
     if (!actualBoard || !actualBoard.columns) return [];
-    return actualBoard.columns
+    return [...actualBoard.columns]
       .filter((col: any) => col.isActive !== false)
+      .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
       .map((col: any) => ({
         id: col._id,
         title: col.name,
