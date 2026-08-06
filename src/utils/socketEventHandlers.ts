@@ -13,7 +13,7 @@ const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 // Track recently processed message IDs and ignore the duplicate delivery.
 const recentlyProcessedMessages = new Set<string>();
 
-const notificationSound = new Audio('/notfication.mp3');
+const notificationSound = new Audio('/faahh.mp3');
 notificationSound.preload = 'auto';
 
 const getSenderId = (message: Message): string => {
@@ -95,7 +95,7 @@ const applyUserPresence = (
   });
 };
 
-const systemNotificationSound = new Audio('/faahh.mp3');
+const systemNotificationSound = new Audio('/amor.mp3');
 systemNotificationSound.preload = 'auto';
 
 export const setupSocketEventHandlers = (
