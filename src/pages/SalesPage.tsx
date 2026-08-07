@@ -60,7 +60,6 @@ import CheckIcon from '@mui/icons-material/Check';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
-import { BulkUploadModal } from '@/components/leads/BulkUploadModal';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -68,7 +67,6 @@ import EventIcon from '@mui/icons-material/Event';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { format } from 'date-fns';
@@ -504,9 +502,6 @@ export const SalesPage = () => {
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [leadModalId, setLeadModalId] = useState<string>('');
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
-
-  // Bulk Upload Modal state
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
@@ -1312,51 +1307,28 @@ export const SalesPage = () => {
                   Add Multiple
                 </Button>
                 {user?.role !== 'manager' && (
-                  <>
-                    <Button
-                      variant="outlined"
-                      startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
-                      onClick={() => setIsBulkUploadOpen(true)}
-                      sx={{
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                        color: isDarkMode ? '#fff' : tokens.text.primary,
-                        textTransform: 'none',
-                        borderRadius: '24px',
-                        height: 42,
-                        px: 3,
-                        fontWeight: 700,
-                        fontSize: '0.84rem',
-                        '&:hover': {
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                        },
-                      }}
-                    >
-                      Bulk Upload
-                    </Button>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                      onClick={() => setIsLinkDialogOpen(true)}
-                      sx={{
-                        bgcolor: tokens.brand.primary,
-                        color: '#fff',
-                        textTransform: 'none',
-                        borderRadius: '24px',
-                        height: 42,
-                        px: 3,
-                        fontWeight: 700,
-                        fontSize: '0.84rem',
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setIsLinkDialogOpen(true)}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        bgcolor: tokens.brand.primaryLight,
                         boxShadow: 'none',
-                        '&:hover': {
-                          bgcolor: tokens.brand.primaryLight,
-                          boxShadow: 'none',
-                        },
-                      }}
-                    >
-                      Connect and sync
-                    </Button>
-                  </>
+                      },
+                    }}
+                  >
+                    Connect and sync
+                  </Button>
                 )}
               </Box>
             )}
@@ -2310,11 +2282,6 @@ export const SalesPage = () => {
           onClose={handleCloseLeadModal}
         />
       ) : null}
-
-      <BulkUploadModal
-        open={isBulkUploadOpen}
-        onClose={() => setIsBulkUploadOpen(false)}
-      />
     </Box>
   );
 };
