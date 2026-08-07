@@ -58,6 +58,7 @@ import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
+import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { formatDate } from '@/utils/formatters';
@@ -66,7 +67,69 @@ import { CreateTeamModal } from '@/components/team/CreateTeamModal';
 import { AddExistingTeamMemberPanel } from '@/components/team/AddExistingTeamMemberPanel';
 import { useMyTeam } from '@/hooks/api/useTeam';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ROLES, DEPARTMENT, DEPARTMENT_OPTIONS } from '@/lib/constants';
+import { ROLES, DEPARTMENT, DEPARTMENT_OPTIONS, SALES_KPI_METRIC, SALES_KPI_METRIC_LABELS } from '@/lib/constants';
+import type { Role, SalesKpiEntry, SalesKpiMetric } from '@/types';
+
+const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
+  SALES_KPI_METRIC.NEW_PROSPECTS,
+  SALES_KPI_METRIC.MESSAGES_SENT,
+  SALES_KPI_METRIC.RESPONSES,
+  SALES_KPI_METRIC.FOLLOW_UPS,
+];
+
+const SALES_KPI_SHORT_LABELS: Record<SalesKpiMetric, string> = {
+  new_prospects: 'Prospects',
+  messages_sent: 'Messages',
+  responses: 'Responses',
+  follow_ups: 'Follow-ups',
+};
+
+type MemberSalesKpiStat = {
+  metric: SalesKpiMetric;
+  label: string;
+  current: number;
+  target: number;
+};
+
+const resolveSalesKpiUserId = (userRef: SalesKpiEntry['userId']) =>
+  typeof userRef === 'string' ? userRef : userRef?._id;
+
+/** Latest entry per metric per user for the selected date window. */
+const buildSalesKpisByUser = (entries: SalesKpiEntry[]) => {
+  const latestByUserMetric: Record<string, Partial<Record<SalesKpiMetric, SalesKpiEntry>>> = {};
+
+  for (const entry of entries) {
+    const uid = resolveSalesKpiUserId(entry.userId);
+    if (!uid) continue;
+    if (!latestByUserMetric[uid]) latestByUserMetric[uid] = {};
+    const existing = latestByUserMetric[uid][entry.metric];
+    if (!existing || new Date(entry.periodStart) > new Date(existing.periodStart)) {
+      latestByUserMetric[uid][entry.metric] = entry;
+    }
+  }
+
+  const result: Record<string, MemberSalesKpiStat[]> = {};
+  for (const [uid, byMetric] of Object.entries(latestByUserMetric)) {
+    result[uid] = SALES_KPI_CARD_METRICS.map((metric) => {
+      const entry = byMetric[metric];
+      return {
+        metric,
+        label: SALES_KPI_SHORT_LABELS[metric],
+        current: entry?.currentValue ?? 0,
+        target: entry?.targetValue ?? 0,
+      };
+    });
+  }
+  return result;
+};
+
+const emptySalesKpiStats = (): MemberSalesKpiStat[] =>
+  SALES_KPI_CARD_METRICS.map((metric) => ({
+    metric,
+    label: SALES_KPI_SHORT_LABELS[metric],
+    current: 0,
+    target: 0,
+  }));
 
 /* ─── Modern Shift Time Picker ──────────────────────────────────────────────── */
 interface ShiftTimePickerProps {
@@ -321,32 +384,39 @@ const ShiftTimePicker = ({ label, value, onChange, isDarkMode }: ShiftTimePicker
   );
 };
 /* ─────────────────────────────────────────────────────────────────────────── */
-import type { Role } from '@/types';
 
 const TeamPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isManager, canManageUsers, canPromoteRoles } = usePermissions();
   const currentUser = useAuthStore((s) => s.user);
-  const teamQuery = useMyTeam();
+  // /teams/mine is manager-only (403 for admin) — don't call it for admins.
+  const teamQuery = useMyTeam({ enabled: isManager });
   const showCreateTeam = isManager && teamQuery.isError;
   const canAddExistingMember = isManager && !showCreateTeam;
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  // Load team users from DB API
-  const { data: dbUsers = [], isLoading: isUsersLoading } = useUsers();
+  // Admins load the full org roster (includes managers). Managers use /teams/mine.
+  const { data: dbUsers = [], isLoading: isUsersLoading } = useUsers(
+    { limit: '500' },
+    { enabled: isAdmin || !isManager },
+  );
   const createUserMutation = useCreateUser();
 
   const teamList = useMemo(() => {
-    if (!isManager) return dbUsers;
+    const allUsers = Array.isArray(dbUsers) ? dbUsers : [];
+
+    // Admin (and any non-manager) always sees every active user, including managers.
+    if (isAdmin || !isManager) return allUsers;
+
     const manager = teamQuery.data?.managerId;
     const members = teamQuery.data?.members || [];
     if (!manager?._id) return members;
     // Include the manager so they can open their own summary from Team Operations.
     if (members.some((m) => m._id === manager._id)) return members;
     return [manager, ...members];
-  }, [isManager, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
+  }, [isAdmin, isManager, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -366,6 +436,17 @@ const TeamPage = () => {
   // Load summary for the selected user if one is active
   const { data: userSummary } = useUserSummary(selectedUser?._id, summaryDate);
   const { data: auditResponse } = useUserAuditLogs(selectedUser?._id, activityPage, 20, { enabled: isAdmin });
+
+  // Sales KPIs for team cards (today) and member detail (selected summary date)
+  const salesKpiDate = selectedUser ? summaryDate : new Date().toLocaleDateString('en-CA');
+  const salesKpiQueryParams = useMemo(
+    () => ({ startDate: salesKpiDate, endDate: salesKpiDate }),
+    [salesKpiDate],
+  );
+  const { data: teamSalesKpis = [] } = useTeamSalesKpis(salesKpiQueryParams, {
+    enabled: canManageUsers || isManager || isAdmin,
+  });
+  const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
 
   // Fetch kanban boards to resolve actual projects/boards for this user
   const { data: boards = [] } = useKanbanBoards();
@@ -771,7 +852,7 @@ const TeamPage = () => {
 
 
 
-          {/* Bottom stats details row */}
+          {/* Sales KPI stats for selected date */}
           <Box
             sx={{
               display: 'flex',
@@ -781,13 +862,8 @@ const TeamPage = () => {
               borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
             }}
           >
-            {[
-              { label: 'Meetings', value: '0/0', sub: null },
-              { label: 'Punctuality', value: '—', sub: 'avg late' },
-              { label: 'Comments', value: '0', sub: 'this week' },
-              { label: 'Notes', value: '0', sub: 'authored' },
-            ].map((item, idx) => (
-              <Box key={idx} sx={{ minWidth: 100 }}>
+            {(salesKpisByUser[selectedUser._id] || emptySalesKpiStats()).map((item) => (
+              <Box key={item.metric} sx={{ minWidth: 100 }}>
                 <Typography
                   variant="caption"
                   sx={{
@@ -800,16 +876,14 @@ const TeamPage = () => {
                     mb: 0.5,
                   }}
                 >
-                  {item.label}
+                  {SALES_KPI_METRIC_LABELS[item.metric] ?? item.label}
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.94rem', lineHeight: 1.1 }}>
-                  {item.value}
+                  {item.current}/{item.target}
                 </Typography>
-                {item.sub && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
-                    {item.sub}
-                  </Typography>
-                )}
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
+                  sales KPI
+                </Typography>
               </Box>
             ))}
           </Box>
@@ -1773,6 +1847,50 @@ const TeamPage = () => {
                       />
                     </Box>
 
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 1,
+                        width: '100%',
+                        mt: 2,
+                        pt: 2,
+                        borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      }}
+                    >
+                      {(salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => (
+                        <Box key={stat.metric} sx={{ textAlign: 'center', minWidth: 0 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              fontSize: '0.58rem',
+                              display: 'block',
+                              mb: 0.35,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {stat.label}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 800,
+                              color: isDarkMode ? '#fff' : tokens.text.primary,
+                              fontSize: '0.82rem',
+                              lineHeight: 1.1,
+                            }}
+                          >
+                            {stat.current}/{stat.target}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
 
                   </CardContent>
                 </Card>
@@ -1874,7 +1992,45 @@ const TeamPage = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, minmax(52px, auto))',
+                      gap: 1.5,
+                      mr: { xs: 0, sm: 1 },
+                    }}
+                  >
+                    {(salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => (
+                      <Box key={stat.metric} sx={{ textAlign: 'center', minWidth: 0 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: 'text.secondary',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            fontSize: '0.58rem',
+                            display: 'block',
+                            mb: 0.25,
+                          }}
+                        >
+                          {stat.label}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 800,
+                            color: isDarkMode ? '#fff' : tokens.text.primary,
+                            fontSize: '0.8rem',
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          {stat.current}/{stat.target}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                   <Chip
                     label={member.department || 'Staff'}
                     size="small"
