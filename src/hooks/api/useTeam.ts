@@ -9,6 +9,7 @@ export interface TeamMember {
   role: string;
   jobTitle?: string;
   department?: string;
+  teamId?: string;
   isActive?: boolean;
 }
 
@@ -20,11 +21,12 @@ export interface Team {
   isActive: boolean;
 }
 
-export const useMyTeam = () =>
+export const useMyTeam = (options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['teams', 'mine'],
     queryFn: () => api.get<{ data: Team }>('/teams/mine').then((r) => r.data.data),
     retry: false,
+    enabled: options?.enabled,
   });
 
 export const useAvailableTeamMembers = (enabled = true) =>

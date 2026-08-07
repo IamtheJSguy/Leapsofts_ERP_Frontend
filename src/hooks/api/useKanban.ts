@@ -59,6 +59,7 @@ const kanbanApi = {
       labelIds?: string[];
       links?: KanbanCardLink[];
       meetingIds?: string[];
+      isDone?: boolean;
     };
   }) => api.patch(`/kanban/cards/${cardId}`, data),
   deleteCard: (cardId: string) =>
@@ -88,23 +89,81 @@ const kanbanApi = {
     api.post<{ data: KanbanCard }>(`/kanban/cards/${cardId}/meetings/create`, data),
 };
 
+const sortByOrder = (a: any, b: any) =>
+  (a.order ?? a.position ?? 0) - (b.order ?? b.position ?? 0);
+
+/** Query cache shape is `{ board, cards }` (KanbanBoardResponse). */
 const optimisticMoveCard = (
   oldData: any,
   cardId: string,
   data: { columnId: string; position: number },
 ): any => {
-  if (!oldData || !oldData.cards) return oldData;
-  const newCards = [...oldData.cards];
-  const cardIndex = newCards.findIndex((c: any) => c._id === cardId);
+  if (!oldData?.cards) return oldData;
+
+  const cards = oldData.cards.map((c: any) => ({ ...c }));
+  const cardIndex = cards.findIndex((c: any) => c._id === cardId);
   if (cardIndex === -1) return oldData;
 
-  const movedCard = { ...newCards[cardIndex], columnId: data.columnId, position: data.position };
-  newCards[cardIndex] = movedCard;
+  const movedCard = { ...cards[cardIndex] };
+  const fromColumnId = String(movedCard.columnId);
+  const toColumnId = String(data.columnId);
+  const others = cards.filter((c: any) => c._id !== cardId);
 
-  // We should also recalculate positions or just let the backend handle the final sort.
-  // For optimistic UI, just updating the card's columnId and position is enough because
-  // KanbanBoardPage sorts them before rendering.
-  return { ...oldData, cards: newCards };
+  const reindexColumn = (columnId: string, insertAt?: number) => {
+    const colCards = others
+      .filter((c: any) => String(c.columnId) === columnId)
+      .sort(sortByOrder);
+
+    if (insertAt !== undefined) {
+      const placed = {
+        ...movedCard,
+        columnId: data.columnId,
+        order: insertAt,
+        position: insertAt,
+      };
+      colCards.splice(Math.min(insertAt, colCards.length), 0, placed);
+    }
+
+    colCards.forEach((c: any, i: number) => {
+      c.order = i;
+      c.position = i;
+    });
+    return colCards;
+  };
+
+  const targetCards = reindexColumn(toColumnId, data.position);
+  const sourceCards =
+    fromColumnId !== toColumnId ? reindexColumn(fromColumnId) : [];
+  const unaffected = others.filter((c: any) => {
+    const col = String(c.columnId);
+    return col !== toColumnId && col !== fromColumnId;
+  });
+
+  return { ...oldData, cards: [...unaffected, ...targetCards, ...sourceCards] };
+};
+
+const optimisticReorderColumns = (oldData: any, columnIds: string[]): any => {
+  if (!oldData?.board?.columns) return oldData;
+
+  const orderMap = new Map(columnIds.map((id, index) => [id, index]));
+  const newColumns = [...oldData.board.columns]
+    .map((col: any) => {
+      const id = col._id || col.id;
+      const nextOrder = orderMap.get(id);
+      return nextOrder === undefined ? col : { ...col, order: nextOrder };
+    })
+    .sort((a: any, b: any) => {
+      const idA = a._id || a.id;
+      const idB = b._id || b.id;
+      const indexA = orderMap.has(idA) ? (orderMap.get(idA) as number) : Number.MAX_SAFE_INTEGER;
+      const indexB = orderMap.has(idB) ? (orderMap.get(idB) as number) : Number.MAX_SAFE_INTEGER;
+      return indexA - indexB;
+    });
+
+  return {
+    ...oldData,
+    board: { ...oldData.board, columns: newColumns },
+  };
 };
 
 
@@ -156,8 +215,8 @@ export const useMoveCard = (boardId?: string) => {
     onMutate: async ({ cardId, data }) => {
       const key = ['kanbanBoard', boardId];
       await queryClient.cancelQueries({ queryKey: key });
-      const previousBoard = queryClient.getQueryData<KanbanBoard>(key);
-      queryClient.setQueryData<KanbanBoard>(key, (old) =>
+      const previousBoard = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any) =>
         optimisticMoveCard(old, cardId, data),
       );
       return { previousBoard, key };
@@ -231,23 +290,12 @@ export const useReorderColumns = () => {
     onMutate: async (variables) => {
       const key = ['kanbanBoard', variables.boardId];
       await queryClient.cancelQueries({ queryKey: key });
-      const previousBoard = queryClient.getQueryData<KanbanBoard>(key);
-      
-      queryClient.setQueryData<KanbanBoard>(key, (old: any) => {
-        if (!old || !old.columns) return old;
-        const newColumns = [...old.columns];
-        newColumns.sort((a, b) => {
-          const idA = a._id || a.id;
-          const idB = b._id || b.id;
-          const indexA = variables.columnIds.indexOf(idA);
-          const indexB = variables.columnIds.indexOf(idB);
-          if (indexA === -1) return 1;
-          if (indexB === -1) return -1;
-          return indexA - indexB;
-        });
-        return { ...old, columns: newColumns };
-      });
-      
+      const previousBoard = queryClient.getQueryData(key);
+
+      queryClient.setQueryData(key, (old: any) =>
+        optimisticReorderColumns(old, variables.columnIds),
+      );
+
       return { previousBoard, key };
     },
     onError: (_err, _vars, context: any) => {
@@ -289,8 +337,48 @@ export const useUpdateCard = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.updateCard,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+    onMutate: async ({ cardId, data }) => {
+      const key = ['kanbanBoard', boardId];
+      const cardKey = ['card', cardId];
+      await queryClient.cancelQueries({ queryKey: key });
+      await queryClient.cancelQueries({ queryKey: cardKey });
+
+      const previousBoard = queryClient.getQueryData(key);
+      const previousCard = queryClient.getQueryData(cardKey);
+
+      queryClient.setQueryData(key, (old: any) => {
+        if (!old?.cards) return old;
+        return {
+          ...old,
+          cards: old.cards.map((c: any) =>
+            c._id === cardId ? { ...c, ...data } : c,
+          ),
+        };
+      });
+
+      if (previousCard) {
+        queryClient.setQueryData(cardKey, (old: any) =>
+          old ? { ...old, ...data } : old,
+        );
+      }
+
+      return { previousBoard, previousCard, key, cardKey };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousBoard && context.key) {
+        queryClient.setQueryData(context.key, context.previousBoard);
+      }
+      if (context?.previousCard !== undefined && context.cardKey) {
+        queryClient.setQueryData(context.cardKey, context.previousCard);
+      }
+    },
+    onSettled: (_data, _err, variables, context) => {
+      if (context?.key) {
+        queryClient.invalidateQueries({ queryKey: context.key });
+      } else if (boardId) {
+        queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
     },
   });
 };

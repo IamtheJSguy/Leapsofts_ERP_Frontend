@@ -192,7 +192,7 @@ export const AttendancePage = () => {
     }
   }, [filterType, filterMonth, filterDate, selectedUser]);
 
-  const { data: allUsers = [], isLoading: isUsersLoading } = useUsers();
+  const { data: allUsers = [], isLoading: isUsersLoading } = useUsers({ limit: '500' });
   const { data: teamSummary, isLoading: isTeamSummaryLoading } = useTeamAttendanceSummary();
   const { data: userHistoryData, isLoading: isUserHistoryLoading } = useShiftHistory(
     selectedUser && queryRange
@@ -287,13 +287,13 @@ export const AttendancePage = () => {
     }
   };
 
-  // --- Filtered Users for Admin Directory ---
+  // --- Filtered Users for Admin Directory (include managers; hide admins only) ---
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const nonAdminUsers = allUsers.filter((u: any) => u.role !== 'admin' && u.role !== 'manager');
+    const directoryUsers = allUsers.filter((u: any) => u.role !== 'admin');
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return nonAdminUsers;
-    return nonAdminUsers.filter((user: any) => {
+    if (!query) return directoryUsers;
+    return directoryUsers.filter((user: any) => {
       const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
       const email = (user.email || '').toLowerCase();
       return fullName.includes(query) || email.includes(query);
