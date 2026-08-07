@@ -9,6 +9,7 @@ export interface TeamMember {
   role: string;
   jobTitle?: string;
   department?: string;
+  teamId?: string;
   isActive?: boolean;
 }
 

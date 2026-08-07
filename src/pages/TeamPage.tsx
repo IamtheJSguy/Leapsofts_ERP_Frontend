@@ -338,7 +338,15 @@ const TeamPage = () => {
   const { data: dbUsers = [], isLoading: isUsersLoading } = useUsers();
   const createUserMutation = useCreateUser();
 
-  const teamList = isManager ? (teamQuery.data?.members || []) : dbUsers;
+  const teamList = useMemo(() => {
+    if (!isManager) return dbUsers;
+    const manager = teamQuery.data?.managerId;
+    const members = teamQuery.data?.members || [];
+    if (!manager?._id) return members;
+    // Include the manager so they can open their own summary from Team Operations.
+    if (members.some((m) => m._id === manager._id)) return members;
+    return [manager, ...members];
+  }, [isManager, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -606,29 +614,34 @@ const TeamPage = () => {
             Back to Team
           </Button>
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-            <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
-              Edit
-            </Button>
+          {/* Managers cannot edit/delete themselves via team-manage APIs */}
+          {selectedUser._id !== currentUser?._id && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+              <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
+                Edit
+              </Button>
 
-            <Button
-              startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
-              sx={{
-                ...actionButtonSx,
-                '&:hover': {
-                  bgcolor: 'rgba(239, 68, 68, 0.05)',
-                  borderColor: 'rgba(239, 68, 68, 0.2)',
-                  color: '#EF4444',
-                },
-              }}
-              onClick={() => setIsDeleteConfirmOpen(true)}
-            >
-              Delete
-            </Button>
-          </Box>
+              <Button
+                startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
+                sx={{
+                  ...actionButtonSx,
+                  '&:hover': {
+                    bgcolor: 'rgba(239, 68, 68, 0.05)',
+                    borderColor: 'rgba(239, 68, 68, 0.2)',
+                    color: '#EF4444',
+                  },
+                }}
+                onClick={() => setIsDeleteConfirmOpen(true)}
+              >
+                Delete
+              </Button>
+            </Box>
+          )}
         </Box>
 
-        {(isAdmin || isManager) && (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
+        {(isAdmin || isManager) &&
+          selectedUser._id !== currentUser?._id &&
+          (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
           <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
             Shift timings are not defined for this user. Please edit their profile to add their shift details.
           </Alert>
@@ -1638,7 +1651,7 @@ const TeamPage = () => {
       </Box>
 
       {/* Team Cards Grid */}
-      {isUsersLoading ? (
+      {(isManager ? teamQuery.isLoading : isUsersLoading) ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
           <CircularProgress sx={{ color: tokens.brand.primary }} />
         </Box>
