@@ -46,6 +46,8 @@ interface DraftItem {
   daysOfWeek: number[];
   targetValue: string;
   priority: KpiPriority;
+  startTime: string;
+  endTime: string;
   isActive: boolean;
 }
 
@@ -69,12 +71,22 @@ const toDrafts = (assignment: SalesKpiAssignment): DraftItem[] =>
     daysOfWeek: item.daysOfWeek ?? [],
     targetValue: item.targetValue != null ? String(item.targetValue) : '',
     priority: item.priority ?? 'medium',
+    startTime: item.startTime ?? '',
+    endTime: item.endTime ?? '',
     isActive: item.isActive ?? true,
   }));
+
+/** Same-day windows require start before end when both times are set. */
+const invalidTimeWindow = (d: DraftItem) => {
+  if (!d.startTime || !d.endTime) return false;
+  const sameDay = d.scheduleMode !== 'span' || d.daysOfWeek.length <= 1;
+  return sameDay && d.startTime >= d.endTime;
+};
 
 /** The backend rejects an empty daysOfWeek on any item it receives, paused or not. */
 const invalidDraft = (d: DraftItem) =>
   d.daysOfWeek.length === 0
+  || invalidTimeWindow(d)
   || (isManualTarget(d.targetMode)
     && (d.targetValue.trim() === '' || Number.isNaN(Number(d.targetValue)) || Number(d.targetValue) < 0));
 
@@ -99,8 +111,11 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
     const items: SalesKpiAssignmentItemUpdate[] = drafts.map((d) => ({
       _id: d._id,
       daysOfWeek: [...d.daysOfWeek].sort((a, b) => a - b),
+      scheduleMode: d.scheduleMode,
       priority: d.priority,
       isActive: d.isActive,
+      startTime: d.startTime || null,
+      endTime: d.endTime || null,
       // Only manual items carry a target; auto_snapshot items take theirs from the pipeline.
       ...(isManualTarget(d.targetMode) ? { targetValue: Number(d.targetValue) } : {}),
     }));
@@ -233,6 +248,30 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                   <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
                 ))}
               </TextField>
+
+              <TextField
+                label="Start"
+                type="time"
+                size="small"
+                value={d.startTime}
+                onChange={(e) => patch(d._id, { startTime: e.target.value })}
+                disabled={!d.isActive}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 60 }}
+                sx={{ width: 130, ...textFieldStyle }}
+              />
+              <TextField
+                label="End"
+                type="time"
+                size="small"
+                value={d.endTime}
+                onChange={(e) => patch(d._id, { endTime: e.target.value })}
+                disabled={!d.isActive}
+                error={invalidTimeWindow(d)}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 60 }}
+                sx={{ width: 130, ...textFieldStyle }}
+              />
 
               <Button
                 size="small"

@@ -94,7 +94,12 @@ export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
             <Typography variant="caption" color="text.secondary">
-              Due {new Date(entry.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              Due {new Date(entry.periodEnd).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
             </Typography>
           </Box>
         </Box>

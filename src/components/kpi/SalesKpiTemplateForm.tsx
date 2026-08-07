@@ -61,6 +61,10 @@ interface DraftItem {
   targetMode: SalesKpiTargetMode;
   targetValue: string;
   priority: KpiPriority;
+  /** Optional `HH:mm`; empty = start of day. */
+  startTime: string;
+  /** Optional `HH:mm`; empty = end of day (midnight). */
+  endTime: string;
 }
 
 let draftKeySeq = 0;
@@ -76,6 +80,8 @@ const makeItem = (): DraftItem => ({
   targetMode: defaultTargetModeForMetric('new_prospects'),
   targetValue: '',
   priority: 'medium',
+  startTime: '',
+  endTime: '',
 });
 
 const toDraft = (item: SalesKpiTemplateItem): DraftItem => ({
@@ -88,12 +94,21 @@ const toDraft = (item: SalesKpiTemplateItem): DraftItem => ({
   targetMode: item.targetMode ?? defaultTargetModeForMetric(item.metric),
   targetValue: item.targetValue != null ? String(item.targetValue) : '',
   priority: item.priority ?? 'medium',
+  startTime: item.startTime ?? '',
+  endTime: item.endTime ?? '',
 });
 
 /** Backend accepts any target >= 0, but it must be present for a manual item. */
 const invalidTarget = (item: DraftItem) =>
   isManualTarget(item.targetMode)
   && (item.targetValue.trim() === '' || Number.isNaN(Number(item.targetValue)) || Number(item.targetValue) < 0);
+
+/** Same-day windows require start before end when both times are set. */
+const invalidTimeWindow = (item: DraftItem) => {
+  if (!item.startTime || !item.endTime) return false;
+  const sameDay = item.scheduleMode !== 'span' || item.daysOfWeek.length <= 1;
+  return sameDay && item.startTime >= item.endTime;
+};
 
 export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   const theme = useTheme();
@@ -132,7 +147,11 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   const removeItem = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
 
   const invalidItem = items.find(
-    (item) => !item.name.trim() || item.daysOfWeek.length === 0 || invalidTarget(item),
+    (item) =>
+      !item.name.trim()
+      || item.daysOfWeek.length === 0
+      || invalidTarget(item)
+      || invalidTimeWindow(item),
   );
 
   const canSave = !!name.trim() && items.length > 0 && !invalidItem;
@@ -156,6 +175,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
             targetMode: item.targetMode,
             targetValue: isManualTarget(item.targetMode) ? Number(item.targetValue) : undefined,
             priority: item.priority,
+            startTime: item.startTime || null,
+            endTime: item.endTime || null,
           }) satisfies SalesKpiTemplateItem,
       ),
     };
@@ -360,6 +381,32 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                   </Box>
                 </Box>
 
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <TextField
+                    label="Start time (optional)"
+                    type="time"
+                    value={item.startTime}
+                    onChange={(e) => patchItem(index, { startTime: e.target.value })}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    sx={{ width: 180, ...textFieldStyle }}
+                    helperText="Empty = start of day"
+                  />
+                  <TextField
+                    label="End time (optional)"
+                    type="time"
+                    value={item.endTime}
+                    onChange={(e) => patchItem(index, { endTime: e.target.value })}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    error={invalidTimeWindow(item)}
+                    sx={{ width: 180, ...textFieldStyle }}
+                    helperText={invalidTimeWindow(item) ? 'Must be after start time' : 'Empty = end of day'}
+                  />
+                </Box>
+
                 {item.daysOfWeek.length === 0 && (
                   <Typography variant="caption" sx={{ color: tokens.semantic.error, fontWeight: 700 }}>
                     Select at least one weekday.
@@ -373,6 +420,7 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                   {item.scheduleMode === 'span'
                     ? ' One task is created on the first selected weekday and is due at the end of the last selected weekday.'
                     : ' A separate task is created on each selected weekday.'}
+                  {' '}Leave start/end empty to keep the default window (generated at day start, due at midnight).
                 </Typography>
               </Box>
             );

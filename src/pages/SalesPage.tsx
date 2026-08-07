@@ -44,12 +44,18 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads, useQualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import {
+  useLeadAutoSync,
+  buildEditDataFromProspect,
+  type EditableLeadData,
+} from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -84,17 +90,6 @@ export const SalesPage = () => {
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
-
-  const handleAdminSync = () => {
-    syncMySheet.mutate(undefined, {
-      onSuccess: () => {
-        addToast({ message: 'Sync triggered successfully.', severity: 'success' });
-      },
-      onError: () => {
-        addToast({ message: 'Sync failed.', severity: 'error' });
-      }
-    });
-  };
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -350,36 +345,33 @@ export const SalesPage = () => {
   };
 
   // Multi-Row Inline Edit State
-  const [editingLeads, setEditingLeads] = useState<Record<string, any>>({});
+  const [editingLeads, setEditingLeads] = useState<Record<string, EditableLeadData>>({});
   const updateLead = useUpdateLead();
+  const {
+    isEditAllMode,
+    syncStats,
+    enterEditAll,
+    ensureProspectsEditable,
+    saveAll,
+    cancelEditAll,
+    removeFromSnapshot,
+  } = useLeadAutoSync({ editingLeads, setEditingLeads });
 
   const handleEditClick = (prospect: any) => {
     setEditingLeads((prev) => ({
       ...prev,
-      [prospect._id]: {
-        firstName: prospect.firstName || '',
-        lastName: prospect.lastName || '',
-        email: prospect.email || '',
-        icp: prospect.icp || '',
-        profile: prospect.profile || '',
-        connectionStatus: prospect.connectionStatus || 'pending',
-        messageStatus: prospect.messageStatus || 'not_sent',
-        linkedinMsg: prospect.linkedinMsg || '',
-        futureLeadDate: prospect.futureLeadDate
-          ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
-          : undefined,
-      }
+      [prospect._id]: buildEditDataFromProspect(prospect),
     }));
   };
 
-  const handleEditChange = (id: string, field: string, value: string) => {
+  const handleEditChange = (id: string, field: keyof EditableLeadData, value: string) => {
     setEditingLeads((prev) => ({
       ...prev,
       [id]: {
         ...prev[id],
         [field]: value,
         ...(field === 'messageStatus' && value !== 'future_lead' ? { futureLeadDate: undefined } : {}),
-      }
+      } as EditableLeadData,
     }));
   };
 
@@ -417,6 +409,7 @@ export const SalesPage = () => {
     updateLead.mutate({ id, data: dataToSave }, {
       onSuccess: () => {
         addToast({ message: 'Lead updated successfully', severity: 'success' });
+        removeFromSnapshot(id);
         setEditingLeads((prev) => {
           const newState = { ...prev };
           delete newState[id];
@@ -431,6 +424,7 @@ export const SalesPage = () => {
   };
 
   const handleEditCancel = (id: string) => {
+    removeFromSnapshot(id);
     setEditingLeads((prev) => {
       const newState = { ...prev };
       delete newState[id];
@@ -479,6 +473,52 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+
+  useEffect(() => {
+    if (isEditAllMode) {
+      ensureProspectsEditable(prospects);
+    }
+  }, [isEditAllMode, prospects, ensureProspectsEditable]);
+
+  const handleEditAllToggle = async () => {
+    if (!isEditAllMode) {
+      if (prospects.length === 0) {
+        addToast({ message: 'No leads to edit on this page.', severity: 'info' });
+        return;
+      }
+      enterEditAll(prospects);
+      addToast({
+        message: `Editing ${prospects.length} lead${prospects.length === 1 ? '' : 's'}. Changes auto-sync every 30s.`,
+        severity: 'info',
+      });
+      return;
+    }
+
+    const result = await saveAll();
+    if (result.failed > 0) {
+      addToast({
+        message: `Saved ${result.synced} lead(s); ${result.failed} failed. Still in edit mode — retry or fix and Save All again.`,
+        severity: 'error',
+      });
+      return;
+    }
+    if (result.skipped > 0) {
+      addToast({
+        message: 'Some Future Lead rows need a date before they can be saved. Still in edit mode.',
+        severity: 'warning',
+      });
+      return;
+    }
+    if (result.synced > 0) {
+      addToast({
+        message: `Saved ${result.synced} lead${result.synced === 1 ? '' : 's'}.`,
+        severity: 'success',
+      });
+    } else {
+      addToast({ message: 'No pending changes to save.', severity: 'info' });
+    }
+  };
+
   const pipelineFilters = useMemo(() => ({
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
@@ -590,14 +630,6 @@ export const SalesPage = () => {
       }
     );
   };
-
-  const handleRefreshSync = () => {
-    if (googleSheetLink) {
-      const sheetId = extractSheetId(googleSheetLink);
-      startSyncing(sheetId, googleSheetLink);
-    }
-  };
-
 
   const stats = useMemo(() => {
     const pct = (value: number) => `${value}%`;
@@ -745,6 +777,7 @@ export const SalesPage = () => {
             onEndChange={setEndDate}
             size="small"
             layout="compact"
+            maxDate={new Date()}
           />
         </Box>
       </Box>
@@ -997,29 +1030,6 @@ export const SalesPage = () => {
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SyncIcon />}
-              onClick={handleRefreshSync}
-              sx={{
-                borderRadius: '20px',
-                borderColor: 'rgba(93, 26, 137, 0.25)',
-                color: tokens.brand.primary,
-                fontWeight: 700,
-                textTransform: 'none',
-                fontSize: '0.78rem',
-                px: 2.25,
-                '&:hover': {
-                  bgcolor: 'rgba(93, 26, 137, 0.05)',
-                  borderColor: tokens.brand.primary,
-                },
-              }}
-            >
-              Sync Now
-            </Button>
-          </Box>
         </Box>
       )}
 
@@ -1262,8 +1272,104 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
-            {user?.role !== 'admin' && (
+            
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+                {isEditAllMode && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: '20px',
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                      mr: 0.5,
+                    }}
+                  >
+                    {syncStats.isSyncing ? (
+                      <CircularProgress size={14} thickness={5} sx={{ color: tokens.brand.primary }} />
+                    ) : (
+                      <SyncIcon sx={{ fontSize: 16, color: tokens.brand.primary, opacity: 0.85 }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 600,
+                        color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)',
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.72rem',
+                      }}
+                    >
+                      {syncStats.lastSyncAt
+                        ? `Last sync ${format(syncStats.lastSyncAt, 'HH:mm:ss')}`
+                        : 'Auto-sync ready'}
+                      {' · '}
+                      Synced {syncStats.syncedCount}
+                      {' · '}
+                      Pending {syncStats.pendingCount}
+                      {syncStats.failedCount > 0 ? ` · Failed ${syncStats.failedCount}` : ''}
+                    </Typography>
+                  </Box>
+                )}
+                <Button
+                  variant={isEditAllMode ? 'contained' : 'outlined'}
+                  startIcon={
+                    isEditAllMode
+                      ? (syncStats.isSyncing
+                        ? <CircularProgress size={14} color="inherit" />
+                        : <SaveIcon sx={{ fontSize: 16 }} />)
+                      : <EditIcon sx={{ fontSize: 16 }} />
+                  }
+                  onClick={() => { void handleEditAllToggle(); }}
+                  disabled={syncStats.isSyncing && isEditAllMode}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isEditAllMode ? '#fff' : (isDarkMode ? '#fff' : tokens.text.primary),
+                    bgcolor: isEditAllMode ? tokens.brand.primary : 'transparent',
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      bgcolor: isEditAllMode
+                        ? tokens.brand.primaryLight
+                        : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isEditAllMode ? 'Save All' : 'Edit All'}
+                </Button>
+                {isEditAllMode && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<CloseIcon sx={{ fontSize: 16 }} />}
+                    onClick={cancelEditAll}
+                    disabled={syncStats.isSyncing}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 2.5,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon sx={{ fontSize: 16 }} />}
@@ -1306,7 +1412,7 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
-                {user?.role !== 'manager' && (
+                {user?.role !== 'admin' && (
                   <Button
                     variant="contained"
                     startIcon={<AddIcon sx={{ fontSize: 16 }} />}
@@ -1331,7 +1437,7 @@ export const SalesPage = () => {
                   </Button>
                 )}
               </Box>
-            )}
+            
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
