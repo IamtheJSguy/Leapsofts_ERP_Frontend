@@ -105,12 +105,14 @@ type UseLeadAutoSyncOptions = {
   editingLeads: Record<string, EditableLeadData>;
   setEditingLeads: Dispatch<SetStateAction<Record<string, EditableLeadData>>>;
   intervalMs?: number;
+  onSessionCleared?: () => void;
 };
 
 export const useLeadAutoSync = ({
   editingLeads,
   setEditingLeads,
   intervalMs = 30_000,
+  onSessionCleared,
 }: UseLeadAutoSyncOptions) => {
   const queryClient = useQueryClient();
   const [isEditAllMode, setIsEditAllMode] = useState(false);
@@ -121,8 +123,21 @@ export const useLeadAutoSync = ({
   const isSyncingRef = useRef(false);
   const failedIdsRef = useRef<Set<string>>(new Set());
   const syncedCountRef = useRef(0);
+  const onSessionClearedRef = useRef(onSessionCleared);
 
   editingLeadsRef.current = editingLeads;
+  onSessionClearedRef.current = onSessionCleared;
+
+  const clearSession = useCallback(() => {
+    setIsEditAllMode(false);
+    setEditingLeads({});
+    snapshotRef.current = {};
+    failedIdsRef.current.clear();
+    syncedCountRef.current = 0;
+    isSyncingRef.current = false;
+    setStats(emptyStats());
+    onSessionClearedRef.current?.();
+  }, [setEditingLeads]);
 
   const recomputePending = useCallback((current: Record<string, EditableLeadData>) => {
     const pendingCount = getChangedLeadIds(current, snapshotRef.current).length;
@@ -165,12 +180,7 @@ export const useLeadAutoSync = ({
           isSyncing: false,
         }));
         if (options?.exitAfter) {
-          setIsEditAllMode(false);
-          setEditingLeads({});
-          snapshotRef.current = {};
-          failedIdsRef.current.clear();
-          syncedCountRef.current = 0;
-          setStats(emptyStats());
+          clearSession();
         }
         return { synced: 0, failed: 0, skipped: 0 };
       }
@@ -226,17 +236,12 @@ export const useLeadAutoSync = ({
       // Save All exits only when every changeable row synced (or there was nothing left).
       // Failed / invalid rows stay editable so the next sync/Save All can retry.
       if (options?.exitAfter && failed === 0 && skipped === 0) {
-        setIsEditAllMode(false);
-        setEditingLeads({});
-        snapshotRef.current = {};
-        failedIdsRef.current.clear();
-        syncedCountRef.current = 0;
-        setStats(emptyStats());
+        clearSession();
       }
 
       return { synced, failed, skipped };
     },
-    [invalidateLeadQueries, setEditingLeads],
+    [invalidateLeadQueries, clearSession],
   );
 
   useEffect(() => {
@@ -319,14 +324,8 @@ export const useLeadAutoSync = ({
   }, [syncChanged]);
 
   const cancelEditAll = useCallback(() => {
-    setIsEditAllMode(false);
-    setEditingLeads({});
-    snapshotRef.current = {};
-    failedIdsRef.current.clear();
-    syncedCountRef.current = 0;
-    isSyncingRef.current = false;
-    setStats(emptyStats());
-  }, [setEditingLeads]);
+    clearSession();
+  }, [clearSession]);
 
   const removeFromSnapshot = useCallback(
     (id: string) => {
@@ -339,6 +338,73 @@ export const useLeadAutoSync = ({
     [isEditAllMode, recomputePending],
   );
 
+  const getSnapshot = useCallback(() => {
+    const snap: Record<string, EditableLeadData> = {};
+    for (const [id, data] of Object.entries(snapshotRef.current)) {
+      snap[id] = cloneEditData(data);
+    }
+    return snap;
+  }, []);
+
+  const hydrateFromDraft = useCallback(
+    (draft: {
+      editingLeads: Record<string, EditableLeadData>;
+      snapshot: Record<string, EditableLeadData>;
+      isEditAllMode: boolean;
+    }) => {
+      const nextEditing: Record<string, EditableLeadData> = {};
+      const nextSnapshot: Record<string, EditableLeadData> = {};
+
+      for (const [id, data] of Object.entries(draft.editingLeads || {})) {
+        if (!data || typeof data !== 'object') continue;
+        nextEditing[id] = {
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          icp: data.icp || '',
+          profile: data.profile || '',
+          connectionStatus: (data.connectionStatus || 'pending') as ConnectionStatus,
+          messageStatus: (data.messageStatus || 'not_sent') as MessageStatus,
+          linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
+          futureLeadDate: data.futureLeadDate || undefined,
+        };
+      }
+
+      for (const [id, data] of Object.entries(draft.snapshot || {})) {
+        if (!data || typeof data !== 'object') continue;
+        nextSnapshot[id] = {
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          icp: data.icp || '',
+          profile: data.profile || '',
+          connectionStatus: (data.connectionStatus || 'pending') as ConnectionStatus,
+          messageStatus: (data.messageStatus || 'not_sent') as MessageStatus,
+          linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
+          futureLeadDate: data.futureLeadDate || undefined,
+        };
+      }
+
+      // Ensure every editing row has a snapshot baseline for dirty detection.
+      for (const [id, data] of Object.entries(nextEditing)) {
+        if (!nextSnapshot[id]) {
+          nextSnapshot[id] = cloneEditData(data);
+        }
+      }
+
+      snapshotRef.current = nextSnapshot;
+      failedIdsRef.current.clear();
+      syncedCountRef.current = 0;
+      setEditingLeads(nextEditing);
+      setIsEditAllMode(!!draft.isEditAllMode);
+      setStats({
+        ...emptyStats(),
+        pendingCount: getChangedLeadIds(nextEditing, nextSnapshot).length,
+      });
+    },
+    [setEditingLeads],
+  );
+
   return {
     isEditAllMode,
     syncStats: stats,
@@ -348,5 +414,7 @@ export const useLeadAutoSync = ({
     cancelEditAll,
     syncNow: syncChanged,
     removeFromSnapshot,
+    hydrateFromDraft,
+    getSnapshot,
   };
 };
