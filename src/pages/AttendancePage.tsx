@@ -113,6 +113,8 @@ export const AttendancePage = () => {
           checkInTime: shift.checkInTime,
           checkOutTime: shift.checkOutTime,
           totalMinutes: shift.totalMinutes,
+          breaks: shift.breaks || [],
+          totalBreakMinutes: shift.totalBreakMinutes || 0,
           status: shift.status,
           exists: true,
           scheduledStart: shift.scheduledStart,
@@ -125,6 +127,8 @@ export const AttendancePage = () => {
           checkInTime: null,
           checkOutTime: null,
           totalMinutes: 0,
+          breaks: [],
+          totalBreakMinutes: 0,
           status: isWeekend ? 'weekend' : 'absent',
           exists: false,
           scheduledStart: currentUser?.shiftStart || '09:00',
@@ -235,6 +239,8 @@ export const AttendancePage = () => {
           checkInTime: shift.checkInTime,
           checkOutTime: shift.checkOutTime,
           totalMinutes: shift.totalMinutes,
+          breaks: shift.breaks || [],
+          totalBreakMinutes: shift.totalBreakMinutes || 0,
           status: shift.status,
           exists: true,
         };
@@ -245,6 +251,8 @@ export const AttendancePage = () => {
           checkInTime: null,
           checkOutTime: null,
           totalMinutes: 0,
+          breaks: [],
+          totalBreakMinutes: 0,
           status: isWeekend ? 'weekend' : 'absent',
           exists: false,
         };
@@ -270,6 +278,14 @@ export const AttendancePage = () => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return `${h}h ${m}m`;
+  };
+
+  const formatBreakSummary = (breaks?: Array<{ startTime: string; endTime: string | null }>, totalBreakMinutes?: number) => {
+    const breakCount = breaks?.length ?? 0;
+    const breakMins = totalBreakMinutes ?? 0;
+    if (breakCount === 0 && breakMins <= 0) return null;
+    const countLabel = `${breakCount || 1} break${(breakCount || 1) === 1 ? '' : 's'}`;
+    return `${countLabel} · ${breakMins}m`;
   };
 
   const getStatusColor = (status: string) => {
@@ -597,6 +613,7 @@ export const AttendancePage = () => {
                     const shiftDate = new Date(shift.date);
                     const dateStr = format(shiftDate, 'EEEE, MMMM dd, yyyy');
                     const workedHours = formatHours(shift.totalMinutes);
+                    const breakSummary = formatBreakSummary(shift.breaks, shift.totalBreakMinutes);
 
                     return (
                       <Paper
@@ -644,6 +661,11 @@ export const AttendancePage = () => {
                                 {workedHours}
                               </Typography>
                             </Box>
+                            {breakSummary && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, textAlign: 'right' }}>
+                                {breakSummary}
+                              </Typography>
+                            )}
                           </>
                         ) : (
                           <Box sx={{ py: 0.5 }}>
@@ -911,6 +933,7 @@ export const AttendancePage = () => {
             const scheduledMins = 480; 
             const workedMins = shift.totalMinutes || 0;
             const progressPct = Math.min((workedMins / scheduledMins) * 100, 100);
+            const breakSummary = formatBreakSummary(shift.breaks, shift.totalBreakMinutes);
             
             return (
               <Paper
@@ -1037,6 +1060,11 @@ export const AttendancePage = () => {
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textAlign: 'right' }}>
                       {progressPct >= 100 ? 'Shift complete!' : `${Math.round(progressPct)}% of 8h shift`}
                     </Typography>
+                    {breakSummary && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textAlign: 'right' }}>
+                        {breakSummary}
+                      </Typography>
+                    )}
                   </Box>
                 )}
               </Paper>

@@ -678,6 +678,11 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface ShiftBreak {
+  startTime: string;
+  endTime: string | null;
+}
+
 export interface Shift {
   _id: string;
   userId: string | User;
@@ -687,6 +692,10 @@ export interface Shift {
   scheduledStart: string;
   scheduledEnd: string;
   totalMinutes: number;
+  /** Completed + open break segments for the shift. */
+  breaks?: ShiftBreak[];
+  /** Persisted/live sum of break durations in minutes (excludes worked time). */
+  totalBreakMinutes?: number;
   status: 'not_started' | 'checked_in' | 'checked_out';
   isActive: boolean;
   createdAt: string;
