@@ -279,7 +279,7 @@ const TasksPage = () => {
 
   // Tabs navigation
   type DashboardTab = 'templates' | 'assignments' | 'standalone_kpis' | 'sales_kpis' | 'change_requests' | 'daily_progress' | 'my_tasks';
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('templates');
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('my_tasks');
 
   // Set default tab to assignments for non-admin users
   useEffect(() => {
@@ -2176,14 +2176,14 @@ const TasksPage = () => {
       {/* Navigation Sub-Tabs */}
       {isElevated && viewMode === 'list' && (
         <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
+          <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+          <Button onClick={() => setDashboardTab('sales_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
           <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
           <Button onClick={() => setDashboardTab('standalone_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'standalone_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
-          <Button onClick={() => setDashboardTab('sales_kpis')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'sales_kpis' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
           <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
             Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
           </Button>
           <Button onClick={() => setDashboardTab('daily_progress')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'daily_progress' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'daily_progress' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
-          <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
         </Box>
       )}
 

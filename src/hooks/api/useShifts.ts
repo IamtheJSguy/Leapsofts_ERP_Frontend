@@ -54,6 +54,8 @@ export interface DailyKpiSummary {
 export const shiftApi = {
   checkIn: () => api.post<{ success: boolean; data: Shift }>('/shifts/check-in'),
   checkOut: () => api.post<{ success: boolean; data: Shift }>('/shifts/check-out'),
+  startBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/start'),
+  endBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/end'),
   getToday: () => api.get<{ success: boolean; data: Shift }>('/shifts/today'),
   getHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/history', { params }),
@@ -122,6 +124,28 @@ export const useCheckOut = () => {
     onSuccess: (response) => {
       queryClient.setQueryData(['shifts', 'today'], response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts', 'history'] });
+    },
+  });
+};
+
+export const useStartBreak = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: shiftApi.startBreak,
+    onSuccess: (response) => {
+      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+};
+
+export const useEndBreak = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: shiftApi.endBreak,
+    onSuccess: (response) => {
+      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
   });
 };

@@ -19,11 +19,12 @@ interface ModernDatePickerProps {
   value: Date | null;
   onChange: (date: Date | null) => void;
   minDate?: Date;
+  maxDate?: Date;
   placeholder?: string;
 }
 
 export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({ 
-  label, value, onChange, minDate, placeholder = 'Select Date' 
+  label, value, onChange, minDate, maxDate, placeholder = 'Select Date' 
 }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -42,6 +43,7 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
 
   const onDateClick = (day: Date) => {
     if (minDate && day < minDate && !isSameDay(day, minDate)) return;
+    if (maxDate && day > maxDate && !isSameDay(day, maxDate)) return;
     onChange(day);
     handleClose();
   };
@@ -160,7 +162,9 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
             const isSelected = value ? isSameDay(day, value) : false;
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isDayToday = isToday(day);
-            const isDisabled = minDate ? (day < minDate && !isSameDay(day, minDate)) : false;
+            const isBeforeMin = minDate ? (day < minDate && !isSameDay(day, minDate)) : false;
+            const isAfterMax = maxDate ? (day > maxDate && !isSameDay(day, maxDate)) : false;
+            const isDisabled = isBeforeMin || isAfterMax;
 
             return (
               <Grid item xs={12/7} key={idx} sx={{ display: 'flex', justifyContent: 'center' }}>

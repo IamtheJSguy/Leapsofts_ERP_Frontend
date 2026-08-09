@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -44,23 +44,32 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads, useQualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import {
+  useLeadAutoSync,
+  buildEditDataFromProspect,
+  type EditableLeadData,
+} from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CheckIcon from '@mui/icons-material/Check';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
-import { BulkUploadModal } from '@/components/leads/BulkUploadModal';
+import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
+import {
+  clearSalesEditDraft,
+  loadSalesEditDraft,
+  saveSalesEditDraft,
+} from '@/lib/salesEditDraftDb';
 import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -68,13 +77,13 @@ import EventIcon from '@mui/icons-material/Event';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
-import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { format } from 'date-fns';
 import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+
+const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -86,17 +95,6 @@ export const SalesPage = () => {
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
-
-  const handleAdminSync = () => {
-    syncMySheet.mutate(undefined, {
-      onSuccess: () => {
-        addToast({ message: 'Sync triggered successfully.', severity: 'success' });
-      },
-      onError: () => {
-        addToast({ message: 'Sync failed.', severity: 'error' });
-      }
-    });
-  };
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -352,42 +350,78 @@ export const SalesPage = () => {
   };
 
   // Multi-Row Inline Edit State
-  const [editingLeads, setEditingLeads] = useState<Record<string, any>>({});
+  const [editingLeads, setEditingLeads] = useState<Record<string, EditableLeadData>>({});
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistEnabledRef = useRef(true);
+  const prospectsByIdRef = useRef<Record<string, any>>({});
   const updateLead = useUpdateLead();
+  const userId = user?._id || '';
+  const {
+    isEditAllMode,
+    syncStats,
+    enterEditAll,
+    ensureProspectsEditable,
+    saveAll,
+    cancelEditAll,
+    removeFromSnapshot,
+    hydrateFromDraft,
+    getSnapshot,
+  } = useLeadAutoSync({
+    editingLeads,
+    setEditingLeads,
+    onSessionCleared: () => {
+      persistEnabledRef.current = false;
+      if (userId) {
+        void clearSalesEditDraft(userId).finally(() => {
+          persistEnabledRef.current = true;
+        });
+      } else {
+        persistEnabledRef.current = true;
+      }
+      setDraftRestored(false);
+    },
+  });
 
-  const handleEditClick = (prospect: any) => {
+  const handleEditClick = useCallback((prospect: any) => {
     setEditingLeads((prev) => ({
       ...prev,
-      [prospect._id]: {
-        firstName: prospect.firstName || '',
-        lastName: prospect.lastName || '',
-        email: prospect.email || '',
-        icp: prospect.icp || '',
-        profile: prospect.profile || '',
-        connectionStatus: prospect.connectionStatus || 'pending',
-        messageStatus: prospect.messageStatus || 'not_sent',
-        linkedinMsg: prospect.linkedinMsg || '',
-        futureLeadDate: prospect.futureLeadDate
-          ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
-          : undefined,
-      }
+      [prospect._id]: buildEditDataFromProspect(prospect),
     }));
-  };
+  }, []);
 
-  const handleEditChange = (id: string, field: string, value: string) => {
-    setEditingLeads((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-        ...(field === 'messageStatus' && value !== 'future_lead' ? { futureLeadDate: undefined } : {}),
-      }
-    }));
-  };
+  const handleEditUpdate = useCallback((id: string, patch: Partial<EditableLeadData>) => {
+    setEditingLeads((prev) => {
+      const current = prev[id];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [id]: {
+          ...current,
+          ...patch,
+          ...(patch.messageStatus && patch.messageStatus !== 'future_lead'
+            ? { futureLeadDate: undefined }
+            : {}),
+        },
+      };
+    });
+  }, []);
 
-  const handleEditSave = (id: string, originalProspect?: any) => {
+  const handleEditCancel = useCallback((id: string) => {
+    removeFromSnapshot(id);
+    setEditingLeads((prev) => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  }, [removeFromSnapshot]);
+
+  const handleEditSave = useCallback((id: string) => {
     const dataToSave = editingLeads[id];
     if (!dataToSave) return;
+    const originalProspect = prospectsByIdRef.current[id];
 
     if (dataToSave.messageStatus === 'future_lead' && !dataToSave.futureLeadDate) {
       addToast({ message: 'Please select a Future Lead date.', severity: 'error' });
@@ -419,6 +453,7 @@ export const SalesPage = () => {
     updateLead.mutate({ id, data: dataToSave }, {
       onSuccess: () => {
         addToast({ message: 'Lead updated successfully', severity: 'success' });
+        removeFromSnapshot(id);
         setEditingLeads((prev) => {
           const newState = { ...prev };
           delete newState[id];
@@ -430,15 +465,34 @@ export const SalesPage = () => {
         addToast({ message: errorMsg, severity: 'error' });
       }
     });
-  };
+  }, [editingLeads, addToast, updateLead, removeFromSnapshot, handleEditCancel]);
 
-  const handleEditCancel = (id: string) => {
-    setEditingLeads((prev) => {
-      const newState = { ...prev };
-      delete newState[id];
-      return newState;
-    });
-  };
+  const handleFollowUpChange = useCallback((id: string, number: number) => {
+    logFollowUp.mutate(
+      { id, number },
+      {
+        onSuccess: () =>
+          addToast({
+            message: `FollowUp #${number} selected`,
+            severity: 'success',
+          }),
+        onError: () =>
+          addToast({
+            message: 'Failed to update follow-up',
+            severity: 'error',
+          }),
+      },
+    );
+  }, [logFollowUp, addToast]);
+
+  const handleInlineAddUpdate = useCallback((patch: Record<string, unknown>) => {
+    setNewLeadData((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const handleInlineAddCancel = useCallback(() => {
+    setIsAddingInline(false);
+    setAddLeadErrors({});
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
@@ -481,6 +535,145 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+
+  useEffect(() => {
+    const map: Record<string, any> = {};
+    for (const p of prospects) {
+      map[p._id] = p;
+    }
+    prospectsByIdRef.current = map;
+  }, [prospects]);
+
+  // Restore edit drafts + sticky edit mode from IndexedDB
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      if (!userId) {
+        setDraftReady(false);
+        return;
+      }
+
+      setDraftReady(false);
+      persistEnabledRef.current = false;
+      try {
+        const draft = await loadSalesEditDraft(userId);
+        if (cancelled) return;
+        const hasDraft =
+          !!draft &&
+          (draft.isEditAllMode || Object.keys(draft.editingLeads || {}).length > 0);
+        if (hasDraft && draft) {
+          hydrateFromDraft({
+            editingLeads: draft.editingLeads || {},
+            snapshot: draft.snapshot || {},
+            isEditAllMode: !!draft.isEditAllMode,
+          });
+          setDraftRestored(true);
+          if (draft.isEditAllMode) {
+            addToast({
+              message: 'Restored previous edit session from local draft.',
+              severity: 'info',
+            });
+          }
+        } else {
+          setDraftRestored(false);
+        }
+      } catch {
+        if (!cancelled) setDraftRestored(false);
+      } finally {
+        if (!cancelled) {
+          persistEnabledRef.current = true;
+          setDraftReady(true);
+        }
+      }
+    };
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, hydrateFromDraft]);
+
+  // Debounced persist of edit drafts
+  useEffect(() => {
+    if (!draftReady || !userId || !persistEnabledRef.current) return;
+
+    if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    draftSaveTimerRef.current = setTimeout(() => {
+      if (!persistEnabledRef.current) return;
+
+      const hasDrafts = isEditAllMode || Object.keys(editingLeads).length > 0;
+      setDraftSaving(true);
+      const persist = hasDrafts
+        ? saveSalesEditDraft(userId, {
+            isEditAllMode,
+            editingLeads,
+            snapshot: getSnapshot(),
+          })
+        : clearSalesEditDraft(userId);
+
+      void persist
+        .then(() => {
+          if (persistEnabledRef.current) setDraftRestored(hasDrafts);
+        })
+        .catch(() => {
+          // Keep editing even if local persistence fails.
+        })
+        .finally(() => {
+          setDraftSaving(false);
+        });
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    };
+  }, [editingLeads, isEditAllMode, draftReady, userId, getSnapshot]);
+
+  useEffect(() => {
+    if (isEditAllMode) {
+      ensureProspectsEditable(prospects);
+    }
+  }, [isEditAllMode, prospects, ensureProspectsEditable]);
+
+  const handleEditAllToggle = async () => {
+    if (!isEditAllMode) {
+      if (prospects.length === 0) {
+        addToast({ message: 'No leads to edit on this page.', severity: 'info' });
+        return;
+      }
+      enterEditAll(prospects);
+      addToast({
+        message: `Editing ${prospects.length} lead${prospects.length === 1 ? '' : 's'}. Changes auto-sync every 30s.`,
+        severity: 'info',
+      });
+      return;
+    }
+
+    const result = await saveAll();
+    if (result.failed > 0) {
+      addToast({
+        message: `Saved ${result.synced} lead(s); ${result.failed} failed. Still in edit mode — retry or fix and Save All again.`,
+        severity: 'error',
+      });
+      return;
+    }
+    if (result.skipped > 0) {
+      addToast({
+        message: 'Some Future Lead rows need a date before they can be saved. Still in edit mode.',
+        severity: 'warning',
+      });
+      return;
+    }
+    if (result.synced > 0) {
+      addToast({
+        message: `Saved ${result.synced} lead${result.synced === 1 ? '' : 's'}.`,
+        severity: 'success',
+      });
+    } else {
+      addToast({ message: 'No pending changes to save.', severity: 'info' });
+    }
+  };
+
   const pipelineFilters = useMemo(() => ({
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
@@ -504,9 +697,6 @@ export const SalesPage = () => {
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [leadModalId, setLeadModalId] = useState<string>('');
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
-
-  // Bulk Upload Modal state
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
@@ -595,14 +785,6 @@ export const SalesPage = () => {
       }
     );
   };
-
-  const handleRefreshSync = () => {
-    if (googleSheetLink) {
-      const sheetId = extractSheetId(googleSheetLink);
-      startSyncing(sheetId, googleSheetLink);
-    }
-  };
-
 
   const stats = useMemo(() => {
     const pct = (value: number) => `${value}%`;
@@ -750,6 +932,7 @@ export const SalesPage = () => {
             onEndChange={setEndDate}
             size="small"
             layout="compact"
+            maxDate={new Date()}
           />
         </Box>
       </Box>
@@ -1002,29 +1185,6 @@ export const SalesPage = () => {
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SyncIcon />}
-              onClick={handleRefreshSync}
-              sx={{
-                borderRadius: '20px',
-                borderColor: 'rgba(93, 26, 137, 0.25)',
-                color: tokens.brand.primary,
-                fontWeight: 700,
-                textTransform: 'none',
-                fontSize: '0.78rem',
-                px: 2.25,
-                '&:hover': {
-                  bgcolor: 'rgba(93, 26, 137, 0.05)',
-                  borderColor: tokens.brand.primary,
-                },
-              }}
-            >
-              Sync Now
-            </Button>
-          </Box>
         </Box>
       )}
 
@@ -1267,8 +1427,107 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
-            {user?.role !== 'admin' && (
+            
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+                {(isEditAllMode || draftRestored || !draftReady || draftSaving) && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: '20px',
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                      mr: 0.5,
+                    }}
+                  >
+                    {syncStats.isSyncing || !draftReady || draftSaving ? (
+                      <CircularProgress size={14} thickness={5} sx={{ color: tokens.brand.primary }} />
+                    ) : (
+                      <SyncIcon sx={{ fontSize: 16, color: tokens.brand.primary, opacity: 0.85 }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 600,
+                        color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)',
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.72rem',
+                      }}
+                    >
+                      {!draftReady
+                        ? 'Restoring draft…'
+                        : draftSaving
+                          ? 'Saving draft…'
+                          : isEditAllMode
+                            ? `${syncStats.lastSyncAt
+                              ? `Last sync ${format(syncStats.lastSyncAt, 'HH:mm:ss')}`
+                              : 'Auto-sync ready'} · Synced ${syncStats.syncedCount} · Pending ${syncStats.pendingCount}${syncStats.failedCount > 0 ? ` · Failed ${syncStats.failedCount}` : ''}`
+                            : draftRestored
+                              ? 'Local draft saved'
+                              : 'No local draft'}
+                    </Typography>
+                  </Box>
+                )}
+                <Button
+                  variant={isEditAllMode ? 'contained' : 'outlined'}
+                  startIcon={
+                    isEditAllMode
+                      ? (syncStats.isSyncing
+                        ? <CircularProgress size={14} color="inherit" />
+                        : <SaveIcon sx={{ fontSize: 16 }} />)
+                      : <EditIcon sx={{ fontSize: 16 }} />
+                  }
+                  onClick={() => { void handleEditAllToggle(); }}
+                  disabled={syncStats.isSyncing && isEditAllMode}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isEditAllMode ? '#fff' : (isDarkMode ? '#fff' : tokens.text.primary),
+                    bgcolor: isEditAllMode ? tokens.brand.primary : 'transparent',
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      bgcolor: isEditAllMode
+                        ? tokens.brand.primaryLight
+                        : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isEditAllMode ? 'Save All' : 'Edit All'}
+                </Button>
+                {isEditAllMode && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<CloseIcon sx={{ fontSize: 16 }} />}
+                    onClick={cancelEditAll}
+                    disabled={syncStats.isSyncing}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 2.5,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon sx={{ fontSize: 16 }} />}
@@ -1311,55 +1570,32 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
-                {user?.role !== 'manager' && (
-                  <>
-                    <Button
-                      variant="outlined"
-                      startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
-                      onClick={() => setIsBulkUploadOpen(true)}
-                      sx={{
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                        color: isDarkMode ? '#fff' : tokens.text.primary,
-                        textTransform: 'none',
-                        borderRadius: '24px',
-                        height: 42,
-                        px: 3,
-                        fontWeight: 700,
-                        fontSize: '0.84rem',
-                        '&:hover': {
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                        },
-                      }}
-                    >
-                      Bulk Upload
-                    </Button>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                      onClick={() => setIsLinkDialogOpen(true)}
-                      sx={{
-                        bgcolor: tokens.brand.primary,
-                        color: '#fff',
-                        textTransform: 'none',
-                        borderRadius: '24px',
-                        height: 42,
-                        px: 3,
-                        fontWeight: 700,
-                        fontSize: '0.84rem',
+                {user?.role !== 'admin' && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setIsLinkDialogOpen(true)}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        bgcolor: tokens.brand.primaryLight,
                         boxShadow: 'none',
-                        '&:hover': {
-                          bgcolor: tokens.brand.primaryLight,
-                          boxShadow: 'none',
-                        },
-                      }}
-                    >
-                      Connect and sync
-                    </Button>
-                  </>
+                      },
+                    }}
+                  >
+                    Connect and sync
+                  </Button>
                 )}
               </Box>
-            )}
+            
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
@@ -1483,230 +1719,43 @@ export const SalesPage = () => {
                 </TableHead>
                 <TableBody>
                   {isAddingInline && (
-                    <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderBottom: `2px solid ${tokens.brand.primary}` }}>
-                      <TableCell sx={{ py: 2, pl: 3 }}>
-                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <TextField error={addLeadErrors.firstName} size="small" placeholder="First Name" value={newLeadData.firstName} onChange={(e) => setNewLeadData({ ...newLeadData, firstName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }} />
-                            <TextField error={addLeadErrors.lastName} size="small" placeholder="Last Name" value={newLeadData.lastName} onChange={(e) => setNewLeadData({ ...newLeadData, lastName: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }} />
-                          </Box>
-                          <TextField size="small" placeholder="Email" value={newLeadData.email} onChange={(e) => setNewLeadData({ ...newLeadData, email: e.target.value })} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ py: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                          <TextField error={addLeadErrors.icp} select size="small" placeholder="Campaign (ICP)" value={newLeadData.icp || ''} onChange={(e) => setNewLeadData({ ...newLeadData, icp: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }}>
-                            <MenuItem value=""><em>No ICP</em></MenuItem>
-                            {icpsList.map((icp) => (
-                              <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
-                            ))}
-                          </TextField>
-                          <TextField error={addLeadErrors.profile} select size="small" placeholder="Profile" value={newLeadData.profile || ''} onChange={(e) => setNewLeadData({ ...newLeadData, profile: e.target.value })} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' }, '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#c62828 !important', borderWidth: '2px !important' } }}>
-                            <MenuItem value=""><em>No Profile</em></MenuItem>
-                            {profileUsersList.map((p: any) => (
-                              <MenuItem key={p._id} value={p.name}>{p.name}</MenuItem>
-                            ))}
-                          </TextField>
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ py: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'row' }}>
-                          <Select size="small" value={newLeadData.connectionStatus} onChange={(e) => setNewLeadData({ ...newLeadData, connectionStatus: e.target.value as any })} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 } }}>
-                            <MenuItem value="pending">Conn: Pending</MenuItem>
-                            <MenuItem value="accepted">Conn: Accepted</MenuItem>
-                            <MenuItem value="declined">Conn: Declined</MenuItem>
-                            <MenuItem value="no_response">Conn: No Response</MenuItem>
-                          </Select>
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ py: 2 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <Select
-                            size="small"
-                            value={newLeadData.messageStatus}
-                            onChange={(e) => {
-                              const messageStatus = e.target.value as Lead['messageStatus'];
-                              setNewLeadData({
-                                ...newLeadData,
-                                messageStatus,
-                                linkedinMsg: e.target.value,
-                                ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
-                              });
-                            }}
-                            sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}
-                          >
-                            <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
-                            <MenuItem value="sent">Msg: Sent</MenuItem>
-                            <MenuItem value="replied">Msg: Replied</MenuItem>
-                            <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
-                            <MenuItem value="negative">Msg: Negative</MenuItem>
-                            <MenuItem value="positive">Msg: Positive</MenuItem>
-                            <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
-                          </Select>
-                          {newLeadData.messageStatus === 'future_lead' && (
-                            <ModernDatePicker
-                              label="Reactivate on *"
-                              placeholder="Future lead date"
-                              value={newLeadData.futureLeadDate ? new Date(newLeadData.futureLeadDate) : null}
-                              onChange={(date) =>
-                                setNewLeadData({
-                                  ...newLeadData,
-                                  futureLeadDate: date ? format(date, 'yyyy-MM-dd') : undefined,
-                                })
-                              }
-                            />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ py: 2 }}>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{user?.firstName} {user?.lastName}</Typography>
-                        <Typography variant="caption" sx={{ color: 'text.disabled' }}>Just now</Typography>
-                      </TableCell>
-                      <TableCell align="right" sx={{ py: 2, pr: 3 }}>
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                          <IconButton onClick={handleInlineSave} sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}>
-                            <CheckIcon sx={{ fontSize: 20 }} />
-                          </IconButton>
-                          <IconButton onClick={() => { setIsAddingInline(false); setAddLeadErrors({}); }} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
-                            <CloseIcon sx={{ fontSize: 20 }} />
-                          </IconButton>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
+                    <SalesInlineAddRow
+                      data={newLeadData}
+                      errors={addLeadErrors}
+                      isDarkMode={isDarkMode}
+                      icpsList={icpsList}
+                      profileUsersList={profileUsersList}
+                      agentName={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+                      onUpdate={handleInlineAddUpdate}
+                      onSave={handleInlineSave}
+                      onCancel={handleInlineAddCancel}
+                    />
                   )}
                   {prospects.map((prospect) => {
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
                       return (
-                        <TableRow key={`edit-${prospect._id}`} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderBottom: `2px solid ${tokens.brand.primary}` }}>
-                          <TableCell sx={{ py: 2, pl: 3 }}>
-                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <TextField size="small" placeholder="First Name" value={editData.firstName} onChange={(e) => handleEditChange(prospect._id, 'firstName', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                                <TextField size="small" placeholder="Last Name" value={editData.lastName} onChange={(e) => handleEditChange(prospect._id, 'lastName', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                              </Box>
-                              <TextField size="small" placeholder="Email" value={editData.email} onChange={(e) => handleEditChange(prospect._id, 'email', e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }} />
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ py: 2 }}>
-                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                              <TextField select size="small" placeholder="Campaign (ICP)" value={editData.icp || ''} onChange={(e) => handleEditChange(prospect._id, 'icp', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
-                                <MenuItem value=""><em>No ICP</em></MenuItem>
-                                {icpsList.map((icp) => (
-                                  <MenuItem key={icp._id} value={icp.name}>{icp.name}</MenuItem>
-                                ))}
-                              </TextField>
-                              <TextField select size="small" placeholder="Profile" value={editData.profile || ''} onChange={(e) => handleEditChange(prospect._id, 'profile', e.target.value)} SelectProps={{ displayEmpty: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff' } }}>
-                                <MenuItem value=""><em>No Profile</em></MenuItem>
-                                {profileUsersList.map((p: any) => (
-                                  <MenuItem key={p._id} value={p.name}>{p.name}</MenuItem>
-                                ))}
-                              </TextField>
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ py: 2 }}>
-                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'row' }}>
-                              <Select size="small" value={editData.connectionStatus} onChange={(e) => handleEditChange(prospect._id, 'connectionStatus', e.target.value)} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 } }}>
-                                <MenuItem value="pending">Conn: Pending</MenuItem>
-                                <MenuItem value="accepted">Conn: Accepted</MenuItem>
-                                <MenuItem value="declined">Conn: Declined</MenuItem>
-                                <MenuItem value="no_response">Conn: No Response</MenuItem>
-                              </Select>
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ py: 2 }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              <Select size="small" value={editData.messageStatus} onChange={(e) => {
-                                handleEditChange(prospect._id, 'messageStatus', e.target.value);
-                                handleEditChange(prospect._id, 'linkedinMsg', e.target.value);
-                              }} sx={{ borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff', '& .MuiSelect-select': { py: 1 }, width: '100%' }}>
-                                <MenuItem value="not_sent">Msg: Not Sent</MenuItem>
-                                <MenuItem value="sent">Msg: Sent</MenuItem>
-                                <MenuItem value="replied">Msg: Replied</MenuItem>
-                                <MenuItem value="follow_up">Msg: Follow Up</MenuItem>
-                                <MenuItem value="negative">Msg: Negative</MenuItem>
-                                <MenuItem value="positive">Msg: Positive</MenuItem>
-                                <MenuItem value="future_lead">Msg: Future Lead</MenuItem>
-                              </Select>
-                              {editData.messageStatus === 'future_lead' && (
-                                <ModernDatePicker
-                                  label="Reactivate on *"
-                                  placeholder="Future lead date"
-                                  value={editData.futureLeadDate ? new Date(editData.futureLeadDate) : null}
-                                  onChange={(date) =>
-                                    handleEditChange(
-                                      prospect._id,
-                                      'futureLeadDate',
-                                      date ? format(date, 'yyyy-MM-dd') : '',
-                                    )
-                                  }
-                                />
-                              )}
-                              {editData.messageStatus === 'follow_up' &&
-                                prospect.messageStatus === 'follow_up' && (
-                                <Select
-                                  size="small"
-                                  displayEmpty
-                                  value={prospect.followUpCount || ''}
-                                  disabled={logFollowUp.isPending}
-                                  onChange={(e) => {
-                                    const number = Number(e.target.value);
-                                    if (!number || number === (prospect.followUpCount ?? 0)) return;
-                                    logFollowUp.mutate(
-                                      { id: prospect._id, number },
-                                      {
-                                        onSuccess: () =>
-                                          addToast({
-                                            message: `FollowUp #${number} selected`,
-                                            severity: 'success',
-                                          }),
-                                        onError: () =>
-                                          addToast({
-                                            message: 'Failed to update follow-up',
-                                            severity: 'error',
-                                          }),
-                                      },
-                                    );
-                                  }}
-                                  sx={{
-                                    borderRadius: '8px',
-                                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff',
-                                    '& .MuiSelect-select': { py: 0.75, fontSize: '0.75rem', fontWeight: 700 },
-                                    minWidth: 130,
-                                  }}
-                                >
-                                  <MenuItem value="" disabled>
-                                    <em>FollowUp #</em>
-                                  </MenuItem>
-                                  {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
-                                    <MenuItem key={n} value={n}>
-                                      FollowUp #{n}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ py: 2 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                              {getAssignedName(prospect.assignedTo)}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                              Added: {formatDate(prospect.date || prospect.createdAt)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right" sx={{ py: 2, pr: 3 }}>
-                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                              <IconButton onClick={() => handleEditSave(prospect._id, prospect)} sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}>
-                                <CheckIcon sx={{ fontSize: 20 }} />
-                              </IconButton>
-                              <IconButton onClick={() => handleEditCancel(prospect._id)} sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}>
-                                <CloseIcon sx={{ fontSize: 20 }} />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
+                        <SalesEditRow
+                          key={`edit-${prospect._id}`}
+                          leadId={prospect._id}
+                          editData={editData}
+                          isDarkMode={isDarkMode}
+                          icpsList={icpsList}
+                          profileUsersList={profileUsersList}
+                          assignedName={getAssignedName(prospect.assignedTo)}
+                          addedLabel={formatDate(prospect.date || prospect.createdAt)}
+                          followUpCount={prospect.followUpCount}
+                          showFollowUpSelect={
+                            editData.messageStatus === 'follow_up' &&
+                            prospect.messageStatus === 'follow_up'
+                          }
+                          followUpPending={logFollowUp.isPending}
+                          onUpdate={handleEditUpdate}
+                          onSave={handleEditSave}
+                          onCancel={handleEditCancel}
+                          onFollowUpChange={handleFollowUpChange}
+                        />
                       );
                     }
 
@@ -2310,11 +2359,6 @@ export const SalesPage = () => {
           onClose={handleCloseLeadModal}
         />
       ) : null}
-
-      <BulkUploadModal
-        open={isBulkUploadOpen}
-        onClose={() => setIsBulkUploadOpen(false)}
-      />
     </Box>
   );
 };

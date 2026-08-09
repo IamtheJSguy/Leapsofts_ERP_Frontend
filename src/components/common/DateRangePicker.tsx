@@ -10,6 +10,7 @@ interface DateRangePickerProps {
   onEndChange: (value: string) => void;
   size?: TextFieldProps['size'];
   layout?: 'default' | 'compact';
+  maxDate?: Date;
 }
 
 export const DateRangePicker = ({
@@ -19,6 +20,7 @@ export const DateRangePicker = ({
   onEndChange,
   size = 'small',
   layout = 'default',
+  maxDate,
 }: DateRangePickerProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -36,12 +38,14 @@ export const DateRangePicker = ({
           value={start}
           onChange={handleStartChange}
           placeholder="Start"
+          maxDate={maxDate}
         />
         <Typography sx={{ color: 'text.secondary', fontWeight: 700, display: { xs: 'none', sm: 'block' } }}>-</Typography>
         <ModernDatePicker
           value={end}
           onChange={handleEndChange}
           placeholder="End"
+          maxDate={maxDate}
         />
       </Box>
     );
@@ -55,6 +59,7 @@ export const DateRangePicker = ({
           value={start}
           onChange={handleStartChange}
           placeholder="Select start date"
+          maxDate={maxDate}
         />
       </Box>
       <Box sx={{ flexGrow: 1, minWidth: 140 }}>
@@ -63,6 +68,7 @@ export const DateRangePicker = ({
           value={end}
           onChange={handleEndChange}
           placeholder="Select end date"
+          maxDate={maxDate}
         />
       </Box>
     </Box>

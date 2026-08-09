@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -9,9 +9,8 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
-import { format } from 'date-fns';
 
-import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { nativeFieldStyle } from '@/components/leads/nativeFieldStyles';
 import { useBulkCreateLeads } from '@/hooks/api/useLeads';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -111,19 +110,6 @@ const validateRow = (row: BulkLeadRow): RowErrors => {
   return errors;
 };
 
-const fieldStyle = (isDarkMode: boolean, error?: boolean): CSSProperties => ({
-  width: '100%',
-  boxSizing: 'border-box',
-  borderRadius: 10,
-  border: error ? '2px solid #c62828' : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-  background: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff',
-  color: isDarkMode ? '#fff' : '#111',
-  fontSize: '0.8rem',
-  padding: '8px 10px',
-  outline: 'none',
-  fontFamily: 'inherit',
-});
-
 const BulkLeadRowView = memo(function BulkLeadRowView({
   index,
   row,
@@ -178,20 +164,20 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
               placeholder="First Name *"
               value={row.firstName}
               onChange={(e) => onUpdate(index, { firstName: e.target.value })}
-              style={fieldStyle(isDarkMode, !!errors.firstName)}
+              style={nativeFieldStyle(isDarkMode, !!errors.firstName)}
             />
             <input
               placeholder="Last Name *"
               value={row.lastName}
               onChange={(e) => onUpdate(index, { lastName: e.target.value })}
-              style={fieldStyle(isDarkMode, !!errors.lastName)}
+              style={nativeFieldStyle(isDarkMode, !!errors.lastName)}
             />
           </div>
           <input
             placeholder="Email"
             value={row.email}
             onChange={(e) => onUpdate(index, { email: e.target.value })}
-            style={fieldStyle(isDarkMode)}
+            style={nativeFieldStyle(isDarkMode)}
           />
         </div>
       </td>
@@ -207,7 +193,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           <select
             value={row.icp}
             onChange={(e) => onUpdate(index, { icp: e.target.value })}
-            style={fieldStyle(isDarkMode, !!errors.icp)}
+            style={nativeFieldStyle(isDarkMode, !!errors.icp)}
           >
             <option value="">ICP *</option>
             {icpsList.map((icp) => (
@@ -219,7 +205,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           <select
             value={row.profile}
             onChange={(e) => onUpdate(index, { profile: e.target.value })}
-            style={fieldStyle(isDarkMode, !!errors.profile)}
+            style={nativeFieldStyle(isDarkMode, !!errors.profile)}
           >
             <option value="">Profile *</option>
             {profileUsersList.map((p) => (
@@ -243,7 +229,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           onChange={(e) =>
             onUpdate(index, { connectionStatus: e.target.value as ConnectionStatus })
           }
-          style={fieldStyle(isDarkMode)}
+          style={nativeFieldStyle(isDarkMode)}
         >
           <option value="pending">Pending</option>
           <option value="accepted">Accepted</option>
@@ -270,7 +256,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
                 ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
               });
             }}
-            style={fieldStyle(isDarkMode)}
+            style={nativeFieldStyle(isDarkMode)}
           >
             <option value="not_sent">Not Sent</option>
             <option value="sent">Sent</option>
@@ -281,15 +267,16 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
             <option value="future_lead">Future Lead</option>
           </select>
           {row.messageStatus === 'future_lead' && (
-            <ModernDatePicker
-              label="Reactivate on *"
-              placeholder="Future lead date"
-              value={row.futureLeadDate ? new Date(row.futureLeadDate) : null}
-              onChange={(date) =>
+            <input
+              type="date"
+              aria-label="Reactivate on"
+              value={row.futureLeadDate || ''}
+              onChange={(e) =>
                 onUpdate(index, {
-                  futureLeadDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                  futureLeadDate: e.target.value || undefined,
                 })
               }
+              style={nativeFieldStyle(isDarkMode, !!errors.futureLeadDate)}
             />
           )}
         </div>

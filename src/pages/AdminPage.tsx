@@ -10,7 +10,7 @@ const AdminPage = () => {
   const [tab, setTab] = useState(0);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const { canManageSystemSettings } = usePermissions();
+  const { canManageSystemSettings, canManageSalesSettings } = usePermissions();
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -117,7 +117,7 @@ const AdminPage = () => {
         ) : tab === 1 ? (
           <SystemSettingsPanel readOnly={!canManageSystemSettings} />
         ) : (
-          <SalesSettingsPanel readOnly={!canManageSystemSettings} />
+          <SalesSettingsPanel readOnly={!canManageSalesSettings} />
         )}
       </Box>
     </Box>

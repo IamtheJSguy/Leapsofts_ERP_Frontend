@@ -255,6 +255,10 @@ export interface SalesKpiTemplateItem {
   /** Only meaningful when targetMode is 'manual'; otherwise snapshotted from the pipeline. */
   targetValue?: number;
   priority: KpiPriority;
+  /** Optional `HH:mm`. Omit → task starts at beginning of day (cron). */
+  startTime?: string | null;
+  /** Optional `HH:mm`. Omit → task ends at midnight (end of day). */
+  endTime?: string | null;
 }
 
 export interface SalesKpiTemplate {
@@ -305,6 +309,9 @@ export interface SalesKpiAssignmentItemUpdate {
   targetMode?: SalesKpiTargetMode;
   targetValue?: number;
   priority?: KpiPriority;
+  /** `null` clears a previously set time. */
+  startTime?: string | null;
+  endTime?: string | null;
   isActive?: boolean;
 }
 
@@ -321,6 +328,8 @@ export interface SalesKpiItemOverride {
   targetMode?: SalesKpiTargetMode;
   targetValue?: number;
   priority?: KpiPriority;
+  startTime?: string | null;
+  endTime?: string | null;
   isActive?: boolean;
 }
 
@@ -669,6 +678,11 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface ShiftBreak {
+  startTime: string;
+  endTime: string | null;
+}
+
 export interface Shift {
   _id: string;
   userId: string | User;
@@ -678,6 +692,10 @@ export interface Shift {
   scheduledStart: string;
   scheduledEnd: string;
   totalMinutes: number;
+  /** Completed + open break segments for the shift. */
+  breaks?: ShiftBreak[];
+  /** Persisted/live sum of break durations in minutes (excludes worked time). */
+  totalBreakMinutes?: number;
   status: 'not_started' | 'checked_in' | 'checked_out';
   isActive: boolean;
   createdAt: string;

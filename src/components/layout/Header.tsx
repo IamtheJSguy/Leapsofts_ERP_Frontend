@@ -21,7 +21,7 @@ import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTodayShift, useCheckIn, useCheckOut } from '@/hooks/api/useShifts';
+import { useTodayShift, useCheckIn, useCheckOut, useStartBreak, useEndBreak } from '@/hooks/api/useShifts';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,8 +43,11 @@ export const Header = () => {
   const { data: todayShift } = useTodayShift();
   const { mutate: checkInMutate, isPending: isCheckingIn } = useCheckIn();
   const { mutate: checkOutMutate, isPending: isCheckingOut } = useCheckOut();
+  const { mutate: startBreakMutate, isPending: isStartingBreak } = useStartBreak();
+  const { mutate: endBreakMutate, isPending: isEndingBreak } = useEndBreak();
 
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
+  const isOnBreak = useTimeTrackerStore((s) => s.isOnBreak);
   const elapsedSeconds = useTimeTrackerStore((s) => s.elapsedSeconds);
   const syncWithShift = useTimeTrackerStore((s) => s.syncWithShift);
 
@@ -56,6 +59,9 @@ export const Header = () => {
 
   const handleCheckIn = () => checkInMutate(undefined);
   const handleCheckOut = () => checkOutMutate(undefined);
+  const handleStartBreak = () => startBreakMutate(undefined);
+  const handleEndBreak = () => endBreakMutate(undefined);
+  const isShiftActionPending = isCheckingIn || isCheckingOut || isStartingBreak || isEndingBreak;
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -132,12 +138,16 @@ export const Header = () => {
                 px: { xs: 1, sm: 1.5 },
                 py: 0.5,
                 borderRadius: `${tokens.radius.pill}px`,
-                bgcolor: isCheckedIn
-                  ? theme === 'dark' ? 'rgba(45, 138, 94, 0.08)' : 'rgba(45, 138, 94, 0.04)'
-                  : theme === 'dark' ? 'rgba(255, 127, 17, 0.08)' : 'rgba(255, 127, 17, 0.04)',
-                border: `1px solid ${isCheckedIn
-                  ? 'rgba(45, 138, 94, 0.15)'
-                  : 'rgba(255, 127, 17, 0.15)'}`,
+                bgcolor: isOnBreak
+                  ? theme === 'dark' ? 'rgba(184, 134, 11, 0.12)' : 'rgba(184, 134, 11, 0.06)'
+                  : isCheckedIn
+                    ? theme === 'dark' ? 'rgba(45, 138, 94, 0.08)' : 'rgba(45, 138, 94, 0.04)'
+                    : theme === 'dark' ? 'rgba(255, 127, 17, 0.08)' : 'rgba(255, 127, 17, 0.04)',
+                border: `1px solid ${isOnBreak
+                  ? 'rgba(184, 134, 11, 0.25)'
+                  : isCheckedIn
+                    ? 'rgba(45, 138, 94, 0.15)'
+                    : 'rgba(255, 127, 17, 0.15)'}`,
                 backdropFilter: 'blur(20px)',
                 mr: { xs: 0.5, sm: 1 },
               }}
@@ -148,8 +158,16 @@ export const Header = () => {
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  bgcolor: isCheckedIn ? tokens.semantic.success : tokens.brand.accent,
-                  boxShadow: `0 0 8px ${isCheckedIn ? tokens.semantic.success : tokens.brand.accent}`,
+                  bgcolor: isOnBreak
+                    ? tokens.semantic.warning
+                    : isCheckedIn
+                      ? tokens.semantic.success
+                      : tokens.brand.accent,
+                  boxShadow: `0 0 8px ${isOnBreak
+                    ? tokens.semantic.warning
+                    : isCheckedIn
+                      ? tokens.semantic.success
+                      : tokens.brand.accent}`,
                   animation: 'pulse 2s infinite ease-in-out',
                   '@keyframes pulse': {
                     '0%': { opacity: 0.4 },
@@ -164,44 +182,139 @@ export const Header = () => {
                 variant="body2"
                 sx={{
                   fontWeight: 700,
-                  color: isCheckedIn ? tokens.semantic.success : 'text.secondary',
+                  color: isOnBreak
+                    ? tokens.semantic.warning
+                    : isCheckedIn
+                      ? tokens.semantic.success
+                      : 'text.secondary',
                   fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   fontFamily: 'monospace',
                   letterSpacing: '0.05em',
                   display: 'flex',
                   alignItems: 'center',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                {isCheckedIn ? formatTime(elapsedSeconds) : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>INACTIVE</Box>}
+                {isOnBreak
+                  ? 'ON BREAK'
+                  : isCheckedIn
+                    ? formatTime(elapsedSeconds)
+                    : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>INACTIVE</Box>}
               </Typography>
 
-              {/* Action Button */}
-              <Button
-                size="small"
-                variant="contained"
-                onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-                disabled={isCheckingIn || isCheckingOut}
-                sx={{
-                  height: 24,
-                  minWidth: 0,
-                  px: { xs: 1, sm: 1.5 },
-                  py: 0,
-                  borderRadius: `${tokens.radius.pill}px`,
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  textTransform: 'none',
-                  whiteSpace: 'nowrap',
-                  bgcolor: isCheckedIn ? tokens.semantic.error : tokens.brand.accent,
-                  color: '#fff',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    bgcolor: isCheckedIn ? tokens.semantic.error : tokens.brand.accentDark,
+              {/* Actions */}
+              {isCheckedIn && isOnBreak ? (
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleEndBreak}
+                  disabled={isShiftActionPending}
+                  sx={{
+                    height: 24,
+                    minWidth: 0,
+                    px: { xs: 1, sm: 1.5 },
+                    py: 0,
+                    borderRadius: `${tokens.radius.pill}px`,
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    bgcolor: tokens.semantic.warning,
+                    color: '#fff',
                     boxShadow: 'none',
-                  },
-                }}
-              >
-                {isCheckingIn || isCheckingOut ? 'Loading...' : isCheckedIn ? 'Check Out' : 'Check In'}
-              </Button>
+                    '&:hover': {
+                      bgcolor: tokens.semantic.warning,
+                      opacity: 0.9,
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isEndingBreak ? '...' : 'End Break'}
+                </Button>
+              ) : isCheckedIn ? (
+                <>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleStartBreak}
+                    disabled={isShiftActionPending}
+                    sx={{
+                      height: 24,
+                      minWidth: 0,
+                      px: { xs: 0.75, sm: 1.25 },
+                      py: 0,
+                      borderRadius: `${tokens.radius.pill}px`,
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      textTransform: 'none',
+                      whiteSpace: 'nowrap',
+                      borderColor: 'rgba(184, 134, 11, 0.35)',
+                      color: tokens.semantic.warning,
+                      boxShadow: 'none',
+                      '&:hover': {
+                        borderColor: tokens.semantic.warning,
+                        bgcolor: 'rgba(184, 134, 11, 0.08)',
+                        boxShadow: 'none',
+                      },
+                    }}
+                  >
+                    {isStartingBreak ? '...' : 'Start Break'}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={handleCheckOut}
+                    disabled={isShiftActionPending}
+                    sx={{
+                      height: 24,
+                      minWidth: 0,
+                      px: { xs: 1, sm: 1.5 },
+                      py: 0,
+                      borderRadius: `${tokens.radius.pill}px`,
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      textTransform: 'none',
+                      whiteSpace: 'nowrap',
+                      bgcolor: tokens.semantic.error,
+                      color: '#fff',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        bgcolor: tokens.semantic.error,
+                        boxShadow: 'none',
+                      },
+                    }}
+                  >
+                    {isCheckingOut ? '...' : 'Check Out'}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleCheckIn}
+                  disabled={isShiftActionPending}
+                  sx={{
+                    height: 24,
+                    minWidth: 0,
+                    px: { xs: 1, sm: 1.5 },
+                    py: 0,
+                    borderRadius: `${tokens.radius.pill}px`,
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    bgcolor: tokens.brand.accent,
+                    color: '#fff',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      bgcolor: tokens.brand.accentDark,
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isCheckingIn ? 'Loading...' : 'Check In'}
+                </Button>
+              )}
             </Box>
           )}
 

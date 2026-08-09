@@ -170,6 +170,11 @@ export const SalesKpiPanel = () => {
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                         · {item.targetMode === 'manual' ? `Target ${item.targetValue ?? '—'}` : 'Target from pipeline'}
                       </Typography>
+                      {(item.startTime || item.endTime) && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                          · {item.startTime || 'start of day'} – {item.endTime || 'end of day'}
+                        </Typography>
+                      )}
                     </Box>
                   ))}
                 </Box>
@@ -180,7 +185,7 @@ export const SalesKpiPanel = () => {
       </Box>
 
       <Box>
-        {sectionHeading('Assignees', 'Edit a member’s weekdays, target or priority — changes apply to tasks generated from tomorrow.')}
+        {sectionHeading('Assignees', 'Edit a member’s weekdays, times, target or priority — changes apply to tasks generated from tomorrow.')}
         <SalesKpiAssignmentsPanel />
       </Box>
 
