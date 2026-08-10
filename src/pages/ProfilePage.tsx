@@ -14,6 +14,7 @@ import {
   useTheme,
   Switch,
   Fade,
+  Alert,
 } from '@mui/material';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -21,6 +22,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LocalPhoneOutlinedIcon from '@mui/icons-material/LocalPhoneOutlined';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import SyncIcon from '@mui/icons-material/Sync';
+import LinkIcon from '@mui/icons-material/Link';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -84,6 +86,9 @@ export default function ProfilePage() {
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStageText, setSyncStageText] = useState('');
   const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
+  const [isConnectConfirmOpen, setIsConnectConfirmOpen] = useState(false);
+  const [sheetInput, setSheetInput] = useState('');
+  const [sheetError, setSheetError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -98,14 +103,11 @@ export default function ProfilePage() {
           meetingReminders: user.notificationPreferences.meetingReminders ?? true,
         });
       }
+      if ((user as any).googleSheetId) {
+        setSheetInput(`https://docs.google.com/spreadsheets/d/${(user as any).googleSheetId}`);
+      }
     }
   }, [user]);
-
-  useEffect(() => {
-    if (activeTab === 'google-sheet' && !hasConnectedSheet) {
-      setActiveTab('profile');
-    }
-  }, [activeTab, hasConnectedSheet]);
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -207,25 +209,47 @@ export default function ProfilePage() {
     );
   };
 
+  const extractSheetId = (input: string): string => {
+    const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match?.[1]) return match[1];
+    return input.trim();
+  };
+
+  const handleOpenConnectConfirm = () => {
+    const trimmedInput = sheetInput.trim();
+    if (!trimmedInput) {
+      setSheetError('Google Sheet link or Spreadsheet ID is required.');
+      return;
+    }
+    const isLink = trimmedInput.includes('docs.google.com/spreadsheets');
+    if (trimmedInput.startsWith('http') && !isLink) {
+      setSheetError('Please enter a valid Google Sheets URL (e.g. docs.google.com/spreadsheets/d/...)');
+      return;
+    }
+    const sheetId = extractSheetId(trimmedInput);
+    if (!sheetId) {
+      setSheetError('Unable to extract a valid Spreadsheet ID.');
+      return;
+    }
+    setSheetError('');
+    setIsConnectConfirmOpen(true);
+  };
+
   const handleOpenSyncConfirm = () => {
     if (!hasConnectedSheet) {
-      addToast({ message: 'Connect a Google Sheet from the Sales page first.', severity: 'warning' });
+      addToast({ message: 'Connect a Google Sheet first.', severity: 'warning' });
       return;
     }
     setIsSyncConfirmOpen(true);
   };
 
-  const handleConfirmSync = () => {
-    setIsSyncConfirmOpen(false);
+  const runSyncWithProgress = (onDone?: () => void) => {
     setIsSyncing(true);
     setSyncProgress(10);
     setSyncStageText('Connecting to Google Sheets API...');
 
     const progressInterval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev < 90) return prev + 15;
-        return prev;
-      });
+      setSyncProgress((prev) => (prev < 90 ? prev + 15 : prev));
     }, 250);
 
     syncMySheet.mutate(undefined, {
@@ -236,6 +260,7 @@ export default function ProfilePage() {
         setTimeout(() => {
           setIsSyncing(false);
           addToast({ message: 'Google Sheet synchronized successfully!', severity: 'success' });
+          onDone?.();
         }, 600);
       },
       onError: (err: any) => {
@@ -247,6 +272,36 @@ export default function ProfilePage() {
         });
       },
     });
+  };
+
+  const handleConfirmConnect = () => {
+    setIsConnectConfirmOpen(false);
+    const sheetId = extractSheetId(sheetInput.trim());
+    setIsSyncing(true);
+    setSyncProgress(10);
+    setSyncStageText('Saving spreadsheet connection...');
+
+    updateMeMutation.mutate(
+      { googleSheetId: sheetId } as any,
+      {
+        onSuccess: () => {
+          updateAuthUser({ googleSheetId: sheetId } as any);
+          runSyncWithProgress();
+        },
+        onError: (err: any) => {
+          setIsSyncing(false);
+          addToast({
+            message: err?.response?.data?.message || 'Failed to connect Google Sheet.',
+            severity: 'error',
+          });
+        },
+      },
+    );
+  };
+
+  const handleConfirmSync = () => {
+    setIsSyncConfirmOpen(false);
+    runSyncWithProgress();
   };
 
 
@@ -373,7 +428,7 @@ export default function ProfilePage() {
         {[
           { key: 'profile', label: 'User Profile', icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 18 }} /> },
           { key: 'preferences', label: 'Preferences & Schedule', icon: <ScheduleIcon sx={{ fontSize: 18 }} /> },
-          ...(hasConnectedSheet ? [{ key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> }] : []),
+          { key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> },
         ].map((tab) => (
           <Button
             key={tab.key}
@@ -805,8 +860,8 @@ export default function ProfilePage() {
           </Fade>
         )}
 
-        {/* Google Sheet Sync Tab — sync-only when a sheet is already connected */}
-        {activeTab === 'google-sheet' && hasConnectedSheet && (
+        {/* Google Sheet Sync Tab — connect and sync only from settings */}
+        {activeTab === 'google-sheet' && (
           <Fade in timeout={500}>
             <Grid container spacing={4}>
               <Grid item xs={12} lg={7}>
@@ -829,59 +884,113 @@ export default function ProfilePage() {
                         Google Sheets Sync
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Run an on-demand sync of your connected spreadsheet.
+                        Add or update your Google Sheet URL on your profile, then sync leads.
                       </Typography>
                     </Box>
                   </Box>
 
                   <Divider sx={{ mb: 4, opacity: isDarkMode ? 0.08 : 0.08 }} />
 
-                  <Box
-                    sx={{
-                      p: 3,
-                      borderRadius: '16px',
-                      bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.08)' : 'rgba(45, 138, 94, 0.04)',
-                      border: `1px solid ${isDarkMode ? 'rgba(45, 138, 94, 0.18)' : 'rgba(45, 138, 94, 0.1)'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      mb: 3.5,
-                    }}
-                  >
-                    <CheckCircleOutlineIcon sx={{ color: tokens.semantic.success, fontSize: 28 }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5 }}>
-                        Spreadsheet Connected
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                          sx={{ display: 'block', maxWidth: 280 }}
-                        >
-                          {(user as any).googleSheetId}
+                  {hasConnectedSheet && (
+                    <Box
+                      sx={{
+                        p: 3,
+                        borderRadius: '16px',
+                        bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.08)' : 'rgba(45, 138, 94, 0.04)',
+                        border: `1px solid ${isDarkMode ? 'rgba(45, 138, 94, 0.18)' : 'rgba(45, 138, 94, 0.1)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        mb: 3.5,
+                      }}
+                    >
+                      <CheckCircleOutlineIcon sx={{ color: tokens.semantic.success, fontSize: 28 }} />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5 }}>
+                          Spreadsheet Connected
                         </Typography>
-                        <IconButton
-                          component="a"
-                          href={`https://docs.google.com/spreadsheets/d/${(user as any).googleSheetId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          size="small"
-                          sx={{ color: tokens.brand.primary, p: 0.25 }}
-                        >
-                          <OpenInNewIcon sx={{ fontSize: 13 }} />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            noWrap
+                            sx={{ display: 'block', maxWidth: 280 }}
+                          >
+                            {(user as any).googleSheetId}
+                          </Typography>
+                          <IconButton
+                            component="a"
+                            href={`https://docs.google.com/spreadsheets/d/${(user as any).googleSheetId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="small"
+                            sx={{ color: tokens.brand.primary, p: 0.25 }}
+                          >
+                            <OpenInNewIcon sx={{ fontSize: 13 }} />
+                          </IconButton>
+                        </Box>
                       </Box>
                     </Box>
+                  )}
+
+                  <Box sx={{ mb: 3.5 }}>
+                    {sheetError && (
+                      <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+                        {sheetError}
+                      </Alert>
+                    )}
+                    <TextField
+                      fullWidth
+                      label="Google Sheet URL or ID"
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      value={sheetInput}
+                      onChange={(e) => {
+                        setSheetInput(e.target.value);
+                        if (sheetError) setSheetError('');
+                      }}
+                      helperText={
+                        hasConnectedSheet
+                          ? 'Paste a new link to update the sheet saved on your profile.'
+                          : 'Paste the sheet link to save it on your profile and sync leads.'
+                      }
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LinkIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={textFieldSx}
+                    />
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {hasConnectedSheet && (
+                      <Button
+                        variant="outlined"
+                        onClick={handleOpenSyncConfirm}
+                        disabled={isSyncing || syncMySheet.isPending}
+                        startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                        sx={{
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                          color: isDarkMode ? '#fff' : tokens.text.primary,
+                          fontWeight: 700,
+                          px: { xs: 3, sm: 4 },
+                          py: 1.25,
+                          borderRadius: '14px',
+                          textTransform: 'none',
+                          whiteSpace: 'nowrap',
+                          fontSize: '0.86rem',
+                        }}
+                      >
+                        {isSyncing ? 'Syncing...' : 'Sync'}
+                      </Button>
+                    )}
                     <Button
                       variant="contained"
-                      onClick={handleOpenSyncConfirm}
-                      disabled={isSyncing || syncMySheet.isPending}
-                      startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                      onClick={handleOpenConnectConfirm}
+                      disabled={isSyncing || updateMeMutation.isPending || syncMySheet.isPending}
+                      startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <LinkIcon />}
                       sx={{
                         bgcolor: tokens.brand.primary,
                         color: '#fff',
@@ -900,7 +1009,9 @@ export default function ProfilePage() {
                         },
                       }}
                     >
-                      {isSyncing ? 'Syncing...' : 'Sync'}
+                      {isSyncing
+                        ? (hasConnectedSheet ? 'Updating...' : 'Connecting...')
+                        : (hasConnectedSheet ? 'Update and sync' : 'Connect and sync')}
                     </Button>
                   </Box>
                 </Card>
@@ -923,23 +1034,6 @@ export default function ProfilePage() {
                       Syncing may overwrite lead data in the system with values from your Google Sheet. Changes made here that are not reflected in the sheet can be lost.
                     </Typography>
                   </Box>
-
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderRadius: '16px',
-                      bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.08)' : 'rgba(93, 26, 137, 0.03)',
-                      border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.08)'}`,
-                      display: 'flex',
-                      gap: 1.5,
-                      mt: 'auto',
-                    }}
-                  >
-                    <InfoOutlinedIcon sx={{ color: tokens.brand.primary, fontSize: 18, mt: 0.25 }} />
-                    <Typography variant="body2" sx={{ fontSize: '0.78rem', color: 'text.secondary', lineHeight: 1.5 }}>
-                      Automatic syncs still run twice daily. Use Sync here when you need an on-demand refresh. Connect or change sheets from the Sales page.
-                    </Typography>
-                  </Box>
                 </Card>
               </Grid>
             </Grid>
@@ -947,6 +1041,17 @@ export default function ProfilePage() {
         )}
 
       </Box>
+
+      <ConfirmDialog
+        open={isConnectConfirmOpen}
+        title={hasConnectedSheet ? 'Update and sync Google Sheet?' : 'Connect and sync Google Sheet?'}
+        message="Warning: This saves the sheet on your profile and syncs leads. Syncing may overwrite data in the system with values from your Google Sheet. Changes made here that are not reflected in the sheet can be lost. Do you want to proceed?"
+        confirmLabel={hasConnectedSheet ? 'Yes, Update & Sync' : 'Yes, Connect & Sync'}
+        cancelLabel="Cancel"
+        isPending={isSyncing || updateMeMutation.isPending || syncMySheet.isPending}
+        onConfirm={handleConfirmConnect}
+        onCancel={() => setIsConnectConfirmOpen(false)}
+      />
 
       <ConfirmDialog
         open={isSyncConfirmOpen}
