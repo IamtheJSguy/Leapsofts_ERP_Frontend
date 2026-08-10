@@ -30,6 +30,7 @@ import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import type { ProjectFormData } from '@/components/projects/ProjectFormDialog';
 import { useProjects, useCreateProject, useDeleteProject } from '@/hooks/api/useProjects';
 import { useUsers } from '@/hooks/api/useUsers';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Project, User } from '@/types';
 
 const statusFilters = ['All', 'Active', 'In Development', 'On Hold'];
@@ -55,6 +56,7 @@ const ProjectsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const navigate = useNavigate();
+  const { isElevated } = usePermissions();
 
   const { data: projects = [], isLoading } = useProjects();
   const createProjectMutation = useCreateProject();
@@ -151,30 +153,32 @@ const ProjectsPage = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setIsFormOpen(true)}
-            sx={{
-              bgcolor: tokens.brand.primary,
-              color: '#fff',
-              fontWeight: 700,
-              borderRadius: '24px',
-              textTransform: 'none',
-              boxShadow: 'none',
-              px: 3,
-              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': {
+        {isElevated && (
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setIsFormOpen(true)}
+              sx={{
                 bgcolor: tokens.brand.primary,
-                transform: 'translateY(-1px)',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '24px',
+                textTransform: 'none',
                 boxShadow: 'none',
-              },
-            }}
-          >
-            New Project
-          </Button>
-        </Box>
+                px: 3,
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                '&:hover': {
+                  bgcolor: tokens.brand.primary,
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              New Project
+            </Button>
+          </Box>
+        )}
       </Box>
 
       {/* Toolbar */}

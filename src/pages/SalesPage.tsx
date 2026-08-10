@@ -21,7 +21,7 @@ import {
   TableRow,
   TablePagination,
   useTheme,
-  alpha,
+  // alpha,
   Autocomplete,
   Paper,
   Dialog,
@@ -30,7 +30,6 @@ import {
   DialogActions,
   CircularProgress,
   LinearProgress,
-  Alert,
   Tooltip,
   IconButton,
 } from '@mui/material';
@@ -38,8 +37,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import SyncIcon from '@mui/icons-material/Sync';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import WarningIcon from '@mui/icons-material/Warning';
-import LinkIcon from '@mui/icons-material/Link';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
@@ -49,7 +46,6 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
-import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useLeads, useQualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import {
   useLeadAutoSync,
@@ -79,7 +75,7 @@ import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { format } from 'date-fns';
-import { useUpdateMe, useMe, useUsers } from '@/hooks/api/useUsers';
+import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 
@@ -90,8 +86,6 @@ export const SalesPage = () => {
   const muiTheme = useTheme();
   const isDarkMode = muiTheme.palette.mode === 'dark';
   const { isElevated } = usePermissions();
-  const syncMySheet = useSyncMySheet();
-  const updateMe = useUpdateMe();
   const qualifyLead = useQualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
@@ -681,14 +675,6 @@ export const SalesPage = () => {
   }), [startDate, endDate, selectedUserId]);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
-  // Google Sheet Dialog and Sync Loading state
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-  const [inputLink, setInputLink] = useState('');
-  const [linkError, setLinkError] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
-  const [syncStageText, setSyncStageText] = useState('');
-
   // Qualify Lead Modal state
   const [isQualifyModalOpen, setIsQualifyModalOpen] = useState(false);
   const [selectedLeadToQualify, setSelectedLeadToQualify] = useState<string>('');
@@ -699,92 +685,11 @@ export const SalesPage = () => {
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
 
   useEffect(() => {
-    if (user && (user as any).googleSheetId && !googleSheetLink && !inputLink) {
+    if (user && (user as any).googleSheetId && !googleSheetLink) {
       const sheetId = (user as any).googleSheetId;
       setGoogleSheetLink(`https://docs.google.com/spreadsheets/d/${sheetId}`);
-      setInputLink(`https://docs.google.com/spreadsheets/d/${sheetId}`);
     }
-  }, [user, googleSheetLink, inputLink]);
-
-
-  // Helper to extract the unique spreadsheet ID from a Google Sheet URL,
-  // or return the input as is if it is already a direct spreadsheet ID.
-  const extractSheetId = (input: string): string => {
-    const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
-    const match = input.match(regex);
-    if (match && match[1]) {
-      return match[1];
-    }
-    return input.trim();
-  };
-
-  // Google sheet URL validator and submission flow
-  const handleLinkSubmit = () => {
-    const trimmedInput = inputLink.trim();
-    if (!trimmedInput) {
-      setLinkError('Google Sheet link or Spreadsheet ID is required.');
-      return;
-    }
-
-    const isLink = trimmedInput.includes('docs.google.com/spreadsheets');
-    if (trimmedInput.startsWith('http') && !isLink) {
-      setLinkError('Please enter a valid Google Sheets URL (e.g. docs.google.com/spreadsheets/d/...)');
-      return;
-    }
-
-    const sheetId = extractSheetId(trimmedInput);
-    if (!sheetId) {
-      setLinkError('Unable to extract a valid Spreadsheet ID.');
-      return;
-    }
-
-    setLinkError('');
-    setIsLinkDialogOpen(false);
-    startSyncing(sheetId, trimmedInput);
-  };
-
-  // Google Sheets synchronization loading cycle and actual API integration
-  const startSyncing = (sheetId: string, fullInput: string) => {
-    setIsSyncing(true);
-    setSyncProgress(10);
-    setSyncStageText('Connecting to Google Sheets API...');
-
-    const progressInterval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev < 90) return prev + 15;
-        return prev;
-      });
-    }, 250);
-
-    updateMe.mutate(
-      { googleSheetId: sheetId } as any,
-      {
-        onSuccess: () => {
-          syncMySheet.mutate(undefined, {
-            onSuccess: () => {
-              clearInterval(progressInterval);
-              setSyncProgress(100);
-              setSyncStageText('Import complete!');
-              setTimeout(() => {
-                setIsSyncing(false);
-                setGoogleSheetLink(fullInput);
-              }, 600);
-            },
-            onError: (err: any) => {
-              clearInterval(progressInterval);
-              setIsSyncing(false);
-              alert(err?.response?.data?.message || 'Failed to sync Google Sheet. Please verify sharing permissions.');
-            },
-          });
-        },
-        onError: () => {
-          clearInterval(progressInterval);
-          setIsSyncing(false);
-          alert('Failed to update user profile with sheet ID.');
-        }
-      }
-    );
-  };
+  }, [user, googleSheetLink]);
 
   const stats = useMemo(() => {
     const pct = (value: number) => `${value}%`;
@@ -919,7 +824,7 @@ export const SalesPage = () => {
               fontSize: '0.92rem',
             }}
           >
-            Track outbound conversions, import contacts via Google Sheets, and manage stages.
+            Track outbound conversions, manage prospects, and update outreach stages.
           </Typography>
         </Box>
 
@@ -1570,30 +1475,6 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
-                {user?.role !== 'admin' && (
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                    onClick={() => setIsLinkDialogOpen(true)}
-                    sx={{
-                      bgcolor: tokens.brand.primary,
-                      color: '#fff',
-                      textTransform: 'none',
-                      borderRadius: '24px',
-                      height: 42,
-                      px: 3,
-                      fontWeight: 700,
-                      fontSize: '0.84rem',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        bgcolor: tokens.brand.primaryLight,
-                        boxShadow: 'none',
-                      },
-                    }}
-                  >
-                    Connect and sync
-                  </Button>
-                )}
               </Box>
             
           </Box>
@@ -1666,32 +1547,8 @@ export const SalesPage = () => {
                   fontWeight: 500,
                 }}
               >
-                Link a Google Sheets spreadsheet URL to sync and manage your outbound lead generation contacts.
+                No prospects yet. Add leads manually, or connect a Google Sheet from Settings to sync contacts.
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<LinkIcon />}
-                onClick={() => setIsLinkDialogOpen(true)}
-                sx={{
-                  bgcolor: '#FFA08A',
-                  color: '#fff',
-                  textTransform: 'none',
-                  borderRadius: '24px',
-                  px: 3.5,
-                  py: 1,
-                  fontWeight: 700,
-                  fontSize: '0.86rem',
-                  boxShadow: '0 4px 14px rgba(255, 160, 138, 0.35)',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  '&:hover': {
-                    bgcolor: '#FF8A6F',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(255, 160, 138, 0.45)',
-                  },
-                }}
-              >
-                Link Google Sheet
-              </Button>
             </Box>
           ) : (
             /* Connected Prospects View - Show Table */
@@ -2102,162 +1959,6 @@ export const SalesPage = () => {
         </Box>
       )}
 
-      {/* Link Google Sheet Modal Dialog */}
-      <Dialog
-        open={isLinkDialogOpen}
-        onClose={() => setIsLinkDialogOpen(false)}
-        PaperProps={{
-          sx: {
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            /* backdropFilter: 'blur(20px)' (removed for performance) */
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-            p: 1.5,
-            width: '100%',
-            maxWidth: 480,
-            boxShadow: tokens.shadow.card,
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 800, pb: 1, letterSpacing: '-0.02em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-          Link Google Spreadsheet
-        </DialogTitle>
-        <DialogContent sx={{ pb: 2 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3.5, lineHeight: 1.5 }}>
-            Paste the Google Docs Sheet link below to connect and sync your lead profiles directory. Ensure the link has public view access.
-          </Typography>
-
-          {linkError && (
-            <Alert severity="error" icon={<WarningIcon />} sx={{ mb: 3, borderRadius: '12px' }}>
-              {linkError}
-            </Alert>
-          )}
-
-          <TextField
-            autoFocus
-            fullWidth
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            value={inputLink}
-            onChange={(e) => setInputLink(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LinkIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '16px',
-                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                '& fieldset': {
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-                },
-              },
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 1.5 }}>
-          <Button
-            onClick={() => setIsLinkDialogOpen(false)}
-            sx={{
-              color: 'text.secondary',
-              textTransform: 'none',
-              borderRadius: '20px',
-              px: 3,
-              fontWeight: 650,
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleLinkSubmit}
-            sx={{
-              bgcolor: tokens.brand.primary,
-              color: '#fff',
-              textTransform: 'none',
-              borderRadius: '20px',
-              px: 3.5,
-              fontWeight: 700,
-              boxShadow: 'none',
-              '&:hover': {
-                bgcolor: tokens.brand.primaryLight,
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Connect & Sync
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Syncing Progress Animation Dialog Overlay */}
-      <Dialog
-        open={isSyncing}
-        PaperProps={{
-          sx: {
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            /* backdropFilter: 'blur(20px)' (removed for performance) */
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-            p: 4,
-            width: '100%',
-            maxWidth: 400,
-            textAlign: 'center',
-            boxShadow: tokens.shadow.card,
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
-          <Box sx={{ position: 'relative', display: 'inline-flex', mb: 3 }}>
-            <CircularProgress
-              variant="determinate"
-              value={syncProgress}
-              size={64}
-              thickness={4}
-              sx={{ color: tokens.brand.primary }}
-            />
-            <Box
-              sx={{
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                position: 'absolute',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography variant="caption" component="div" sx={{ color: 'text.primary', fontWeight: 800, fontSize: '0.9rem' }}>
-                {`${Math.round(syncProgress)}%`}
-              </Typography>
-            </Box>
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, letterSpacing: '-0.015em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-            Syncing Outbound Prospects
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 550, minHeight: 20 }}>
-            {syncStageText}
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={syncProgress}
-            sx={{
-              width: '100%',
-              mt: 4.5,
-              height: 6,
-              borderRadius: 3,
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-              '& .MuiLinearProgress-bar': {
-                bgcolor: tokens.brand.accent,
-                borderRadius: 3,
-              },
-            }}
-          />
-        </Box>
-      </Dialog>
       {/* Qualify a Lead Modal */}
       <Dialog
         open={isQualifyModalOpen}
