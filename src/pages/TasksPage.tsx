@@ -47,6 +47,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useKPITemplates, useCreateKPITemplate, useUpdateKPITemplate, useDeleteKPITemplate, useAssignKPITemplate, useMyAssignments, useKPITemplateAssignments, useUnassignKPITemplate, useRemoveAssignmentItem } from '@/hooks/api/usekpiTemplate';
 import { UserDailyKpisView } from '@/components/dashboard/UserDailyKpisView';
 import { DailyTeamProgress } from '@/components/admin/DailyTeamProgress';
@@ -107,13 +108,14 @@ interface ActiveAssignment {
 
 const TasksPage = () => {
   const { user } = useAuth();
-  const { isElevated, isAdmin } = usePermissions();
+  const { isElevated } = usePermissions();
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
   // Fetch actual employees/users from the API
   const { data: dbUsers = [] } = useUsers();
+  const assignableUsers = useAssignableUsers();
 
   // Fetch actual templates from the API
   const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isElevated });
@@ -3314,11 +3316,9 @@ return (
               Assign to Team Member
             </Typography>
             <Autocomplete
-              options={dbUsers.filter((u) =>
-                isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user'
-              )} 
+              options={assignableUsers} 
               getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email}
-              value={dbUsers.find((u) => u._id === selectedUserId) || null}
+              value={assignableUsers.find((u) => u._id === selectedUserId) || dbUsers.find((u) => u._id === selectedUserId) || null}
               onChange={(_, newValue) => setSelectedUserId(newValue ? newValue._id : null)}
               renderInput={(params) => (
                 <TextField

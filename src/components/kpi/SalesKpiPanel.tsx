@@ -20,8 +20,7 @@ import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { SalesKpiAssignmentsPanel } from '@/components/kpi/SalesKpiAssignmentsPanel';
 import { SalesKpiTemplateForm } from '@/components/kpi/SalesKpiTemplateForm';
 import { useAssignSalesKpiTemplate, useDeleteSalesKpiTemplate, useSalesKpiTemplates } from '@/hooks/api/useSalesKpis';
-import { useUsers } from '@/hooks/api/useUsers';
-import { useAuth } from '@/hooks/useAuth';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { SALES_KPI_METRIC_LABELS } from '@/lib/constants';
 import { formatWeekdays } from '@/lib/salesKpi';
 import { useUIStore } from '@/store/useUIStore';
@@ -32,10 +31,9 @@ export const SalesKpiPanel = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
-  const { isAdmin } = useAuth();
 
   const { data: templates = [], isLoading } = useSalesKpiTemplates();
-  const { data: users = [] } = useUsers();
+  const assignableUsers = useAssignableUsers();
   const deleteMutation = useDeleteSalesKpiTemplate();
   const assignMutation = useAssignSalesKpiTemplate();
 
@@ -43,8 +41,6 @@ export const SalesKpiPanel = () => {
   const [editing, setEditing] = useState<SalesKpiTemplate | null>(null);
   const [assignTarget, setAssignTarget] = useState<SalesKpiTemplate | null>(null);
   const [assignUsers, setAssignUsers] = useState<User[]>([]);
-
-  const assignableUsers = users.filter((u) => (isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user'));
 
   const handleDelete = async (id: string) => {
     try {
