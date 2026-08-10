@@ -56,12 +56,13 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { ChangeRequestQueue } from '@/components/kpi/ChangeRequestQueue';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { StandaloneKPIForm } from '@/components/kpi/StandaloneKPIForm';
+import { WeekdayPicker } from '@/components/kpi/WeekdayPicker';
 import { SalesKpiPanel } from '@/components/kpi/SalesKpiPanel';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
-import { PIPELINE_METRIC_LABELS, PIPELINE_METRIC_OPTIONS } from '@/lib/constants';
-import type { KpiPriority, KPI, PipelineMetric } from '@/types';
+import { WEEKDAY_SHORT_LABELS } from '@/lib/constants';
+import type { KpiPriority, KPI, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
 import api from '@/lib/axios';
 import type { User } from '@/types';
 
@@ -70,8 +71,12 @@ interface UIKPITemplateItem {
   name: string;
   description: string;
   targetValue?: number;
-  pipelineMetric?: PipelineMetric | '';
   assignedTo: string[];
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  startTime?: string;
+  endTime?: string;
+  recurrenceMode?: KpiRecurrenceMode;
 }
 
 interface UIKPITemplate {
@@ -88,11 +93,38 @@ interface ActiveAssignmentItem {
   description: string;
   targetValue?: number;
   dueDate?: string;
-  pipelineMetric?: PipelineMetric;
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  startTime?: string | null;
+  endTime?: string | null;
+  recurrenceMode?: KpiRecurrenceMode;
   priority?: KpiPriority;
   assignedTo: string[];
   completed: boolean;
 }
+
+const emptyTemplateItem = (): UIKPITemplateItem => ({
+  name: '',
+  description: '',
+  targetValue: undefined,
+  assignedTo: [],
+  daysOfWeek: [],
+  scheduleMode: 'per_day',
+  startTime: '',
+  endTime: '',
+  recurrenceMode: 'weekly',
+});
+
+const formatDaysLabel = (days?: number[]) => {
+  if (!days?.length) return '';
+  return [...days].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT_LABELS[d]).join(', ');
+};
+
+const invalidItemTimeWindow = (item: UIKPITemplateItem) => {
+  if (!item.startTime || !item.endTime || !item.daysOfWeek?.length) return false;
+  const sameDay = item.scheduleMode !== 'span' || item.daysOfWeek.length <= 1;
+  return sameDay && item.startTime >= item.endTime;
+};
 
 interface ActiveAssignment {
   _id: string;
@@ -143,8 +175,12 @@ const TasksPage = () => {
         name: item.name,
         description: item.description || '',
         targetValue: item.defaultTargetValue,
-        pipelineMetric: item.pipelineMetric || '',
         assignedTo: item.assignedTo || [],
+        daysOfWeek: item.daysOfWeek ?? [],
+        scheduleMode: item.scheduleMode ?? 'per_day',
+        startTime: item.startTime ?? '',
+        endTime: item.endTime ?? '',
+        recurrenceMode: item.recurrenceMode ?? 'weekly',
       })),
     }));
   }, [apiTemplates]);
@@ -176,7 +212,11 @@ const TasksPage = () => {
         description: k.description || '',
         targetValue: k.targetValue ?? k.defaultTargetValue,
         dueDate: k.dueDate,
-        pipelineMetric: k.pipelineMetric,
+        daysOfWeek: k.daysOfWeek ?? [],
+        scheduleMode: k.scheduleMode ?? 'per_day',
+        startTime: k.startTime ?? '',
+        endTime: k.endTime ?? '',
+        recurrenceMode: k.recurrenceMode ?? 'weekly',
         priority: k.priority || 'medium',
         assignedTo: k.assignedTo || assignedTo,
         completed: k.completed || false,
@@ -356,7 +396,7 @@ const TasksPage = () => {
   const [wizardStep, setWizardStep] = useState(0);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
-  const [newKpis, setNewKpis] = useState<UIKPITemplateItem[]>([{ name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
+  const [newKpis, setNewKpis] = useState<UIKPITemplateItem[]>([emptyTemplateItem()]);
 
   // Assignment dialog state
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -372,7 +412,7 @@ const TasksPage = () => {
 
   // Confirm dialog state for assign template
   const [confirmAssignOpen, setConfirmAssignOpen] = useState(false);
-  const [assignItemOverrides, setAssignItemOverrides] = useState<Record<number, { targetValue?: number; priority?: KpiPriority; dueDate?: string; pipelineMetric?: PipelineMetric }>>({});
+  const [assignItemOverrides, setAssignItemOverrides] = useState<Record<number, { targetValue?: number; priority?: KpiPriority; dueDate?: string }>>({});
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [standaloneFormOpen, setStandaloneFormOpen] = useState(false);
   const [editingStandaloneKpi, setEditingStandaloneKpi] = useState<KPI | null>(null);
@@ -396,7 +436,7 @@ const TasksPage = () => {
 
   // Dynamic KPI Builder handlers
   const handleAddKpiField = () => {
-    setNewKpis((prev) => [...prev, { name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
+    setNewKpis((prev) => [...prev, emptyTemplateItem()]);
   };
 
   const handleRemoveKpiField = (index: number) => {
@@ -417,7 +457,7 @@ const TasksPage = () => {
   const handleResetWizard = () => {
     setNewTemplateName('');
     setNewTemplateDesc('');
-    setNewKpis([{ name: '', description: '', targetValue: undefined, pipelineMetric: '', assignedTo: [] }]);
+    setNewKpis([emptyTemplateItem()]);
     setWizardStep(0);
     setEditingTemplateId(null);
   };
@@ -434,12 +474,34 @@ const TasksPage = () => {
       return;
     }
 
-    const payloadItems = validKpis.map((k) => ({
-      name: k.name.trim(),
-      description: k.description.trim() || 'No description provided.',
-      defaultTargetValue: k.targetValue != null && k.targetValue !== ('' as any) ? Number(k.targetValue) : undefined,
-      pipelineMetric: k.pipelineMetric || undefined,
-    }));
+    if (validKpis.some(invalidItemTimeWindow)) {
+      addToast({ message: 'End time must be after start time for same-day schedules.', severity: 'error' });
+      return;
+    }
+
+    const payloadItems = validKpis.map((k) => {
+      const hasSchedule = (k.daysOfWeek?.length ?? 0) > 0;
+      return {
+        name: k.name.trim(),
+        description: k.description.trim() || 'No description provided.',
+        defaultTargetValue: k.targetValue != null && k.targetValue !== ('' as any) ? Number(k.targetValue) : undefined,
+        ...(hasSchedule
+          ? {
+              daysOfWeek: [...(k.daysOfWeek ?? [])].sort((a, b) => a - b),
+              scheduleMode: k.scheduleMode ?? 'per_day',
+              startTime: k.startTime || null,
+              endTime: k.endTime || null,
+              recurrenceMode: k.recurrenceMode ?? 'weekly',
+            }
+          : {
+              daysOfWeek: [] as number[],
+              scheduleMode: undefined,
+              startTime: null,
+              endTime: null,
+              recurrenceMode: undefined,
+            }),
+      };
+    });
 
     if (editingTemplateId) {
       updateTemplateMutation.mutate(
@@ -462,8 +524,12 @@ const TasksPage = () => {
                 name: k.name.trim(),
                 description: k.description.trim() || 'No description provided.',
                 targetValue: k.targetValue,
-                pipelineMetric: k.pipelineMetric || undefined,
                 assignedTo: [],
+                daysOfWeek: k.daysOfWeek ?? [],
+                scheduleMode: k.scheduleMode ?? 'per_day',
+                startTime: k.startTime ?? '',
+                endTime: k.endTime ?? '',
+                recurrenceMode: k.recurrenceMode ?? 'weekly',
               })),
             });
             setViewMode('details');
@@ -585,13 +651,24 @@ const TasksPage = () => {
   const handleConfirmAssign = () => {
     if (!assigningTemplate || !selectedUserId) return;
 
-    const overridesList = assigningTemplate.kpis.map((k, itemIndex) => ({
-      itemIndex,
-      targetValue: assignItemOverrides[itemIndex]?.targetValue ?? k.targetValue,
-      priority: assignItemOverrides[itemIndex]?.priority ?? ('medium' as KpiPriority),
-      dueDate: assignItemOverrides[itemIndex]?.dueDate,
-      pipelineMetric: assignItemOverrides[itemIndex]?.pipelineMetric ?? (k.pipelineMetric || undefined),
-    }));
+    const overridesList = assigningTemplate.kpis.map((k, itemIndex) => {
+      const hasSchedule = (k.daysOfWeek?.length ?? 0) > 0;
+      return {
+        itemIndex,
+        targetValue: assignItemOverrides[itemIndex]?.targetValue ?? k.targetValue,
+        priority: assignItemOverrides[itemIndex]?.priority ?? ('medium' as KpiPriority),
+        dueDate: hasSchedule ? undefined : assignItemOverrides[itemIndex]?.dueDate,
+        ...(hasSchedule
+          ? {
+              daysOfWeek: [...(k.daysOfWeek ?? [])].sort((a, b) => a - b),
+              scheduleMode: k.scheduleMode ?? 'per_day',
+              startTime: k.startTime || null,
+              endTime: k.endTime || null,
+              recurrenceMode: k.recurrenceMode ?? 'weekly',
+            }
+          : {}),
+      };
+    });
 
     assignTemplateMutation.mutate(
       {
@@ -605,7 +682,11 @@ const TasksPage = () => {
             name: k.name,
             description: k.description,
             targetValue: k.targetValue,
-            pipelineMetric: k.pipelineMetric || undefined,
+            daysOfWeek: k.daysOfWeek ?? [],
+            scheduleMode: k.scheduleMode ?? 'per_day',
+            startTime: k.startTime ?? '',
+            endTime: k.endTime ?? '',
+            recurrenceMode: k.recurrenceMode ?? 'weekly',
             assignedTo: [selectedUserId],
             completed: false,
           }));
@@ -1002,8 +1083,24 @@ const TasksPage = () => {
                   Add multiple KPI targets inside this template. These will track daily activity goals.
                 </Typography>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, maxHeight: '420px', overflowY: 'auto', pr: 1, mb: 3 }}>
-                  {newKpis.map((kpi, idx) => (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, maxHeight: '520px', overflowY: 'auto', pr: 1, mb: 3 }}>
+                  {newKpis.map((kpi, idx) => {
+                    const hasSchedule = (kpi.daysOfWeek?.length ?? 0) > 0;
+                    const timeInvalid = invalidItemTimeWindow(kpi);
+                    const fieldSx = {
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                      },
+                    };
+                    const toggleGroupSx = {
+                      bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)',
+                      p: 0.5,
+                      borderRadius: '14px',
+                      '& .MuiToggleButtonGroup-grouped': { border: 0, borderRadius: '10px !important', px: 1.5, textTransform: 'none', fontWeight: 700, fontSize: '0.75rem' },
+                    };
+                    const toggleSelectedSx = { color: 'text.secondary', '&.Mui-selected': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#fff', color: tokens.brand.primary } };
+                    return (
                     <Box
                       key={idx}
                       sx={{
@@ -1033,7 +1130,7 @@ const TasksPage = () => {
                       </Box>
 
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={5}>
+                        <Grid item xs={12} sm={8}>
                           <TextField
                             label={`KPI #${idx + 1} Name`}
                             placeholder="e.g. Connection Requests"
@@ -1043,15 +1140,10 @@ const TasksPage = () => {
                             onChange={(e) => handleKpiFieldChange(idx, 'name', e.target.value)}
                             InputLabelProps={{ shrink: true }}
                             variant="outlined"
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: '12px',
-                                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                              },
-                            }}
+                            sx={fieldSx}
                           />
                         </Grid>
-                        <Grid item xs={12} sm={3}>
+                        <Grid item xs={12} sm={4}>
                           <TextField
                             label="Target (optional)"
                             type="number"
@@ -1061,34 +1153,8 @@ const TasksPage = () => {
                             onChange={(e) => handleKpiFieldChange(idx, 'targetValue', e.target.value === '' ? undefined : Number(e.target.value))}
                             InputLabelProps={{ shrink: true }}
                             variant="outlined"
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: '12px',
-                                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                              },
-                            }}
+                            sx={fieldSx}
                           />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <TextField
-                            select
-                            label="Pipeline Metric (optional)"
-                            fullWidth
-                            value={kpi.pipelineMetric || ''}
-                            onChange={(e) => handleKpiFieldChange(idx, 'pipelineMetric', e.target.value)}
-                            variant="outlined"
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: '12px',
-                                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                              },
-                            }}
-                          >
-                            <MenuItem value="">None</MenuItem>
-                            {PIPELINE_METRIC_OPTIONS.map((m) => (
-                              <MenuItem key={m} value={m}>{PIPELINE_METRIC_LABELS[m]}</MenuItem>
-                            ))}
-                          </TextField>
                         </Grid>
                       </Grid>
 
@@ -1102,15 +1168,88 @@ const TasksPage = () => {
                         onChange={(e) => handleKpiFieldChange(idx, 'description', e.target.value)}
                         InputLabelProps={{ shrink: true }}
                         variant="outlined"
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '12px',
-                            bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                          },
-                        }}
+                        sx={fieldSx}
                       />
+
+                      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <WeekdayPicker
+                          label="Runs on"
+                          value={kpi.daysOfWeek ?? []}
+                          onChange={(daysOfWeek) => handleKpiFieldChange(idx, 'daysOfWeek', daysOfWeek)}
+                          size="small"
+                        />
+                        {hasSchedule && (
+                          <Box>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Schedule
+                            </Typography>
+                            <ToggleButtonGroup
+                              value={kpi.scheduleMode ?? 'per_day'}
+                              exclusive
+                              size="small"
+                              onChange={(_, value) => value && handleKpiFieldChange(idx, 'scheduleMode', value as KpiScheduleMode)}
+                              sx={toggleGroupSx}
+                            >
+                              <ToggleButton value="per_day" sx={toggleSelectedSx}>One task per day</ToggleButton>
+                              <ToggleButton value="span" sx={toggleSelectedSx}>Single task across days</ToggleButton>
+                            </ToggleButtonGroup>
+                          </Box>
+                        )}
+                      </Box>
+
+                      {hasSchedule && (
+                        <>
+                          <Box>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Repeat
+                            </Typography>
+                            <ToggleButtonGroup
+                              value={kpi.recurrenceMode ?? 'weekly'}
+                              exclusive
+                              size="small"
+                              onChange={(_, value) => value && handleKpiFieldChange(idx, 'recurrenceMode', value as KpiRecurrenceMode)}
+                              sx={toggleGroupSx}
+                            >
+                              <ToggleButton value="weekly" sx={toggleSelectedSx}>Repeats weekly</ToggleButton>
+                              <ToggleButton value="once" sx={toggleSelectedSx}>This week only</ToggleButton>
+                            </ToggleButtonGroup>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <TextField
+                              label="Start time (optional)"
+                              type="time"
+                              value={kpi.startTime ?? ''}
+                              onChange={(e) => handleKpiFieldChange(idx, 'startTime', e.target.value)}
+                              size="small"
+                              InputLabelProps={{ shrink: true }}
+                              inputProps={{ step: 60 }}
+                              sx={{ width: 180, ...fieldSx }}
+                              helperText="Empty = start of day"
+                            />
+                            <TextField
+                              label="End time (optional)"
+                              type="time"
+                              value={kpi.endTime ?? ''}
+                              onChange={(e) => handleKpiFieldChange(idx, 'endTime', e.target.value)}
+                              size="small"
+                              InputLabelProps={{ shrink: true }}
+                              inputProps={{ step: 60 }}
+                              error={timeInvalid}
+                              sx={{ width: 180, ...fieldSx }}
+                              helperText={timeInvalid ? 'Must be after start time' : 'Empty = end of day'}
+                            />
+                          </Box>
+                        </>
+                      )}
+
+                      {!hasSchedule && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                          Select weekdays to schedule this item. Leave empty to set a due date when assigning.
+                        </Typography>
+                      )}
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
 
                 <Button
@@ -1201,7 +1340,9 @@ const TasksPage = () => {
                             <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 750, fontSize: '0.84rem' }}>
                               {kpi.name || '(Empty Name)'}
                               {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
-                              {kpi.pipelineMetric ? ` (Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric})` : ''}
+                              {kpi.daysOfWeek?.length
+                                ? ` · ${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' (this week)' : ' (weekly)'}`
+                                : ''}
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem', mt: 0.25 }}>
                               {kpi.description || '(Empty Description)'}
@@ -1340,8 +1481,12 @@ const TasksPage = () => {
                         name: k.name,
                         description: k.description || '',
                         targetValue: k.targetValue,
-                        pipelineMetric: k.pipelineMetric || '',
                         assignedTo: k.assignedTo,
+                        daysOfWeek: k.daysOfWeek ?? [],
+                        scheduleMode: k.scheduleMode ?? 'per_day',
+                        startTime: k.startTime ?? '',
+                        endTime: k.endTime ?? '',
+                        recurrenceMode: k.recurrenceMode ?? 'weekly',
                       }))
                     );
                     setEditingTemplateId(selectedTemplate._id);
@@ -1481,7 +1626,9 @@ const TasksPage = () => {
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.9rem' }}>
                           {kpi.name}
                           {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
-                          {kpi.pipelineMetric ? ` (Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric})` : ''}
+                          {kpi.daysOfWeek?.length
+                            ? ` · ${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' (this week)' : ' (weekly)'}`
+                            : ''}
                         </Typography>
                       </Box>
                       <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.84rem', pl: 0.5 }}>
@@ -1817,9 +1964,13 @@ const TasksPage = () => {
                               {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ''}
                             </Typography>
                             <PriorityBadge priority={kpi.priority} />
-                            {kpi.pipelineMetric && (
-                              <Chip label={`Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric}`} size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }} />
-                            )}
+                            {kpi.daysOfWeek?.length ? (
+                              <Chip
+                                label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
+                                size="small"
+                                sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                              />
+                            ) : null}
                             {isPending && <Chip label="Pending review" size="small" color="warning" />}
                           </Box>
                           <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}>
@@ -2238,13 +2389,19 @@ const TasksPage = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>{kpi.name}</Typography>
                     <PriorityBadge priority={kpi.priority} />
-                    {kpi.pipelineMetric && (
-                      <Chip label={`Auto: ${PIPELINE_METRIC_LABELS[kpi.pipelineMetric] || kpi.pipelineMetric}`} size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }} />
-                    )}
+                    {kpi.daysOfWeek?.length ? (
+                      <Chip
+                        label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
+                        size="small"
+                        sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                      />
+                    ) : null}
                   </Box>
                   <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
                     {kpi.targetValue != null ? `Target: ${kpi.targetValue}` : 'Simple task'}
-                    {kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ' · No due date'}
+                    {kpi.daysOfWeek?.length
+                      ? ` · ${formatDaysLabel(kpi.daysOfWeek)}`
+                      : (kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ' · No due date')}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -3254,56 +3411,48 @@ return (
                         <MenuItem key={p} value={p}>{p}</MenuItem>
                       ))}
                     </TextField>
-                    <MobileDateTimePicker
-                      label="Due Date & Time"
-                      ampm={false}
-                      value={assignItemOverrides[idx]?.dueDate ? new Date(assignItemOverrides[idx]!.dueDate!) : null}
-                      onChange={(newValue) => setAssignItemOverrides((prev) => ({
-                        ...prev,
-                        [idx]: { ...prev[idx], dueDate: newValue ? newValue.toISOString() : undefined },
-                      }))}
-                      slotProps={{
-                        textField: { size: 'small', sx: { width: 200 } },
-                        dialog: {
-                          sx: {
-                            '& .MuiPickersDay-root.Mui-selected': {
-                              bgcolor: tokens.brand.primary,
-                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
-                            },
-                            '& .MuiClock-pin, & .MuiClockPointer-root': {
-                              bgcolor: tokens.brand.primary,
-                            },
-                            '& .MuiClockPointer-thumb': {
-                              border: `16px solid ${tokens.brand.primary}`,
-                              bgcolor: tokens.brand.primary,
-                            },
-                            '& .MuiPickersYear-yearButton.Mui-selected, & .MuiPickersMonth-monthButton.Mui-selected': {
-                              bgcolor: tokens.brand.primary,
-                              '&:hover, &:focus': { bgcolor: tokens.brand.primary },
-                            },
-                            '& .MuiDialogActions-root .MuiButton-text': {
-                              color: tokens.brand.primary,
+                    {(kpi.daysOfWeek?.length ?? 0) === 0 ? (
+                      <MobileDateTimePicker
+                        label="Due Date & Time"
+                        ampm={false}
+                        value={assignItemOverrides[idx]?.dueDate ? new Date(assignItemOverrides[idx]!.dueDate!) : null}
+                        onChange={(newValue) => setAssignItemOverrides((prev) => ({
+                          ...prev,
+                          [idx]: { ...prev[idx], dueDate: newValue ? newValue.toISOString() : undefined },
+                        }))}
+                        slotProps={{
+                          textField: { size: 'small', sx: { width: 200 } },
+                          dialog: {
+                            sx: {
+                              '& .MuiPickersDay-root.Mui-selected': {
+                                bgcolor: tokens.brand.primary,
+                                '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                              },
+                              '& .MuiClock-pin, & .MuiClockPointer-root': {
+                                bgcolor: tokens.brand.primary,
+                              },
+                              '& .MuiClockPointer-thumb': {
+                                border: `16px solid ${tokens.brand.primary}`,
+                                bgcolor: tokens.brand.primary,
+                              },
+                              '& .MuiPickersYear-yearButton.Mui-selected, & .MuiPickersMonth-monthButton.Mui-selected': {
+                                bgcolor: tokens.brand.primary,
+                                '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                              },
+                              '& .MuiDialogActions-root .MuiButton-text': {
+                                color: tokens.brand.primary,
+                              },
                             },
                           },
-                        },
-                      }}
-                    />
-                    <TextField
-                      select
-                      size="small"
-                      label="Pipeline Metric"
-                      defaultValue={kpi.pipelineMetric || ''}
-                      onChange={(e) => setAssignItemOverrides((prev) => ({
-                        ...prev,
-                        [idx]: { ...prev[idx], pipelineMetric: (e.target.value || undefined) as PipelineMetric | undefined },
-                      }))}
-                      sx={{ width: 160 }}
-                    >
-                      <MenuItem value="">None</MenuItem>
-                      {PIPELINE_METRIC_OPTIONS.map((m) => (
-                        <MenuItem key={m} value={m}>{PIPELINE_METRIC_LABELS[m]}</MenuItem>
-                      ))}
-                    </TextField>
+                        }}
+                      />
+                    ) : (
+                      <Chip
+                        label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
+                        size="small"
+                        sx={{ fontWeight: 700, fontSize: '0.72rem', height: 28, alignSelf: 'center', bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                      />
+                    )}
                   </Box>
                 </Box>
               ))}

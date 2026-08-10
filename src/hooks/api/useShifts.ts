@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { hasPeriodStarted } from '@/lib/salesKpi';
 import type { Shift, PipelineMetric } from '@/types';
 
 export interface DailyKPIEntry {
@@ -19,8 +20,12 @@ export interface DailyKPIEntry {
   pipelineMetric?: PipelineMetric;
   /** Live-computed value for pipeline-linked entries, merged in on read (does not replace stored actualValue). */
   livePipelineValue?: number;
-  /** Due date for this entry (optional — may be open-ended). */
+  /** Due date for this entry (optional — may be open-ended). Prefer periodEnd when present. */
   date?: string;
+  /** Start of the scheduled period (recurring day/time KPIs). */
+  periodStart?: string;
+  /** End of the scheduled period — includes endTime when set. Prefer over date for display. */
+  periodEnd?: string;
   isCompleted: boolean;
   completedAt?: string;
   actualValue?: number | null;
@@ -152,10 +157,34 @@ export const useEndBreak = () => {
 
 // ─── Daily KPI Hooks ──────────────────────────────────────────────
 
+const filterStartedDailyKpis = (grouped: GroupedDailyKpis, now = new Date()): GroupedDailyKpis => {
+  const filter = (entries: DailyKPIEntry[]) =>
+    entries.filter((entry) => hasPeriodStarted(entry.periodStart, now));
+  const active = filter(grouped.active);
+  const overdue = filter(grouped.overdue);
+  const done = filter(grouped.done);
+  const highPriority = filter(grouped.highPriority);
+  return {
+    active,
+    overdue,
+    done,
+    highPriority,
+    counts: {
+      active: active.length,
+      overdue: overdue.length,
+      done: done.length,
+      highPriority: highPriority.length,
+    },
+  };
+};
+
 export const useDailyKpis = (date?: string) => {
   return useQuery({
     queryKey: ['dailyKpis', date],
-    queryFn: () => shiftApi.getDailyKpis(date ? { date } : undefined).then((r) => r.data.data),
+    queryFn: () =>
+      shiftApi
+        .getDailyKpis(date ? { date } : undefined)
+        .then((r) => filterStartedDailyKpis(r.data.data)),
   });
 };
 

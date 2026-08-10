@@ -7,6 +7,7 @@ import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { SALES_KPI_METRIC_LABELS, SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
+import { formatKpiDueDate } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus } from '@/types';
 
 const STATUS_COLORS: Record<SalesKpiStatus, string> = {
@@ -94,12 +95,7 @@ export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
             <Typography variant="caption" color="text.secondary">
-              Due {new Date(entry.periodEnd).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+              Due {formatKpiDueDate(entry.periodEnd, { includeTime: true })}
             </Typography>
           </Box>
         </Box>

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KPIChangeRequest, KpiChangeSource, KpiChangeType, KpiPriority, ChangeEffectiveWhen, PipelineMetric } from '@/types';
+import type { KPIChangeRequest, KpiChangeSource, KpiChangeType, KpiPriority, ChangeEffectiveWhen, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
 
 export type SubmitChangeRequestPayload = {
   sourceType: KpiChangeSource;
@@ -17,7 +17,11 @@ export type SubmitChangeRequestPayload = {
     description?: string;
     targetValue?: number;
     dueDate?: string;
-    pipelineMetric?: PipelineMetric;
+    daysOfWeek?: number[];
+    scheduleMode?: KpiScheduleMode;
+    startTime?: string | null;
+    endTime?: string | null;
+    recurrenceMode?: KpiRecurrenceMode;
     priority?: KpiPriority;
   };
 };

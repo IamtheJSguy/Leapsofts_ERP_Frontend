@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   CONNECTION_STATUS_OPTIONS,
   MESSAGE_STATUS_OPTIONS,
-  PIPELINE_METRIC_OPTIONS,
   ROLES,
 } from '@/lib/constants';
 
@@ -62,7 +61,11 @@ export const kpiSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   targetValue: z.coerce.number().min(0).optional(),
   dueDate: z.string().optional(),
-  pipelineMetric: z.enum(PIPELINE_METRIC_OPTIONS as [string, ...string[]]).optional(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  scheduleMode: z.enum(['per_day', 'span']).optional(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
+  recurrenceMode: z.enum(['weekly', 'once']).optional(),
   metricType: z.enum(['count', 'ratio', 'time', 'duration']),
 });
 
