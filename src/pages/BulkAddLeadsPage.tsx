@@ -9,6 +9,8 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import { nativeFieldStyle } from '@/components/leads/nativeFieldStyles';
 import { useBulkCreateLeads } from '@/hooks/api/useLeads';
@@ -19,6 +21,10 @@ import {
   loadBulkAddLeadsDraft,
   saveBulkAddLeadsDraft,
 } from '@/lib/bulkAddLeadsDraftDb';
+import {
+  downloadBulkAddSampleCsv,
+  parseBulkAddLeadsFile,
+} from '@/lib/bulkAddLeadsCsv';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { ConnectionStatus, Lead, MessageStatus } from '@/types';
@@ -34,8 +40,8 @@ type BulkLeadRow = {
   email: string;
   icp: string;
   profile: string;
-  connectionStatus: ConnectionStatus;
-  messageStatus: MessageStatus;
+  connectionStatus: ConnectionStatus | '';
+  messageStatus: MessageStatus | '';
   linkedinMsg: string;
   futureLeadDate?: string;
 };
@@ -79,12 +85,12 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
       email: typeof row.email === 'string' ? row.email : '',
       icp: typeof row.icp === 'string' ? row.icp : '',
       profile: typeof row.profile === 'string' ? row.profile : '',
-      connectionStatus: (row.connectionStatus || 'pending') as ConnectionStatus,
-      messageStatus: (row.messageStatus || 'not_sent') as MessageStatus,
+      connectionStatus: (row.connectionStatus ?? 'pending') as ConnectionStatus | '',
+      messageStatus: (row.messageStatus ?? 'not_sent') as MessageStatus | '',
       linkedinMsg:
         typeof row.linkedinMsg === 'string'
           ? row.linkedinMsg
-          : String(row.messageStatus || 'not_sent'),
+          : String(row.messageStatus || ''),
       futureLeadDate:
         typeof row.futureLeadDate === 'string' && row.futureLeadDate
           ? row.futureLeadDate
@@ -227,10 +233,13 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         <select
           value={row.connectionStatus}
           onChange={(e) =>
-            onUpdate(index, { connectionStatus: e.target.value as ConnectionStatus })
+            onUpdate(index, {
+              connectionStatus: e.target.value as ConnectionStatus | '',
+            })
           }
           style={nativeFieldStyle(isDarkMode)}
         >
+          <option value="">Connection</option>
           <option value="pending">Pending</option>
           <option value="accepted">Accepted</option>
           <option value="declined">Declined</option>
@@ -249,7 +258,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           <select
             value={row.messageStatus}
             onChange={(e) => {
-              const messageStatus = e.target.value as MessageStatus;
+              const messageStatus = e.target.value as MessageStatus | '';
               onUpdate(index, {
                 messageStatus,
                 linkedinMsg: messageStatus,
@@ -258,6 +267,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
             }}
             style={nativeFieldStyle(isDarkMode)}
           >
+            <option value="">Message</option>
             <option value="not_sent">Not Sent</option>
             <option value="sent">Sent</option>
             <option value="replied">Replied</option>
@@ -317,8 +327,10 @@ export const BulkAddLeadsPage = () => {
   const [draftReady, setDraftReady] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistEnabledRef = useRef(true);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const filledCount = useMemo(
     () => rows.reduce((count, row) => count + (isRowEmpty(row) ? 0 : 1), 0),
@@ -416,6 +428,55 @@ export const BulkAddLeadsPage = () => {
     [ensureRows],
   );
 
+  const handleCsvFile = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file) return;
+
+      setCsvImporting(true);
+      try {
+        const { rows: imported, mismatched } = await parseBulkAddLeadsFile(file, {
+          icpNames: icpsList.map((item) => item.name),
+          profileNames: profileUsersList.map((item) => item.name),
+        });
+
+        const nextRows =
+          imported.length < INITIAL_ROWS
+            ? [...imported, ...createInitialRows(INITIAL_ROWS - imported.length)]
+            : imported;
+
+        setRows(nextRows);
+        setRowErrors({});
+
+        const mismatchParts: string[] = [];
+        if (mismatched.icp) mismatchParts.push(`${mismatched.icp} ICP`);
+        if (mismatched.profile) mismatchParts.push(`${mismatched.profile} Profile`);
+        if (mismatched.connectionStatus) {
+          mismatchParts.push(`${mismatched.connectionStatus} Connection`);
+        }
+        if (mismatched.messageStatus) {
+          mismatchParts.push(`${mismatched.messageStatus} Message`);
+        }
+
+        addToast({
+          message:
+            mismatchParts.length > 0
+              ? `Loaded ${imported.length} row(s). Unmatched left blank: ${mismatchParts.join(', ')}.`
+              : `Loaded ${imported.length} row(s) into the sheet.`,
+          severity: mismatchParts.length > 0 ? 'warning' : 'success',
+        });
+      } catch (err) {
+        addToast({
+          message: err instanceof Error ? err.message : 'Failed to read CSV file.',
+          severity: 'error',
+        });
+      } finally {
+        setCsvImporting(false);
+        if (csvInputRef.current) csvInputRef.current.value = '';
+      }
+    },
+    [addToast, icpsList, profileUsersList],
+  );
+
   const handleSubmit = () => {
     const filled: { index: number; row: BulkLeadRow }[] = [];
     rows.forEach((row, index) => {
@@ -452,19 +513,23 @@ export const BulkAddLeadsPage = () => {
       return;
     }
 
-    const leads: Partial<Lead>[] = filled.map(({ row }) => ({
-      firstName: row.firstName.trim(),
-      lastName: row.lastName.trim(),
-      email: row.email.trim(),
-      icp: row.icp.trim(),
-      profile: row.profile.trim(),
-      connectionStatus: row.connectionStatus,
-      messageStatus: row.messageStatus,
-      linkedinMsg: row.linkedinMsg || row.messageStatus,
-      ...(row.messageStatus === 'future_lead' && row.futureLeadDate
-        ? { futureLeadDate: row.futureLeadDate }
-        : {}),
-    }));
+    const leads: Partial<Lead>[] = filled.map(({ row }) => {
+      const connectionStatus = (row.connectionStatus || 'pending') as ConnectionStatus;
+      const messageStatus = (row.messageStatus || 'not_sent') as MessageStatus;
+      return {
+        firstName: row.firstName.trim(),
+        lastName: row.lastName.trim(),
+        email: row.email.trim(),
+        icp: row.icp.trim(),
+        profile: row.profile.trim(),
+        connectionStatus,
+        messageStatus,
+        linkedinMsg: row.linkedinMsg || messageStatus,
+        ...(messageStatus === 'future_lead' && row.futureLeadDate
+          ? { futureLeadDate: row.futureLeadDate }
+          : {}),
+      };
+    });
 
     bulkCreate.mutate(
       { leads, updateDuplicates: false },
@@ -540,7 +605,8 @@ export const BulkAddLeadsPage = () => {
               Add Multiple Leads
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Fill any rows below — empty rows are skipped. Assigned to{' '}
+              Fill any rows below — empty rows are skipped. Or upload a CSV to load into this sheet.
+              Assigned to{' '}
               <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
                 {agentName}
               </Box>
@@ -548,19 +614,57 @@ export const BulkAddLeadsPage = () => {
             </Typography>
           </Box>
         </Box>
-        <Box sx={{ textAlign: 'right' }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-            {filledCount} filled · {rows.length} rows
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600 }}>
-            {!draftReady
-              ? 'Restoring draft…'
-              : draftSaving
-                ? 'Saving draft…'
-                : draftRestored || filledCount > 0
-                  ? 'Draft saved locally'
-                  : 'No local draft'}
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            hidden
+            onChange={(e) => void handleCsvFile(e.target.files?.[0])}
+          />
+          <Button
+            variant="outlined"
+            startIcon={
+              csvImporting ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <UploadFileIcon sx={{ fontSize: 18 }} />
+              )
+            }
+            onClick={() => csvInputRef.current?.click()}
+            disabled={!draftReady || csvImporting}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '24px',
+              fontWeight: 700,
+              px: 2.5,
+              height: 40,
+            }}
+          >
+            {csvImporting ? 'Loading…' : 'Upload CSV'}
+          </Button>
+          <Button
+            variant="text"
+            startIcon={<DownloadIcon sx={{ fontSize: 18 }} />}
+            onClick={downloadBulkAddSampleCsv}
+            sx={{ textTransform: 'none', fontWeight: 700, color: 'text.secondary' }}
+          >
+            Sample CSV
+          </Button>
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+              {filledCount} filled · {rows.length} rows
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600 }}>
+              {!draftReady
+                ? 'Restoring draft…'
+                : draftSaving
+                  ? 'Saving draft…'
+                  : draftRestored || filledCount > 0
+                    ? 'Draft saved locally'
+                    : 'No local draft'}
+            </Typography>
+          </Box>
         </Box>
       </Box>
 
