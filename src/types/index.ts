@@ -149,16 +149,28 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+/** Standalone / template KPI schedule mode — mirrors Sales KPI. */
+export type KpiScheduleMode = 'per_day' | 'span';
+
+/** weekly = keep generating every matching weekday; once = only the creation week. */
+export type KpiRecurrenceMode = 'weekly' | 'once';
+
 export interface KPI {
   _id: string;
   name: string;
   description?: string;
   /** Optional quantity target. Omitted for simple done/not-done task-style KPIs. */
   targetValue?: number;
-  /** Optional deadline. Omitted for an open-ended KPI with no due date. */
+  /** Optional deadline. Used when no daysOfWeek schedule is set. */
   dueDate?: string;
-  /** Optional live pipeline metric this KPI auto-tracks against (requires targetValue). */
-  pipelineMetric?: PipelineMetric;
+  /** 0 = Sunday … 6 = Saturday. Empty/omitted = one-shot due-date task. */
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  /** Optional `HH:mm`. Omit → task starts at beginning of day. */
+  startTime?: string | null;
+  /** Optional `HH:mm`. Omit → task ends at midnight (end of day). */
+  endTime?: string | null;
+  recurrenceMode?: KpiRecurrenceMode;
   priority?: KpiPriority;
   metricType?: 'count' | 'ratio' | 'time' | 'duration';
   assignedTo?: string[] | User[];
@@ -171,7 +183,11 @@ export interface KPIAssignmentItem {
   description?: string;
   targetValue?: number;
   dueDate?: string;
-  pipelineMetric?: PipelineMetric;
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  startTime?: string | null;
+  endTime?: string | null;
+  recurrenceMode?: KpiRecurrenceMode;
   priority?: KpiPriority;
 }
 
@@ -196,7 +212,11 @@ export interface KPIChangeRequest {
     description?: string;
     targetValue?: number;
     dueDate?: string;
-    pipelineMetric?: PipelineMetric;
+    daysOfWeek?: number[];
+    scheduleMode?: KpiScheduleMode;
+    startTime?: string | null;
+    endTime?: string | null;
+    recurrenceMode?: KpiRecurrenceMode;
     priority?: KpiPriority;
   };
   reason: string;
@@ -213,7 +233,14 @@ export interface KPITemplateItem {
   name: string;
   description?: string;
   defaultTargetValue?: number;
-  pipelineMetric?: PipelineMetric;
+  /** 0 = Sunday … 6 = Saturday. Empty/omitted = one-shot (due date at assign time). */
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  /** Optional `HH:mm`. Omit → task starts at beginning of day. */
+  startTime?: string | null;
+  /** Optional `HH:mm`. Omit → task ends at midnight (end of day). */
+  endTime?: string | null;
+  recurrenceMode?: KpiRecurrenceMode;
   assignedTo?: string[];
 }
 

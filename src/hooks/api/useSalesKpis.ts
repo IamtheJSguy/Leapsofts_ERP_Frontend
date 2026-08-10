@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { filterStartedSalesKpis } from '@/lib/salesKpi';
 import type {
   GroupedSalesKpis,
   SalesKpiAssignment,
@@ -78,7 +79,8 @@ const salesKpiApi = {
 export const useMySalesKpis = (params?: SalesKpiWindowParams, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['salesKpis', 'my', params?.days ?? null],
-    queryFn: () => salesKpiApi.getMySalesKpis(params).then((r) => r.data.data),
+    queryFn: () =>
+      salesKpiApi.getMySalesKpis(params).then((r) => filterStartedSalesKpis(r.data.data)),
     enabled: options?.enabled,
   });
 

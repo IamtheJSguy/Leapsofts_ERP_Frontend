@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KPITemplate, KpiPriority, PipelineMetric } from '@/types';
+import type { KPITemplate, KpiPriority, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
 
 export type ItemOverride = {
   itemIndex: number;
   targetValue?: number;
   priority?: KpiPriority;
   dueDate?: string;
-  pipelineMetric?: PipelineMetric;
+  daysOfWeek?: number[];
+  scheduleMode?: KpiScheduleMode;
+  startTime?: string | null;
+  endTime?: string | null;
+  recurrenceMode?: KpiRecurrenceMode;
 };
 
 const kpiTemplateApi = {

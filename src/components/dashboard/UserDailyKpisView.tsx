@@ -22,6 +22,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditNoteIcon from '@mui/icons-material/EditNote';
@@ -36,10 +37,13 @@ import { SalesKpiEntryCard } from '@/components/kpi/SalesKpiEntryCard';
 import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { sortByPriority } from '@/lib/priorityConfig';
-import { PIPELINE_METRIC_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
-import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
+import { formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import type { GroupedSalesKpis, SalesKpiEntry } from '@/types';
+
+/** Prefer periodEnd (includes schedule endTime) over bare date. */
+const resolveKpiDueAt = (kpi: { periodEnd?: string; date?: string }): string | undefined =>
+  kpi.periodEnd || kpi.date;
 
 const EMPTY_GROUPED = {
   active: [],
@@ -195,7 +199,7 @@ export const UserDailyKpisView = () => {
   const openModifyModal = (kpi: any) => {
     const name = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'KPI';
     const target = kpi.targetValue ?? kpi.kpiId?.targetValue;
-    const dueDate = kpi.date;
+    const dueDate = resolveKpiDueAt(kpi);
     const priority = kpi.priority || kpi.kpiId?.priority || 'medium';
 
     if (kpi.assignmentId) {
@@ -336,8 +340,17 @@ export const UserDailyKpisView = () => {
             const isKpiLoading = loadingIds.has(kpi._id);
             const isOverdue = filter === 'overdue' || grouped.overdue.some((o: any) => o._id === kpi._id);
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
-            const pipelineMetric = kpi.pipelineMetric || kpi.kpiId?.pipelineMetric;
             const hasTarget = !kpi.kanbanCardId && (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
+            const dueAt = resolveKpiDueAt(kpi);
+            const includeTime = !!(kpi.periodEnd && hasDisplayableClockTime(kpi.periodEnd));
+            const dueLabel = dueAt ? formatKpiDueDate(dueAt, { includeTime }) : null;
+            const deadlineLabel = dueAt
+              ? formatKpiDueDate(dueAt, {
+                  month: 'long',
+                  separator: includeTime ? 'dot' : 'comma',
+                  includeTime,
+                })
+              : null;
 
             return (
               <Box
@@ -380,14 +393,6 @@ export const UserDailyKpisView = () => {
                     </Typography>
                     <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
                     {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
-                    {pipelineMetric && (
-                      <Chip
-                        icon={<TrackChangesOutlinedIcon sx={{ fontSize: 14 }} />}
-                        label={`Auto-tracked: ${PIPELINE_METRIC_LABELS[pipelineMetric] || pipelineMetric}`}
-                        size="small"
-                        sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
-                      />
-                    )}
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
                     {hasTarget ? (
@@ -402,11 +407,11 @@ export const UserDailyKpisView = () => {
                     ) : (
                       <Chip label="Simple task" size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }} />
                     )}
-                    {kpi.date ? (
+                    {dueLabel ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
-                          Due {new Date(kpi.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          Due {dueLabel}
                         </Typography>
                       </Box>
                     ) : (
@@ -445,11 +450,11 @@ export const UserDailyKpisView = () => {
                           </Typography>
                         </Box>
                       )}
-                      {kpi.date && (
+                      {deadlineLabel && (
                         <Box>
                           <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deadline</Typography>
                           <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <EventNoteIcon sx={{ fontSize: 16 }} /> {new Date(kpi.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                            <EventNoteIcon sx={{ fontSize: 16 }} /> {deadlineLabel}
                           </Typography>
                         </Box>
                       )}

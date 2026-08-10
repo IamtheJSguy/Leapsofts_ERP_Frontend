@@ -8,6 +8,52 @@ export const formatDate = (date: string | Date, pattern = 'MMM d, yyyy'): string
 export const formatDateTime = (date: string | Date): string =>
   formatDate(date, 'MMM d, yyyy h:mm a');
 
+/**
+ * True when an instant has a clock time worth showing on KPI cards
+ * (hides midnight and end-of-day defaults like 23:59).
+ */
+export const hasDisplayableClockTime = (date: string | Date): boolean => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return false;
+  const hours = d.getHours();
+  const minutes = d.getMinutes();
+  if (hours === 0 && minutes === 0) return false;
+  if (hours === 23 && minutes === 59) return false;
+  return true;
+};
+
+/**
+ * Formats a KPI due instant. Matches SalesKpiEntryCard when a clock time is shown
+ * ("Aug 10, 5:00 PM"). Use month: 'long' + separator: 'dot' for deadline rows
+ * ("August 10 · 5:00 PM").
+ *
+ * Pass `includeTime: true` for scheduled periodEnd values with a real endTime;
+ * omit or pass false for date-only / end-of-day defaults.
+ */
+export const formatKpiDueDate = (
+  date: string | Date,
+  opts?: { month?: 'short' | 'long'; separator?: 'comma' | 'dot'; includeTime?: boolean },
+): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return '';
+  const month = opts?.month ?? 'short';
+  const showTime = opts?.includeTime === true;
+  if (!showTime) {
+    return d.toLocaleDateString('en-US', { month, day: 'numeric' });
+  }
+  if (opts?.separator === 'dot') {
+    const datePart = d.toLocaleDateString('en-US', { month, day: 'numeric' });
+    const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${datePart} · ${timePart}`;
+  }
+  return d.toLocaleString('en-US', {
+    month,
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
 export const formatNumber = (value: number): string =>
   new Intl.NumberFormat('en-US').format(value);
 
