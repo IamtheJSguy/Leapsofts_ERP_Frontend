@@ -28,8 +28,7 @@ import {
   useUpdateSalesKpiTemplate,
   type SalesKpiTemplatePayload,
 } from '@/hooks/api/useSalesKpis';
-import { useUsers } from '@/hooks/api/useUsers';
-import { useAuth } from '@/hooks/useAuth';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { SALES_KPI_METRIC_LABELS, SALES_KPI_METRIC_OPTIONS } from '@/lib/constants';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { defaultTargetModeForMetric, isManualTarget } from '@/lib/salesKpi';
@@ -114,8 +113,7 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
-  const { isAdmin } = useAuth();
-  const { data: users = [] } = useUsers();
+  const assignableUsers = useAssignableUsers();
   const createMutation = useCreateSalesKpiTemplate();
   const updateMutation = useUpdateSalesKpiTemplate();
   const assignMutation = useAssignSalesKpiTemplate();
@@ -127,10 +125,6 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
     template?.items?.length ? template.items.map(toDraft) : [makeItem()],
   );
   const [assignUsers, setAssignUsers] = useState<User[]>([]);
-
-  const assignableUsers = users.filter((u) =>
-    isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user',
-  );
 
   const patchItem = (index: number, patch: Partial<DraftItem>) =>
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));

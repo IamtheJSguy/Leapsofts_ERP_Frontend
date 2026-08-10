@@ -17,6 +17,7 @@ export const usePermissions = () => {
       canManageSalesSettings: isElevated,
       canViewSystemSettings: isElevated,
       canPromoteRoles: isAdmin,
+      canDeactivateUsers: isAdmin,
       canManageLeads: !!user,
       canViewKanban: !!user,
       canUseChat: !!user,

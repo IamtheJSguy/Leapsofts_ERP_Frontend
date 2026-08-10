@@ -18,8 +18,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useCreateKPI, useUpdateKPI } from '@/hooks/api/useKPIs';
-import { useUsers } from '@/hooks/api/useUsers';
-import { useAuth } from '@/hooks/useAuth';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { PIPELINE_METRIC_LABELS, PIPELINE_METRIC_OPTIONS } from '@/lib/constants';
@@ -36,8 +35,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
-  const { isAdmin } = useAuth();
-  const { data: users = [] } = useUsers();
+  const assignableUsers = useAssignableUsers();
   const createMutation = useCreateKPI();
   const updateMutation = useUpdateKPI();
 
@@ -58,7 +56,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
       setPipelineMetric(kpi.pipelineMetric ?? '');
       setPriority(kpi.priority ?? 'medium');
       const assigned = (kpi.assignedTo ?? [])
-        .map((id) => (typeof id === 'string' ? users.find((u) => u._id === id) : id))
+        .map((id) => (typeof id === 'string' ? assignableUsers.find((u) => u._id === id) : id))
         .filter(Boolean) as User[];
       setAssignedUsers(assigned);
     } else {
@@ -70,7 +68,7 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
       setPriority('medium');
       setAssignedUsers([]);
     }
-  }, [kpi, open, users]);
+  }, [kpi, open, assignableUsers]);
 
   const targetValueMissing = pipelineMetric !== '' && targetValue.trim() === '';
 
@@ -201,13 +199,17 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         )}
         <Autocomplete
           multiple
-          options={users.filter((u) =>
-            isAdmin ? u.role === 'user' || u.role === 'manager' : u.role === 'user'
-          )}
+          options={assignableUsers}
           getOptionLabel={(u) => `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email}
           value={assignedUsers}
           onChange={(_, v) => setAssignedUsers(v)}
-          renderInput={(params) => <TextField {...params} label="Assign to users (empty = all users)" sx={textFieldStyle} />}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Assign to team members (empty = all eligible users)"
+              sx={textFieldStyle}
+            />
+          )}
           sx={{
             '& .MuiChip-root': { borderRadius: '8px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
           }}

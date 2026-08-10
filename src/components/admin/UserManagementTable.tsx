@@ -34,10 +34,11 @@ import type { User } from '@/types';
 export const UserManagementTable = () => {
   const { data: users = [], isLoading } = useUsers();
   const deleteUser = useDeleteUser();
-  const { canPromoteRoles } = usePermissions();
+  const { canPromoteRoles, canDeactivateUsers } = usePermissions();
   const [roleUser, setRoleUser] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const showActions = canPromoteRoles || canDeactivateUsers;
   
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -170,7 +171,9 @@ export const UserManagementTable = () => {
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Email Address</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>System Role</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Account Status</TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, textAlign: 'right', pr: 4 }}>Actions</TableCell>
+                {showActions && (
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, textAlign: 'right', pr: 4 }}>Actions</TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -268,50 +271,54 @@ export const UserManagementTable = () => {
                       </Box>
                     </TableCell>
 
-                    {/* Actions */}
-                    <TableCell sx={{ py: 1.75, borderBottom: 0, textAlign: 'right', pr: 4 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        {canPromoteRoles && (
-                        <IconButton
-                          size="small"
-                          onClick={() => setRoleUser(user)}
-                          aria-label="Edit role"
-                          sx={{
-                            borderRadius: '10px',
-                            bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
-                            color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary,
-                            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.06)'}`,
-                            transition: 'all 0.2s',
-                            '&:hover': {
-                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-                              color: tokens.brand.primary,
-                              borderColor: `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`,
-                            },
-                          }}
-                        >
-                          <EditIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        )}
-                        <IconButton
-                          size="small"
-                          onClick={() => setDeleteId(user._id)}
-                          aria-label="Delete user"
-                          sx={{
-                            borderRadius: '10px',
-                            bgcolor: 'rgba(196, 69, 69, 0.05)',
-                            color: tokens.semantic.error,
-                            border: `1px solid rgba(196, 69, 69, 0.15)`,
-                            transition: 'all 0.2s',
-                            '&:hover': {
-                              bgcolor: 'rgba(196, 69, 69, 0.1)',
-                              borderColor: 'rgba(196, 69, 69, 0.3)',
-                            },
-                          }}
-                        >
-                          <DeleteIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
+                    {/* Actions — admin only */}
+                    {showActions && (
+                      <TableCell sx={{ py: 1.75, borderBottom: 0, textAlign: 'right', pr: 4 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                          {canPromoteRoles && (
+                          <IconButton
+                            size="small"
+                            onClick={() => setRoleUser(user)}
+                            aria-label="Edit role"
+                            sx={{
+                              borderRadius: '10px',
+                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
+                              color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary,
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.06)'}`,
+                              transition: 'all 0.2s',
+                              '&:hover': {
+                                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                                color: tokens.brand.primary,
+                                borderColor: `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)`,
+                              },
+                            }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          )}
+                          {canDeactivateUsers && (
+                          <IconButton
+                            size="small"
+                            onClick={() => setDeleteId(user._id)}
+                            aria-label="Delete user"
+                            sx={{
+                              borderRadius: '10px',
+                              bgcolor: 'rgba(196, 69, 69, 0.05)',
+                              color: tokens.semantic.error,
+                              border: `1px solid rgba(196, 69, 69, 0.15)`,
+                              transition: 'all 0.2s',
+                              '&:hover': {
+                                bgcolor: 'rgba(196, 69, 69, 0.1)',
+                                borderColor: 'rgba(196, 69, 69, 0.3)',
+                              },
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          )}
+                        </Box>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
