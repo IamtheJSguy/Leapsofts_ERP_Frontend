@@ -14,6 +14,7 @@ import {
 import { leadSchema, type LeadFormData } from '@/utils/validators';
 import type { Lead } from '@/types';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 interface LeadFormProps {
   open: boolean;
@@ -28,25 +29,55 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
-    defaultValues: lead || {},
+    defaultValues: lead
+      ? {
+          ...lead,
+          prospectName: composeProspectName(lead),
+        }
+      : {},
   });
   const { data: icps } = useIcps();
   const { data: profiles } = useProfiles();
+  const prospectNameValue = watch('prospectName') || '';
+
+  const handleFormSubmit = (data: LeadFormData) => {
+    const nameParts = splitProspectName(data.prospectName || '');
+    onSubmit({
+      ...data,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      prospectName: nameParts.prospectName.trim(),
+    });
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogTitle>{lead ? 'Edit Lead' : 'Create Lead'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Prospect Name"
+                fullWidth
+                value={prospectNameValue}
+                onChange={(e) => {
+                  const parts = splitProspectName(e.target.value);
+                  setValue('prospectName', parts.prospectName, { shouldDirty: true });
+                  setValue('firstName', parts.firstName, { shouldDirty: true });
+                  setValue('lastName', parts.lastName, { shouldDirty: true });
+                }}
+                error={!!errors.prospectName}
+                helperText={errors.prospectName?.message}
+              />
+            </Grid>
             {(
               [
-                ['firstName', 'First Name'],
-                ['lastName', 'Last Name'],
-                ['prospectName', 'Prospect Name'],
                 ['email', 'Email'],
                 ['linkedInUrl', 'LinkedIn URL'],
                 ['salesNavigatorUrl', 'Sales Navigator URL'],

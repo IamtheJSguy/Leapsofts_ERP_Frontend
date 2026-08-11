@@ -78,6 +78,7 @@ import { format } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
@@ -291,6 +292,7 @@ export const SalesPage = () => {
   const [newLeadData, setNewLeadData] = useState<Partial<Lead>>({
     firstName: '',
     lastName: '',
+    prospectName: '',
     email: '',
     icp: '',
     profile: '',
@@ -305,8 +307,8 @@ export const SalesPage = () => {
 
   const handleInlineSave = () => {
     const errors: Record<string, boolean> = {};
-    if (!newLeadData.firstName?.trim()) errors.firstName = true;
-    if (!newLeadData.lastName?.trim()) errors.lastName = true;
+    const prospectName = (newLeadData.prospectName || '').trim();
+    if (!prospectName) errors.prospectName = true;
     if (!newLeadData.icp?.trim()) errors.icp = true;
     if (!newLeadData.profile?.trim()) errors.profile = true;
     if (newLeadData.messageStatus === 'future_lead' && !newLeadData.futureLeadDate) {
@@ -324,23 +326,32 @@ export const SalesPage = () => {
       return;
     }
 
+    const nameParts = splitProspectName(prospectName);
     setAddLeadErrors({});
-    createLead.mutate(newLeadData, {
-      onSuccess: () => {
-        addToast({ message: 'Lead created successfully', severity: 'success' });
-        setIsAddingInline(false);
-        setAddLeadErrors({});
-        setNewLeadData({
-          firstName: '', lastName: '', email: '', icp: '', profile: '',
-          connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
-          futureLeadDate: undefined,
-        });
+    createLead.mutate(
+      {
+        ...newLeadData,
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName,
+        prospectName: nameParts.prospectName.trim(),
       },
-      onError: (err: any) => {
-        const errorMsg = err?.response?.data?.error?.message || 'Failed to create lead';
-        addToast({ message: errorMsg, severity: 'error' });
-      }
-    });
+      {
+        onSuccess: () => {
+          addToast({ message: 'Lead created successfully', severity: 'success' });
+          setIsAddingInline(false);
+          setAddLeadErrors({});
+          setNewLeadData({
+            firstName: '', lastName: '', prospectName: '', email: '', icp: '', profile: '',
+            connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
+            futureLeadDate: undefined,
+          });
+        },
+        onError: (err: any) => {
+          const errorMsg = err?.response?.data?.error?.message || 'Failed to create lead';
+          addToast({ message: errorMsg, severity: 'error' });
+        },
+      },
+    );
   };
 
   // Multi-Row Inline Edit State
@@ -422,17 +433,27 @@ export const SalesPage = () => {
       return;
     }
 
+    const nameParts = splitProspectName(dataToSave.prospectName || composeProspectName(dataToSave));
+    const payload = {
+      ...dataToSave,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      prospectName: nameParts.prospectName.trim(),
+    };
+
     if (originalProspect) {
+      const originalName = composeProspectName(originalProspect);
       const hasChanged =
-        dataToSave.firstName !== (originalProspect.firstName || '') ||
-        dataToSave.lastName !== (originalProspect.lastName || '') ||
-        dataToSave.email !== (originalProspect.email || '') ||
-        dataToSave.icp !== (originalProspect.icp || '') ||
-        dataToSave.profile !== (originalProspect.profile || '') ||
-        dataToSave.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
-        dataToSave.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
-        dataToSave.linkedinMsg !== (originalProspect.linkedinMsg || '') ||
-        (dataToSave.futureLeadDate || '') !== (
+        payload.prospectName !== originalName ||
+        payload.firstName !== (originalProspect.firstName || '') ||
+        payload.lastName !== (originalProspect.lastName || '') ||
+        payload.email !== (originalProspect.email || '') ||
+        payload.icp !== (originalProspect.icp || '') ||
+        payload.profile !== (originalProspect.profile || '') ||
+        payload.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
+        payload.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
+        payload.linkedinMsg !== (originalProspect.linkedinMsg || '') ||
+        (payload.futureLeadDate || '') !== (
           originalProspect.futureLeadDate
             ? format(new Date(originalProspect.futureLeadDate), 'yyyy-MM-dd')
             : ''
@@ -444,7 +465,7 @@ export const SalesPage = () => {
       }
     }
 
-    updateLead.mutate({ id, data: dataToSave }, {
+    updateLead.mutate({ id, data: payload }, {
       onSuccess: () => {
         addToast({ message: 'Lead updated successfully', severity: 'success' });
         removeFromSnapshot(id);

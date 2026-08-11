@@ -21,6 +21,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead, Meeting, User } from '@/types';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -72,16 +73,17 @@ const LeadSummaryColumn = memo(({
   const renderField = (label: string, field: keyof Lead, placeholder?: string) => {
     const errorText = errors[field];
     return (
-      <Box sx={{ mb: 3, position: 'relative' }}>
+      <Box sx={{ mb: 1.5, position: 'relative' }}>
         <Typography variant="caption" sx={{
           color: errorText ? tokens.semantic.error : tokens.text.muted,
           fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.06em',
-          display: 'block', mb: 0.8, pl: 1,
+          display: 'block', mb: 0.4, pl: 1, fontSize: '0.68rem',
         }}>
           {label}
         </Typography>
         <TextField
           fullWidth
+          size="small"
           variant="outlined"
           placeholder={placeholder || `Enter ${label.toLowerCase()}`}
           value={leadData[field] || ''}
@@ -89,12 +91,12 @@ const LeadSummaryColumn = memo(({
           disabled={isPending}
           InputProps={{
             sx: {
-              borderRadius: '16px',
+              borderRadius: '12px',
               bgcolor: errorText
                 ? (isDarkMode ? 'rgba(196, 69, 69, 0.08)' : 'rgba(196, 69, 69, 0.04)')
                 : (isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)'),
               transition: 'all 0.2s ease',
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               fontWeight: 500,
               color: errorText ? tokens.semantic.error : tokens.text.primary,
               '& fieldset': { border: 'none' },
@@ -115,7 +117,7 @@ const LeadSummaryColumn = memo(({
         {errorText && (
           <Typography variant="caption" sx={{
             color: tokens.semantic.error, fontWeight: 600,
-            position: 'absolute', bottom: -20, left: 12, fontSize: '0.75rem',
+            position: 'absolute', bottom: -16, left: 12, fontSize: '0.7rem',
           }}>
             {errorText}
           </Typography>
@@ -126,29 +128,27 @@ const LeadSummaryColumn = memo(({
 
   return (
     <Box sx={{
-      flex: '0 0 380px', p: 5,
-      maxHeight: '75vh', overflowY: 'auto',
+      flex: '0 0 320px', p: { xs: 2, md: 2.5 },
+      minHeight: 0,
+      overflowY: 'auto',
       bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.01)',
       borderRight: { md: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}` },
       borderBottom: { xs: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`, md: 'none' },
     }}>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
         <Box sx={{
-          width: 72, height: 72, borderRadius: '24px', flexShrink: 0,
+          width: 48, height: 48, borderRadius: '14px', flexShrink: 0,
           background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: '2rem', fontWeight: 800,
-          boxShadow: '0 12px 24px rgba(93, 26, 137, 0.15)',
+          color: '#fff', fontSize: '1.25rem', fontWeight: 800,
+          boxShadow: '0 8px 16px rgba(93, 26, 137, 0.15)',
         }}>
           {avatarChar}
         </Box>
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Box sx={{ flex: 1 }}>{renderField('First Name', 'firstName')}</Box>
-          <Box sx={{ flex: 1 }}>{renderField('Last Name', 'lastName')}</Box>
-        </Box>
+        {renderField('Prospect Name', 'prospectName')}
         {renderField('Job Title', 'title')}
         {renderField('Company', 'company')}
         {renderField('Email', 'email')}
@@ -167,32 +167,33 @@ const EnrichmentColumn = memo(({
   sections, onSectionChange, notes, onNotesChange, isPending, isDarkMode,
 }: any) => {
   return (
-    <Box sx={{ p: 5, pb: 2 }}>
-      <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, mb: 4, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <AutoAwesomeIcon sx={{ color: tokens.brand.accent, fontSize: 22 }} /> Profile Enrichment
+    <Box sx={{ p: { xs: 2, md: 2.5 }, pb: 1.5 }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 850, color: tokens.text.primary, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <AutoAwesomeIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} /> Profile Enrichment
       </Typography>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {DEFAULT_SECTIONS.map((sec) => (
           <Box key={sec.key}>
-            <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1, display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
               {sec.icon} {sec.label}
             </Typography>
             <TextField
               fullWidth
               multiline
-              rows={sec.key === 'painPoints' ? 3 : 2}
+              size="small"
+              rows={sec.key === 'painPoints' ? 2 : 2}
               placeholder={`Add ${sec.label.toLowerCase()} details...`}
               value={sections[sec.key] || ''}
               onChange={(e) => onSectionChange(sec.key, e.target.value)}
               disabled={isPending}
               InputProps={{
                 sx: {
-                  borderRadius: '20px',
+                  borderRadius: '14px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
                   transition: 'all 0.2s ease',
-                  fontSize: '0.95rem',
-                  lineHeight: 1.6,
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
                   '& fieldset': { border: 'none' },
                   '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' },
                   '&.Mui-focused': {
@@ -205,27 +206,29 @@ const EnrichmentColumn = memo(({
           </Box>
         ))}
 
-        <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
+        <Divider sx={{ my: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
 
         <Box>
-          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1, display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
             <DescriptionIcon sx={{ fontSize: 18 }} /> General Notes
           </Typography>
           <TextField
             fullWidth
             multiline
-            rows={4}
+            size="small"
+            minRows={2}
+            maxRows={4}
             placeholder="Any additional context or strategic notes..."
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
             disabled={isPending}
             InputProps={{
               sx: {
-                borderRadius: '20px',
+                borderRadius: '14px',
                 bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
                 transition: 'all 0.2s ease',
-                fontSize: '0.95rem',
-                lineHeight: 1.6,
+                fontSize: '0.9rem',
+                lineHeight: 1.5,
                 '& fieldset': { border: 'none' },
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' },
                 '&.Mui-focused': {
@@ -289,16 +292,17 @@ const SharingMeetingsColumn = memo(({
   const minDateTimeLocal = getMinDateTimeLocal();
 
   return (
-    <Box sx={{ flex: 1, p: 5, maxHeight: '75vh', overflowY: 'auto' }}>
+    <Box sx={{ flex: 1, p: { xs: 2, md: 2.5 }, minHeight: 0, overflowY: 'auto' }}>
       {/* Shared with */}
-      <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <PeopleIcon sx={{ color: tokens.brand.accent, fontSize: 22 }} /> Shared with
+      <Typography variant="subtitle1" sx={{ fontWeight: 850, color: tokens.text.primary, mb: 0.75, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <PeopleIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} /> Shared with
       </Typography>
-      <Typography variant="body2" sx={{ color: tokens.text.secondary, mb: 2 }}>
+      <Typography variant="body2" sx={{ color: tokens.text.secondary, mb: 1.25, fontSize: '0.8rem' }}>
         Collaborators get full edit access to this lead.
       </Typography>
       <Autocomplete
         multiple
+        size="small"
         options={dbUsers}
         value={sharedWith}
         onChange={(_e, value) => onSharedWithChange(value)}
@@ -323,35 +327,36 @@ const SharingMeetingsColumn = memo(({
             InputProps={{ ...params.InputProps, sx: fieldSx }}
           />
         )}
-        sx={{ mb: 4 }}
+        sx={{ mb: 2.5 }}
       />
 
       {showNotes && (
         <>
-          <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
-          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
+          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             <DescriptionIcon sx={{ fontSize: 18 }} /> Notes
           </Typography>
           <TextField
             fullWidth
             multiline
-            rows={3}
+            minRows={2}
+            maxRows={4}
             placeholder="Lead notes..."
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
             disabled={isPending}
-            InputProps={{ sx: { ...fieldSx, borderRadius: '20px' } }}
-            sx={{ mb: 4 }}
+            InputProps={{ sx: { ...fieldSx, borderRadius: '14px' } }}
+            sx={{ mb: 2 }}
           />
         </>
       )}
 
-      <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
+      <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
 
       {/* Meetings */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <EventIcon sx={{ color: tokens.brand.accent, fontSize: 22 }} /> Meetings
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 850, color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EventIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} /> Meetings
         </Typography>
         <Button
           size="small"
@@ -551,6 +556,7 @@ export const QualifyEnrichModal = ({
       setLeadData({
         firstName: lead.firstName || '',
         lastName: lead.lastName || '',
+        prospectName: composeProspectName(lead),
         title: lead.title || lead.jobTitle || '',
         company: lead.company || '',
         email: lead.email || '',
@@ -593,6 +599,16 @@ export const QualifyEnrichModal = ({
   }, [lead, open, dbUsers]);
 
   const handleLeadDataChange = useCallback((field: keyof Lead, value: string) => {
+    if (field === 'prospectName') {
+      const parts = splitProspectName(value);
+      setLeadData((prev) => ({
+        ...prev,
+        prospectName: parts.prospectName,
+        firstName: parts.firstName,
+        lastName: parts.lastName,
+      }));
+      return;
+    }
     setLeadData((prev) => ({ ...prev, [field]: value }));
     if (field === 'email' || field === 'linkedInUrl') {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -624,8 +640,14 @@ export const QualifyEnrichModal = ({
 
   const buildLeadPayload = () => {
     const { title, email, linkedInUrl, ...restLeadData } = leadData;
+    const nameParts = splitProspectName(
+      leadData.prospectName || composeProspectName(leadData),
+    );
     return {
       ...restLeadData,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      prospectName: nameParts.prospectName.trim(),
       ...(title ? { jobTitle: title } : {}),
       ...(email?.trim() ? { email: email.trim() } : { email: '' }),
       ...(linkedInUrl?.trim() ? { linkedInUrl: linkedInUrl.trim() } : { linkedInUrl: '' }),
@@ -744,7 +766,7 @@ export const QualifyEnrichModal = ({
   const rightColumn = isUpdateMode ? (
     <SharingMeetingsColumn {...sharingMeetingsProps} showNotes />
   ) : (
-    <Box sx={{ flex: 1, maxHeight: '75vh', overflowY: 'auto' }}>
+    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
       <EnrichmentColumn
         sections={sections}
         onSectionChange={handleSectionChange}
@@ -753,7 +775,7 @@ export const QualifyEnrichModal = ({
         isPending={isPending}
         isDarkMode={isDarkMode}
       />
-      <Box sx={{ '& > .MuiBox-root': { maxHeight: 'none', p: 5, pt: 0 } }}>
+      <Box sx={{ '& > .MuiBox-root': { maxHeight: 'none', p: { xs: 2, md: 2.5 }, pt: 0 } }}>
         <SharingMeetingsColumn {...sharingMeetingsProps} showNotes={false} />
       </Box>
     </Box>
@@ -767,7 +789,12 @@ export const QualifyEnrichModal = ({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: '32px',
+          borderRadius: { xs: '20px', md: '24px' },
+          maxHeight: 'calc(100vh - 32px)',
+          height: { xs: 'calc(100vh - 32px)', md: 'auto' },
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           bgcolor: isDarkMode ? 'rgba(20, 20, 24, 0.95)' : 'rgba(255, 255, 255, 0.98)',
           backdropFilter: 'blur(30px)',
           border: 'none',
@@ -778,13 +805,20 @@ export const QualifyEnrichModal = ({
         },
       }}
     >
-      <DialogTitle sx={{ p: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 5, py: 4, borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}` }}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', mb: 0.5 }}>
+      <DialogTitle sx={{ p: 0, flexShrink: 0 }}>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: { xs: 2, md: 3 },
+          py: 1.5,
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
+        }}>
+          <Box sx={{ minWidth: 0, pr: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
               {isUpdateMode ? 'Update Lead' : 'Qualify Lead'}
             </Typography>
-            <Typography variant="body1" sx={{ color: tokens.text.secondary, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 500, mt: 0.25, display: { xs: 'none', sm: 'block' } }}>
               {isUpdateMode
                 ? 'Edit lead details, share with teammates, and schedule meetings.'
                 : 'Review and enrich the profile before pushing it to the pipeline.'}
@@ -793,29 +827,37 @@ export const QualifyEnrichModal = ({
           <IconButton
             onClick={onClose}
             disabled={isPending}
+            size="small"
             sx={{
               color: tokens.text.muted,
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              p: 1.5,
+              p: 1,
+              flexShrink: 0,
               '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
             }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
+      <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {isLeadLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 10 }}>
-            <CircularProgress sx={{ color: tokens.brand.primary }} size={48} thickness={4} />
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 6 }}>
+            <CircularProgress sx={{ color: tokens.brand.primary }} size={40} thickness={4} />
           </Box>
         ) : !lead ? (
-          <Box sx={{ p: 8, textAlign: 'center' }}>
-            <Typography color="error" sx={{ fontSize: '1.2rem', fontWeight: 600 }}>Failed to load lead details.</Typography>
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography color="error" sx={{ fontSize: '1rem', fontWeight: 600 }}>Failed to load lead details.</Typography>
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            height: '100%',
+            minHeight: 0,
+            overflow: { xs: 'auto', md: 'hidden' },
+          }}>
             <LeadSummaryColumn
               leadData={leadData}
               onChange={handleLeadDataChange}
@@ -830,7 +872,9 @@ export const QualifyEnrichModal = ({
       </DialogContent>
 
       <DialogActions sx={{
-        p: 4, px: 5,
+        px: { xs: 2, md: 3 },
+        py: 1.25,
+        flexShrink: 0,
         borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.01)',
       }}>
@@ -838,7 +882,7 @@ export const QualifyEnrichModal = ({
           onClick={onClose}
           disabled={isPending}
           sx={{
-            color: tokens.text.secondary, fontWeight: 750, borderRadius: '16px', px: 4, py: 1.5, textTransform: 'none', fontSize: '1rem',
+            color: tokens.text.secondary, fontWeight: 750, borderRadius: '12px', px: 2.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
           }}
         >
           Cancel
@@ -848,14 +892,13 @@ export const QualifyEnrichModal = ({
           disabled={isPending || !lead}
           variant="contained"
           sx={{
-            bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 800, borderRadius: '16px', px: 6, py: 1.5, textTransform: 'none', fontSize: '1rem',
+            bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 800, borderRadius: '12px', px: 3.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
             background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
-            boxShadow: '0 8px 24px rgba(93, 26, 137, 0.3)',
+            boxShadow: '0 6px 16px rgba(93, 26, 137, 0.25)',
             transition: 'all 0.3s ease',
             '&:hover': {
               background: `linear-gradient(135deg, ${tokens.brand.accentDark} 0%, ${tokens.brand.accent} 100%)`,
-              boxShadow: '0 12px 32px rgba(93, 26, 137, 0.4)',
-              transform: 'translateY(-2px)',
+              boxShadow: '0 8px 20px rgba(93, 26, 137, 0.35)',
             },
           }}
         >
