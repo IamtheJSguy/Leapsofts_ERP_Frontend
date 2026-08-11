@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { AxiosResponse } from 'axios';
 import api from '@/lib/axios';
-import type { Conversation, Message, PresenceStatus, User } from '@/types';
+import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { normalizeMessageReceipts } from '@/utils/chatMessageUtils';
@@ -21,17 +22,22 @@ const chatApi = {
     driveIconLink?: string;
     replyTo?: string;
   }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
+  setMessageReaction: (data: { conversationId: string; messageId: string; emoji: string }) =>
+    api.put<{ data: Message }>(
+      `/chat/conversations/${data.conversationId}/messages/${data.messageId}/reaction`,
+      { emoji: data.emoji },
+    ),
   markRead: (conversationId: string) =>
     api.post(`/chat/conversations/${conversationId}/read`),
   updatePresence: (status: 'away' | 'offline' | null) =>
     api.patch('/chat/presence', { status }),
-  createConversation: (data: {
+  createConversation: async (data: {
     participantId?: string;
     isGroup?: boolean;
     name?: string;
     description?: string;
     participantIds?: string[];
-  }) => {
+  }): Promise<AxiosResponse> => {
     if (data.isGroup) {
       return api.post('/chat/conversations/group', {
         name: data.name,
@@ -51,6 +57,50 @@ const chatApi = {
     api.delete(
       `/chat/conversations/group/${data.conversationId}/participants/${data.participantId}`,
     ),
+};
+
+const getReactionUserId = (reaction: MessageReaction): string =>
+  typeof reaction.userId === 'string' ? reaction.userId : reaction.userId._id;
+
+/** Apply optimistic one-reaction-per-user toggle locally. */
+export const applyOptimisticReaction = (
+  reactions: MessageReaction[] | undefined,
+  userId: string,
+  emoji: string,
+  user?: User | null,
+): MessageReaction[] => {
+  const current = reactions || [];
+  const existing = current.find((r) => getReactionUserId(r) === userId);
+  if (existing?.emoji === emoji) {
+    return current.filter((r) => getReactionUserId(r) !== userId);
+  }
+  const next: MessageReaction = {
+    userId: user || userId,
+    emoji,
+    createdAt: new Date().toISOString(),
+  };
+  if (existing) {
+    return current.map((r) => (getReactionUserId(r) === userId ? next : r));
+  }
+  return [...current, next];
+};
+
+const patchMessageReactions = (
+  queryClient: QueryClient,
+  conversationId: string,
+  messageId: string,
+  reactions: MessageReaction[],
+) => {
+  queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
+    if (!old) return old;
+    let changed = false;
+    const next = old.map((msg) => {
+      if (msg._id !== messageId) return msg;
+      changed = true;
+      return { ...msg, reactions };
+    });
+    return changed ? next : old;
+  });
 };
 
 export const useConversations = () =>
@@ -123,6 +173,56 @@ export const useMarkConversationRead = () => {
           conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
         );
       });
+    },
+  });
+};
+
+export const useSetMessageReaction = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: chatApi.setMessageReaction,
+    onMutate: async ({ conversationId, messageId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
+      const previous = queryClient.getQueriesData<Message[]>({ queryKey: ['messages', conversationId] });
+      const user = useAuthStore.getState().user;
+      const userId = user?._id;
+      if (userId) {
+        queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
+          if (!old) return old;
+          return old.map((msg) => {
+            if (msg._id !== messageId) return msg;
+            return {
+              ...msg,
+              reactions: applyOptimisticReaction(msg.reactions, userId, emoji, user),
+            };
+          });
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, variables, context) => {
+      context?.previous?.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+    },
+    onSuccess: (res, variables) => {
+      const message = normalizeMessageReceipts((res.data as { data: Message }).data);
+      if (message?.reactions) {
+        patchMessageReactions(
+          queryClient,
+          variables.conversationId,
+          variables.messageId,
+          message.reactions,
+        );
+      } else if (message) {
+        queryClient.setQueriesData<Message[]>(
+          { queryKey: ['messages', variables.conversationId] },
+          (old) => {
+            if (!old) return old;
+            return old.map((m) => (m._id === message._id ? { ...m, ...message } : m));
+          },
+        );
+      }
     },
   });
 };

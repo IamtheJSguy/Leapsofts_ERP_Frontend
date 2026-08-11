@@ -722,6 +722,12 @@ export interface MessageReplySnippet {
   driveFileName?: string;
 }
 
+export interface MessageReaction {
+  userId: string | User;
+  emoji: string;
+  createdAt: string;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
@@ -742,6 +748,7 @@ export interface Message {
   /** Per-recipient first read time (userId → ISO datetime). */
   readAt?: Record<string, string>;
   replyTo?: string | MessageReplySnippet;
+  reactions?: MessageReaction[];
   createdAt: string;
 }
 
