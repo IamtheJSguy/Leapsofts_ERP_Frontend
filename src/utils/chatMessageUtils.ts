@@ -1,6 +1,39 @@
+import { format, isSameDay, isToday, isYesterday, parseISO } from 'date-fns';
 import type { Message, MessageReplySnippet, User } from '@/types';
 
 export type TickStatus = 'sent' | 'delivered' | 'seen';
+
+/** Calendar-day key for grouping messages (local timezone). */
+export const getMessageDayKey = (date: string | Date | undefined): string | null => {
+  if (!date) return null;
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  if (Number.isNaN(d.getTime())) return null;
+  return format(d, 'yyyy-MM-dd');
+};
+
+/** Chat day separator label: Today / Yesterday / weekday or full date. */
+export const formatChatDayLabel = (date: string | Date): string => {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  if (Number.isNaN(d.getTime())) return '';
+  if (isToday(d)) return 'Today';
+  if (isYesterday(d)) return 'Yesterday';
+  const now = new Date();
+  if (d.getFullYear() === now.getFullYear()) {
+    return format(d, 'EEEE, MMM d');
+  }
+  return format(d, 'EEE, MMM d, yyyy');
+};
+
+export const isSameMessageDay = (
+  a: string | Date | undefined,
+  b: string | Date | undefined,
+): boolean => {
+  if (!a || !b) return false;
+  const da = typeof a === 'string' ? parseISO(a) : a;
+  const db = typeof b === 'string' ? parseISO(b) : b;
+  if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return false;
+  return isSameDay(da, db);
+};
 
 export const normalizeIdList = (ids?: Array<string | User | { _id: string }> | null): string[] => {
   if (!ids?.length) return [];

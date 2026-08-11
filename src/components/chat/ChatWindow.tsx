@@ -33,7 +33,11 @@ import { DriveFilePicker } from './DriveFilePicker';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { getDisplayName, getPresenceLabel } from '@/utils/formatters';
-import { getReplyPreviewText } from '@/utils/chatMessageUtils';
+import {
+  formatChatDayLabel,
+  getReplyPreviewText,
+  isSameMessageDay,
+} from '@/utils/chatMessageUtils';
 import type { Message, PresenceStatus } from '@/types';
 
 interface ChatWindowProps {
@@ -517,19 +521,61 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Box>
         ) : (
           <>
-            {enhancedMessages.map(({ msg, isOwn }: any) => (
-              <MessageBubble
-                key={msg._id}
-                message={msg}
-                isOwn={isOwn}
-                currentUserId={user?._id}
-                otherParticipantIds={otherParticipantIds}
-                otherParticipants={otherParticipants}
-                isGroup={isGroupConversation}
-                onReply={handleReply}
-                onQuoteClick={handleQuoteClick}
-              />
-            ))}
+            {enhancedMessages.map(({ msg, isOwn }: any, index: number) => {
+              const prevMsg = index > 0 ? enhancedMessages[index - 1]?.msg : null;
+              const showDaySeparator =
+                Boolean(msg.createdAt) &&
+                (!prevMsg || !isSameMessageDay(prevMsg.createdAt, msg.createdAt));
+
+              return (
+                <Box key={msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {showDaySeparator && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        my: index === 0 ? 0.5 : 1,
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 2,
+                      }}
+                    >
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        sx={{
+                          px: 1.75,
+                          py: 0.5,
+                          borderRadius: '999px',
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          letterSpacing: '0.02em',
+                          color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.85)' : 'rgba(255,255,255,0.92)',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93,26,137,0.08)'}`,
+                          boxShadow: isDarkMode
+                            ? '0 2px 8px rgba(0,0,0,0.25)'
+                            : '0 2px 8px rgba(93,26,137,0.06)',
+                        }}
+                      >
+                        {formatChatDayLabel(msg.createdAt)}
+                      </Typography>
+                    </Box>
+                  )}
+                  <MessageBubble
+                    message={msg}
+                    isOwn={isOwn}
+                    currentUserId={user?._id}
+                    otherParticipantIds={otherParticipantIds}
+                    otherParticipants={otherParticipants}
+                    isGroup={isGroupConversation}
+                    onReply={handleReply}
+                    onQuoteClick={handleQuoteClick}
+                  />
+                </Box>
+              );
+            })}
             <div ref={bottomRef} />
           </>
         )}
