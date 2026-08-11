@@ -21,6 +21,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead, Meeting, User } from '@/types';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -145,10 +146,7 @@ const LeadSummaryColumn = memo(({
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Box sx={{ flex: 1 }}>{renderField('First Name', 'firstName')}</Box>
-          <Box sx={{ flex: 1 }}>{renderField('Last Name', 'lastName')}</Box>
-        </Box>
+        {renderField('Prospect Name', 'prospectName')}
         {renderField('Job Title', 'title')}
         {renderField('Company', 'company')}
         {renderField('Email', 'email')}
@@ -551,6 +549,7 @@ export const QualifyEnrichModal = ({
       setLeadData({
         firstName: lead.firstName || '',
         lastName: lead.lastName || '',
+        prospectName: composeProspectName(lead),
         title: lead.title || lead.jobTitle || '',
         company: lead.company || '',
         email: lead.email || '',
@@ -593,6 +592,16 @@ export const QualifyEnrichModal = ({
   }, [lead, open, dbUsers]);
 
   const handleLeadDataChange = useCallback((field: keyof Lead, value: string) => {
+    if (field === 'prospectName') {
+      const parts = splitProspectName(value);
+      setLeadData((prev) => ({
+        ...prev,
+        prospectName: parts.prospectName,
+        firstName: parts.firstName,
+        lastName: parts.lastName,
+      }));
+      return;
+    }
     setLeadData((prev) => ({ ...prev, [field]: value }));
     if (field === 'email' || field === 'linkedInUrl') {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -624,8 +633,14 @@ export const QualifyEnrichModal = ({
 
   const buildLeadPayload = () => {
     const { title, email, linkedInUrl, ...restLeadData } = leadData;
+    const nameParts = splitProspectName(
+      leadData.prospectName || composeProspectName(leadData),
+    );
     return {
       ...restLeadData,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      prospectName: nameParts.prospectName.trim(),
       ...(title ? { jobTitle: title } : {}),
       ...(email?.trim() ? { email: email.trim() } : { email: '' }),
       ...(linkedInUrl?.trim() ? { linkedInUrl: linkedInUrl.trim() } : { linkedInUrl: '' }),

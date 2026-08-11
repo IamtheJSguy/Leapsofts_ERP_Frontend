@@ -68,6 +68,39 @@ export const getDisplayName = (
   return name || user.email || 'Unknown';
 };
 
+/** Full name for display / form binding: prefer prospectName, else first + last. */
+export const composeProspectName = (lead: {
+  firstName?: string;
+  lastName?: string;
+  prospectName?: string;
+}): string => {
+  if (lead.prospectName?.trim()) return lead.prospectName.trim();
+  return [lead.firstName, lead.lastName].filter(Boolean).join(' ').trim();
+};
+
+/**
+ * Split a full name at the first space: first word → firstName, remainder → lastName.
+ * Keeps the raw input as prospectName so the field can accept spaces while typing.
+ * Callers should trim prospectName on submit.
+ */
+export const splitProspectName = (
+  fullName: string,
+): { firstName: string; lastName: string; prospectName: string } => {
+  const trimmed = fullName.trim();
+  if (!trimmed) {
+    return { firstName: '', lastName: '', prospectName: fullName };
+  }
+  const spaceIndex = trimmed.indexOf(' ');
+  if (spaceIndex === -1) {
+    return { firstName: trimmed, lastName: '', prospectName: fullName };
+  }
+  return {
+    firstName: trimmed.slice(0, spaceIndex),
+    lastName: trimmed.slice(spaceIndex + 1).trim(),
+    prospectName: fullName,
+  };
+};
+
 export const getLeadDisplayName = (lead: {
   firstName?: string;
   lastName?: string;
@@ -75,8 +108,8 @@ export const getLeadDisplayName = (lead: {
   company?: string;
   prospectName?: string;
 }): string => {
-  const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
-  return name || lead.prospectName || lead.email || lead.company || 'Unnamed Lead';
+  const name = composeProspectName(lead);
+  return name || lead.email || lead.company || 'Unnamed Lead';
 };
 
 export const formatTime12Hour = (timeStr?: string): string => {

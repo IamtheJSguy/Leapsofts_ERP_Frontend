@@ -11,6 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { tokens } from '@/styles/tokens';
 import type { EditableLeadData } from '@/hooks/useLeadAutoSync';
 import type { ConnectionStatus, MessageStatus } from '@/types';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { nativeFieldStyle } from './nativeFieldStyles';
 
 type OptionItem = { _id: string; name: string };
@@ -49,6 +50,10 @@ export const SalesEditRow = memo(function SalesEditRow({
   onFollowUpChange,
 }: SalesEditRowProps) {
   const field = nativeFieldStyle(isDarkMode);
+  const prospectNameValue =
+    editData.prospectName !== undefined && editData.prospectName !== null
+      ? editData.prospectName
+      : composeProspectName(editData);
 
   return (
     <TableRow
@@ -59,20 +64,12 @@ export const SalesEditRow = memo(function SalesEditRow({
     >
       <TableCell sx={{ py: 2, pl: 3 }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <input
-              placeholder="First Name"
-              value={editData.firstName}
-              onChange={(e) => onUpdate(leadId, { firstName: e.target.value })}
-              style={field}
-            />
-            <input
-              placeholder="Last Name"
-              value={editData.lastName}
-              onChange={(e) => onUpdate(leadId, { lastName: e.target.value })}
-              style={field}
-            />
-          </Box>
+          <input
+            placeholder="Prospect Name"
+            value={prospectNameValue}
+            onChange={(e) => onUpdate(leadId, splitProspectName(e.target.value))}
+            style={field}
+          />
           <input
             placeholder="Email"
             value={editData.email}
@@ -219,6 +216,7 @@ type SalesInlineAddRowProps = {
   data: {
     firstName?: string;
     lastName?: string;
+    prospectName?: string;
     email?: string;
     icp?: string;
     profile?: string;
@@ -247,6 +245,12 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
   onSave,
   onCancel,
 }: SalesInlineAddRowProps) {
+  const prospectNameValue =
+    data.prospectName !== undefined && data.prospectName !== null
+      ? data.prospectName
+      : composeProspectName(data);
+  const prospectNameError = !!(errors.prospectName || errors.firstName || errors.lastName);
+
   return (
     <TableRow
       sx={{
@@ -256,20 +260,12 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
     >
       <TableCell sx={{ py: 2, pl: 3 }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <input
-              placeholder="First Name"
-              value={data.firstName || ''}
-              onChange={(e) => onUpdate({ firstName: e.target.value })}
-              style={nativeFieldStyle(isDarkMode, !!errors.firstName)}
-            />
-            <input
-              placeholder="Last Name"
-              value={data.lastName || ''}
-              onChange={(e) => onUpdate({ lastName: e.target.value })}
-              style={nativeFieldStyle(isDarkMode, !!errors.lastName)}
-            />
-          </Box>
+          <input
+            placeholder="Prospect Name *"
+            value={prospectNameValue}
+            onChange={(e) => onUpdate(splitProspectName(e.target.value))}
+            style={nativeFieldStyle(isDarkMode, prospectNameError)}
+          />
           <input
             placeholder="Email"
             value={data.email || ''}

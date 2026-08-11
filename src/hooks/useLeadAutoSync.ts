@@ -3,10 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import api from '@/lib/axios';
 import type { ConnectionStatus, Lead, MessageStatus } from '@/types';
+import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 export type EditableLeadData = {
   firstName: string;
   lastName: string;
+  prospectName: string;
   email: string;
   icp: string;
   profile: string;
@@ -27,6 +29,7 @@ export type LeadSyncStats = {
 const EDITABLE_FIELDS = [
   'firstName',
   'lastName',
+  'prospectName',
   'email',
   'icp',
   'profile',
@@ -58,19 +61,28 @@ const normalizeValue = (field: EditableField, value: unknown): string => {
   return value == null ? '' : String(value);
 };
 
-export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>): EditableLeadData => ({
-  firstName: prospect.firstName || '',
-  lastName: prospect.lastName || '',
-  email: prospect.email || '',
-  icp: prospect.icp || '',
-  profile: prospect.profile || '',
-  connectionStatus: (prospect.connectionStatus || 'pending') as ConnectionStatus,
-  messageStatus: (prospect.messageStatus || 'not_sent') as MessageStatus,
-  linkedinMsg: prospect.linkedinMsg || '',
-  futureLeadDate: prospect.futureLeadDate
-    ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
-    : undefined,
-});
+export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>): EditableLeadData => {
+  const firstName = prospect.firstName || '';
+  const lastName = prospect.lastName || '';
+  return {
+    firstName,
+    lastName,
+    prospectName: composeProspectName({
+      firstName,
+      lastName,
+      prospectName: prospect.prospectName,
+    }),
+    email: prospect.email || '',
+    icp: prospect.icp || '',
+    profile: prospect.profile || '',
+    connectionStatus: (prospect.connectionStatus || 'pending') as ConnectionStatus,
+    messageStatus: (prospect.messageStatus || 'not_sent') as MessageStatus,
+    linkedinMsg: prospect.linkedinMsg || '',
+    futureLeadDate: prospect.futureLeadDate
+      ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
+      : undefined,
+  };
+};
 
 export const cloneEditData = (data: EditableLeadData): EditableLeadData => ({
   ...data,
@@ -204,7 +216,15 @@ export const useLeadAutoSync = ({
           }
 
           try {
-            await api.put(`/leads/${id}`, data);
+            const nameParts = splitProspectName(
+              data.prospectName || composeProspectName(data),
+            );
+            await api.put(`/leads/${id}`, {
+              ...data,
+              firstName: nameParts.firstName,
+              lastName: nameParts.lastName,
+              prospectName: nameParts.prospectName.trim(),
+            });
             snapshotRef.current[id] = cloneEditData(data);
             failedIdsRef.current.delete(id);
             synced += 1;
@@ -360,6 +380,12 @@ export const useLeadAutoSync = ({
         nextEditing[id] = {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
+          prospectName:
+            data.prospectName ||
+            composeProspectName({
+              firstName: data.firstName,
+              lastName: data.lastName,
+            }),
           email: data.email || '',
           icp: data.icp || '',
           profile: data.profile || '',
@@ -375,6 +401,12 @@ export const useLeadAutoSync = ({
         nextSnapshot[id] = {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
+          prospectName:
+            data.prospectName ||
+            composeProspectName({
+              firstName: data.firstName,
+              lastName: data.lastName,
+            }),
           email: data.email || '',
           icp: data.icp || '',
           profile: data.profile || '',

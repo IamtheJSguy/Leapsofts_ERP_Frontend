@@ -22,6 +22,7 @@ import {
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { ConnectionStatus, Lead, MessageStatus } from '@/types';
+import { splitProspectName } from '@/utils/formatters';
 
 const INITIAL_ROWS = 100;
 const GROW_BY = 20;
@@ -29,8 +30,7 @@ const GROW_THRESHOLD = 5;
 const DRAFT_SAVE_DEBOUNCE_MS = 1000; // 1 second
 
 type BulkLeadRow = {
-  firstName: string;
-  lastName: string;
+  prospectName: string;
   email: string;
   icp: string;
   profile: string;
@@ -47,8 +47,7 @@ type OptionItem = { _id: string; name: string };
 const EMPTY_ERRORS: RowErrors = {};
 
 const createEmptyRow = (): BulkLeadRow => ({
-  firstName: '',
-  lastName: '',
+  prospectName: '',
   email: '',
   icp: '',
   profile: '',
@@ -59,8 +58,7 @@ const createEmptyRow = (): BulkLeadRow => ({
 });
 
 const isRowEmpty = (row: BulkLeadRow) =>
-  !row.firstName.trim() &&
-  !row.lastName.trim() &&
+  !row.prospectName.trim() &&
   !row.email.trim() &&
   !row.icp.trim() &&
   !row.profile.trim();
@@ -72,10 +70,16 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
   if (!Array.isArray(raw) || raw.length === 0) return null;
 
   const rows = raw.map((item) => {
-    const row = (item && typeof item === 'object' ? item : {}) as Partial<BulkLeadRow>;
+    const row = (item && typeof item === 'object' ? item : {}) as Partial<BulkLeadRow> & {
+      firstName?: string;
+      lastName?: string;
+    };
+    const prospectName =
+      typeof row.prospectName === 'string' && row.prospectName
+        ? row.prospectName
+        : [row.firstName, row.lastName].filter(Boolean).join(' ');
     return {
-      firstName: typeof row.firstName === 'string' ? row.firstName : '',
-      lastName: typeof row.lastName === 'string' ? row.lastName : '',
+      prospectName,
       email: typeof row.email === 'string' ? row.email : '',
       icp: typeof row.icp === 'string' ? row.icp : '',
       profile: typeof row.profile === 'string' ? row.profile : '',
@@ -100,8 +104,7 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
 
 const validateRow = (row: BulkLeadRow): RowErrors => {
   const errors: RowErrors = {};
-  if (!row.firstName.trim()) errors.firstName = true;
-  if (!row.lastName.trim()) errors.lastName = true;
+  if (!row.prospectName.trim()) errors.prospectName = true;
   if (!row.icp.trim()) errors.icp = true;
   if (!row.profile.trim()) errors.profile = true;
   if (row.messageStatus === 'future_lead' && !row.futureLeadDate) {
@@ -159,20 +162,12 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
       </td>
       <td style={{ borderBottom: `1px solid ${borderColor}`, padding: '10px', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              placeholder="First Name *"
-              value={row.firstName}
-              onChange={(e) => onUpdate(index, { firstName: e.target.value })}
-              style={nativeFieldStyle(isDarkMode, !!errors.firstName)}
-            />
-            <input
-              placeholder="Last Name *"
-              value={row.lastName}
-              onChange={(e) => onUpdate(index, { lastName: e.target.value })}
-              style={nativeFieldStyle(isDarkMode, !!errors.lastName)}
-            />
-          </div>
+          <input
+            placeholder="Prospect Name *"
+            value={row.prospectName}
+            onChange={(e) => onUpdate(index, { prospectName: e.target.value })}
+            style={nativeFieldStyle(isDarkMode, !!errors.prospectName)}
+          />
           <input
             placeholder="Email"
             value={row.email}
@@ -452,19 +447,23 @@ export const BulkAddLeadsPage = () => {
       return;
     }
 
-    const leads: Partial<Lead>[] = filled.map(({ row }) => ({
-      firstName: row.firstName.trim(),
-      lastName: row.lastName.trim(),
-      email: row.email.trim(),
-      icp: row.icp.trim(),
-      profile: row.profile.trim(),
-      connectionStatus: row.connectionStatus,
-      messageStatus: row.messageStatus,
-      linkedinMsg: row.linkedinMsg || row.messageStatus,
-      ...(row.messageStatus === 'future_lead' && row.futureLeadDate
-        ? { futureLeadDate: row.futureLeadDate }
-        : {}),
-    }));
+    const leads: Partial<Lead>[] = filled.map(({ row }) => {
+      const nameParts = splitProspectName(row.prospectName);
+      return {
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName,
+        prospectName: nameParts.prospectName.trim(),
+        email: row.email.trim(),
+        icp: row.icp.trim(),
+        profile: row.profile.trim(),
+        connectionStatus: row.connectionStatus,
+        messageStatus: row.messageStatus,
+        linkedinMsg: row.linkedinMsg || row.messageStatus,
+        ...(row.messageStatus === 'future_lead' && row.futureLeadDate
+          ? { futureLeadDate: row.futureLeadDate }
+          : {}),
+      };
+    });
 
     bulkCreate.mutate(
       { leads, updateDuplicates: false },
@@ -642,7 +641,7 @@ export const BulkAddLeadsPage = () => {
         }}
       >
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Required: First Name, Last Name, ICP, Profile
+          Required: Prospect Name, ICP, Profile
           {filledCount > 0 ? ` · Ready to submit ${filledCount} lead(s)` : ''}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
