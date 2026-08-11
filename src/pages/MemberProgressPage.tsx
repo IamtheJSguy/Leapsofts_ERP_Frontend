@@ -41,6 +41,7 @@ import { useUserSummary, useUserAttendanceSummary } from '@/hooks/api/useUsers';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { tokens } from '@/styles/tokens';
 import { formatDate, getDisplayName } from '@/utils/formatters';
+import { SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 
 const formatHoursToTimeStr = (hoursDecimal: number | undefined) => {
   if (hoursDecimal === undefined || hoursDecimal === null) return '0 min';
@@ -347,7 +348,7 @@ export default function MemberProgressPage() {
             }}
           >
             <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, letterSpacing: '-0.01em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-              Task Completion Trend (7 days ending {formatDate(selectedSummaryDate, 'MMM d')})
+              Completion Trend (7 days ending {formatDate(selectedSummaryDate, 'MMM d')})
             </Typography>
             <Box sx={{ width: '100%', height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -565,14 +566,23 @@ export default function MemberProgressPage() {
             </Grid>
           )
         ) : (
-          /* Daily KPIs List */
+          /* Daily KPIs List (includes sales KPIs for the selected day) */
           dailyKpis.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary" sx={{ fontWeight: 600 }}>No daily KPI targets assigned for today.</Typography>
             </Box>
           ) : (
             <Grid container spacing={2.5}>
-              {dailyKpis.map((kpi: any) => (
+              {dailyKpis.map((kpi: any) => {
+                const isSalesKpi = kpi.type === 'sales_kpi';
+                const progressValue = isSalesKpi
+                  ? (kpi.currentValue ?? kpi.actualValue ?? 0)
+                  : kpi.actualValue;
+                const statusLabel = isSalesKpi
+                  ? (SALES_KPI_STATUS_LABELS[kpi.status] ?? (kpi.isCompleted ? 'Completed' : 'Pending'))
+                  : (kpi.isCompleted ? 'Completed' : 'Pending');
+
+                return (
                 <Grid item xs={12} md={6} key={kpi.id}>
                   <Box
                     sx={{
@@ -612,9 +622,24 @@ export default function MemberProgressPage() {
                         )}
                       </Box>
                       <Box>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
-                          {kpi.kpiName}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                            {kpi.kpiName}
+                          </Typography>
+                          {isSalesKpi && (
+                            <Chip
+                              label="Sales KPI"
+                              size="small"
+                              sx={{
+                                fontWeight: 750,
+                                fontSize: '0.62rem',
+                                height: 20,
+                                bgcolor: 'rgba(109, 40, 217, 0.1)',
+                                color: tokens.brand.primary,
+                              }}
+                            />
+                          )}
+                        </Box>
                         {kpi.notes && (
                           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                             {kpi.notes}
@@ -624,11 +649,11 @@ export default function MemberProgressPage() {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                      {kpi.targetValue > 0 && (
+                      {(kpi.targetValue > 0 || isSalesKpi) && (
                         <Chip
                           label={
-                            kpi.isCompleted && kpi.actualValue != null
-                              ? `Actual: ${kpi.actualValue} / ${kpi.targetValue}`
+                            isSalesKpi || progressValue != null
+                              ? `${progressValue ?? 0} / ${kpi.targetValue}`
                               : `Target: ${kpi.targetValue}`
                           }
                           size="small"
@@ -641,7 +666,7 @@ export default function MemberProgressPage() {
                         />
                       )}
                       <Chip
-                        label={kpi.isCompleted ? 'Completed' : 'Pending'}
+                        label={statusLabel}
                         size="small"
                         sx={{
                           fontWeight: 800,
@@ -653,7 +678,8 @@ export default function MemberProgressPage() {
                     </Box>
                   </Box>
                 </Grid>
-              ))}
+                );
+              })}
             </Grid>
           )
         )}

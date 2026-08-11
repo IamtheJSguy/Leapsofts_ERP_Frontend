@@ -871,8 +871,21 @@ export interface DashboardStats {
     overdueTasks: number;
     completedKpis: number;
   };
-  kpiChartData?: { name: string; Target: number; Achieved: number }[];
-  dailyKpis?: any[];
+  kpiChartData?: { name: string; Target: number; Achieved: number; type?: 'daily_kpi' | 'sales_kpi' }[];
+  dailyKpis?: {
+    id: string;
+    kpiName: string;
+    targetValue: number;
+    actualValue: number | null;
+    isCompleted: boolean;
+    completedAt?: string | null;
+    notes?: string;
+    kanbanCardId?: string | null;
+    type?: 'daily_kpi' | 'sales_kpi';
+    metric?: string;
+    status?: string;
+    currentValue?: number;
+  }[];
   tasksList?: {
     id: string;
     title: string;
