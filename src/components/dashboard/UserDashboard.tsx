@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Grid,
   Box,
@@ -24,18 +24,34 @@ import { useDashboard } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useDailyKpis } from '@/hooks/api/useShifts';
+import { useMySalesKpis } from '@/hooks/api/useSalesKpis';
+import { SALES_KPI_STATUS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 import { useNavigate } from 'react-router-dom';
 import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
 
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
-import type { Meeting } from '@/types';
+import type { Meeting, SalesKpiEntry } from '@/types';
+
+const overlapsLocalDay = (entry: SalesKpiEntry, day = new Date()) => {
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(day);
+  dayEnd.setHours(23, 59, 59, 999);
+  const periodStart = new Date(entry.periodStart).getTime();
+  const periodEnd = new Date(entry.periodEnd).getTime();
+  return periodStart <= dayEnd.getTime() && periodEnd >= dayStart.getTime();
+};
+
+const isSalesKpiDone = (status?: string) =>
+  status === SALES_KPI_STATUS.COMPLETED_ON_TIME || status === SALES_KPI_STATUS.COMPLETED_LATE;
 
 export const UserDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, refetch } = useDashboard();
   const { data: boards } = useKanbanBoards();
   const { data: groupedKpis } = useDailyKpis();
+  const { data: salesGrouped } = useMySalesKpis({ days: 7 });
   const { data: allMeetings = [] } = useMeetings();
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -43,6 +59,35 @@ export const UserDashboard = () => {
   const [logCount, setLogCount] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
+
+  const todaySalesKpis = useMemo(() => {
+    if (!salesGrouped) return [] as SalesKpiEntry[];
+    const all = [
+      ...salesGrouped.active,
+      ...salesGrouped.overdue,
+      ...salesGrouped.incomplete,
+      ...salesGrouped.done,
+    ];
+    return all.filter((entry) => overlapsLocalDay(entry));
+  }, [salesGrouped]);
+
+  const salesCompletedCount = salesGrouped?.counts.done ?? 0;
+  const salesOverdueCount = salesGrouped?.counts.overdue ?? 0;
+  const todaySalesCompletedCount = useMemo(
+    () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
+    [todaySalesKpis],
+  );
+  const summaryIncludesSalesKpis = useMemo(
+    () => (stats?.kpiChartData ?? []).some((kpi) => kpi.type === 'sales_kpi'),
+    [stats?.kpiChartData],
+  );
+  /** Daily completed KPIs from summary, with any today-sales portion removed to avoid double-count. */
+  const completedDailyKpisCount = Math.max(
+    0,
+    (stats?.metrics?.completedKpis || 0) -
+      (summaryIncludesSalesKpis ? todaySalesCompletedCount : 0),
+  );
+  const completedKpisWithSales = completedDailyKpisCount + salesCompletedCount;
 
   // Keyboard shortcut listener for ⌘L / Ctrl+L
   useEffect(() => {
@@ -147,29 +192,62 @@ export const UserDashboard = () => {
         {/* Inline statistics counters - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 2.5 }}>
           {(() => {
-            const baseStats: any[] = stats?.kpiChartData && stats.kpiChartData.length > 0
-              ? stats.kpiChartData.map((kpi: any) => ({
-                  label: kpi.name.toUpperCase(),
-                  val: kpi.Achieved,
-                  target: kpi.Target,
-                }))
-              : [
-                  { label: 'COMPLETED KPIS', val: stats?.metrics?.completedKpis || 0, target: undefined },
-                ];
-            
-            // Use the overdue count from useDailyKpis directly as requested
-            const overdueKpisCount = groupedKpis?.counts?.overdue || 0;
-            const totalOverdue = (stats?.metrics?.overdueTasks || 0) + overdueKpisCount;
+            const dailyChartStats = (stats?.kpiChartData ?? [])
+              .filter((kpi) => kpi.type !== 'sales_kpi')
+              .map((kpi) => ({
+                label: String(kpi.name || 'KPI').toUpperCase(),
+                val: kpi.Achieved,
+                target: kpi.Target,
+              }));
 
-            return [
+            // Live sales board is the source of truth for today's sales KPI cards.
+            const salesChartFromBoard = todaySalesKpis.map((entry) => ({
+              label: entry.kpiName.toUpperCase(),
+              val: entry.currentValue ?? 0,
+              target: entry.targetValue ?? 0,
+            }));
+            const boardLabels = new Set(salesChartFromBoard.map((s) => s.label));
+            const salesChartFromSummary = (stats?.kpiChartData ?? [])
+              .filter((kpi) => kpi.type === 'sales_kpi')
+              .filter((kpi) => !boardLabels.has(String(kpi.name || '').toUpperCase()))
+              .map((kpi) => ({
+                label: String(kpi.name || 'Sales KPI').toUpperCase(),
+                val: kpi.Achieved,
+                target: kpi.Target,
+              }));
+            const salesChartStats = [...salesChartFromBoard, ...salesChartFromSummary];
+
+            type ActivityStat = {
+              label: string;
+              val: number;
+              target?: number;
+              isOverdue?: boolean;
+            };
+
+            const baseStats: ActivityStat[] =
+              dailyChartStats.length > 0 || salesChartStats.length > 0
+                ? [...dailyChartStats, ...salesChartStats]
+                : [
+                    {
+                      label: 'COMPLETED KPIS',
+                      val: completedKpisWithSales,
+                    },
+                  ];
+
+            const totalOverdue =
+              (stats?.metrics?.overdueTasks || 0) +
+              (groupedKpis?.counts?.overdue || 0) +
+              salesOverdueCount;
+
+            const activityStats: ActivityStat[] = [
               ...baseStats,
-              { 
-                label: 'OVERDUE', 
-                val: totalOverdue, 
-                target: undefined,
-                isOverdue: true 
-              }
+              {
+                label: 'OVERDUE',
+                val: totalOverdue,
+                isOverdue: true,
+              },
             ];
+            return activityStats;
           })().map((stat, i) => (
             <Grid item xs={6} sm={4} md={2.4} key={stat.label + i}>
               <Box
@@ -482,8 +560,20 @@ export const UserDashboard = () => {
           {[
             { label: 'Done this week', count: stats?.metrics?.completedTasks || 0, color: tokens.semantic.success, bg: 'rgba(45, 138, 94, 0.03)', border: 'rgba(45, 138, 94, 0.08)' },
             { label: 'Pending Tasks', count: stats?.metrics?.pendingTasks || 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
-            { label: 'Overdue', count: stats?.metrics?.overdueTasks || 0, color: tokens.semantic.error, bg: 'rgba(196, 69, 69, 0.03)', border: 'rgba(196, 69, 69, 0.08)' },
-            { label: 'Completed KPIs', count: stats?.metrics?.completedKpis || 0, color: tokens.brand.primary, bg: 'rgba(93, 26, 137, 0.03)', border: 'rgba(93, 26, 137, 0.08)' }
+            {
+              label: 'Overdue',
+              count: (stats?.metrics?.overdueTasks || 0) + (groupedKpis?.counts?.overdue || 0) + salesOverdueCount,
+              color: tokens.semantic.error,
+              bg: 'rgba(196, 69, 69, 0.03)',
+              border: 'rgba(196, 69, 69, 0.08)',
+            },
+            {
+              label: 'Completed KPIs',
+              count: completedKpisWithSales,
+              color: tokens.brand.primary,
+              bg: 'rgba(93, 26, 137, 0.03)',
+              border: 'rgba(93, 26, 137, 0.08)',
+            },
           ].map((item) => (
             <Grid item xs={6} sm={3} key={item.label}>
               <Box
