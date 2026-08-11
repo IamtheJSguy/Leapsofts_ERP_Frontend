@@ -522,6 +522,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 key={msg._id}
                 message={msg}
                 isOwn={isOwn}
+                currentUserId={user?._id}
                 otherParticipantIds={otherParticipantIds}
                 otherParticipants={otherParticipants}
                 isGroup={isGroupConversation}

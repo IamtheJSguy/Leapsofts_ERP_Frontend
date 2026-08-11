@@ -1,10 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { SOCKET_EVENTS } from '@/lib/constants';
-import type { Conversation, Message, Notification, PresenceStatus, User } from '@/types';
+import type { Conversation, Message, MessageReaction, Notification, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap } from '@/utils/chatMessageUtils';
+import { getDisplayName } from '@/utils/formatters';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -12,6 +13,9 @@ const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 // rooms. Users who have joined a conversation room receive it twice.
 // Track recently processed message IDs and ignore the duplicate delivery.
 const recentlyProcessedMessages = new Set<string>();
+
+// Dual-emit dedupe for message:reaction (conversation room + user room).
+const recentlyProcessedReactions = new Set<string>();
 
 const notificationSound = new Audio('/notfication.mp3');
 notificationSound.preload = 'auto';
@@ -333,6 +337,95 @@ export const setupSocketEventHandlers = (
     }, 3000);
 
     typingTimeouts.set(timeoutKey, timeoutId);
+  });
+
+  socket.on(SOCKET_EVENTS.MESSAGE_REACTION, (data: unknown) => {
+    const payload = data as {
+      conversationId: string;
+      messageId: string;
+      reactions: MessageReaction[];
+      messageSenderId: string;
+      reactorId: string;
+      emoji: string;
+      action: 'added' | 'changed' | 'removed';
+      reactor?: User | { _id?: string; firstName?: string; lastName?: string; name?: string; avatar?: string };
+    };
+
+    const {
+      conversationId,
+      messageId,
+      reactions,
+      messageSenderId,
+      reactorId,
+      emoji,
+      action,
+      reactor,
+    } = payload || {};
+
+    if (!conversationId || !messageId || !Array.isArray(reactions)) return;
+
+    // Dedupe dual delivery (conversation room + user room)
+    const dedupeKey = `${messageId}:${reactorId}:${emoji}:${action}:${reactions.length}`;
+    if (recentlyProcessedReactions.has(dedupeKey)) return;
+    recentlyProcessedReactions.add(dedupeKey);
+    setTimeout(() => recentlyProcessedReactions.delete(dedupeKey), 5000);
+
+    queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
+      if (!old) return old;
+      let changed = false;
+      const next = old.map((msg) => {
+        if (msg._id !== messageId) return msg;
+        changed = true;
+        return { ...msg, reactions };
+      });
+      return changed ? next : old;
+    });
+
+    const currentUserId = useAuthStore.getState().user?._id;
+    const chatStore = useChatStore.getState();
+
+    // Author alert: toast + sound when someone reacts to your message
+    // (mirror message:new UX — not portal notifications)
+    if (
+      (action === 'added' || action === 'changed') &&
+      currentUserId &&
+      messageSenderId === currentUserId &&
+      reactorId !== currentUserId &&
+      chatStore.activeConversationId !== conversationId
+    ) {
+      try {
+        notificationSound.currentTime = 0;
+        notificationSound.play().catch((e) => console.error('Audio playback failed:', e));
+      } catch {
+        console.error('Audio not supported');
+      }
+
+      let reactorName = 'Someone';
+      let reactorAvatar: string | undefined;
+      if (reactor && typeof reactor === 'object') {
+        const r = reactor as {
+          firstName?: string;
+          lastName?: string;
+          name?: string;
+          avatar?: string;
+          email?: string;
+        };
+        if (r.firstName || r.lastName) {
+          reactorName = getDisplayName(r);
+        } else if (r.name) {
+          reactorName = r.name;
+        }
+        reactorAvatar = r.avatar;
+      }
+
+      useUIStore.getState().addToast({
+        message: emoji ? `Reacted ${emoji}` : 'Reacted to your message',
+        severity: 'message',
+        title: reactorName,
+        avatar: reactorAvatar,
+        conversationId,
+      });
+    }
   });
 };
 

@@ -85,6 +85,7 @@ export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
   MESSAGE_READ: 'message:read',
   MESSAGE_DELIVERED: 'message:delivered',
+  MESSAGE_REACTION: 'message:reaction',
   NOTIFICATION_NEW: 'notification:new',
   KANBAN_CARD_MOVED: 'kanban:card_moved',
   KANBAN_COMMENT_ADDED: 'kanban:comment_added',
@@ -102,6 +103,9 @@ export const SOCKET_EVENTS = {
   CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
 } as const;
+
+/** Quick-bar emojis shown on message hover (full picker via +). */
+export const QUICK_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
 
 export const PRESENCE_COLORS = {
   online: '#2D8A5E',
