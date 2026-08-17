@@ -398,6 +398,8 @@ export interface SalesKpiEntry {
   /** Set once the deadline passed; frozen entries never increment again. */
   frozenAt?: string | null;
   isActive?: boolean;
+  /** User-provided reason/comment, only settable while status is incomplete or overdue. */
+  comment?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

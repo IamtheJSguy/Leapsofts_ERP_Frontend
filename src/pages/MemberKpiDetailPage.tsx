@@ -352,6 +352,7 @@ export default function MemberKpiDetailPage() {
                 isCompleted={isSalesDone(entry.status)}
                 actual={entry.currentValue}
                 target={entry.targetValue}
+                notes={entry.comment}
                 periodStart={entry.periodStart}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
@@ -464,7 +465,7 @@ function KpiDetailCard({
         />
       </Box>
 
-      {kind === 'daily' && (
+      {(kind === 'daily' || notes) && (
         <Box
           sx={{
             px: 1.75,
