@@ -24,6 +24,7 @@ import {
   KanbanBoardPage,
   AttendancePage,
   MemberProgressPage,
+  MemberKpiDetailPage,
   LeadDetailsPage,
   BulkAddLeadsPage,
 } from './lazy-pages';
@@ -60,6 +61,14 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <TasksPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'tasks/member/:userId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+            <MemberKpiDetailPage />
           </ProtectedRoute>,
         ),
       },

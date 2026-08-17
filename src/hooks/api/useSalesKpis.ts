@@ -12,6 +12,7 @@ import type {
   SalesKpiTemplate,
   SalesKpiTemplateDetail,
   SalesKpiTemplateItem,
+  SalesKpiProgressEvent,
 } from '@/types';
 
 export interface SalesKpiTemplatePayload {
@@ -38,6 +39,11 @@ const salesKpiApi = {
     api.get<{ success: boolean; data: SalesKpiSummary }>('/sales-kpis/summary', { params }),
   getTeamSalesKpis: (params: TeamSalesKpisParams) =>
     api.get<{ success: boolean; data: SalesKpiEntry[] }>('/sales-kpis/team', { params }),
+  getProgressEvents: (params: TeamSalesKpisParams) =>
+    api.get<{ success: boolean; data: SalesKpiProgressEvent[] }>(
+      '/sales-kpis/progress-events',
+      { params },
+    ),
 
   getTemplates: () => api.get<{ success: boolean; data: SalesKpiTemplate[] }>('/sales-kpi-templates'),
   getTemplate: (id: string) =>
@@ -99,6 +105,16 @@ export const useTeamSalesKpis = (
   useQuery({
     queryKey: ['salesKpis', 'team', params],
     queryFn: () => salesKpiApi.getTeamSalesKpis(params!).then((r) => r.data.data),
+    enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
+  });
+
+export const useSalesKpiProgressEvents = (
+  params: TeamSalesKpisParams | null,
+  options?: { enabled?: boolean },
+) =>
+  useQuery({
+    queryKey: ['salesKpis', 'progress-events', params],
+    queryFn: () => salesKpiApi.getProgressEvents(params!).then((r) => r.data.data),
     enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
   });
 

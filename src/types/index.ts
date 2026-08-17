@@ -13,7 +13,17 @@ export type MessageStatus =
   | 'follow_up'
   | 'negative'
   | 'positive'
-  | 'future_lead';
+  | 'future_lead'
+  | 'invalid_lead';
+
+export type LeadCommentLevel = 'red' | 'yellow' | 'green';
+
+export interface LeadComment {
+  text: string;
+  level: LeadCommentLevel;
+  updatedAt?: string;
+  updatedBy?: string | User;
+}
 
 export type PipelineMetric = 'new_prospects' | 'follow_ups' | 'meetings_taken';
 
@@ -111,6 +121,7 @@ export interface Lead {
   notes?: string;
   futureLeadDate?: string;
   futureLeadRemindersSent?: Record<string, string>;
+  leadComment?: LeadComment;
 }
 
 export interface FollowUpEntry {
@@ -389,6 +400,17 @@ export interface SalesKpiEntry {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface SalesKpiProgressEvent {
+  _id: string;
+  entryId?: string | SalesKpiEntry | null;
+  userId: string | User;
+  metric: SalesKpiMetric;
+  sourceType: string;
+  sourceId: string;
+  sequence: number;
+  occurredAt: string;
 }
 
 export interface GroupedSalesKpis {

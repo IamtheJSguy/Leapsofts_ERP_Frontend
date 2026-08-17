@@ -61,6 +61,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
+import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
@@ -314,13 +315,18 @@ export const SalesPage = () => {
     if (newLeadData.messageStatus === 'future_lead' && !newLeadData.futureLeadDate) {
       errors.futureLeadDate = true;
     }
+    if (newLeadData.messageStatus === 'invalid_lead' && !newLeadData.leadComment?.text?.trim()) {
+      errors.leadComment = true;
+    }
 
     if (Object.keys(errors).length > 0) {
       setAddLeadErrors(errors);
       addToast({
         message: errors.futureLeadDate
           ? 'Please select a Future Lead date.'
-          : 'Please fill in all required fields.',
+          : errors.leadComment
+            ? 'Please add a reason comment for the Invalid Lead status.'
+            : 'Please fill in all required fields.',
         severity: 'error',
       });
       return;
@@ -430,6 +436,10 @@ export const SalesPage = () => {
 
     if (dataToSave.messageStatus === 'future_lead' && !dataToSave.futureLeadDate) {
       addToast({ message: 'Please select a Future Lead date.', severity: 'error' });
+      return;
+    }
+    if (dataToSave.messageStatus === 'invalid_lead' && !dataToSave.leadComment?.text?.trim()) {
+      addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' });
       return;
     }
 
@@ -1349,6 +1359,7 @@ export const SalesPage = () => {
                 <MenuItem value="negative">Negative</MenuItem>
                 <MenuItem value="positive">Positive</MenuItem>
                 <MenuItem value="future_lead">Future Lead</MenuItem>
+                <MenuItem value="invalid_lead">Invalid Lead</MenuItem>
               </Select>
             </FormControl>
 
@@ -1658,63 +1669,79 @@ export const SalesPage = () => {
                         }}
                       >
                         {/* Prospect Details */}
-                        <TableCell
-                          sx={{ py: 2, borderBottom: 0, pl: 3, cursor: 'pointer' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenUpdateLead(String(prospect._id));
-                          }}
-                        >
-                          <Box
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleOpenUpdateLead(String(prospect._id));
-                              }
-                            }}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1.75,
-                              borderRadius: '12px',
-                              transition: 'opacity 0.15s',
-                              '&:hover': { opacity: 0.85 },
-                              outline: 'none',
-                            }}
-                          >
-                            <Avatar
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleOpenUpdateLead(String(prospect._id))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleOpenUpdateLead(String(prospect._id));
+                                }
+                              }}
                               sx={{
-                                width: 38,
-                                height: 38,
-                                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#F2EEEC',
-                                color: isDarkMode ? '#fff' : '#1A1625',
-                                fontSize: '0.84rem',
-                                fontWeight: 800,
-                                border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0,0,0,0.03)'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.75,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                transition: 'opacity 0.15s',
+                                '&:hover': { opacity: 0.85 },
+                                outline: 'none',
+                                flex: 1,
+                                minWidth: 0,
                               }}
                             >
-                              {initials}
-                            </Avatar>
-                            <Box>
-                              <Typography
-                                variant="subtitle2"
+                              <Avatar
                                 sx={{
-                                  fontWeight: 750,
-                                  color: isDarkMode ? '#fff' : tokens.text.primary,
-                                  fontSize: '0.88rem',
-                                  '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                  width: 38,
+                                  height: 38,
+                                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : '#F2EEEC',
+                                  color: isDarkMode ? '#fff' : '#1A1625',
+                                  fontSize: '0.84rem',
+                                  fontWeight: 800,
+                                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0,0,0,0.03)'}`,
                                 }}
                               >
-                                {nameToUse}
-                              </Typography>
-                              {prospect.email && (
-                                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
-                                  <EmailIcon sx={{ fontSize: 12 }} />
-                                  {prospect.email}
+                                {initials}
+                              </Avatar>
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  sx={{
+                                    fontWeight: 750,
+                                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                                    fontSize: '0.88rem',
+                                    '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                  }}
+                                >
+                                  {nameToUse}
                                 </Typography>
-                              )}
+                                {prospect.email && (
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                                    <EmailIcon sx={{ fontSize: 12 }} />
+                                    {prospect.email}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                            <Box onClick={(e) => e.stopPropagation()}>
+                              <LeadCommentButton
+                                comment={prospect.leadComment}
+                                onSave={(comment) =>
+                                  updateLead.mutate(
+                                    { id: prospect._id, data: { leadComment: comment } },
+                                    {
+                                      onSuccess: () =>
+                                        addToast({ message: 'Comment saved', severity: 'success' }),
+                                      onError: () =>
+                                        addToast({ message: 'Failed to save comment', severity: 'error' }),
+                                    },
+                                  )
+                                }
+                              />
                             </Box>
                           </Box>
                         </TableCell>

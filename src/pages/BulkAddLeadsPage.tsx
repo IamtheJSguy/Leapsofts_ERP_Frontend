@@ -27,8 +27,9 @@ import {
 } from '@/lib/bulkAddLeadsCsv';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
-import type { ConnectionStatus, Lead, MessageStatus } from '@/types';
+import type { ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
 import { splitProspectName } from '@/utils/formatters';
+import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
 
 const INITIAL_ROWS = 100;
 const GROW_BY = 20;
@@ -44,6 +45,7 @@ type BulkLeadRow = {
   messageStatus: MessageStatus | '';
   linkedinMsg: string;
   futureLeadDate?: string;
+  leadComment?: LeadComment;
 };
 
 type RowErrors = Record<string, boolean>;
@@ -99,6 +101,10 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
         typeof row.futureLeadDate === 'string' && row.futureLeadDate
           ? row.futureLeadDate
           : undefined,
+      leadComment:
+        row.leadComment && typeof row.leadComment === 'object'
+          ? (row.leadComment as LeadComment)
+          : undefined,
     };
   });
 
@@ -115,6 +121,9 @@ const validateRow = (row: BulkLeadRow): RowErrors => {
   if (!row.profile.trim()) errors.profile = true;
   if (row.messageStatus === 'future_lead' && !row.futureLeadDate) {
     errors.futureLeadDate = true;
+  }
+  if (row.messageStatus === 'invalid_lead' && !row.leadComment?.text?.trim()) {
+    errors.leadComment = true;
   }
   return errors;
 };
@@ -141,6 +150,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
   onUpdate: (index: number, patch: Partial<BulkLeadRow>) => void;
 }) {
   const hasError = Object.keys(errors).length > 0;
+  const [promptInvalidComment, setPromptInvalidComment] = useState(false);
 
   return (
     <tr
@@ -167,18 +177,27 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         {index + 1}
       </td>
       <td style={{ borderBottom: `1px solid ${borderColor}`, padding: '10px', verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input
-            placeholder="Prospect Name *"
-            value={row.prospectName}
-            onChange={(e) => onUpdate(index, { prospectName: e.target.value })}
-            style={nativeFieldStyle(isDarkMode, !!errors.prospectName)}
-          />
-          <input
-            placeholder="Email"
-            value={row.email}
-            onChange={(e) => onUpdate(index, { email: e.target.value })}
-            style={nativeFieldStyle(isDarkMode)}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+            <input
+              placeholder="Prospect Name *"
+              value={row.prospectName}
+              onChange={(e) => onUpdate(index, { prospectName: e.target.value })}
+              style={nativeFieldStyle(isDarkMode, !!errors.prospectName)}
+            />
+            <input
+              placeholder="Email"
+              value={row.email}
+              onChange={(e) => onUpdate(index, { email: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+          </div>
+          <LeadCommentButton
+            comment={row.leadComment}
+            onSave={(comment) => onUpdate(index, { leadComment: comment })}
+            promptOpen={promptInvalidComment}
+            onPromptHandled={() => setPromptInvalidComment(false)}
+            requireReason={row.messageStatus === 'invalid_lead'}
           />
         </div>
       </td>
@@ -259,6 +278,9 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
                 linkedinMsg: messageStatus,
                 ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
               });
+              if (messageStatus === 'invalid_lead') {
+                setPromptInvalidComment(true);
+              }
             }}
             style={nativeFieldStyle(isDarkMode)}
           >
@@ -270,6 +292,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
             <option value="negative">Negative</option>
             <option value="positive">Positive</option>
             <option value="future_lead">Future Lead</option>
+            <option value="invalid_lead">Invalid Lead</option>
           </select>
           {row.messageStatus === 'future_lead' && (
             <input
@@ -496,11 +519,13 @@ export const BulkAddLeadsPage = () => {
 
     const errors: Record<number, RowErrors> = {};
     let hasFutureDateError = false;
+    let hasCommentError = false;
     for (const { index, row } of filled) {
       const rowErr = validateRow(row);
       if (Object.keys(rowErr).length > 0) {
         errors[index] = rowErr;
         if (rowErr.futureLeadDate) hasFutureDateError = true;
+        if (rowErr.leadComment) hasCommentError = true;
       }
     }
 
@@ -509,7 +534,9 @@ export const BulkAddLeadsPage = () => {
       addToast({
         message: hasFutureDateError
           ? 'Please select a Future Lead date for all Future Lead rows.'
-          : 'Please fill in all required fields on highlighted rows.',
+          : hasCommentError
+            ? 'Please add a reason comment for all Invalid Lead rows.'
+            : 'Please fill in all required fields on highlighted rows.',
         severity: 'error',
       });
       const firstErrorIndex = Number(Object.keys(errors)[0]);
@@ -536,6 +563,7 @@ export const BulkAddLeadsPage = () => {
         ...(messageStatus === 'future_lead' && row.futureLeadDate
           ? { futureLeadDate: row.futureLeadDate }
           : {}),
+        ...(row.leadComment ? { leadComment: row.leadComment } : {}),
       };
     });
 

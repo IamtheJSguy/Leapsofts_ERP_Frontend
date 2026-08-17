@@ -14,7 +14,16 @@ export const MESSAGE_STATUS = {
   NEGATIVE: 'negative',
   POSITIVE: 'positive',
   FUTURE_LEAD: 'future_lead',
+  INVALID_LEAD: 'invalid_lead',
 } as const;
+
+export const LEAD_COMMENT_LEVEL = {
+  RED: 'red',
+  YELLOW: 'yellow',
+  GREEN: 'green',
+} as const;
+
+export const LEAD_COMMENT_LEVEL_OPTIONS = Object.values(LEAD_COMMENT_LEVEL);
 
 export const PIPELINE_METRIC = {
   NEW_PROSPECTS: 'new_prospects',
