@@ -111,8 +111,14 @@ export const Header = () => {
             color: 'text.secondary',
             bgcolor: 'background.paper',
             border: `1px solid ${tokens.surface.border}`,
-            display: { xs: 'inline-flex', md: 'none' },
-            '&:hover': { bgcolor: tokens.brand.primary50 },
+            display: 'inline-flex',
+            '&:hover': {
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.06)'
+                  : tokens.brand.primary50,
+              color: tokens.brand.primary,
+            },
           }}
         >
           <MenuIcon />

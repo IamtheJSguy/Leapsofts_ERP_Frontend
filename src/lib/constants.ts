@@ -25,7 +25,6 @@ export const PIPELINE_METRIC = {
 export const SALES_KPI_METRIC = {
   NEW_PROSPECTS: 'new_prospects',
   MESSAGES_SENT: 'messages_sent',
-  RESPONSES: 'responses',
   FOLLOW_UPS: 'follow_ups',
 } as const;
 
@@ -130,7 +129,6 @@ export const SALES_KPI_METRIC_OPTIONS = Object.values(SALES_KPI_METRIC);
 export const SALES_KPI_METRIC_LABELS: Record<string, string> = {
   new_prospects: 'New Prospects',
   messages_sent: 'Messages Sent',
-  responses: 'Responses',
   follow_ups: 'Follow-Ups',
 };
 

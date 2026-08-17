@@ -256,7 +256,7 @@ export interface KPITemplate {
 }
 
 /** Sales KPI subsystem — day-of-week scheduled, auto-generated, auto-progressed. */
-export type SalesKpiMetric = 'new_prospects' | 'messages_sent' | 'responses' | 'follow_ups';
+export type SalesKpiMetric = 'new_prospects' | 'messages_sent' | 'follow_ups';
 
 export type SalesKpiScheduleMode = 'per_day' | 'span';
 

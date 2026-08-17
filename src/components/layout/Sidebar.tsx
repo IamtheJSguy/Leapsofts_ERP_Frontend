@@ -420,6 +420,13 @@ export const Sidebar = () => {
       sx={{
         width: sidebarOpen ? DRAWER_WIDTH : 0,
         flexShrink: 0,
+        transition: (t) =>
+          t.transitions.create('width', {
+            easing: t.transitions.easing.sharp,
+            duration: sidebarOpen
+              ? t.transitions.duration.enteringScreen
+              : t.transitions.duration.leavingScreen,
+          }),
         '& .MuiDrawer-paper': paperSx,
       }}
     >
