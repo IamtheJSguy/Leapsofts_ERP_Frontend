@@ -45,6 +45,9 @@ const salesKpiApi = {
       { params },
     ),
 
+  addComment: ({ id, comment }: { id: string; comment: string }) =>
+    api.patch<{ success: boolean; data: SalesKpiEntry }>(`/sales-kpis/${id}/comment`, { comment }),
+
   getTemplates: () => api.get<{ success: boolean; data: SalesKpiTemplate[] }>('/sales-kpi-templates'),
   getTemplate: (id: string) =>
     api.get<{ success: boolean; data: SalesKpiTemplateDetail }>(`/sales-kpi-templates/${id}`),
@@ -117,6 +120,17 @@ export const useSalesKpiProgressEvents = (
     queryFn: () => salesKpiApi.getProgressEvents(params!).then((r) => r.data.data),
     enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
   });
+
+/** Owner-only: attach an explanatory reason/comment to an incomplete or overdue entry. */
+export const useAddSalesKpiComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: salesKpiApi.addComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+    },
+  });
+};
 
 export const useMySalesKpiAssignments = (options?: { enabled?: boolean }) =>
   useQuery({

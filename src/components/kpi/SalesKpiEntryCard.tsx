@@ -1,10 +1,26 @@
-import { Box, Chip, LinearProgress, Typography, useTheme } from '@mui/material';
+import { useState } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+  TextField,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
+import { useAddSalesKpiComment } from '@/hooks/api/useSalesKpis';
 import { SALES_KPI_METRIC_LABELS, SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 import { formatKpiDueDate } from '@/utils/formatters';
@@ -20,17 +36,47 @@ const STATUS_COLORS: Record<SalesKpiStatus, string> = {
 };
 
 const isDone = (status: SalesKpiStatus) => status === 'completed_on_time' || status === 'completed_late';
+/** Only incomplete/overdue entries may carry a user-provided reason/comment. */
+const isCommentable = (status: SalesKpiStatus) => status === 'missed' || status === 'partial';
 
-/** Read-only card for an auto-generated sales KPI. Progress comes from the pipeline, never from the user. */
-export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
+/**
+ * Card for an auto-generated sales KPI. Progress comes from the pipeline, never from
+ * the user — the only user input allowed is an explanatory comment on incomplete/overdue
+ * entries. Pass `canEdit={false}` for read-only contexts (e.g. admin/manager team views).
+ */
+export const SalesKpiEntryCard = ({
+  entry,
+  canEdit = true,
+}: {
+  entry: SalesKpiEntry;
+  canEdit?: boolean;
+}) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const addComment = useAddSalesKpiComment();
 
   const target = entry.targetValue ?? 0;
   const current = entry.currentValue ?? 0;
   const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : isDone(entry.status) ? 100 : 0;
   const statusColor = STATUS_COLORS[entry.status] ?? tokens.semantic.neutral;
   const completed = isDone(entry.status);
+  const commentable = isCommentable(entry.status);
+
+  const openCommentDialog = () => {
+    setCommentInput(entry.comment ?? '');
+    setCommentDialogOpen(true);
+  };
+
+  const saveComment = () => {
+    const comment = commentInput.trim();
+    if (!comment) return;
+    addComment.mutate(
+      { id: entry._id, comment },
+      { onSuccess: () => setCommentDialogOpen(false) },
+    );
+  };
 
   return (
     <Box
@@ -95,7 +141,34 @@ export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
               {entry.description}
             </Typography>
           )}
+          {entry.comment && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: tokens.semantic.warning,
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              Reason: {entry.comment}
+            </Typography>
+          )}
         </Box>
+
+        {canEdit && commentable && (
+          <IconButton
+            size="small"
+            onClick={openCommentDialog}
+            title={entry.comment ? 'Edit reason' : 'Add reason'}
+            sx={{ color: tokens.brand.primary }}
+          >
+            <EditNoteIcon fontSize="small" />
+          </IconButton>
+        )}
 
         <Chip
           label={SALES_KPI_STATUS_LABELS[entry.status] ?? entry.status}
@@ -131,6 +204,40 @@ export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
           Progress updates automatically from your pipeline activity.
         </Typography>
       </Box>
+
+      <Dialog open={commentDialogOpen} onClose={() => setCommentDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          {entry.comment ? 'Edit reason' : 'Add reason'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
+            {entry.kpiName}
+          </Typography>
+          <TextField
+            label="Reason / comment"
+            value={commentInput}
+            onChange={(e) => setCommentInput(e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+            autoFocus
+            inputProps={{ maxLength: 1000 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCommentDialogOpen(false)} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveComment}
+            disabled={!commentInput.trim() || addComment.isPending}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
