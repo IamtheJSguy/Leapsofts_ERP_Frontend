@@ -1341,7 +1341,7 @@ export const SalesPage = () => {
                 }}
                 input={<OutlinedInput />}
               >
-                <MenuItem value="All statuses">All statuses</MenuItem>
+                <MenuItem value="All statuses">Message status</MenuItem>
                 <MenuItem value="not_sent">Not Sent</MenuItem>
                 <MenuItem value="sent">Sent</MenuItem>
                 <MenuItem value="replied">Replied</MenuItem>
