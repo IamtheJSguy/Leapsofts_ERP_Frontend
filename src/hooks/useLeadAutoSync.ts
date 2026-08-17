@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import api from '@/lib/axios';
-import type { ConnectionStatus, Lead, MessageStatus } from '@/types';
+import type { ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 export type EditableLeadData = {
@@ -16,6 +16,7 @@ export type EditableLeadData = {
   messageStatus: MessageStatus;
   linkedinMsg: string;
   futureLeadDate?: string;
+  leadComment?: LeadComment;
 };
 
 export type LeadSyncStats = {
@@ -37,6 +38,7 @@ const EDITABLE_FIELDS = [
   'messageStatus',
   'linkedinMsg',
   'futureLeadDate',
+  'leadComment',
 ] as const;
 
 type EditableField = (typeof EDITABLE_FIELDS)[number];
@@ -57,6 +59,11 @@ const normalizeValue = (field: EditableField, value: unknown): string => {
     } catch {
       return String(value);
     }
+  }
+  if (field === 'leadComment') {
+    if (!value || typeof value !== 'object') return '';
+    const comment = value as LeadComment;
+    return `${comment.level}:${comment.text}`;
   }
   return value == null ? '' : String(value);
 };
@@ -81,12 +88,14 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
     futureLeadDate: prospect.futureLeadDate
       ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
       : undefined,
+    leadComment: prospect.leadComment || undefined,
   };
 };
 
 export const cloneEditData = (data: EditableLeadData): EditableLeadData => ({
   ...data,
   futureLeadDate: data.futureLeadDate || undefined,
+  leadComment: data.leadComment ? { ...data.leadComment } : undefined,
 });
 
 export const isLeadEditEqual = (a?: EditableLeadData, b?: EditableLeadData): boolean => {
@@ -110,6 +119,7 @@ export const getChangedLeadIds = (
 
 const isValidForSync = (data: EditableLeadData): boolean => {
   if (data.messageStatus === 'future_lead' && !data.futureLeadDate) return false;
+  if (data.messageStatus === 'invalid_lead' && !data.leadComment?.text?.trim()) return false;
   return true;
 };
 
@@ -393,6 +403,7 @@ export const useLeadAutoSync = ({
           messageStatus: (data.messageStatus || 'not_sent') as MessageStatus,
           linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
           futureLeadDate: data.futureLeadDate || undefined,
+          leadComment: data.leadComment || undefined,
         };
       }
 
@@ -414,6 +425,7 @@ export const useLeadAutoSync = ({
           messageStatus: (data.messageStatus || 'not_sent') as MessageStatus,
           linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
           futureLeadDate: data.futureLeadDate || undefined,
+          leadComment: data.leadComment || undefined,
         };
       }
 

@@ -59,23 +59,41 @@ export const SalesKpiEntryCard = ({ entry }: { entry: SalesKpiEntry }) => {
           )}
         </Box>
 
-        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', color: completed ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
-            {entry.kpiName}
-          </Typography>
-          <PriorityBadge priority={entry.priority} />
-          <Chip
-            icon={<TrackChangesOutlinedIcon sx={{ fontSize: 14 }} />}
-            label={`Auto-tracked: ${SALES_KPI_METRIC_LABELS[entry.metric] ?? entry.metric}`}
-            size="small"
-            sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
-          />
-          {entry.scheduleMode === 'span' && (
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', color: completed ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
+              {entry.kpiName}
+            </Typography>
+            <PriorityBadge priority={entry.priority} />
             <Chip
-              label="Multi-day"
+              icon={<TrackChangesOutlinedIcon sx={{ fontSize: 14 }} />}
+              label={`Auto-tracked: ${SALES_KPI_METRIC_LABELS[entry.metric] ?? entry.metric}`}
               size="small"
-              sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
+              sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
             />
+            {entry.scheduleMode === 'span' && (
+              <Chip
+                label="Multi-day"
+                size="small"
+                sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
+              />
+            )}
+          </Box>
+          {entry.description && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: tokens.text.muted,
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {entry.description}
+            </Typography>
           )}
         </Box>
 

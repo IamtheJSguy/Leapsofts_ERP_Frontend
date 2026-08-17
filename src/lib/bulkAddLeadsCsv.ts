@@ -40,6 +40,7 @@ const MESSAGE_STATUSES: MessageStatus[] = [
   'negative',
   'positive',
   'future_lead',
+  'invalid_lead',
 ];
 
 const HEADER_ALIASES: Record<string, string[]> = {
@@ -119,6 +120,7 @@ const matchMessageStatus = (raw: string): MessageStatus | '' => {
   if (spaced.includes('in conversation')) return 'replied';
   if (spaced.includes('follow up') || compact === 'followup') return 'follow_up';
   if (spaced.includes('future lead') || compact === 'futurelead') return 'future_lead';
+  if (spaced.includes('invalid')) return 'invalid_lead';
   return '';
 };
 

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   Box,
   IconButton,
@@ -10,9 +10,10 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { tokens } from '@/styles/tokens';
 import type { EditableLeadData } from '@/hooks/useLeadAutoSync';
-import type { ConnectionStatus, MessageStatus } from '@/types';
+import type { ConnectionStatus, LeadComment, MessageStatus } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { nativeFieldStyle } from './nativeFieldStyles';
+import { LeadCommentButton } from './LeadCommentButton';
 
 type OptionItem = { _id: string; name: string };
 
@@ -50,6 +51,7 @@ export const SalesEditRow = memo(function SalesEditRow({
   onFollowUpChange,
 }: SalesEditRowProps) {
   const field = nativeFieldStyle(isDarkMode);
+  const [promptInvalidComment, setPromptInvalidComment] = useState(false);
   const prospectNameValue =
     editData.prospectName !== undefined && editData.prospectName !== null
       ? editData.prospectName
@@ -63,18 +65,27 @@ export const SalesEditRow = memo(function SalesEditRow({
       }}
     >
       <TableCell sx={{ py: 2, pl: 3 }}>
-        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <input
-            placeholder="Prospect Name"
-            value={prospectNameValue}
-            onChange={(e) => onUpdate(leadId, splitProspectName(e.target.value))}
-            style={field}
-          />
-          <input
-            placeholder="Email"
-            value={editData.email}
-            onChange={(e) => onUpdate(leadId, { email: e.target.value })}
-            style={field}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
+            <input
+              placeholder="Prospect Name"
+              value={prospectNameValue}
+              onChange={(e) => onUpdate(leadId, splitProspectName(e.target.value))}
+              style={field}
+            />
+            <input
+              placeholder="Email"
+              value={editData.email}
+              onChange={(e) => onUpdate(leadId, { email: e.target.value })}
+              style={field}
+            />
+          </Box>
+          <LeadCommentButton
+            comment={editData.leadComment}
+            onSave={(comment) => onUpdate(leadId, { leadComment: comment })}
+            promptOpen={promptInvalidComment}
+            onPromptHandled={() => setPromptInvalidComment(false)}
+            requireReason={editData.messageStatus === 'invalid_lead'}
           />
         </Box>
       </TableCell>
@@ -131,6 +142,9 @@ export const SalesEditRow = memo(function SalesEditRow({
                 linkedinMsg: messageStatus,
                 ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
               });
+              if (messageStatus === 'invalid_lead') {
+                setPromptInvalidComment(true);
+              }
             }}
             style={field}
           >
@@ -141,6 +155,7 @@ export const SalesEditRow = memo(function SalesEditRow({
             <option value="negative">Msg: Negative</option>
             <option value="positive">Msg: Positive</option>
             <option value="future_lead">Msg: Future Lead</option>
+            <option value="invalid_lead">Msg: Invalid Lead</option>
           </select>
           {editData.messageStatus === 'future_lead' && (
             <input
@@ -223,6 +238,7 @@ type SalesInlineAddRowProps = {
     connectionStatus?: ConnectionStatus | string;
     messageStatus?: MessageStatus | string;
     futureLeadDate?: string;
+    leadComment?: LeadComment;
   };
   errors: Record<string, boolean>;
   isDarkMode: boolean;
@@ -250,6 +266,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
       ? data.prospectName
       : composeProspectName(data);
   const prospectNameError = !!(errors.prospectName || errors.firstName || errors.lastName);
+  const [promptInvalidComment, setPromptInvalidComment] = useState(false);
 
   return (
     <TableRow
@@ -259,18 +276,27 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
       }}
     >
       <TableCell sx={{ py: 2, pl: 3 }}>
-        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <input
-            placeholder="Prospect Name *"
-            value={prospectNameValue}
-            onChange={(e) => onUpdate(splitProspectName(e.target.value))}
-            style={nativeFieldStyle(isDarkMode, prospectNameError)}
-          />
-          <input
-            placeholder="Email"
-            value={data.email || ''}
-            onChange={(e) => onUpdate({ email: e.target.value })}
-            style={nativeFieldStyle(isDarkMode)}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
+            <input
+              placeholder="Prospect Name *"
+              value={prospectNameValue}
+              onChange={(e) => onUpdate(splitProspectName(e.target.value))}
+              style={nativeFieldStyle(isDarkMode, prospectNameError)}
+            />
+            <input
+              placeholder="Email"
+              value={data.email || ''}
+              onChange={(e) => onUpdate({ email: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+          </Box>
+          <LeadCommentButton
+            comment={data.leadComment}
+            onSave={(comment) => onUpdate({ leadComment: comment })}
+            promptOpen={promptInvalidComment}
+            onPromptHandled={() => setPromptInvalidComment(false)}
+            requireReason={data.messageStatus === 'invalid_lead'}
           />
         </Box>
       </TableCell>
@@ -325,6 +351,9 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
                 linkedinMsg: messageStatus,
                 ...(messageStatus !== 'future_lead' ? { futureLeadDate: undefined } : {}),
               });
+              if (messageStatus === 'invalid_lead') {
+                setPromptInvalidComment(true);
+              }
             }}
             style={nativeFieldStyle(isDarkMode)}
           >
@@ -335,6 +364,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
             <option value="negative">Msg: Negative</option>
             <option value="positive">Msg: Positive</option>
             <option value="future_lead">Msg: Future Lead</option>
+            <option value="invalid_lead">Msg: Invalid Lead</option>
           </select>
           {data.messageStatus === 'future_lead' && (
             <input

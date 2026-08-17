@@ -96,6 +96,14 @@ export const messageStatusTokens = {
   negative: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
   positive: { color: tokens.semantic.success, bg: tokens.semantic.successBg },
   future_lead: { color: tokens.brand.primaryDark, bg: tokens.brand.primary50 },
+  invalid_lead: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
+} as const;
+
+/** Lead comment severity level → dot/icon color */
+export const leadCommentLevelTokens = {
+  red: tokens.semantic.error,
+  yellow: tokens.semantic.warning,
+  green: tokens.semantic.success,
 } as const;
 
 export const kpiStatusTokens = {

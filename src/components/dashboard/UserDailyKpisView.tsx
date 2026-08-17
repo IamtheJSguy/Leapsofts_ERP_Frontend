@@ -387,12 +387,30 @@ export const UserDailyKpisView = () => {
                     )}
                   </Box>
 
-                  <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
-                      {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
-                    </Typography>
-                    <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
-                    {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
+                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
+                        {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
+                      </Typography>
+                      <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
+                      {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
+                    </Box>
+                    {(kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description) && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: tokens.text.muted,
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}
+                      >
+                        {kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description}
+                      </Typography>
+                    )}
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
                     {hasTarget ? (
