@@ -273,6 +273,7 @@ export const SalesPage = () => {
   const [activeCard, setActiveCard] = useState('TOTAL');
   const [futureLeadWindow, setFutureLeadWindow] = useState<string>('');
   const [messagedOnly, setMessagedOnly] = useState(false);
+  const [followUpView, setFollowUpView] = useState<'all' | '1' | '2'>('all');
 
   const { data: usersData } = useUsers();
   const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
@@ -526,7 +527,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly, followUpView]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -550,12 +551,16 @@ export const SalesPage = () => {
       delete filters.messageStatus;
     }
     if (activeCard === 'RESPONDED') filters.messageStatus = 'replied';
-    if (activeCard === 'FOLLOW UP') filters.messageStatus = 'follow_up';
+    if (activeCard === 'FOLLOW UP') {
+      filters.messageStatus = 'follow_up';
+      if (followUpView === '1') filters.followUpCount = 1;
+      if (followUpView === '2') filters.followUpCount = 2;
+    }
     if (activeCard === 'NEGATIVE') filters.messageStatus = 'negative';
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly, followUpView]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
@@ -703,7 +708,9 @@ export const SalesPage = () => {
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
     ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
-  }), [startDate, endDate, selectedUserId]);
+    ...(selectedIcp ? { icp: selectedIcp } : {}),
+    ...(selectedProfile ? { profile: selectedProfile } : {}),
+  }), [startDate, endDate, selectedUserId, selectedIcp, selectedProfile]);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
   // Qualify Lead Modal state
@@ -739,16 +746,29 @@ export const SalesPage = () => {
 
     const { conversionRates } = pipelineStats;
 
+    const followUpValue =
+      followUpView === '1'
+        ? String(pipelineStats.followUp1 ?? 0)
+        : followUpView === '2'
+          ? String(pipelineStats.followUp2 ?? 0)
+          : String(pipelineStats.followUp ?? pipelineStats.messageStats?.follow_up ?? 0);
+    const followUpPercent =
+      followUpView === '1'
+        ? pct(conversionRates.followUp1Rate ?? 0)
+        : followUpView === '2'
+          ? pct(conversionRates.followUp2Rate ?? 0)
+          : pct(conversionRates.followUpRate ?? 0);
+
     return [
       { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
       { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
       { label: 'MESSAGE SENT', value: String(pipelineStats.messageSent ?? 0), percent: pct(conversionRates.messageSentRate ?? 0) },
       { label: 'RESPONDED', value: String(pipelineStats.responded ?? 0), percent: pct(conversionRates.respondedRate ?? 0) },
-      { label: 'FOLLOW UP', value: String(pipelineStats.followUp ?? pipelineStats.messageStats?.follow_up ?? 0), percent: pct(conversionRates.followUpRate ?? 0) },
+      { label: 'FOLLOW UP', value: followUpValue, percent: followUpPercent },
       { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
       { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
     ];
-  }, [pipelineStats]);
+  }, [pipelineStats, followUpView]);
 
   const applyFunnelCard = (label: string) => {
     setActiveCard(label);
@@ -950,8 +970,45 @@ export const SalesPage = () => {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {item.label}
+                      {item.label === 'FOLLOW UP'
+                        ? followUpView === '1'
+                          ? 'FOLLOW UP 1'
+                          : followUpView === '2'
+                            ? 'FOLLOW UP 2'
+                            : 'FOLLOW UP'
+                        : item.label}
                     </Typography>
+                    {item.label === 'FOLLOW UP' && (
+                      <Select
+                        size="small"
+                        value={followUpView}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const next = e.target.value as 'all' | '1' | '2';
+                          setFollowUpView(next);
+                          applyFunnelCard('FOLLOW UP');
+                        }}
+                        sx={{
+                          minWidth: 58,
+                          height: 20,
+                          fontSize: '0.58rem',
+                          fontWeight: 800,
+                          '& .MuiSelect-select': {
+                            py: 0,
+                            px: 0.75,
+                            pr: '18px !important',
+                          },
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+                          },
+                          '& .MuiSvgIcon-root': { fontSize: 14 },
+                        }}
+                      >
+                        <MenuItem value="all" sx={{ fontSize: '0.75rem' }}>All</MenuItem>
+                        <MenuItem value="1" sx={{ fontSize: '0.75rem' }}>#1</MenuItem>
+                        <MenuItem value="2" sx={{ fontSize: '0.75rem' }}>#2</MenuItem>
+                      </Select>
+                    )}
                     {item.percent && (
                       <Chip
                         label={item.percent}
@@ -1735,7 +1792,10 @@ export const SalesPage = () => {
                                     { id: prospect._id, data: { leadComment: comment } },
                                     {
                                       onSuccess: () =>
-                                        addToast({ message: 'Comment saved', severity: 'success' }),
+                                        addToast({
+                                          message: comment ? 'Comment saved' : 'Comment removed',
+                                          severity: 'success',
+                                        }),
                                       onError: () =>
                                         addToast({ message: 'Failed to save comment', severity: 'error' }),
                                     },

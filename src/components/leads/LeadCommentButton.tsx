@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { leadCommentLevelTokens } from '@/styles/tokens';
 import type { LeadComment, LeadCommentLevel } from '@/types';
 
@@ -21,8 +22,8 @@ const LEVELS: { value: LeadCommentLevel; label: string }[] = [
 ];
 
 type LeadCommentButtonProps = {
-  comment?: LeadComment;
-  onSave: (comment: LeadComment) => void;
+  comment?: LeadComment | null;
+  onSave: (comment: LeadComment | null) => void;
   /** Toggle to true to force-open the popover (e.g. when messageStatus becomes invalid_lead). */
   promptOpen?: boolean;
   onPromptHandled?: () => void;
@@ -69,6 +70,13 @@ export const LeadCommentButton = memo(function LeadCommentButton({
       return;
     }
     onSave({ text: text.trim(), level });
+    setOpen(false);
+  };
+
+  const handleRemove = () => {
+    onSave(null);
+    setText('');
+    setError(false);
     setOpen(false);
   };
 
@@ -152,13 +160,28 @@ export const LeadCommentButton = memo(function LeadCommentButton({
               ))}
             </Stack>
           </Box>
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button size="small" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button size="small" variant="contained" onClick={handleSave}>
-              Save
-            </Button>
+          <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+            {comment?.text && !requireReason ? (
+              <Button
+                size="small"
+                color="error"
+                startIcon={<DeleteOutlineIcon sx={{ fontSize: 16 }} />}
+                onClick={handleRemove}
+                sx={{ mr: 'auto' }}
+              >
+                Remove
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Stack direction="row" spacing={1}>
+              <Button size="small" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button size="small" variant="contained" onClick={handleSave}>
+                Save
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
       </Popover>

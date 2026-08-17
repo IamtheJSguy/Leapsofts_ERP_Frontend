@@ -8,6 +8,8 @@ export interface SalesPipelineStats {
   messageSent: number;
   responded: number;
   followUp: number;
+  followUp1: number;
+  followUp2: number;
   negative: number;
   positive: number;
   futureLeads: number;
@@ -19,6 +21,8 @@ export interface SalesPipelineStats {
     messageSentRate: number;
     respondedRate: number;
     followUpRate: number;
+    followUp1Rate: number;
+    followUp2Rate: number;
     negativeRate: number;
     positiveRate: number;
     conversationRate?: number;
