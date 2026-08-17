@@ -17,7 +17,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
-import { useSalesKpiProgressEvents, useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
+import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
 import {
   buildMemberKpiDetailSearch,
@@ -26,10 +26,10 @@ import {
   resolvePeriod,
   type PeriodMode,
 } from '@/lib/kpiPeriod';
-import { SALES_KPI_METRIC_LABELS, SALES_KPI_STATUS_LABELS } from '@/lib/constants';
+import { SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
-import type { SalesKpiEntry, SalesKpiProgressEvent, SalesKpiStatus, User } from '@/types';
+import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
 
 const isSalesDone = (status: SalesKpiStatus) =>
   status === 'completed_on_time' || status === 'completed_late';
@@ -37,20 +37,6 @@ const isSalesDone = (status: SalesKpiStatus) =>
 const resolveUser = (ref: unknown): User | null => {
   if (!ref || typeof ref === 'string') return null;
   return ref as User;
-};
-
-const entryIdOf = (entryId: SalesKpiProgressEvent['entryId']) => {
-  if (!entryId) return null;
-  if (typeof entryId === 'string') return entryId;
-  return entryId._id;
-};
-
-const formatSource = (sourceType: string, sequence: number) => {
-  const label = sourceType.replace(/_/g, ' ');
-  if (sourceType === 'follow_up' || sequence > 0) {
-    return `${label}${sequence > 0 ? ` #${sequence}` : ''}`;
-  }
-  return label;
 };
 
 const TimingRow = ({ label, value }: { label: string; value?: string | null }) => (
@@ -101,7 +87,6 @@ export default function MemberKpiDetailPage() {
   const { data: salesEntries = [], isLoading: salesLoading } = useTeamSalesKpis(
     userId ? queryParams : null,
   );
-  const { data: progressEvents = [] } = useSalesKpiProgressEvents(userId ? queryParams : null);
 
   const isLoading = dailyLoading || salesLoading;
 
@@ -116,19 +101,6 @@ export default function MemberKpiDetailPage() {
     }
     return null;
   }, [dailyEntries, salesEntries]);
-
-  const eventsByEntry = useMemo(() => {
-    const map: Record<string, SalesKpiProgressEvent[]> = {};
-    for (const event of progressEvents) {
-      const id = entryIdOf(event.entryId);
-      if (!id) continue;
-      (map[id] ??= []).push(event);
-    }
-    for (const list of Object.values(map)) {
-      list.sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
-    }
-    return map;
-  }, [progressEvents]);
 
   const displayName = member ? getDisplayName(member) : 'Team member';
   const initial = displayName.charAt(0).toUpperCase();
@@ -358,7 +330,6 @@ export default function MemberKpiDetailPage() {
                 completedAt={entry.completedAt}
                 createdAt={entry.createdAt}
                 updatedAt={entry.updatedAt}
-                events={eventsByEntry[entry._id] ?? []}
               />
             </Grid>
           ))}
@@ -382,7 +353,6 @@ function KpiDetailCard({
   completedAt,
   createdAt,
   updatedAt,
-  events,
 }: {
   isDarkMode: boolean;
   kind: 'daily' | 'sales';
@@ -397,7 +367,6 @@ function KpiDetailCard({
   completedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
-  events?: SalesKpiProgressEvent[];
 }) {
   const hasTarget = target != null && target > 0;
 
@@ -508,50 +477,6 @@ function KpiDetailCard({
         <TimingRow label="Updated" value={updatedAt} />
       </Box>
 
-      {kind === 'sales' && (
-        <Box>
-          <Typography
-            sx={{
-              fontSize: '0.68rem',
-              fontWeight: 800,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: 'text.disabled',
-              mb: 0.75,
-            }}
-          >
-            Progress events
-          </Typography>
-          {!events?.length ? (
-            <Typography sx={{ fontSize: '0.82rem', color: 'text.disabled', fontWeight: 600 }}>
-              No progress events in this period.
-            </Typography>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              {events.map((event) => (
-                <Box
-                  key={event._id}
-                  sx={{
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: '12px',
-                    bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
-                  }}
-                >
-                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                    {SALES_KPI_METRIC_LABELS[event.metric] ?? event.metric}
-                    {' · '}
-                    {formatSource(event.sourceType, event.sequence)}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600 }}>
-                    {formatDateTime(event.occurredAt)}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          )}
-        </Box>
-      )}
     </Card>
   );
 }
