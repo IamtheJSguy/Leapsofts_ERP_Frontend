@@ -69,6 +69,13 @@ export const AppLayout = () => {
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          transition: (t) =>
+            t.transitions.create(['width', 'margin'], {
+              easing: t.transitions.easing.sharp,
+              duration: sidebarOpen
+                ? t.transitions.duration.enteringScreen
+                : t.transitions.duration.leavingScreen,
+            }),
         }}
       >
         <Header />

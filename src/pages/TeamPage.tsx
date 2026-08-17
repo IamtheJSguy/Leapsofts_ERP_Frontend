@@ -73,14 +73,12 @@ import type { Role, SalesKpiEntry, SalesKpiMetric } from '@/types';
 const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
   SALES_KPI_METRIC.NEW_PROSPECTS,
   SALES_KPI_METRIC.MESSAGES_SENT,
-  SALES_KPI_METRIC.RESPONSES,
   SALES_KPI_METRIC.FOLLOW_UPS,
 ];
 
 const SALES_KPI_SHORT_LABELS: Record<SalesKpiMetric, string> = {
   new_prospects: 'Prospects',
   messages_sent: 'Messages',
-  responses: 'Responses',
   follow_ups: 'Follow-ups',
 };
 
