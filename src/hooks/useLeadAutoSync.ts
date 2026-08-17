@@ -16,7 +16,7 @@ export type EditableLeadData = {
   messageStatus: MessageStatus;
   linkedinMsg: string;
   futureLeadDate?: string;
-  leadComment?: LeadComment;
+  leadComment?: LeadComment | null;
 };
 
 export type LeadSyncStats = {

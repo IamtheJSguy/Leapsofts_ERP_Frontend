@@ -238,7 +238,7 @@ type SalesInlineAddRowProps = {
     connectionStatus?: ConnectionStatus | string;
     messageStatus?: MessageStatus | string;
     futureLeadDate?: string;
-    leadComment?: LeadComment;
+    leadComment?: LeadComment | null;
   };
   errors: Record<string, boolean>;
   isDarkMode: boolean;

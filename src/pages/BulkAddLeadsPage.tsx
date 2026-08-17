@@ -45,7 +45,7 @@ type BulkLeadRow = {
   messageStatus: MessageStatus | '';
   linkedinMsg: string;
   futureLeadDate?: string;
-  leadComment?: LeadComment;
+  leadComment?: LeadComment | null;
 };
 
 type RowErrors = Record<string, boolean>;

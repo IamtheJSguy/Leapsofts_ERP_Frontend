@@ -121,7 +121,7 @@ export interface Lead {
   notes?: string;
   futureLeadDate?: string;
   futureLeadRemindersSent?: Record<string, string>;
-  leadComment?: LeadComment;
+  leadComment?: LeadComment | null;
 }
 
 export interface FollowUpEntry {
@@ -966,6 +966,7 @@ export interface LeadFilters {
   companySize?: string;
   icp?: string;
   profile?: string;
+  followUpCount?: number;
   assignedTo?: string;
   isQualified?: boolean;
   page?: number;
