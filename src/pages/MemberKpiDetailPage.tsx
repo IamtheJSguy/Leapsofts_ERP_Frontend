@@ -26,13 +26,66 @@ import {
   resolvePeriod,
   type PeriodMode,
 } from '@/lib/kpiPeriod';
-import { SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
 
 const isSalesDone = (status: SalesKpiStatus) =>
   status === 'completed_on_time' || status === 'completed_late';
+
+const periodHasEnded = (periodEnd?: string | null) =>
+  !!periodEnd && new Date(periodEnd).getTime() < Date.now();
+
+const completedAfterDeadline = (completedAt?: string | null, periodEnd?: string | null) =>
+  !!completedAt && !!periodEnd && new Date(completedAt).getTime() > new Date(periodEnd).getTime();
+
+type TaskDisplay = {
+  statusLabel: string;
+  isCompleted: boolean;
+  isOverdue: boolean;
+  isCompletedLate: boolean;
+};
+
+const hasPartialProgress = (actual?: number | null, target?: number | null) => {
+  const value = actual ?? 0;
+  return value > 0 && (target == null || value < target);
+};
+
+const salesTaskDisplay = (entry: SalesKpiEntry): TaskDisplay => {
+  const done = isSalesDone(entry.status);
+  const completedLate = entry.status === 'completed_late';
+  const partial = !done && (entry.status === 'partial' || hasPartialProgress(entry.currentValue, entry.targetValue));
+  const overdue = !done && !partial && (entry.status === 'missed' || periodHasEnded(entry.periodEnd));
+
+  let statusLabel: string;
+  if (completedLate) statusLabel = 'Completed late';
+  else if (entry.status === 'completed_on_time') statusLabel = 'Completed';
+  else if (overdue) statusLabel = 'Overdue';
+  else statusLabel = 'Incomplete';
+
+  return { statusLabel, isCompleted: done, isOverdue: overdue, isCompletedLate: completedLate };
+};
+
+const dailyTaskDisplay = (entry: {
+  isCompleted?: boolean;
+  periodEnd?: string;
+  completedAt?: string | null;
+  actualValue?: number | null;
+  targetValue?: number | null;
+}): TaskDisplay => {
+  const done = !!entry.isCompleted;
+  const completedLate = done && completedAfterDeadline(entry.completedAt, entry.periodEnd);
+  const partial = !done && hasPartialProgress(entry.actualValue, entry.targetValue);
+  const overdue = !done && !partial && periodHasEnded(entry.periodEnd);
+
+  let statusLabel: string;
+  if (completedLate) statusLabel = 'Completed late';
+  else if (done) statusLabel = 'Completed';
+  else if (overdue) statusLabel = 'Overdue';
+  else statusLabel = 'Incomplete';
+
+  return { statusLabel, isCompleted: done, isOverdue: overdue, isCompletedLate: completedLate };
+};
 
 const resolveUser = (ref: unknown): User | null => {
   if (!ref || typeof ref === 'string') return null;
@@ -295,44 +348,46 @@ export default function MemberKpiDetailPage() {
         </Box>
       ) : (
         <Grid container spacing={2.5}>
-          {(dailyEntries as any[]).map((entry) => (
+          {(dailyEntries as any[]).map((entry) => {
+            const display = dailyTaskDisplay(entry);
+            return (
             <Grid item xs={12} md={6} key={`daily-${entry._id}`}>
               <KpiDetailCard
                 isDarkMode={isDarkMode}
                 kind="daily"
                 name={entry.kpiName || entry.kpiId?.name || 'KPI'}
-                statusLabel={entry.isCompleted ? 'Completed' : 'Pending'}
-                isCompleted={!!entry.isCompleted}
+                statusLabel={display.statusLabel}
+                isCompleted={display.isCompleted}
+                isOverdue={display.isOverdue}
+                isCompletedLate={display.isCompletedLate}
                 actual={entry.actualValue}
                 target={entry.targetValue}
-                notes={entry.notes}
-                periodStart={entry.periodStart}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
-                createdAt={entry.createdAt}
-                updatedAt={entry.updatedAt}
               />
             </Grid>
-          ))}
-          {salesEntries.map((entry: SalesKpiEntry) => (
+            );
+          })}
+          {salesEntries.map((entry: SalesKpiEntry) => {
+            const display = salesTaskDisplay(entry);
+            return (
             <Grid item xs={12} md={6} key={`sales-${entry._id}`}>
               <KpiDetailCard
                 isDarkMode={isDarkMode}
                 kind="sales"
                 name={entry.kpiName}
-                statusLabel={SALES_KPI_STATUS_LABELS[entry.status] ?? entry.status}
-                isCompleted={isSalesDone(entry.status)}
+                statusLabel={display.statusLabel}
+                isCompleted={display.isCompleted}
+                isOverdue={display.isOverdue}
+                isCompletedLate={display.isCompletedLate}
                 actual={entry.currentValue}
                 target={entry.targetValue}
-                notes={entry.comment}
-                periodStart={entry.periodStart}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
-                createdAt={entry.createdAt}
-                updatedAt={entry.updatedAt}
               />
             </Grid>
-          ))}
+            );
+          })}
         </Grid>
       )}
     </Box>
@@ -345,30 +400,37 @@ function KpiDetailCard({
   name,
   statusLabel,
   isCompleted,
+  isOverdue,
+  isCompletedLate,
   actual,
   target,
-  notes,
-  periodStart,
   periodEnd,
   completedAt,
-  createdAt,
-  updatedAt,
 }: {
   isDarkMode: boolean;
   kind: 'daily' | 'sales';
   name: string;
   statusLabel: string;
   isCompleted: boolean;
+  isOverdue: boolean;
+  isCompletedLate: boolean;
   actual?: number | null;
   target?: number | null;
-  notes?: string | null;
-  periodStart?: string;
   periodEnd?: string;
   completedAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
 }) {
   const hasTarget = target != null && target > 0;
+  const isIncomplete = !isCompleted && !isOverdue;
+  const statusColor = isOverdue
+    ? tokens.semantic.error
+    : isIncomplete || isCompletedLate
+      ? tokens.semantic.warning
+      : tokens.semantic.success;
+  const statusBg = isOverdue
+    ? 'rgba(239, 68, 68, 0.12)'
+    : isIncomplete || isCompletedLate
+      ? 'rgba(245, 158, 11, 0.14)'
+      : 'rgba(16, 185, 129, 0.12)';
 
   return (
     <Card
@@ -386,9 +448,21 @@ function KpiDetailCard({
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
         {isCompleted ? (
-          <CheckCircleIcon sx={{ fontSize: 22, color: tokens.semantic.success, mt: 0.25 }} />
+          <CheckCircleIcon
+            sx={{
+              fontSize: 22,
+              color: isCompletedLate ? tokens.semantic.warning : tokens.semantic.success,
+              mt: 0.25,
+            }}
+          />
         ) : (
-          <AccessTimeIcon sx={{ fontSize: 22, color: 'text.disabled', mt: 0.25 }} />
+          <AccessTimeIcon
+            sx={{
+              fontSize: 22,
+              color: isOverdue ? tokens.semantic.error : tokens.semantic.warning,
+              mt: 0.25,
+            }}
+          />
         )}
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Typography
@@ -428,53 +502,15 @@ function KpiDetailCard({
             height: 22,
             fontWeight: 700,
             fontSize: '0.68rem',
-            bgcolor: isCompleted ? 'rgba(16, 185, 129, 0.12)' : isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-            color: isCompleted ? tokens.semantic.success : 'text.secondary',
+            bgcolor: statusBg,
+            color: statusColor,
           }}
         />
       </Box>
 
-      {(kind === 'daily' || notes) && (
-        <Box
-          sx={{
-            px: 1.75,
-            py: 1.5,
-            borderRadius: '16px',
-            bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: '0.68rem',
-              fontWeight: 800,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: 'text.disabled',
-              mb: 0.5,
-            }}
-          >
-            Comment
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '0.88rem',
-              fontWeight: 600,
-              color: notes?.trim() ? (isDarkMode ? '#fff' : tokens.text.primary) : 'text.disabled',
-              fontStyle: notes?.trim() ? 'normal' : 'italic',
-            }}
-          >
-            {notes?.trim() || 'No comment'}
-          </Typography>
-        </Box>
-      )}
-
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-        <TimingRow label="Period start" value={periodStart} />
-        <TimingRow label="Period end" value={periodEnd} />
-        <TimingRow label="Completed at" value={completedAt} />
-        <TimingRow label="Created" value={createdAt} />
-        <TimingRow label="Updated" value={updatedAt} />
+        <TimingRow label="End time" value={periodEnd} />
+        {isCompleted && <TimingRow label="Completed at" value={completedAt} />}
       </Box>
 
     </Card>
