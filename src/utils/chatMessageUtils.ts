@@ -119,6 +119,45 @@ export const getReceiptTime = (
   return undefined;
 };
 
+export type TextSegment = { type: 'text'; value: string } | { type: 'url'; value: string; href: string };
+
+const URL_PATTERN = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+const TRAILING_PUNCTUATION = /[),.;:!?]+$/;
+
+const toHref = (rawUrl: string): string =>
+  /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+
+/** Split message text into plain segments and auto-detected URLs. */
+export const splitTextWithUrls = (text: string): TextSegment[] => {
+  if (!text) return [];
+  const segments: TextSegment[] = [];
+  let lastIndex = 0;
+  const regex = new RegExp(URL_PATTERN.source, URL_PATTERN.flags);
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const raw = match[0];
+    const trailing = raw.match(TRAILING_PUNCTUATION)?.[0] ?? '';
+    const url = trailing ? raw.slice(0, -trailing.length) : raw;
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+    }
+    if (url) {
+      segments.push({ type: 'url', value: url, href: toHref(url) });
+    }
+    if (trailing) {
+      segments.push({ type: 'text', value: trailing });
+    }
+    lastIndex = match.index + raw.length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', value: text.slice(lastIndex) });
+  }
+
+  return segments.length ? segments : [{ type: 'text', value: text }];
+};
+
 export const normalizeMessageReceipts = (message: Message): Message => ({
   ...message,
   deliveredAt: serializeReceiptMap(message.deliveredAt as Record<string, unknown> | undefined),
