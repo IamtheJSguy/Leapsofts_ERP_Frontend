@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Avatar,
   Box,
   Button,
   Card,
+  Checkbox,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Grid,
   ToggleButton,
   ToggleButtonGroup,
@@ -92,6 +94,8 @@ const resolveUser = (ref: unknown): User | null => {
   return ref as User;
 };
 
+const isKanbanDailyEntry = (entry: { kanbanCardId?: unknown }) => Boolean(entry.kanbanCardId);
+
 const TimingRow = ({ label, value }: { label: string; value?: string | null }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
     <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary' }}>
@@ -118,6 +122,9 @@ export default function MemberKpiDetailPage() {
   const rangeEnd = searchParams.get('rangeEnd') || searchParams.get('endDate') || date;
 
   const period = useMemo(() => resolvePeriod(mode, date, rangeEnd), [mode, date, rangeEnd]);
+  const [showSalesKpis, setShowSalesKpis] = useState(true);
+  const [showKanbanKpis, setShowKanbanKpis] = useState(true);
+  const [showSimpleKpis, setShowSimpleKpis] = useState(true);
 
   const writePeriod = (nextMode: PeriodMode, nextDate: string, nextRangeEnd: string) => {
     setSearchParams(buildMemberKpiDetailSearch({ mode: nextMode, date: nextDate, rangeEnd: nextRangeEnd }));
@@ -158,17 +165,31 @@ export default function MemberKpiDetailPage() {
   const displayName = member ? getDisplayName(member) : 'Team member';
   const initial = displayName.charAt(0).toUpperCase();
 
-  const dailyCompleted = (dailyEntries as any[]).filter((e) => e.isCompleted).length;
-  const salesCompleted = salesEntries.filter((e) => isSalesDone(e.status)).length;
-  const totalCount = dailyEntries.length + salesEntries.length;
+  const visibleDailyEntries = useMemo(
+    () =>
+      (dailyEntries as any[]).filter((entry) => {
+        const kanban = isKanbanDailyEntry(entry);
+        if (kanban) return showKanbanKpis;
+        return showSimpleKpis;
+      }),
+    [dailyEntries, showKanbanKpis, showSimpleKpis],
+  );
+  const visibleSalesEntries = useMemo(
+    () => (showSalesKpis ? salesEntries : []),
+    [salesEntries, showSalesKpis],
+  );
+
+  const dailyCompleted = visibleDailyEntries.filter((e) => e.isCompleted).length;
+  const salesCompleted = visibleSalesEntries.filter((e) => isSalesDone(e.status)).length;
+  const totalCount = visibleDailyEntries.length + visibleSalesEntries.length;
   const completedCount = dailyCompleted + salesCompleted;
 
   const targetPairs = [
-    ...(dailyEntries as any[]).map((e) => ({
+    ...visibleDailyEntries.map((e) => ({
       target: e.targetValue as number | null | undefined,
       actual: e.actualValue as number | null | undefined,
     })),
-    ...salesEntries.map((e) => ({ target: e.targetValue, actual: e.currentValue })),
+    ...visibleSalesEntries.map((e) => ({ target: e.targetValue, actual: e.currentValue })),
   ].filter((row) => row.target != null && row.target > 0);
   const totalTarget = targetPairs.reduce((sum, row) => sum + (row.target ?? 0), 0);
   const totalActual = targetPairs.reduce((sum, row) => sum + (row.actual ?? 0), 0);
@@ -323,6 +344,62 @@ export default function MemberKpiDetailPage() {
             displayValue={periodLabel}
           />
         )}
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
+            ml: { md: 'auto' },
+          }}
+        >
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showSalesKpis}
+                onChange={(e) => setShowSalesKpis(e.target.checked)}
+                size="small"
+                sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }}
+              />
+            }
+            label="Sales KPIs"
+            sx={{
+              m: 0,
+              '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
+            }}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showKanbanKpis}
+                onChange={(e) => setShowKanbanKpis(e.target.checked)}
+                size="small"
+                sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }}
+              />
+            }
+            label="Kanban"
+            sx={{
+              m: 0,
+              '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
+            }}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showSimpleKpis}
+                onChange={(e) => setShowSimpleKpis(e.target.checked)}
+                size="small"
+                sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }}
+              />
+            }
+            label="Simple KPIs"
+            sx={{
+              m: 0,
+              '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
+            }}
+          />
+        </Box>
       </Box>
 
       {isLoading ? (
@@ -348,13 +425,14 @@ export default function MemberKpiDetailPage() {
         </Box>
       ) : (
         <Grid container spacing={2.5}>
-          {(dailyEntries as any[]).map((entry) => {
+          {visibleDailyEntries.map((entry) => {
             const display = dailyTaskDisplay(entry);
+            const kind = isKanbanDailyEntry(entry) ? 'kanban' : 'daily';
             return (
             <Grid item xs={12} md={6} key={`daily-${entry._id}`}>
               <KpiDetailCard
                 isDarkMode={isDarkMode}
-                kind="daily"
+                kind={kind}
                 name={entry.kpiName || entry.kpiId?.name || 'KPI'}
                 statusLabel={display.statusLabel}
                 isCompleted={display.isCompleted}
@@ -368,7 +446,7 @@ export default function MemberKpiDetailPage() {
             </Grid>
             );
           })}
-          {salesEntries.map((entry: SalesKpiEntry) => {
+          {visibleSalesEntries.map((entry: SalesKpiEntry) => {
             const display = salesTaskDisplay(entry);
             return (
             <Grid item xs={12} md={6} key={`sales-${entry._id}`}>
@@ -408,7 +486,7 @@ function KpiDetailCard({
   completedAt,
 }: {
   isDarkMode: boolean;
-  kind: 'daily' | 'sales';
+  kind: 'daily' | 'sales' | 'kanban';
   name: string;
   statusLabel: string;
   isCompleted: boolean;
@@ -482,17 +560,19 @@ function KpiDetailCard({
         </Box>
         <Chip
           size="small"
-          label={kind === 'sales' ? 'Sales' : 'Daily'}
+          label={kind === 'sales' ? 'Sales' : kind === 'kanban' ? 'Kanban' : 'Simple'}
           sx={{
             height: 22,
             fontWeight: 700,
             fontSize: '0.68rem',
             ...(kind === 'sales'
               ? { bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }
-              : {
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                  color: 'text.secondary',
-                }),
+              : kind === 'kanban'
+                ? { bgcolor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }
+                : {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                    color: 'text.secondary',
+                  }),
           }}
         />
         <Chip
