@@ -1324,7 +1324,6 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const detachMeetingMutation = useDetachCardMeeting(boardId);
   const createMeetingOnCardMutation = useCreateMeetingOnCard(boardId);
   const currentUser = useAuthStore((s) => s.user);
-  const { isElevated } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
 
@@ -1334,7 +1333,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     return [...boardMembers, ...admins];
   }, [boardMembers, allUsers]);
 
-  const isAdminOrOwner = isElevated || actualBoard?.ownerId === currentUser?._id;
+  // Anyone who can open the board can edit cards (members included).
+  const canEdit = true;
 
   const handleConfirmSave = () => {
     // Update assignees and dates via assignCard
@@ -1366,7 +1366,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
            addToast({ message: 'Task updated successfully', severity: 'success' });
            onClose();
         }
-      }
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || err?.message || 'You cannot assign this task to that user',
+          severity: 'error',
+        });
+      },
     });
   };
 
@@ -1474,7 +1480,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   };
 
   const handleToggleDone = () => {
-    if (!isAdminOrOwner || updateCardMutation.isPending) return;
+    if (!canEdit || updateCardMutation.isPending) return;
     const nextDone = !Boolean(rawCard?.isDone);
     updateCardMutation.mutate(
       { cardId: task.id, data: { isDone: nextDone } },
@@ -1544,14 +1550,14 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     <Chip
                       label={cfg.label}
                       size="small"
-                      onClick={isAdminOrOwner ? handlePriorityClick : undefined}
+                      onClick={canEdit ? handlePriorityClick : undefined}
                       sx={{
                         bgcolor: cfg.bg, color: cfg.color, fontWeight: 750, fontSize: '0.7rem', height: 24,
-                        border: `1px solid ${cfg.color}30`, cursor: isAdminOrOwner ? 'pointer' : 'default', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': isAdminOrOwner ? { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } : {}
+                        border: `1px solid ${cfg.color}30`, cursor: canEdit ? 'pointer' : 'default', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': canEdit ? { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${cfg.color}30` } : {}
                       }}
                     />
-                    {isAdminOrOwner && (
+                    {canEdit && (
                       <Menu
                         anchorEl={priorityMenuAnchor}
                         open={Boolean(priorityMenuAnchor)}
@@ -1583,13 +1589,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   </Box>
                 );
               })()}
-              {(isAdminOrOwner || Boolean(rawCard?.isDone)) && (
+              {(canEdit || Boolean(rawCard?.isDone)) && (
                 <Chip
                   icon={<CheckIcon sx={{ fontSize: '14px !important' }} />}
                   label={rawCard?.isDone ? 'Done' : 'Mark Done'}
                   size="small"
-                  onClick={isAdminOrOwner ? handleToggleDone : undefined}
-                  disabled={isAdminOrOwner && updateCardMutation.isPending}
+                  onClick={canEdit ? handleToggleDone : undefined}
+                  disabled={canEdit && updateCardMutation.isPending}
                   sx={{
                     bgcolor: rawCard?.isDone
                       ? (isDarkMode ? 'rgba(34,197,94,0.15)' : 'rgba(22,163,74,0.1)')
@@ -1603,9 +1609,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     border: `1px solid ${rawCard?.isDone
                       ? (isDarkMode ? 'rgba(34,197,94,0.3)' : 'rgba(22,163,74,0.25)')
                       : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')}`,
-                    cursor: isAdminOrOwner ? 'pointer' : 'default',
+                    cursor: canEdit ? 'pointer' : 'default',
                     transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    '&:hover': isAdminOrOwner
+                    '&:hover': canEdit
                       ? {
                           transform: 'translateY(-1px)',
                           boxShadow: rawCard?.isDone
@@ -1617,7 +1623,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 />
               )}
             </Box>
-            {isAdminOrOwner ? (
+            {canEdit ? (
               <TextField
                 fullWidth
                 size="small"
@@ -1654,7 +1660,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </IconButton>
               </Tooltip>
             )}
-            {isAdminOrOwner && (
+            {canEdit && (
               <IconButton onClick={triggerDeleteCardConfirm} sx={{ color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)' } }}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -1727,7 +1733,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</Typography>
                   </Box>
                   </Box>
-                  {isAdminOrOwner ? (
+                  {canEdit ? (
                     <Box sx={{ mt: 1 }}>
                       <TextField
                         fullWidth
@@ -1777,7 +1783,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   <GroupIcon fontSize="small" />
                   <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assignees</Typography>
                 </Box>
-                {isAdminOrOwner ? (
+                {canEdit ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <FormControl fullWidth size="small">
                       <InputLabel id="assign-member-label">Assign Team Members</InputLabel>
@@ -1861,7 +1867,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
               <CardLabelsSection
                 isDarkMode={isDarkMode}
-                canEdit={isAdminOrOwner}
+                canEdit={canEdit}
                 boardId={boardId}
                 cardId={task.id}
                 boardLabels={boardLabels}
@@ -1874,7 +1880,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
               <CardLinksSection
                 isDarkMode={isDarkMode}
-                canEdit={isAdminOrOwner}
+                canEdit={canEdit}
                 cardId={task.id}
                 links={cardLinks}
                 updateCardMutation={updateCardMutation}
@@ -1883,7 +1889,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
               <CardMeetingsSection
                 isDarkMode={isDarkMode}
-                canEdit={isAdminOrOwner}
+                canEdit={canEdit}
                 cardId={task.id}
                 leadId={cardLeadId}
                 meetingIds={rawCard?.meetingIds || []}
