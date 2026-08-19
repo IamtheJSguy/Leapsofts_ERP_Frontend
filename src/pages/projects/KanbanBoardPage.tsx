@@ -1366,7 +1366,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
            addToast({ message: 'Task updated successfully', severity: 'success' });
            onClose();
         }
-      }
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || err?.message || 'You cannot assign this task to that user',
+          severity: 'error',
+        });
+      },
     });
   };
 
