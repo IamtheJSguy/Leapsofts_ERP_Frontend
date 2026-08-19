@@ -20,6 +20,7 @@ import { useSearchMessages } from '@/hooks/api/useChat';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDateTime } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import { LinkifiedText } from './LinkifiedText';
 
 interface ChatSearchModalProps {
   open: boolean;
@@ -111,7 +112,7 @@ export const ChatSearchModal = ({ open, onClose }: ChatSearchModalProps) => {
                 <ListItemText
                   primary={
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                      {msg.content}
+                      <LinkifiedText text={msg.content} />
                     </Typography>
                   }
                   secondary={

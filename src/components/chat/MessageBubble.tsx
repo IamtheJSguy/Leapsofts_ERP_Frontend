@@ -26,6 +26,7 @@ import {
   type MessageInfoParticipant,
 } from './MessageInfoDialog';
 import { MessageReactionsDialog } from './MessageReactionsDialog';
+import { LinkifiedText } from './LinkifiedText';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -378,7 +379,7 @@ export const MessageBubble = React.memo(({
                   wordBreak: 'break-word',
                 }}
               >
-                {message.content}
+                <LinkifiedText text={message.content} />
               </Typography>
             )}
 
