@@ -2164,7 +2164,7 @@ export const KanbanBoardPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMenuAnchor, setFilterMenuAnchor] = useState<null | HTMLElement>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>('All');
-  const [assigneeFilter, setAssigneeFilter] = useState<string>('All');
+  const [assigneeFilterIds, setAssigneeFilterIds] = useState<string[]>([]);
 
   // Share Board Dialog State
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -2260,17 +2260,18 @@ export const KanbanBoardPage = () => {
       result = result.filter(t => (t.priority || 'medium').toLowerCase() === priorityFilter.toLowerCase());
     }
 
-    if (assigneeFilter !== 'All') {
+    if (isElevated && assigneeFilterIds.length > 0) {
       result = result.filter(t => {
-        const ids = Array.isArray(t.rawCard?.assignedTo)
+        const assignedIds = Array.isArray(t.rawCard?.assignedTo)
           ? t.rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
           : [];
-        return ids.includes(assigneeFilter);
+        const creatorId = typeof t.rawCard?.createdBy === 'object' ? t.rawCard.createdBy?._id : t.rawCard?.createdBy;
+        return assigneeFilterIds.some((id) => assignedIds.includes(id) || creatorId === id);
       });
     }
 
     return result;
-  }, [tasks, searchQuery, priorityFilter, assigneeFilter]);
+  }, [tasks, searchQuery, priorityFilter, assigneeFilterIds, isElevated]);
 
   const drawerTask = useMemo(() => {
     if (!drawerTaskId || !tasks.length) return null;
@@ -2564,7 +2565,7 @@ export const KanbanBoardPage = () => {
             sx={{
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               borderRadius: '50%',
-              bgcolor: (priorityFilter !== 'All' || assigneeFilter !== 'All') ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
+              bgcolor: (priorityFilter !== 'All' || assigneeFilterIds.length > 0) ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
             }}
           >
             <FilterListIcon fontSize="small" />
@@ -2703,49 +2704,43 @@ export const KanbanBoardPage = () => {
           </MenuItem>
         ))}
 
-        <Divider sx={{ my: 1 }} />
+        {isElevated && (
+          <>
+            <Divider sx={{ my: 1 }} />
 
-        <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Filter by Assignee
-        </Typography>
-        <MenuItem
-          selected={assigneeFilter === 'All'}
-          onClick={() => {
-            setAssigneeFilter('All');
-            setFilterMenuAnchor(null);
-          }}
-          sx={{ borderRadius: '8px', mx: 1 }}
-        >
-          <Typography variant="body2" sx={{ fontWeight: assigneeFilter === 'All' ? 700 : 500 }}>
-            All Assignees
-          </Typography>
-        </MenuItem>
-        {boardMembers.map((m: any) => {
-          const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
-          return (
-            <MenuItem
-              key={m._id}
-              selected={assigneeFilter === m._id}
-              onClick={() => {
-                setAssigneeFilter(m._id);
-                setFilterMenuAnchor(null);
-              }}
-              sx={{ borderRadius: '8px', mx: 1 }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: assigneeFilter === m._id ? 700 : 500 }}>
-                {name}
-              </Typography>
-            </MenuItem>
-          );
-        })}
+            <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Filter by User
+            </Typography>
+            {boardMembers.map((m: any) => {
+              const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+              const checked = assigneeFilterIds.includes(m._id);
+              return (
+                <MenuItem
+                  key={m._id}
+                  onClick={() => {
+                    setAssigneeFilterIds((prev) =>
+                      prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
+                    );
+                  }}
+                  sx={{ borderRadius: '8px', mx: 1 }}
+                >
+                  <Checkbox size="small" checked={checked} sx={{ p: 0.5, mr: 1 }} />
+                  <Typography variant="body2" sx={{ fontWeight: checked ? 700 : 500 }}>
+                    {name}
+                  </Typography>
+                </MenuItem>
+              );
+            })}
+          </>
+        )}
 
-        {(priorityFilter !== 'All' || assigneeFilter !== 'All') && (
+        {(priorityFilter !== 'All' || assigneeFilterIds.length > 0) && (
           <>
             <Divider sx={{ my: 1 }} />
             <MenuItem
               onClick={() => {
                 setPriorityFilter('All');
-                setAssigneeFilter('All');
+                setAssigneeFilterIds([]);
                 setFilterMenuAnchor(null);
               }}
               sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
