@@ -85,26 +85,20 @@ const navGroups: NavGroup[] = [
 
 const BrandMark = () => (
   <Box
+    component="img"
+    src="/logo/leapsofts.png"
+    alt=""
+    aria-hidden
     sx={{
       width: 36,
       height: 36,
       borderRadius: '8px',
-      background: `linear-gradient(135deg, ${tokens.brand.primary} 0%, ${tokens.brand.primaryLight} 60%, ${tokens.brand.accent} 100%)`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      objectFit: 'contain',
       flexShrink: 0,
-      boxShadow: `0 4px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
+      
+      // boxShadow: `0 4px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
     }}
-    aria-hidden
-  >
-    <Typography
-      component="span"
-      sx={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '-0.03em' }}
-    >
-      LS
-    </Typography>
-  </Box>
+  />
 );
 
 export const Sidebar = () => {
