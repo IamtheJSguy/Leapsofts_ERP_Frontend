@@ -103,6 +103,9 @@ interface ActiveAssignmentItem {
   completed: boolean;
 }
 
+/** Stable empty list — inline `= []` on React Query `data` is a new array every render. */
+const EMPTY_LIST: never[] = [];
+
 const emptyTemplateItem = (): UIKPITemplateItem => ({
   name: '',
   description: '',
@@ -146,21 +149,21 @@ const TasksPage = () => {
   const isDarkMode = theme.palette.mode === 'dark';
 
   // Fetch actual employees/users from the API
-  const { data: dbUsers = [] } = useUsers();
+  const { data: dbUsers = EMPTY_LIST } = useUsers();
   const assignableUsers = useAssignableUsers();
 
   // Fetch actual templates from the API
-  const { data: apiTemplates = [], isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isElevated });
+  const { data: apiTemplates = EMPTY_LIST, isLoading: isTemplatesLoading } = useKPITemplates({ enabled: isElevated });
   const createTemplateMutation = useCreateKPITemplate();
   const updateTemplateMutation = useUpdateKPITemplate();
   const deleteTemplateMutation = useDeleteKPITemplate();
   const assignTemplateMutation = useAssignKPITemplate();
   const unassignTemplateMutation = useUnassignKPITemplate();
   const removeAssignmentItemMutation = useRemoveAssignmentItem();
-  const { data: standaloneKpis = [] } = useKPIs({ enabled: isElevated });
+  const { data: standaloneKpis = EMPTY_LIST } = useKPIs({ enabled: isElevated });
   const deleteKpiMutation = useDeleteKPI();
-  const { data: pendingChangeRequests = [] } = usePendingKPIChangeRequests({ enabled: isElevated });
-  const { data: myChangeRequests = [] } = useMyKPIChangeRequests();
+  const { data: pendingChangeRequests = EMPTY_LIST } = usePendingKPIChangeRequests({ enabled: isElevated });
+  const { data: myChangeRequests = EMPTY_LIST } = useMyKPIChangeRequests();
 
   // State to track if we are editing an existing template
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -186,8 +189,8 @@ const TasksPage = () => {
   }, [apiTemplates]);
 
   // Fetch assignments conditionally: admin sees all assignments, agent sees their own assignments
-  const { data: adminAssignments = [] } = useKPITemplateAssignments({ enabled: isElevated });
-  const { data: userAssignments = [] } = useMyAssignments({ enabled: !isElevated });
+  const { data: adminAssignments = EMPTY_LIST } = useKPITemplateAssignments({ enabled: isElevated });
+  const { data: userAssignments = EMPTY_LIST } = useMyAssignments({ enabled: !isElevated });
   const apiAssignments = isElevated ? adminAssignments : userAssignments;
 
   // Map API assignments to UI assignments
@@ -238,9 +241,14 @@ const TasksPage = () => {
   // Active assignments state — populated exclusively from the API
   const [activeAssignments, setActiveAssignments] = useState<ActiveAssignment[]>([]);
 
-  // Sync API assignments to local state — always mirror the API (handles empty results too)
+  // Sync API assignments to local state — skip if the mapped list is referentially or content-equal
   useEffect(() => {
-    setActiveAssignments(mappedAssignments);
+    setActiveAssignments((prev) => {
+      if (prev === mappedAssignments) return prev;
+      // Both empty: do not replace with a new [] reference (that retriggers this effect)
+      if (prev.length === 0 && mappedAssignments.length === 0) return prev;
+      return mappedAssignments;
+    });
   }, [mappedAssignments]);
 
   // State to store resolved assigner names fetched directly from DB by ID (or resolved from populated api response)
@@ -249,22 +257,31 @@ const TasksPage = () => {
   // Pre-populate assigner details from already-populated nested user objects returned by the API
   useEffect(() => {
     if (!apiAssignments || apiAssignments.length === 0) return;
-    
+
+    const fromApi: Record<string, { name: string; email: string; initial: string; jobTitle?: string }> = {};
     apiAssignments.forEach((a) => {
       [a.assignedBy, a.userId].forEach((u) => {
-        if (u && typeof u === 'object' && u._id) {
+        if (u && typeof u === 'object' && u._id && !fromApi[u._id]) {
           const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Admin';
           const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A';
           const jobTitle = u.jobTitle || (u.role === 'admin' ? 'Administrator' : 'Agent');
-          setAssignerNames((prev) => {
-            if (prev[u._id]) return prev;
-            return {
-              ...prev,
-              [u._id]: { name, email: u.email || 'N/A', initial, jobTitle },
-            };
-          });
+          fromApi[u._id] = { name, email: u.email || 'N/A', initial, jobTitle };
         }
       });
+    });
+
+    if (Object.keys(fromApi).length === 0) return;
+
+    setAssignerNames((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, info] of Object.entries(fromApi)) {
+        if (!next[id]) {
+          next[id] = info;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
     });
   }, [apiAssignments]);
 
