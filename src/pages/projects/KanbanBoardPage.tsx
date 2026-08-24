@@ -2525,7 +2525,7 @@ export const KanbanBoardPage = () => {
           <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
             {boardLead
               ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
-              : `${actualBoard.name} Board`}
+              : `${actualBoard.name}`}
           </Typography>
           {boardLead?.company && (
             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>

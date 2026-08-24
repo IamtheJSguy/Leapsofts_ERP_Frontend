@@ -589,8 +589,8 @@ function KpiDetailCard({
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-        <TimingRow label="End time" value={periodEnd} />
-        {isCompleted && <TimingRow label="Completed at" value={completedAt} />}
+        <TimingRow label="Due time" value={periodEnd} />
+        {isCompleted && <TimingRow label="Done at" value={completedAt} />}
       </Box>
 
     </Card>
