@@ -605,8 +605,9 @@ const TeamPage = () => {
         jobTitle: selectedUser.jobTitle,
         role: selectedUser.role,
         isActive: selectedUser.isActive,
-        shiftStart: (selectedUser as any).shiftStart,
-        shiftEnd: (selectedUser as any).shiftEnd,
+        shiftStart: selectedUser.shiftStart,
+        shiftEnd: selectedUser.shiftEnd,
+        idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
       } as any
     }, {
       onSuccess: () => {
@@ -1256,6 +1257,25 @@ const TeamPage = () => {
                       value={selectedUser.shiftEnd || '17:00'}
                       onChange={(v) => setSelectedUser({ ...selectedUser, shiftEnd: v })}
                       isDarkMode={isDarkMode}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Idle timeout (minutes)
+                    </Typography>
+                    <TextField
+                      type="number"
+                      inputProps={{ min: 1, step: 1 }}
+                      fullWidth
+                      value={selectedUser.idleTimeoutMinutes ?? 5}
+                      onChange={(e) => {
+                        const parsed = Number(e.target.value);
+                        setSelectedUser({
+                          ...selectedUser,
+                          idleTimeoutMinutes: Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 5,
+                        });
+                      }}
+                      sx={inputSx}
                     />
                   </Grid>
                 </Grid>

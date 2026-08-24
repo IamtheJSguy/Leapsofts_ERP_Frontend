@@ -80,6 +80,7 @@ export interface User {
   googleSheetId?: string;
   shiftStart?: string;
   shiftEnd?: string;
+  idleTimeoutMinutes?: number;
   createdAt?: string;
 }
 
@@ -732,6 +733,7 @@ export interface Conversation {
 export interface ShiftBreak {
   startTime: string;
   endTime: string | null;
+  source?: 'manual' | 'idle' | 'sleep';
 }
 
 export interface Shift {
