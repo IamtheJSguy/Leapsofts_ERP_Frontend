@@ -75,7 +75,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
-import { format } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -286,7 +286,7 @@ export const SalesPage = () => {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
 
   // Inline Lead Creation State
@@ -370,6 +370,31 @@ export const SalesPage = () => {
   const persistEnabledRef = useRef(true);
   const prospectsByIdRef = useRef<Record<string, any>>({});
   const updateLead = useUpdateLead();
+  const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
+
+  const handleMarkMessageSent = useCallback((id: string) => {
+    if (markingSentIds[id]) return;
+    setMarkingSentIds((prev) => ({ ...prev, [id]: true }));
+    updateLead.mutate(
+      { id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Marked as sent', severity: 'success' });
+        },
+        onError: (err: any) => {
+          const errorMsg = err?.response?.data?.error?.message || 'Failed to mark as sent';
+          addToast({ message: errorMsg, severity: 'error' });
+        },
+        onSettled: () => {
+          setMarkingSentIds((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        },
+      },
+    );
+  }, [markingSentIds, updateLead, addToast]);
   const userId = user?._id || '';
   const {
     isEditAllMode,
@@ -1710,6 +1735,10 @@ export const SalesPage = () => {
 
                     const connToken = (connectionStatusTokens as any)[prospect.connectionStatus || 'pending'] || connectionStatusTokens.pending;
                     const msgToken = (messageStatusTokens as any)[prospect.messageStatus || 'not_sent'] || messageStatusTokens.not_sent;
+                    const isMarkingSent = !!markingSentIds[prospect._id];
+                    const canMarkMsgSent =
+                      prospect.connectionStatus === 'accepted' &&
+                      (prospect.messageStatus || 'not_sent') === 'not_sent';
 
                     const lkMsgStyle = getLinkedinMsgStyle(prospect.linkedinMsg);
 
@@ -1836,8 +1865,27 @@ export const SalesPage = () => {
                               }}
                             />
                             <Chip
-                              label={`Msg: ${prospect.messageStatus || 'not_sent'}`}
+                              label={
+                                isMarkingSent
+                                  ? 'Msg: saving…'
+                                  : `Msg: ${prospect.messageStatus || 'not_sent'}`
+                              }
                               size="small"
+                              clickable={canMarkMsgSent && !isMarkingSent}
+                              disabled={isMarkingSent}
+                              onClick={
+                                canMarkMsgSent && !isMarkingSent
+                                  ? (e) => {
+                                      e.stopPropagation();
+                                      handleMarkMessageSent(prospect._id);
+                                    }
+                                  : undefined
+                              }
+                              aria-label={
+                                canMarkMsgSent
+                                  ? 'Mark message as sent'
+                                  : `Message status ${prospect.messageStatus || 'not_sent'}`
+                              }
                               sx={{
                                 bgcolor: msgToken.bg,
                                 color: msgToken.color,
@@ -1847,6 +1895,17 @@ export const SalesPage = () => {
                                 textTransform: 'uppercase',
                                 borderRadius: '6px',
                                 border: `1px solid ${`color-mix(in srgb, ${msgToken.color} 12%, transparent)`}`,
+                                ...(canMarkMsgSent
+                                  ? {
+                                      cursor: isMarkingSent ? 'wait' : 'pointer',
+                                      boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${msgToken.color} 28%, transparent)`,
+                                      '&:hover': {
+                                        bgcolor: msgToken.bg,
+                                        filter: 'brightness(0.96)',
+                                        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${msgToken.color} 45%, transparent)`,
+                                      },
+                                    }
+                                  : {}),
                               }}
                             />
                             {prospect.messageStatus === 'follow_up' &&
