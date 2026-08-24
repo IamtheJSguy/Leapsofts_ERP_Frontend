@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,8 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Dialog,
+  Collapse,
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -30,12 +32,133 @@ import SearchIcon from '@mui/icons-material/Search';
 import PeopleIcon from '@mui/icons-material/People';
 import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
+import MouseIcon from '@mui/icons-material/Mouse';
+import InsightsIcon from '@mui/icons-material/Insights';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { tokens } from '@/styles/tokens';
-import { useShiftHistory, useTeamAttendanceSummary } from '@/hooks/api/useShifts';
+import { useShiftHistory, useTeamAttendanceSummary, useShiftActivitySamples } from '@/hooks/api/useShifts';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useMyTeam } from '@/hooks/api/useTeam';
 import { useAuthStore } from '@/store/useAuthStore';
 import { format } from 'date-fns';
+import type { ActivitySample } from '@/types';
+
+const activityMetricColor = (pct: number) => {
+  if (pct >= 60) return tokens.semantic.success;
+  if (pct >= 30) return tokens.semantic.warning;
+  return tokens.semantic.error;
+};
+
+/** Screen activity timeline for a single shift; fetches lazily only when `enabled` (drawer/section open). */
+const ActivityTimeline = ({
+  shiftId,
+  enabled,
+  isDarkMode,
+}: {
+  shiftId: string | undefined;
+  enabled: boolean;
+  isDarkMode: boolean;
+}) => {
+  const { data: samples, isLoading } = useShiftActivitySamples(enabled ? shiftId : undefined);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const sortedSamples = useMemo(
+    () => [...(samples || [])].sort((a, b) => new Date(a.windowStart).getTime() - new Date(b.windowStart).getTime()),
+    [samples]
+  );
+
+  if (!enabled) return null;
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+        <CircularProgress size={22} sx={{ color: tokens.brand.primary }} />
+      </Box>
+    );
+  }
+
+  if (sortedSamples.length === 0) {
+    return (
+      <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', display: 'block', py: 1 }}>
+        No activity samples recorded.
+      </Typography>
+    );
+  }
+
+  const metric = (label: string, icon: ReactNode, pct: number) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 62 }} title={label}>
+      {icon}
+      <Box sx={{ flexGrow: 1 }}>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(100, Math.max(0, pct))}
+          sx={{
+            height: 5,
+            borderRadius: 3,
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+            '& .MuiLinearProgress-bar': { borderRadius: 3, bgcolor: activityMetricColor(pct) },
+          }}
+        />
+      </Box>
+      <Typography variant="caption" sx={{ fontWeight: 700, color: activityMetricColor(pct), minWidth: 30, textAlign: 'right' }}>
+        {Math.round(pct)}%
+      </Typography>
+    </Box>
+  );
+
+  return (
+    <>
+      <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.5 }}
+        >
+          <InsightsIcon sx={{ fontSize: 14 }} /> Screen Activity
+        </Typography>
+        {sortedSamples.map((sample: ActivitySample) => (
+          <Box
+            key={sample._id}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              p: 1,
+              borderRadius: '10px',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+            }}
+          >
+            <Avatar
+              variant="rounded"
+              src={sample.imageUrl}
+              onClick={() => setPreviewImage(sample.imageUrl)}
+              sx={{ width: 44, height: 32, cursor: 'pointer', borderRadius: '6px', bgcolor: 'rgba(0,0,0,0.08)' }}
+            />
+            <Typography variant="caption" sx={{ fontWeight: 700, minWidth: 92, color: 'text.secondary' }}>
+              {format(new Date(sample.windowStart), 'HH:mm')} -{' '}
+              {format(new Date(new Date(sample.windowStart).getTime() + 10 * 60 * 1000), 'HH:mm')}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.5, flexGrow: 1, flexWrap: 'wrap' }}>
+              {metric('Keyboard', <KeyboardIcon sx={{ fontSize: 15, color: 'text.secondary' }} />, sample.keyboardPct)}
+              {metric('Mouse', <MouseIcon sx={{ fontSize: 15, color: 'text.secondary' }} />, sample.mousePct)}
+              {metric('Combined', <InsightsIcon sx={{ fontSize: 15, color: 'text.secondary' }} />, sample.combinedPct)}
+            </Box>
+          </Box>
+        ))}
+      </Box>
+
+      <Dialog open={Boolean(previewImage)} onClose={() => setPreviewImage(null)} maxWidth="lg">
+        {previewImage && (
+          <Box sx={{ p: 0, lineHeight: 0 }}>
+            <img src={previewImage} alt="Activity screenshot" style={{ display: 'block', maxWidth: '100%', maxHeight: '80vh' }} />
+          </Box>
+        )}
+      </Dialog>
+    </>
+  );
+};
 
 export const AttendancePage = () => {
   const theme = useTheme();
@@ -153,6 +276,8 @@ export const AttendancePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [detailPage, setDetailPage] = useState(1);
+  const [expandedShiftId, setExpandedShiftId] = useState<string | null>(null);
+  const [personalExpandedShiftId, setPersonalExpandedShiftId] = useState<string | null>(null);
 
   // Filters for dynamic view (by day, month, date)
   const [filterType, setFilterType] = useState<'last30' | 'month' | 'date'>('last30');
@@ -491,7 +616,10 @@ export const AttendancePage = () => {
         <Drawer
           anchor="right"
           open={Boolean(selectedUser)}
-          onClose={() => setSelectedUser(null)}
+          onClose={() => {
+            setSelectedUser(null);
+            setExpandedShiftId(null);
+          }}
           PaperProps={{
             sx: {
               width: { xs: '100%', sm: 460 },
@@ -514,7 +642,13 @@ export const AttendancePage = () => {
                     Detailed records for {selectedUser.firstName || selectedUser.email}
                   </Typography>
                 </Box>
-                <IconButton onClick={() => setSelectedUser(null)} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
+                <IconButton
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setExpandedShiftId(null);
+                  }}
+                  sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                >
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -686,6 +820,23 @@ export const AttendancePage = () => {
                                 {breakSummary}
                               </Typography>
                             )}
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                onClick={() => setExpandedShiftId((prev) => (prev === shift.id ? null : shift.id))}
+                                icon={expandedShiftId === shift.id ? <ExpandLessIcon sx={{ fontSize: 15 }} /> : <ExpandMoreIcon sx={{ fontSize: 15 }} />}
+                                label="Screen Activity"
+                                sx={{ height: 22, fontSize: '0.62rem', fontWeight: 700, borderRadius: '8px' }}
+                              />
+                            </Box>
+                            <Collapse in={expandedShiftId === shift.id} unmountOnExit>
+                              <ActivityTimeline
+                                shiftId={shift.id}
+                                enabled={expandedShiftId === shift.id}
+                                isDarkMode={isDarkMode}
+                              />
+                            </Collapse>
                           </>
                         ) : (
                           <Box sx={{ py: 0.5 }}>
@@ -977,6 +1128,7 @@ export const AttendancePage = () => {
                   boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   cursor: 'pointer',
+                  flexWrap: 'wrap',
                   '&:hover': {
                     transform: 'translateY(-3px)',
                     boxShadow: tokens.shadow.cardHover,
@@ -1085,6 +1237,29 @@ export const AttendancePage = () => {
                         {breakSummary}
                       </Typography>
                     )}
+                  </Box>
+                )}
+
+                {shift.exists && (
+                  <Box sx={{ flexBasis: '100%', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+                    <Divider sx={{ my: 1 }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setPersonalExpandedShiftId((prev) => (prev === shift.id ? null : shift.id))}
+                        icon={personalExpandedShiftId === shift.id ? <ExpandLessIcon sx={{ fontSize: 15 }} /> : <ExpandMoreIcon sx={{ fontSize: 15 }} />}
+                        label="Screen Activity"
+                        sx={{ height: 22, fontSize: '0.62rem', fontWeight: 700, borderRadius: '8px' }}
+                      />
+                    </Box>
+                    <Collapse in={personalExpandedShiftId === shift.id} unmountOnExit>
+                      <ActivityTimeline
+                        shiftId={shift.id}
+                        enabled={personalExpandedShiftId === shift.id}
+                        isDarkMode={isDarkMode}
+                      />
+                    </Collapse>
                   </Box>
                 )}
               </Paper>

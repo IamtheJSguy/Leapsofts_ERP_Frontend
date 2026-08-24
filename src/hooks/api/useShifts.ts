@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { hasPeriodStarted } from '@/lib/salesKpi';
-import type { Shift, PipelineMetric } from '@/types';
+import type { Shift, PipelineMetric, ActivitySample } from '@/types';
 
 export interface DailyKPIEntry {
   _id: string;
@@ -66,6 +66,8 @@ export const shiftApi = {
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/history', { params }),
   getTeamHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/team-history', { params }),
+  getActivitySamples: (shiftId: string) =>
+    api.get<{ success: boolean; data: ActivitySample[] }>(`/shifts/${shiftId}/activity-samples`),
   getTeamStatus: () =>
     api.get<{
       success: boolean;
@@ -103,6 +105,13 @@ export const useTeamShiftHistory = (params?: { startDate?: string; endDate?: str
   useQuery({
     queryKey: ['shifts', 'teamHistory', params],
     queryFn: () => shiftApi.getTeamHistory(params).then((r) => r.data.data),
+  });
+
+export const useShiftActivitySamples = (shiftId: string | undefined) =>
+  useQuery({
+    queryKey: ['shifts', 'activitySamples', shiftId],
+    queryFn: () => shiftApi.getActivitySamples(shiftId as string).then((r) => r.data.data),
+    enabled: Boolean(shiftId),
   });
 
 export const useTeamAttendanceSummary = () =>
