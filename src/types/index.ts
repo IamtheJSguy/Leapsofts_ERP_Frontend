@@ -755,6 +755,24 @@ export interface Shift {
   updatedAt: string;
 }
 
+export interface ActivitySample {
+  _id: string;
+  userId: string;
+  shiftId: string;
+  /** Start of the 10-minute window (ISO date string). */
+  windowStart: string;
+  /** Exact moment the screenshot was taken (ISO date string). */
+  capturedAt: string;
+  keyboardPct: number;
+  mousePct: number;
+  combinedPct: number;
+  imageUrl: string;
+  publicId: string;
+  bytes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DriveFile {
   id: string;
   name: string;
