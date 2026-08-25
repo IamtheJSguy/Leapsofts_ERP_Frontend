@@ -393,7 +393,7 @@ export default function MemberKpiDetailPage() {
                 sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }}
               />
             }
-            label="Simple KPIs"
+            label="Standalone KPIs"
             sx={{
               m: 0,
               '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
@@ -560,7 +560,7 @@ function KpiDetailCard({
         </Box>
         <Chip
           size="small"
-          label={kind === 'sales' ? 'Sales' : kind === 'kanban' ? 'Kanban' : 'Simple'}
+          label={kind === 'sales' ? 'Sales' : kind === 'kanban' ? 'Kanban' : 'Standalone'}
           sx={{
             height: 22,
             fontWeight: 700,
