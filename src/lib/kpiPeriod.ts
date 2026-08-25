@@ -67,3 +67,46 @@ export const buildMemberKpiDetailSearch = (opts: {
 
 export const isPeriodMode = (value: string | null): value is PeriodMode =>
   value === 'day' || value === 'week' || value === 'range';
+
+export type WeekSlice = { startDate: string; endDate: string };
+
+const addCalendarDays = (d: Date, days: number) => {
+  const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+  return next;
+};
+
+/** Split an inclusive date range into Sun–Sat calendar weeks, clipped to the range. */
+export const splitRangeIntoWeeks = (startDate: string, endDate: string): WeekSlice[] => {
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  if (end < start) return [];
+
+  const slices: WeekSlice[] = [];
+  let cursor = start;
+  while (cursor <= end) {
+    const bounds = weekBounds(formatDateToString(cursor));
+    const sliceStart = startDate > bounds.startDate ? startDate : bounds.startDate;
+    const sliceEnd = endDate < bounds.endDate ? endDate : bounds.endDate;
+    slices.push({ startDate: sliceStart, endDate: sliceEnd });
+    cursor = addCalendarDays(parseLocalDate(bounds.endDate), 1);
+  }
+  return slices;
+};
+
+const isWeekend = (dateStr: string) => {
+  const day = parseLocalDate(dateStr).getDay();
+  return day === 0 || day === 6;
+};
+
+/** Monday–Friday dates inside an inclusive slice. Saturday and Sunday are omitted. */
+export const workingDaysInRange = (startDate: string, endDate: string): string[] => {
+  const days: string[] = [];
+  let cursor = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  while (cursor <= end) {
+    const key = formatDateToString(cursor);
+    if (!isWeekend(key)) days.push(key);
+    cursor = addCalendarDays(cursor, 1);
+  }
+  return days;
+};
