@@ -66,9 +66,17 @@ import { getSocket } from '@/lib/socket';
 import { CreateTeamModal } from '@/components/team/CreateTeamModal';
 import { AddExistingTeamMemberPanel } from '@/components/team/AddExistingTeamMemberPanel';
 import { useMyTeam } from '@/hooks/api/useTeam';
+import { useTeamProgress } from '@/hooks/api/useAdminTeamDashboard';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ROLES, DEPARTMENT, DEPARTMENT_OPTIONS, SALES_KPI_METRIC, SALES_KPI_METRIC_LABELS } from '@/lib/constants';
-import type { Role, SalesKpiEntry, SalesKpiMetric } from '@/types';
+import {
+  ROLES,
+  DEPARTMENT,
+  DEPARTMENT_OPTIONS,
+  SALES_KPI_METRIC,
+  SALES_KPI_METRIC_LABELS,
+  SALES_DASHBOARD_DEPARTMENTS,
+} from '@/lib/constants';
+import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow } from '@/types';
 
 const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
   SALES_KPI_METRIC.NEW_PROSPECTS,
@@ -120,6 +128,51 @@ const buildSalesKpisByUser = (entries: SalesKpiEntry[]) => {
   }
   return result;
 };
+
+const isSalesOrMarketingDepartment = (department?: string | null) =>
+  Boolean(department) &&
+  (SALES_DASHBOARD_DEPARTMENTS as readonly string[]).includes(department as string);
+
+type MemberTaskStat = {
+  key: 'pending' | 'completed' | 'overdue' | 'completedOverdue';
+  label: string;
+  value: number;
+};
+
+const TASK_STAT_LABELS: Record<MemberTaskStat['key'], string> = {
+  pending: 'Pending',
+  completed: 'Completed',
+  overdue: 'Overdue',
+  completedOverdue: 'Completed Overdue',
+};
+
+const buildTaskStatsByUser = (rows: TeamProgressRow[]) => {
+  const result: Record<string, MemberTaskStat[]> = {};
+  for (const row of rows) {
+    result[row.userId] = [
+      { key: 'pending', label: TASK_STAT_LABELS.pending, value: row.pendingTasks },
+      {
+        key: 'completed',
+        label: TASK_STAT_LABELS.completed,
+        value: row.doneTasks - row.completedOverdueTasks,
+      },
+      { key: 'overdue', label: TASK_STAT_LABELS.overdue, value: row.overdueTasks },
+      {
+        key: 'completedOverdue',
+        label: TASK_STAT_LABELS.completedOverdue,
+        value: row.completedOverdueTasks,
+      },
+    ];
+  }
+  return result;
+};
+
+const emptyTaskStats = (): MemberTaskStat[] =>
+  (['pending', 'completed', 'overdue', 'completedOverdue'] as const).map((key) => ({
+    key,
+    label: TASK_STAT_LABELS[key],
+    value: 0,
+  }));
 
 const emptySalesKpiStats = (): MemberSalesKpiStat[] =>
   SALES_KPI_CARD_METRICS.map((metric) => ({
@@ -445,6 +498,22 @@ const TeamPage = () => {
     enabled: canManageUsers || isManager || isAdmin,
   });
   const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
+
+  // Task stats (pending/completed/overdue/completed-overdue) for non-sales/marketing members
+  const nonSalesMemberIds = useMemo(
+    () =>
+      teamList
+        .filter((member: any) => !isSalesOrMarketingDepartment(member.department))
+        .map((member: any) => member._id),
+    [teamList],
+  );
+  const { data: teamProgressResponse } = useTeamProgress('All Time', nonSalesMemberIds, {
+    enabled: (canManageUsers || isManager || isAdmin) && nonSalesMemberIds.length > 0,
+  });
+  const taskStatsByUser = useMemo(
+    () => buildTaskStatsByUser(teamProgressResponse?.data ?? []),
+    [teamProgressResponse],
+  );
 
   // Fetch kanban boards to resolve actual projects/boards for this user
   const { data: boards = [] } = useKanbanBoards();
@@ -851,41 +920,43 @@ const TeamPage = () => {
 
 
 
-          {/* Sales KPI stats for selected date */}
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 4,
-              pt: 2.5,
-              borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-            }}
-          >
-            {(salesKpisByUser[selectedUser._id] || emptySalesKpiStats()).map((item) => (
-              <Box key={item.metric} sx={{ minWidth: 100 }}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'text.secondary',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontSize: '0.65rem',
-                    display: 'block',
-                    mb: 0.5,
-                  }}
-                >
-                  {SALES_KPI_METRIC_LABELS[item.metric] ?? item.label}
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.94rem', lineHeight: 1.1 }}>
-                  {item.current}/{item.target}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
-                  sales KPI
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+          {/* Sales KPI stats for selected date — sales/marketing members only */}
+          {isSalesOrMarketingDepartment(selectedUser.department) && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 4,
+                pt: 2.5,
+                borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+              }}
+            >
+              {(salesKpisByUser[selectedUser._id] || emptySalesKpiStats()).map((item) => (
+                <Box key={item.metric} sx={{ minWidth: 100 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      fontSize: '0.65rem',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    {SALES_KPI_METRIC_LABELS[item.metric] ?? item.label}
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.94rem', lineHeight: 1.1 }}>
+                    {item.current}/{item.target}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
+                    sales KPI
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Card>
 
         {/* Horizontal Metadata Bar */}
@@ -1868,7 +1939,9 @@ const TeamPage = () => {
                     <Box
                       sx={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                          ? 'repeat(3, 1fr)'
+                          : 'repeat(4, 1fr)',
                         gap: 1,
                         width: '100%',
                         mt: 2,
@@ -1876,8 +1949,19 @@ const TeamPage = () => {
                         borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                       }}
                     >
-                      {(salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => (
-                        <Box key={stat.metric} sx={{ textAlign: 'center', minWidth: 0 }}>
+                      {(isSalesOrMarketingDepartment(member.department)
+                        ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
+                            key: stat.metric,
+                            label: stat.label,
+                            display: `${stat.current}/${stat.target}`,
+                          }))
+                        : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
+                            key: stat.key,
+                            label: stat.label,
+                            display: `${stat.value}`,
+                          }))
+                      ).map((stat) => (
+                        <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0 }}>
                           <Typography
                             variant="caption"
                             sx={{
@@ -1904,7 +1988,7 @@ const TeamPage = () => {
                               lineHeight: 1.1,
                             }}
                           >
-                            {stat.current}/{stat.target}
+                            {stat.display}
                           </Typography>
                         </Box>
                       ))}
@@ -2014,13 +2098,26 @@ const TeamPage = () => {
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(4, minmax(52px, auto))',
+                      gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                        ? 'repeat(3, minmax(52px, auto))'
+                        : 'repeat(4, minmax(52px, auto))',
                       gap: 1.5,
                       mr: { xs: 0, sm: 1 },
                     }}
                   >
-                    {(salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => (
-                      <Box key={stat.metric} sx={{ textAlign: 'center', minWidth: 0 }}>
+                    {(isSalesOrMarketingDepartment(member.department)
+                      ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
+                          key: stat.metric,
+                          label: stat.label,
+                          display: `${stat.current}/${stat.target}`,
+                        }))
+                      : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
+                          key: stat.key,
+                          label: stat.label,
+                          display: `${stat.value}`,
+                        }))
+                    ).map((stat) => (
+                      <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0 }}>
                         <Typography
                           variant="caption"
                           sx={{
@@ -2044,7 +2141,7 @@ const TeamPage = () => {
                             lineHeight: 1.1,
                           }}
                         >
-                          {stat.current}/{stat.target}
+                          {stat.display}
                         </Typography>
                       </Box>
                     ))}

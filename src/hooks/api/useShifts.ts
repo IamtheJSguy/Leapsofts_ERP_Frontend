@@ -78,6 +78,16 @@ export const shiftApi = {
         onlineMembers: any[];
         punctualityRate: number;
         totalMinutesWorkedToday: number;
+        todayShifts: Array<{
+          userId: string;
+          checkInTime: string | null;
+          checkOutTime: string | null;
+          totalMinutes: number;
+          totalBreakMinutes: number;
+          status: Shift['status'];
+          scheduledStart?: string;
+          scheduledEnd?: string;
+        }>;
       };
     }>('/shifts/team-status'),
   

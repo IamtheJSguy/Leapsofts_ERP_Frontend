@@ -459,6 +459,14 @@ export const AttendancePage = () => {
     });
   }, [allUsers, myTeam?.members, myTeam?.managerId, currentUser, isManager, searchQuery]);
 
+  const todayShiftByUserId = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof teamSummary>['todayShifts'][number]>();
+    for (const shift of teamSummary?.todayShifts ?? []) {
+      map.set(String(shift.userId), shift);
+    }
+    return map;
+  }, [teamSummary]);
+
   // Personal view metrics
   const totalHoursWorked = useMemo(() => {
     if (!historyData?.shifts) return 0;
@@ -552,7 +560,16 @@ export const AttendancePage = () => {
             {filteredUsers.map((user: any) => {
               const initial = (user.firstName?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase();
               const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-              const isOnline = teamSummary?.onlineMembers?.some((m: any) => m._id === user._id);
+              const todayShift = todayShiftByUserId.get(String(user._id));
+              const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+              const tileStatus = todayShift
+                ? todayShift.status
+                : isWeekend
+                  ? 'weekend'
+                  : 'absent';
+              const isOnline = todayShift?.status === 'checked_in';
+              const scheduledStart = todayShift?.scheduledStart || user.shiftStart;
+              const scheduledEnd = todayShift?.scheduledEnd || user.shiftEnd;
 
               return (
                 <Grid item xs={12} sm={6} md={4} key={user._id}>
@@ -578,20 +595,26 @@ export const AttendancePage = () => {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
                       <Avatar sx={{ width: 46, height: 46, bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
-                      {isOnline && (
-                        <Chip
-                          label="Online"
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: '0.62rem',
-                            fontWeight: 800,
-                            bgcolor: 'rgba(16, 185, 129, 0.08)',
-                            color: tokens.semantic.success,
-                            border: '1px solid rgba(16,185,129,0.15)',
-                          }}
-                        />
-                      )}
+                      <Chip
+                        label={
+                          isOnline
+                            ? 'Online'
+                            : tileStatus === 'checked_out'
+                              ? 'Checked out'
+                              : tileStatus === 'weekend'
+                                ? 'Weekend'
+                                : 'Absent'
+                        }
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: '0.62rem',
+                          fontWeight: 800,
+                          bgcolor: `${getStatusColor(isOnline ? 'checked_in' : tileStatus)}12`,
+                          color: getStatusColor(isOnline ? 'checked_in' : tileStatus),
+                          border: `1px solid ${getStatusColor(isOnline ? 'checked_in' : tileStatus)}22`,
+                        }}
+                      />
                     </Box>
 
                     <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary' }}>
@@ -603,6 +626,61 @@ export const AttendancePage = () => {
                     {user.jobTitle && (
                       <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 700, mt: 0.5, display: 'block' }}>
                         {user.jobTitle}
+                      </Typography>
+                    )}
+
+                    <Divider sx={{ my: 1.75, borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                        }}
+                      >
+                        <AccessTimeIcon sx={{ fontSize: 13 }} />
+                        Today
+                      </Typography>
+                      {scheduledStart && scheduledEnd && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
+                          {scheduledStart} – {scheduledEnd}
+                        </Typography>
+                      )}
+                    </Box>
+
+                    {isTeamSummaryLoading ? (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                        Loading shift…
+                      </Typography>
+                    ) : todayShift ? (
+                      <>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            In <strong>{formatTime(todayShift.checkInTime)}</strong>
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Out <strong>{formatTime(todayShift.checkOutTime)}</strong>
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.75 }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
+                            Logged
+                            {todayShift.totalBreakMinutes > 0 ? ` · ${todayShift.totalBreakMinutes}m break` : ''}
+                          </Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary, lineHeight: 1.2 }}>
+                            {formatHours(todayShift.totalMinutes)}
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: tileStatus === 'absent' ? 600 : 400 }}>
+                        {tileStatus === 'weekend' ? 'Non-working day.' : 'No shift logs for today.'}
                       </Typography>
                     )}
                   </Card>
