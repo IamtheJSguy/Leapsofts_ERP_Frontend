@@ -21,13 +21,25 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
+import { MemberKpiWeekTable } from '@/components/kpi/MemberKpiWeekTable';
 import {
   buildMemberKpiDetailSearch,
   formatPeriodLabel,
   isPeriodMode,
   resolvePeriod,
+  splitRangeIntoWeeks,
+  workingDaysInRange,
   type PeriodMode,
 } from '@/lib/kpiPeriod';
+import {
+  buildWeekTableModel,
+  dailyTaskDisplay,
+  entryOverlapsRange,
+  isKanbanDailyEntry,
+  salesTaskDisplay,
+  weekWorkingTitle,
+  type MemberDailyKpiEntry,
+} from '@/lib/memberKpiWeekTable';
 import { tokens } from '@/styles/tokens';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
@@ -35,66 +47,10 @@ import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
 const isSalesDone = (status: SalesKpiStatus) =>
   status === 'completed_on_time' || status === 'completed_late';
 
-const periodHasEnded = (periodEnd?: string | null) =>
-  !!periodEnd && new Date(periodEnd).getTime() < Date.now();
-
-const completedAfterDeadline = (completedAt?: string | null, periodEnd?: string | null) =>
-  !!completedAt && !!periodEnd && new Date(completedAt).getTime() > new Date(periodEnd).getTime();
-
-type TaskDisplay = {
-  statusLabel: string;
-  isCompleted: boolean;
-  isOverdue: boolean;
-  isCompletedLate: boolean;
-};
-
-const hasPartialProgress = (actual?: number | null, target?: number | null) => {
-  const value = actual ?? 0;
-  return value > 0 && (target == null || value < target);
-};
-
-const salesTaskDisplay = (entry: SalesKpiEntry): TaskDisplay => {
-  const done = isSalesDone(entry.status);
-  const completedLate = entry.status === 'completed_late';
-  const partial = !done && (entry.status === 'partial' || hasPartialProgress(entry.currentValue, entry.targetValue));
-  const overdue = !done && !partial && (entry.status === 'missed' || periodHasEnded(entry.periodEnd));
-
-  let statusLabel: string;
-  if (completedLate) statusLabel = 'Completed late';
-  else if (entry.status === 'completed_on_time') statusLabel = 'Completed';
-  else if (overdue) statusLabel = 'Overdue';
-  else statusLabel = 'Incomplete';
-
-  return { statusLabel, isCompleted: done, isOverdue: overdue, isCompletedLate: completedLate };
-};
-
-const dailyTaskDisplay = (entry: {
-  isCompleted?: boolean;
-  periodEnd?: string;
-  completedAt?: string | null;
-  actualValue?: number | null;
-  targetValue?: number | null;
-}): TaskDisplay => {
-  const done = !!entry.isCompleted;
-  const completedLate = done && completedAfterDeadline(entry.completedAt, entry.periodEnd);
-  const partial = !done && hasPartialProgress(entry.actualValue, entry.targetValue);
-  const overdue = !done && !partial && periodHasEnded(entry.periodEnd);
-
-  let statusLabel: string;
-  if (completedLate) statusLabel = 'Completed late';
-  else if (done) statusLabel = 'Completed';
-  else if (overdue) statusLabel = 'Overdue';
-  else statusLabel = 'Incomplete';
-
-  return { statusLabel, isCompleted: done, isOverdue: overdue, isCompletedLate: completedLate };
-};
-
 const resolveUser = (ref: unknown): User | null => {
   if (!ref || typeof ref === 'string') return null;
   return ref as User;
 };
-
-const isKanbanDailyEntry = (entry: { kanbanCardId?: unknown }) => Boolean(entry.kanbanCardId);
 
 const TimingRow = ({ label, value }: { label: string; value?: string | null }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
@@ -197,6 +153,45 @@ export default function MemberKpiDetailPage() {
   const periodLabel = formatPeriodLabel(mode, period.startDate, period.endDate);
   const filterCaption =
     mode === 'day' ? 'Filter by Date' : mode === 'week' ? 'Filter by Week' : 'Date Range';
+
+  const weekSections = useMemo(() => {
+    const slices =
+      mode === 'week'
+        ? [{ startDate: period.startDate, endDate: period.endDate }]
+        : splitRangeIntoWeeks(period.startDate, period.endDate);
+
+    return slices
+      .map((slice) => {
+        const workingDays = workingDaysInRange(slice.startDate, slice.endDate);
+        const salesForWeek = visibleSalesEntries.filter((entry) =>
+          entryOverlapsRange(entry, slice.startDate, slice.endDate),
+        );
+        const standaloneForWeek = (visibleDailyEntries as MemberDailyKpiEntry[]).filter(
+          (entry) =>
+            !isKanbanDailyEntry(entry) && entryOverlapsRange(entry, slice.startDate, slice.endDate),
+        );
+        const kanbanForWeek = (visibleDailyEntries as MemberDailyKpiEntry[]).filter(
+          (entry) =>
+            isKanbanDailyEntry(entry) && entryOverlapsRange(entry, slice.startDate, slice.endDate),
+        );
+        const model = buildWeekTableModel({
+          startDate: slice.startDate,
+          endDate: slice.endDate,
+          salesEntries: salesForWeek,
+          standaloneEntries: standaloneForWeek,
+        });
+        return {
+          ...slice,
+          workingDays,
+          title: workingDays.length
+            ? weekWorkingTitle(workingDays)
+            : formatPeriodLabel('range', slice.startDate, slice.endDate),
+          model,
+          kanban: kanbanForWeek,
+        };
+      })
+      .filter((section) => section.model.rows.length > 0 || section.kanban.length > 0);
+  }, [mode, period.endDate, period.startDate, visibleDailyEntries, visibleSalesEntries]);
 
   const handleModeChange = (_: React.MouseEvent<HTMLElement>, next: PeriodMode | null) => {
     if (!next) return;
@@ -424,6 +419,7 @@ export default function MemberKpiDetailPage() {
           </Typography>
         </Box>
       ) : (
+        mode === 'day' ? (
         <Grid container spacing={2.5}>
           {visibleDailyEntries.map((entry) => {
             const display = dailyTaskDisplay(entry);
@@ -467,6 +463,50 @@ export default function MemberKpiDetailPage() {
             );
           })}
         </Grid>
+        ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {weekSections.map((section) => (
+            <Box key={`${section.startDate}-${section.endDate}`} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {(section.model.rows.length > 0 || section.kanban.length > 0) && (
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '1.05rem',
+                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                  }}
+                >
+                  {section.title || periodLabel}
+                </Typography>
+              )}
+              <MemberKpiWeekTable model={section.model} isDarkMode={isDarkMode} />
+              {section.kanban.length > 0 && (
+                <Grid container spacing={2.5}>
+                  {section.kanban.map((entry) => {
+                    const display = dailyTaskDisplay(entry);
+                    return (
+                      <Grid item xs={12} md={6} key={`kanban-${entry._id}`}>
+                        <KpiDetailCard
+                          isDarkMode={isDarkMode}
+                          kind="kanban"
+                          name={entry.kpiName || (typeof entry.kpiId === 'object' ? entry.kpiId?.name : undefined) || 'KPI'}
+                          statusLabel={display.statusLabel}
+                          isCompleted={display.isCompleted}
+                          isOverdue={display.isOverdue}
+                          isCompletedLate={display.isCompletedLate}
+                          actual={entry.actualValue}
+                          target={entry.targetValue}
+                          periodEnd={entry.periodEnd}
+                          completedAt={entry.completedAt}
+                        />
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </Box>
+          ))}
+        </Box>
+        )
       )}
     </Box>
   );
