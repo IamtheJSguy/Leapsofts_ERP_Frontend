@@ -18,6 +18,7 @@ import { tokens } from '@/styles/tokens';
 import { useTeamConnections, useTeamProgress, usePipelineVelocity } from '@/hooks/api/useAdminTeamDashboard';
 import { useNavigate } from 'react-router-dom';
 import { ModernDatePicker } from '../common/ModernDatePicker';
+import { buildMemberKpiDetailSearch, formatDateToString, type PeriodMode } from '@/lib/kpiPeriod';
 import {
   AreaChart,
   Area,
@@ -45,6 +46,39 @@ const velocityDataFallback = [
 
 const formatDateParam = (date: Date | null) =>
   date ? date.toISOString().split('T')[0] : undefined;
+
+/** Maps the dashboard's "Team Tasks" date filter pills to the member KPI detail page's period params. */
+const buildMemberDetailSearchForFilter = (
+  activeDateFilter: string,
+  customStartDate: Date | null,
+  customEndDate: Date | null,
+): string => {
+  const today = formatDateToString(new Date());
+
+  let mode: PeriodMode = 'day';
+  let date = today;
+  let rangeEnd = today;
+
+  if (activeDateFilter === 'This Week') {
+    mode = 'week';
+    date = today;
+  } else if (activeDateFilter === 'This Month') {
+    const now = new Date();
+    mode = 'range';
+    date = formatDateToString(new Date(now.getFullYear(), now.getMonth(), 1));
+    rangeEnd = formatDateToString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  } else if (activeDateFilter === 'All Time') {
+    mode = 'range';
+    date = '2000-01-01';
+    rangeEnd = today;
+  } else if (activeDateFilter === 'Custom') {
+    mode = 'range';
+    date = customStartDate ? formatDateToString(customStartDate) : today;
+    rangeEnd = customEndDate ? formatDateToString(customEndDate) : date;
+  }
+
+  return buildMemberKpiDetailSearch({ mode, date, rangeEnd });
+};
 
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
   if (!label?.toString().trim()) return null;
@@ -328,7 +362,12 @@ export const TeamConnectionsSplitView = () => {
                     <Box
                       key={user.userId}
                       onClick={() => {
-                        navigate(`/team/member/${user.userId}`);
+                        const search = buildMemberDetailSearchForFilter(
+                          activeDateFilter,
+                          customStartDate,
+                          customEndDate,
+                        );
+                        navigate(`/tasks/member/${user.userId}?${search}`);
                       }}
                       sx={{
                         display: 'flex',

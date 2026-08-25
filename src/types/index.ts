@@ -838,6 +838,7 @@ export interface TeamConnectionRow {
   doneTasks: number;
   pendingTasks: number;
   overdueTasks: number;
+  completedOverdueTasks: number;
 }
 
 export interface TeamProgressRow {
@@ -846,6 +847,7 @@ export interface TeamProgressRow {
   doneTasks: number;
   pendingTasks: number;
   overdueTasks: number;
+  completedOverdueTasks: number;
 }
 
 export interface PipelineVelocityPoint {

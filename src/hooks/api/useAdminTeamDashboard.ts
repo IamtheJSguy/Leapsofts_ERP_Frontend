@@ -62,7 +62,7 @@ export const useTeamConnections = (
 export const useTeamProgress = (
   periodLabel: string,
   userIds: string[],
-  options: { startDate?: string; endDate?: string } = {},
+  options: { startDate?: string; endDate?: string; enabled?: boolean } = {},
 ) => {
   const period = mapProgressPeriod(periodLabel);
 
@@ -80,6 +80,7 @@ export const useTeamProgress = (
         })
         .then((r) => r.data),
     staleTime: 1000 * 60,
+    enabled: options.enabled ?? true,
   });
 };
 
