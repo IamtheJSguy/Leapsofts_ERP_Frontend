@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { hasPeriodStarted } from '@/lib/salesKpi';
-import type { Shift, PipelineMetric, ActivitySample } from '@/types';
+import type {
+  Shift,
+  PipelineMetric,
+  ActivitySample,
+  AppUsageSegment,
+  AppUsageSummary,
+  ActivitySamplesRange,
+} from '@/types';
 
 export interface DailyKPIEntry {
   _id: string;
@@ -62,12 +69,27 @@ export const shiftApi = {
   startBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/start'),
   endBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/end'),
   getToday: () => api.get<{ success: boolean; data: Shift }>('/shifts/today'),
-  getHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+  getHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number; userId?: string }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/history', { params }),
   getTeamHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/team-history', { params }),
   getActivitySamples: (shiftId: string) =>
     api.get<{ success: boolean; data: ActivitySample[] }>(`/shifts/${shiftId}/activity-samples`),
+  getActivitySamplesRange: (params: { userId?: string; from: string; to: string; page?: number; limit?: number }) =>
+    api.get<{
+      success: boolean;
+      data: ActivitySamplesRange;
+      meta?: { page: number; limit: number; total: number };
+    }>('/shifts/activity-samples', { params }),
+  getShiftAppUsage: (shiftId: string) =>
+    api.get<{ success: boolean; data: AppUsageSegment[] }>(`/shifts/${shiftId}/app-usage`),
+  getAppUsageSummary: (params: { userId?: string; from: string; to: string }) =>
+    api.get<{ success: boolean; data: AppUsageSummary }>('/shifts/app-usage/summary', {
+      params: {
+        ...params,
+        userId: params.userId || undefined,
+      },
+    }),
   getTeamStatus: () =>
     api.get<{
       success: boolean;
@@ -122,6 +144,35 @@ export const useShiftActivitySamples = (shiftId: string | undefined) =>
     queryKey: ['shifts', 'activitySamples', shiftId],
     queryFn: () => shiftApi.getActivitySamples(shiftId as string).then((r) => r.data.data),
     enabled: Boolean(shiftId),
+  });
+
+export const useActivitySamplesRange = (
+  params: { userId?: string; from: string; to: string; page?: number; limit?: number } | undefined
+) =>
+  useQuery({
+    queryKey: ['shifts', 'activitySamplesRange', params],
+    queryFn: () =>
+      shiftApi.getActivitySamplesRange(params!).then((r) => ({
+        ...r.data.data,
+        meta: r.data.meta,
+      })),
+    enabled: Boolean(params?.from && params?.to),
+  });
+
+export const useShiftAppUsage = (shiftId: string | undefined) =>
+  useQuery({
+    queryKey: ['shifts', 'appUsage', shiftId],
+    queryFn: () => shiftApi.getShiftAppUsage(shiftId as string).then((r) => r.data.data),
+    enabled: Boolean(shiftId),
+  });
+
+export const useAppUsageSummary = (
+  params: { userId?: string; from: string; to: string } | undefined
+) =>
+  useQuery({
+    queryKey: ['shifts', 'appUsageSummary', params],
+    queryFn: () => shiftApi.getAppUsageSummary(params!).then((r) => r.data.data),
+    enabled: Boolean(params?.from && params?.to),
   });
 
 export const useTeamAttendanceSummary = () =>

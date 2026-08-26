@@ -28,6 +28,8 @@ import {
   Tab,
   Alert,
   Popover,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -677,6 +679,8 @@ const TeamPage = () => {
         shiftStart: selectedUser.shiftStart,
         shiftEnd: selectedUser.shiftEnd,
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
+        monitorScreenshots: selectedUser.monitorScreenshots !== false,
+        monitorAppUsage: selectedUser.monitorAppUsage !== false,
       } as any
     }, {
       onSuccess: () => {
@@ -1347,6 +1351,35 @@ const TeamPage = () => {
                         });
                       }}
                       sx={inputSx}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                      Desktop monitoring
+                    </Typography>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={selectedUser.monitorScreenshots !== false}
+                          onChange={(e) =>
+                            setSelectedUser({ ...selectedUser, monitorScreenshots: e.target.checked })
+                          }
+                        />
+                      }
+                      label="Screenshots"
+                      sx={{ display: 'flex', mb: 0.5 }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={selectedUser.monitorAppUsage !== false}
+                          onChange={(e) =>
+                            setSelectedUser({ ...selectedUser, monitorAppUsage: e.target.checked })
+                          }
+                        />
+                      }
+                      label="App and URL tracking"
+                      sx={{ display: 'flex', mb: 1 }}
                     />
                   </Grid>
                 </Grid>

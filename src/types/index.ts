@@ -81,6 +81,8 @@ export interface User {
   shiftStart?: string;
   shiftEnd?: string;
   idleTimeoutMinutes?: number;
+  monitorScreenshots?: boolean;
+  monitorAppUsage?: boolean;
   createdAt?: string;
 }
 
@@ -771,6 +773,48 @@ export interface ActivitySample {
   bytes: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AppUsagePlatform = 'macos' | 'windows' | 'linux';
+
+export interface AppUsageSegment {
+  _id: string;
+  userId: string;
+  shiftId: string;
+  clientId: string;
+  app: string;
+  execName: string;
+  title: string;
+  url: string | null;
+  domain: string | null;
+  startedAt: string;
+  endedAt: string;
+  durationSec: number;
+  activeSec: number;
+  platform: AppUsagePlatform;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppUsageBucket {
+  key: string;
+  durationSec: number;
+  activeSec: number;
+  segments: number;
+  firstAt: string;
+  lastAt: string;
+}
+
+export interface AppUsageSummary {
+  range: { from: string; to: string };
+  totals: { durationSec: number; activeSec: number; segments: number };
+  byApp: AppUsageBucket[];
+  byDomain: AppUsageBucket[];
+}
+
+export interface ActivitySamplesRange {
+  samples: ActivitySample[];
+  range: { from: string; to: string };
 }
 
 export interface DriveFile {
