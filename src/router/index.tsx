@@ -23,6 +23,7 @@ import {
   ProjectDetailsPage,
   KanbanBoardPage,
   AttendancePage,
+  AttendanceActivityPage,
   MemberProgressPage,
   MemberKpiDetailPage,
   LeadDetailsPage,
@@ -149,6 +150,14 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <AttendancePage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'attendance/:userId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+            <AttendanceActivityPage />
           </ProtectedRoute>,
         ),
       },

@@ -16,6 +16,7 @@ export const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'));
 export const ProjectDetailsPage = lazy(() => import('@/pages/projects/ProjectDetailsPage'));
 export const KanbanBoardPage = lazy(() => import('@/pages/projects/KanbanBoardPage'));
 export const AttendancePage = lazy(() => import('@/pages/AttendancePage'));
+export const AttendanceActivityPage = lazy(() => import('@/pages/AttendanceActivityPage'));
 export const MemberProgressPage = lazy(() => import('@/pages/MemberProgressPage'));
 export const MemberKpiDetailPage = lazy(() => import('@/pages/MemberKpiDetailPage'));
 export const LeadDetailsPage = lazy(() => import('@/pages/leads/LeadDetailsPage'));
