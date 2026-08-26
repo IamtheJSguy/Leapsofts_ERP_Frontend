@@ -10,7 +10,6 @@ import {
   Avatar,
   Divider,
   Chip,
-  Button,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
@@ -19,11 +18,9 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTodayShift, useCheckIn, useCheckOut, useStartBreak, useEndBreak } from '@/hooks/api/useShifts';
 import { useUIStore } from '@/store/useUIStore';
-import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/api/useAuth';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
@@ -39,36 +36,36 @@ export const Header = () => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  // comment out for now until we have a time capsule widget
+  // const { data: todayShift } = useTodayShift();
+  // const { mutate: checkInMutate, isPending: isCheckingIn } = useCheckIn();
+  // const { mutate: checkOutMutate, isPending: isCheckingOut } = useCheckOut();
+  // const { mutate: startBreakMutate, isPending: isStartingBreak } = useStartBreak();
+  // const { mutate: endBreakMutate, isPending: isEndingBreak } = useEndBreak();
 
-  const { data: todayShift } = useTodayShift();
-  const { mutate: checkInMutate, isPending: isCheckingIn } = useCheckIn();
-  const { mutate: checkOutMutate, isPending: isCheckingOut } = useCheckOut();
-  const { mutate: startBreakMutate, isPending: isStartingBreak } = useStartBreak();
-  const { mutate: endBreakMutate, isPending: isEndingBreak } = useEndBreak();
+  // const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
+  // const isOnBreak = useTimeTrackerStore((s) => s.isOnBreak);
+  // const elapsedSeconds = useTimeTrackerStore((s) => s.elapsedSeconds);
+  // const syncWithShift = useTimeTrackerStore((s) => s.syncWithShift);
 
-  const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
-  const isOnBreak = useTimeTrackerStore((s) => s.isOnBreak);
-  const elapsedSeconds = useTimeTrackerStore((s) => s.elapsedSeconds);
-  const syncWithShift = useTimeTrackerStore((s) => s.syncWithShift);
+  // useEffect(() => {
+  //   if (todayShift !== undefined) {
+  //     syncWithShift(todayShift);
+  //   }
+  // }, [todayShift, syncWithShift]);
 
-  useEffect(() => {
-    if (todayShift !== undefined) {
-      syncWithShift(todayShift);
-    }
-  }, [todayShift, syncWithShift]);
+  // const handleCheckIn = () => checkInMutate(undefined);
+  // const handleCheckOut = () => checkOutMutate(undefined);
+  // const handleStartBreak = () => startBreakMutate(undefined);
+  // const handleEndBreak = () => endBreakMutate(undefined);
+  // const isShiftActionPending = isCheckingIn || isCheckingOut || isStartingBreak || isEndingBreak;
 
-  const handleCheckIn = () => checkInMutate(undefined);
-  const handleCheckOut = () => checkOutMutate(undefined);
-  const handleStartBreak = () => startBreakMutate(undefined);
-  const handleEndBreak = () => endBreakMutate(undefined);
-  const isShiftActionPending = isCheckingIn || isCheckingOut || isStartingBreak || isEndingBreak;
-
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return [h, m, s].map((v) => v.toString().padStart(2, '0')).join(':');
-  };
+  // const formatTime = (seconds: number) => {
+  //   const h = Math.floor(seconds / 3600);
+  //   const m = Math.floor((seconds % 3600) / 60);
+  //   const s = seconds % 60;
+  //   return [h, m, s].map((v) => v.toString().padStart(2, '0')).join(':');
+  // };
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -134,7 +131,7 @@ export const Header = () => {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          {/* Time Capsule Widget */}
+          {/* Time Capsule Widget (check-in / checkout) — temporarily hidden
           {user?.role !== 'admin' && (
             <Box
               sx={{
@@ -158,7 +155,6 @@ export const Header = () => {
                 mr: { xs: 0.5, sm: 1 },
               }}
             >
-              {/* Pulse Dot */}
               <Box
                 sx={{
                   width: 8,
@@ -183,7 +179,6 @@ export const Header = () => {
                 }}
               />
 
-              {/* Label / Time */}
               <Typography
                 variant="body2"
                 sx={{
@@ -208,7 +203,6 @@ export const Header = () => {
                     : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>INACTIVE</Box>}
               </Typography>
 
-              {/* Actions */}
               {isCheckedIn && isOnBreak ? (
                 <Button
                   size="small"
@@ -323,6 +317,7 @@ export const Header = () => {
               )}
             </Box>
           )}
+          */}
 
           <IconButton
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
