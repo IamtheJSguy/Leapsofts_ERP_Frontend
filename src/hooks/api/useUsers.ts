@@ -96,6 +96,7 @@ export const useUpdateUser = () => {
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
     },
   });
 };

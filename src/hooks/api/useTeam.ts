@@ -11,6 +11,9 @@ export interface TeamMember {
   department?: string;
   teamId?: string;
   isActive?: boolean;
+  idleTimeoutMinutes?: number;
+  monitorScreenshots?: boolean;
+  monitorAppUsage?: boolean;
 }
 
 export interface Team {
