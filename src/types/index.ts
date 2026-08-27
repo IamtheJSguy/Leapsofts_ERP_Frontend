@@ -657,6 +657,9 @@ export interface KanbanCard {
   links?: KanbanCardLink[];
   /** Linked meetings (ids or populated Meeting objects) */
   meetingIds?: string[] | Meeting[];
+  createdBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  lastMovedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  lastMovedAt?: string;
 }
 
 export interface KanbanComment {
