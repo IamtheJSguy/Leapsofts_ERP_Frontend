@@ -51,6 +51,12 @@ export const AppLayout = () => {
       if (count > 0) totalUnread++;
     });
 
+    const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (favicon) {
+      favicon.type = 'image/png';
+      favicon.href = totalUnread > 0 ? '/logo/leapsofts-msg.png' : '/logo/leapsofts.png';
+    }
+
     if (totalUnread > 0) {
       document.title = `(${totalUnread}) B2B Lead Gen`;
     } else {

@@ -16,7 +16,6 @@ export default defineConfig({
   },
   server: {
     // Proxy API requests to the backend
-    port: 5174,
     proxy: {
       '/api': {
         target: env.VITE_API_URL,
