@@ -80,6 +80,34 @@ const getLinkHostname = (url: string) => {
   }
 };
 
+const kanbanUserDisplayName = (user?: { firstName?: string; lastName?: string; email?: string } | null) => {
+  if (!user) return '';
+  return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User';
+};
+
+const kanbanUserInitial = (user?: { firstName?: string; lastName?: string; email?: string } | null) => {
+  if (!user) return 'U';
+  return (user.firstName?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase();
+};
+
+const resolveKanbanUser = (value: any, allUsers: any[] = []) => {
+  if (!value) return null;
+  if (typeof value === 'object') {
+    const fromList = allUsers.find((au: any) => au._id === value._id);
+    return fromList ? { ...fromList, ...value } : value;
+  }
+  return allUsers.find((au: any) => au._id === value) || null;
+};
+
+const kanbanActiveMoverRingSx = (isActive: boolean) =>
+  isActive
+    ? {
+        boxShadow: '0 0 0 2px #ef4444',
+        outline: '2px solid #ef4444',
+        outlineOffset: '1px',
+      }
+    : {};
+
 // Custom Modern Premium Confirmation Dialog Component
 const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
   return (
@@ -146,6 +174,8 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
   const commentsCount = Array.isArray(task.rawCard?.comments)
     ? task.rawCard.comments.filter((c: any) => c.isActive !== false).length
     : (task.comments || 0);
+  const createdByUser = task.createdBy || null;
+  const lastMovedById = task.lastMovedBy?._id || (typeof task.lastMovedBy === 'string' ? task.lastMovedBy : null);
 
   const formatDue = (d: string) => {
     const date = new Date(d);
@@ -332,12 +362,40 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
               />
             );
           })()}
+          {createdByUser && (
+            <Tooltip title={kanbanUserDisplayName(createdByUser)} arrow enterDelay={100}>
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <Avatar
+                  sx={{
+                    width: 22,
+                    height: 22,
+                    fontSize: '0.6rem',
+                    fontWeight: 800,
+                    bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                    ...kanbanActiveMoverRingSx(createdByUser._id === lastMovedById),
+                  }}
+                >
+                  {kanbanUserInitial(createdByUser)}
+                </Avatar>
+              </Box>
+            </Tooltip>
+          )}
         </Box>
         <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.65rem', fontWeight: 800, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
-          {task.assignedUsers?.map((u: any, idx: number) => {
-            const initial = (u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase();
-            return <Avatar key={idx} sx={{ bgcolor: tokens.brand.primary }}>{initial}</Avatar>;
-          })}
+          {task.assignedUsers?.map((u: any, idx: number) => (
+            <Tooltip key={u._id || idx} title={kanbanUserDisplayName(u)} arrow enterDelay={100}>
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <Avatar
+                  sx={{
+                    bgcolor: tokens.brand.primary,
+                    ...kanbanActiveMoverRingSx(u._id === lastMovedById),
+                  }}
+                >
+                  {kanbanUserInitial(u)}
+                </Avatar>
+              </Box>
+            </Tooltip>
+          ))}
         </AvatarGroup>
       </Box>
     </Box>
@@ -1777,6 +1835,58 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </Box>
               )}
 
+              {(task.lastMovedBy || task.createdBy) && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, px: 0.25 }}>
+                  {task.lastMovedBy && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                      <Avatar
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          bgcolor: tokens.brand.primary,
+                          ...kanbanActiveMoverRingSx(true),
+                        }}
+                      >
+                        {kanbanUserInitial(task.lastMovedBy)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>
+                          Active user
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                          {kanbanUserDisplayName(task.lastMovedBy)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                  {task.createdBy && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                      <Avatar
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                        }}
+                      >
+                        {kanbanUserInitial(task.createdBy)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>
+                          Created by
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                          {kanbanUserDisplayName(task.createdBy)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
               {/* Assignees Section */}
               <Box sx={{ p: 2.5, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
@@ -2224,6 +2334,9 @@ export const KanbanBoardPage = () => {
         attachments: 0,
         assignedUsers: cardAssignees,
         labels: resolvedLabels,
+        createdBy: resolveKanbanUser(card.createdBy, allUsers),
+        lastMovedBy: resolveKanbanUser(card.lastMovedBy, allUsers),
+        lastMovedAt: card.lastMovedAt,
         rawCard: card,
         position: card.order ?? card.position ?? 0,
       });
