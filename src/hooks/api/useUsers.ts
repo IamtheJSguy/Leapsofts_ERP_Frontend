@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { User } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const userApi = {
   getUsers: (params: Record<string, string>) =>
@@ -13,6 +14,13 @@ const userApi = {
   updateRole: ({ id, role }: { id: string; role: string }) =>
     api.put(`/users/${id}/role`, { role }),
   updateMe: (data: Partial<User>) => api.put('/users/me', data),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post<{ data: User }>('/users/me/avatar', formData, {
+      headers: { 'Content-Type': undefined as unknown as string },
+    });
+  },
   changePassword: (data: { oldPassword: string; newPassword: string }) =>
     api.put('/users/me/change-password', data),
   getMe: () => api.get<{ data: User }>('/users/me'),
@@ -132,12 +140,24 @@ export const useUpdateMe = () => {
   });
 };
 
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+  const updateAuthUser = useAuthStore((s) => s.updateUser);
+  return useMutation({
+    mutationFn: userApi.uploadAvatar,
+    onSuccess: (res) => {
+      const updated = res.data?.data;
+      if (updated) updateAuthUser(updated);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+};
+
 export const useChangePassword = () =>
   useMutation({
     mutationFn: userApi.changePassword,
   });
-
-import { useAuthStore } from '@/store/useAuthStore';
 
 export const useMe = () => {
   const updateAuthUser = useAuthStore((s) => s.updateUser);

@@ -8,12 +8,15 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Avatar,
 } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateProfile, useSyncMySheet } from '@/hooks/api/useAuth';
+import { useUploadAvatar } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 
 interface ProfileSettingsModalProps {
   open: boolean;
@@ -23,8 +26,10 @@ interface ProfileSettingsModalProps {
 export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProps) => {
   const { user } = useAuth();
   const updateProfile = useUpdateProfile();
+  const uploadAvatar = useUploadAvatar();
   const syncMySheet = useSyncMySheet();
   const addToast = useUIStore((s) => s.addToast);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -55,6 +60,31 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
     );
   };
 
+  const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addToast({ message: 'Please choose a JPEG, PNG, or WebP image.', severity: 'error' });
+      return;
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      addToast({ message: 'Image must be 1MB or smaller.', severity: 'error' });
+      return;
+    }
+    uploadAvatar.mutate(file, {
+      onSuccess: () => {
+        addToast({ message: 'Profile photo updated.', severity: 'success' });
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err.response?.data?.message || 'Failed to upload profile photo',
+          severity: 'error',
+        });
+      },
+    });
+  };
+
   const handleConfirmSync = () => {
     setIsSyncConfirmOpen(false);
     syncMySheet.mutate(undefined, {
@@ -80,6 +110,56 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                hidden
+                onChange={handleAvatarChange}
+              />
+              <Box
+                onClick={() => avatarInputRef.current?.click()}
+                sx={{
+                  position: 'relative',
+                  cursor: 'pointer',
+                  '&:hover .avatar-upload-overlay': { opacity: 1 },
+                }}
+              >
+                <Avatar src={user?.avatarUrl} sx={{ width: 64, height: 64, fontWeight: 700 }}>
+                  {(user?.firstName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                </Avatar>
+                <Box
+                  className="avatar-upload-overlay"
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(0,0,0,0.45)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: uploadAvatar.isPending ? 1 : 0,
+                    transition: 'opacity 0.2s',
+                    color: '#fff',
+                  }}
+                >
+                  {uploadAvatar.isPending ? (
+                    <CircularProgress size={18} sx={{ color: '#fff' }} />
+                  ) : (
+                    <PhotoCameraOutlinedIcon sx={{ fontSize: 18 }} />
+                  )}
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Profile photo
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Click the photo to upload a JPEG, PNG, or WebP image (max 1MB).
+                </Typography>
+              </Box>
+            </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="First Name"

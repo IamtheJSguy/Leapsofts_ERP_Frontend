@@ -11,6 +11,7 @@ import {
   useTheme,
   alpha,
   IconButton,
+  Avatar,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -343,16 +344,15 @@ export const Sidebar = () => {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-          <Box
+          <Avatar
+            src={user?.avatarUrl}
             sx={{
               width: 32,
               height: 32,
-              borderRadius: '50%',
               bgcolor: tokens.brand.primary,
-              backgroundImage: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              backgroundImage: user?.avatarUrl
+                ? 'none'
+                : `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
               color: '#FFFFFF',
               fontWeight: 700,
               fontSize: '0.8rem',
@@ -361,7 +361,7 @@ export const Sidebar = () => {
             }}
           >
             {userInitial}
-          </Box>
+          </Avatar>
           <Box sx={{ minWidth: 0 }}>
             <Typography
               variant="body2"
