@@ -356,6 +356,7 @@ export const Header = () => {
             sx={{ p: 0.5 }}
           >
             <Avatar
+              src={user?.avatarUrl}
               sx={{
                 width: { xs: 32, sm: 40 },
                 height: { xs: 32, sm: 40 },
@@ -395,6 +396,7 @@ export const Header = () => {
           {/* Header section with User Avatar, Name, Email, and Role badge */}
           <Box sx={{ p: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
             <Avatar
+              src={user?.avatarUrl}
               sx={{
                 width: 44,
                 height: 44,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -31,11 +31,12 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
+import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import WebAssetIcon from '@mui/icons-material/WebAsset';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useUpdateMe, useMe, useChangePassword } from '@/hooks/api/useUsers';
+import { useUpdateMe, useMe, useChangePassword, useUploadAvatar } from '@/hooks/api/useUsers';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -51,6 +52,7 @@ export default function ProfilePage() {
 
   const syncMySheet = useSyncMySheet();
   const updateMeMutation = useUpdateMe();
+  const uploadAvatarMutation = useUploadAvatar();
   const changePasswordMutation = useChangePassword();
   const addToast = useUIStore((s) => s.addToast);
   const muiTheme = useTheme();
@@ -89,6 +91,7 @@ export default function ProfilePage() {
   const [isConnectConfirmOpen, setIsConnectConfirmOpen] = useState(false);
   const [sheetInput, setSheetInput] = useState('');
   const [sheetError, setSheetError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -143,6 +146,31 @@ export default function ProfilePage() {
         },
       }
     );
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addToast({ message: 'Please choose a JPEG, PNG, or WebP image.', severity: 'error' });
+      return;
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      addToast({ message: 'Image must be 1MB or smaller.', severity: 'error' });
+      return;
+    }
+    uploadAvatarMutation.mutate(file, {
+      onSuccess: () => {
+        addToast({ message: 'Profile photo updated.', severity: 'success' });
+      },
+      onError: (err: any) => {
+        addToast({
+          message: err?.response?.data?.message || 'Failed to upload profile photo.',
+          severity: 'error',
+        });
+      },
+    });
   };
 
   const handlePreferencesSave = async () => {
@@ -369,9 +397,21 @@ export default function ProfilePage() {
             borderRadius: '50%',
             background: `linear-gradient(135deg, ${tokens.brand.primary100} 0%, rgba(93, 26, 137, 0) 100%)`,
             display: 'inline-flex',
+            position: 'relative',
+            cursor: 'pointer',
+            '&:hover .avatar-upload-overlay': { opacity: 1 },
           }}
+          onClick={() => avatarInputRef.current?.click()}
         >
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/jpg"
+            hidden
+            onChange={handleAvatarChange}
+          />
           <Avatar
+            src={user?.avatarUrl}
             sx={{
               width: 84,
               height: 84,
@@ -383,6 +423,27 @@ export default function ProfilePage() {
           >
             {initials}
           </Avatar>
+          <Box
+            className="avatar-upload-overlay"
+            sx={{
+              position: 'absolute',
+              inset: 6,
+              borderRadius: '50%',
+              bgcolor: 'rgba(0,0,0,0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: uploadAvatarMutation.isPending ? 1 : 0,
+              transition: 'opacity 0.2s',
+              color: '#fff',
+            }}
+          >
+            {uploadAvatarMutation.isPending ? (
+              <CircularProgress size={22} sx={{ color: '#fff' }} />
+            ) : (
+              <PhotoCameraOutlinedIcon sx={{ fontSize: 22 }} />
+            )}
+          </Box>
         </Box>
 
         <Box sx={{ flex: 1 }}>
@@ -406,6 +467,9 @@ export default function ProfilePage() {
             {/* <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'text.disabled' }} /> */}
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
               {user?.email}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 500 }}>
+              Click the photo to upload
             </Typography>
           </Box>
         </Box>

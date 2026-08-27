@@ -78,6 +78,7 @@ export interface User {
   presenceStatus?: PresenceStatus;
   lastSeenAt?: string;
   phone?: string;
+  avatarUrl?: string;
   jobTitle?: string;
   department?: string;
   bio?: string;
