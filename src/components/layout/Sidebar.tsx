@@ -40,7 +40,11 @@ interface NavItem {
   label: string;
   path: string;
   icon: React.ReactNode;
-  requiresPermission?: 'canViewTeamDashboard' | 'canViewAdminReports' | 'canViewSystemSettings';
+  requiresPermission?:
+    | 'canViewTeamDashboard'
+    | 'canViewAdminReports'
+    | 'canViewSystemSettings'
+    | 'canViewSalesPage';
 }
 
 interface NavGroup {
@@ -54,7 +58,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage' },
       { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
       // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
       { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },

@@ -1,16 +1,28 @@
 import { Typography, Box, Button, useTheme } from '@mui/material';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
 import { SalesSettingsPanel } from '@/components/admin/SalesSettingsPanel';
 import { tokens } from '@/styles/tokens';
 
+type AdminTabId = 'users' | 'system' | 'sales';
+
 const AdminPage = () => {
-  const [tab, setTab] = useState(0);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const { canManageSystemSettings, canManageSalesSettings } = usePermissions();
+  const { canManageUsers, canManageSystemSettings, canManageSalesSettings } = usePermissions();
+
+  const tabs = useMemo(() => {
+    const list: { id: AdminTabId; label: string }[] = [];
+    if (canManageUsers) list.push({ id: 'users', label: 'Users List' });
+    if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings' });
+    if (canManageSalesSettings) list.push({ id: 'sales', label: 'Sales Settings' });
+    return list;
+  }, [canManageUsers, canManageSystemSettings, canManageSalesSettings]);
+
+  const [tab, setTab] = useState<AdminTabId>(tabs[0]?.id ?? 'users');
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -39,86 +51,51 @@ const AdminPage = () => {
         </Typography>
       </Box>
 
-      {/* Premium Segmented Flat Tab Toggler */}
-      <Box
-        sx={{
-          display: 'flex',
-          bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
-          borderRadius: '20px',
-          p: 0.5,
-          gap: 0.5,
-          mb: 4,
-          width: 'fit-content',
-        }}
-      >
-        <Button
-          onClick={() => setTab(0)}
+      {tabs.length > 0 && (
+        <Box
           sx={{
-            borderRadius: '16px',
-            px: 3,
-            py: 0.75,
-            bgcolor: tab === 0 ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-            color: tab === 0 ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
-            fontWeight: 700,
-            textTransform: 'none',
-            fontSize: '0.84rem',
-            '&:hover': {
-              bgcolor: tab === 0 ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
-            },
-            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            display: 'flex',
+            bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
+            borderRadius: '20px',
+            p: 0.5,
+            gap: 0.5,
+            mb: 4,
+            width: 'fit-content',
           }}
         >
-          Users List
-        </Button>
-        <Button
-          onClick={() => setTab(1)}
-          sx={{
-            borderRadius: '16px',
-            px: 3,
-            py: 0.75,
-            bgcolor: tab === 1 ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-            color: tab === 1 ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
-            fontWeight: 700,
-            textTransform: 'none',
-            fontSize: '0.84rem',
-            '&:hover': {
-              bgcolor: tab === 1 ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
-            },
-            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
-          System Settings
-        </Button>
-        <Button
-          onClick={() => setTab(2)}
-          sx={{
-            borderRadius: '16px',
-            px: 3,
-            py: 0.75,
-            bgcolor: tab === 2 ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
-            color: tab === 2 ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
-            fontWeight: 700,
-            textTransform: 'none',
-            fontSize: '0.84rem',
-            '&:hover': {
-              bgcolor: tab === 2 ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
-            },
-            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
-          Sales Settings
-        </Button>
-      </Box>
+          {tabs.map((item) => (
+            <Button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              sx={{
+                borderRadius: '16px',
+                px: 3,
+                py: 0.75,
+                bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+                color: activeTab === item.id ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.84rem',
+                '&:hover': {
+                  bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
+                },
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Box>
+      )}
 
-      {/* Render Active Config Panel */}
       <Box sx={{ mt: 1 }}>
-        {tab === 0 ? (
+        {activeTab === 'users' && canManageUsers ? (
           <UserManagementTable />
-        ) : tab === 1 ? (
+        ) : activeTab === 'system' && canManageSystemSettings ? (
           <SystemSettingsPanel readOnly={!canManageSystemSettings} />
-        ) : (
+        ) : activeTab === 'sales' && canManageSalesSettings ? (
           <SalesSettingsPanel readOnly={!canManageSalesSettings} />
-        )}
+        ) : null}
       </Box>
     </Box>
   );

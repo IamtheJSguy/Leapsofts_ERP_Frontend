@@ -38,6 +38,7 @@ import { tokens } from '@/styles/tokens';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import { BoardCard } from '@/components/projects/BoardCard';
@@ -89,6 +90,7 @@ export const ProjectDetailsPage = () => {
   const { data: dbUsers = [] } = useUsers();
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
+  const { canCreateProjectsAndBoards } = usePermissions();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -399,7 +401,7 @@ export const ProjectDetailsPage = () => {
               <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
                 {boards.length} boards
               </Typography>
-              {canManageProject && (
+              {canCreateProjectsAndBoards && (
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
@@ -432,7 +434,7 @@ export const ProjectDetailsPage = () => {
                 <Typography variant="body1" sx={{ color: 'text.secondary', mb: 2, fontWeight: 600 }}>
                   This project has no boards yet.
                 </Typography>
-                {canManageProject && (
+                {canCreateProjectsAndBoards && (
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}

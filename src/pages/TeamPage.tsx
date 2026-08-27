@@ -30,6 +30,9 @@ import {
   Popover,
   FormControlLabel,
   Switch,
+  Checkbox,
+  FormGroup,
+  FormHelperText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -78,7 +81,16 @@ import {
   SALES_KPI_METRIC_LABELS,
   SALES_DASHBOARD_DEPARTMENTS,
 } from '@/lib/constants';
-import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow } from '@/types';
+import {
+  PERMISSION_KEYS,
+  PERMISSION_LABELS,
+  DEFAULT_SHIFT_START,
+  DEFAULT_SHIFT_END,
+  resolvePermissions,
+  isPermissionLocked,
+  permissionLockHelperText,
+} from '@/lib/permissions';
+import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
 
 const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
   SALES_KPI_METRIC.NEW_PROSPECTS,
@@ -438,12 +450,79 @@ const ShiftTimePicker = ({ label, value, onChange, isDarkMode }: ShiftTimePicker
 };
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+const AccessPermissionsFields = ({
+  role,
+  department,
+  permissions,
+  onChange,
+  isDarkMode,
+}: {
+  role: Role;
+  department?: string;
+  permissions?: UserPermissions | Partial<UserPermissions> | null;
+  onChange: (next: UserPermissions) => void;
+  isDarkMode: boolean;
+}) => {
+  if (role === ROLES.ADMIN) return null;
+  const resolved = resolvePermissions(role, department, permissions);
+
+  return (
+    <Box sx={{ width: '100%', mb: 2.5 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          mb: 1,
+          fontWeight: 700,
+          fontSize: '0.86rem',
+          color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary,
+        }}
+      >
+        Access
+      </Typography>
+      <FormGroup>
+        {PERMISSION_KEYS.map((key) => {
+          const locked = isPermissionLocked(role, department, key);
+          const helper = permissionLockHelperText(role, department, key);
+          return (
+            <Box key={key} sx={{ mb: 0.25 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={resolved[key]}
+                    disabled={locked}
+                    onChange={(e) =>
+                      onChange(
+                        resolvePermissions(role, department, {
+                          ...resolved,
+                          [key]: e.target.checked,
+                        }),
+                      )
+                    }
+                  />
+                }
+                label={
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.84rem' }}>
+                    {PERMISSION_LABELS[key]}
+                  </Typography>
+                }
+              />
+              {locked && helper && (
+                <FormHelperText sx={{ mt: -0.75, ml: 4, mb: 0.5 }}>{helper}</FormHelperText>
+              )}
+            </Box>
+          );
+        })}
+      </FormGroup>
+    </Box>
+  );
+};
+
 const TeamPage = () => {
   const navigate = useNavigate();
-  const { isAdmin, isManager, canManageUsers, canPromoteRoles } = usePermissions();
+  const { isAdmin, isManager, canAccessTeam, canPromoteRoles } = usePermissions();
   const currentUser = useAuthStore((s) => s.user);
-  // /teams/mine is manager-only (403 for admin) — don't call it for admins.
-  const teamQuery = useMyTeam({ enabled: isManager });
+  const teamQuery = useMyTeam({ enabled: !isAdmin && canAccessTeam });
   const showCreateTeam = isManager && teamQuery.isError;
   const canAddExistingMember = isManager && !showCreateTeam;
   const addToast = useUIStore((s) => s.addToast);
@@ -453,23 +532,21 @@ const TeamPage = () => {
   // Admins load the full org roster (includes managers). Managers use /teams/mine.
   const { data: dbUsers = [], isLoading: isUsersLoading } = useUsers(
     { limit: '500' },
-    { enabled: isAdmin || !isManager },
+    { enabled: isAdmin },
   );
   const createUserMutation = useCreateUser();
 
   const teamList = useMemo(() => {
     const allUsers = Array.isArray(dbUsers) ? dbUsers : [];
 
-    // Admin (and any non-manager) always sees every active user, including managers.
-    if (isAdmin || !isManager) return allUsers;
+    if (isAdmin) return allUsers;
 
     const manager = teamQuery.data?.managerId;
     const members = teamQuery.data?.members || [];
     if (!manager?._id) return members;
-    // Include the manager so they can open their own summary from Team Operations.
     if (members.some((m) => m._id === manager._id)) return members;
     return [manager, ...members];
-  }, [isAdmin, isManager, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
+  }, [isAdmin, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -497,7 +574,7 @@ const TeamPage = () => {
     [salesKpiDate],
   );
   const { data: teamSalesKpis = [] } = useTeamSalesKpis(salesKpiQueryParams, {
-    enabled: canManageUsers || isManager || isAdmin,
+    enabled: canAccessTeam || isManager || isAdmin,
   });
   const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
 
@@ -510,7 +587,7 @@ const TeamPage = () => {
     [teamList],
   );
   const { data: teamProgressResponse } = useTeamProgress('All Time', nonSalesMemberIds, {
-    enabled: (canManageUsers || isManager || isAdmin) && nonSalesMemberIds.length > 0,
+    enabled: (canAccessTeam || isManager || isAdmin) && nonSalesMemberIds.length > 0,
   });
   const taskStatsByUser = useMemo(
     () => buildTaskStatsByUser(teamProgressResponse?.data ?? []),
@@ -565,6 +642,13 @@ const TeamPage = () => {
   const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
+  const [addPermissions, setAddPermissions] = useState<UserPermissions>(() =>
+    resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING),
+  );
+  const [shiftStart, setShiftStart] = useState(DEFAULT_SHIFT_START);
+  const [shiftEnd, setShiftEnd] = useState(DEFAULT_SHIFT_END);
+
+  const createRole = isAdmin ? roleSelection : ROLES.USER;
 
   const filteredTeam = useMemo(() => {
     return teamList.filter((member) => {
@@ -597,6 +681,9 @@ const TeamPage = () => {
     setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
+    setAddPermissions(resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING));
+    setShiftStart(DEFAULT_SHIFT_START);
+    setShiftEnd(DEFAULT_SHIFT_END);
   };
 
   const handleAddMember = (e: React.FormEvent) => {
@@ -616,11 +703,15 @@ const TeamPage = () => {
       password,
       firstName,
       lastName,
-      role: isAdmin ? roleSelection : ROLES.USER,
+      role: createRole,
       jobTitle,
       phone,
       department,
       bio,
+      permissions: addPermissions,
+      ...(createRole !== ROLES.ADMIN
+        ? { shiftStart: shiftStart || DEFAULT_SHIFT_START, shiftEnd: shiftEnd || DEFAULT_SHIFT_END }
+        : {}),
     };
 
     createUserMutation.mutate(payload, {
@@ -676,11 +767,20 @@ const TeamPage = () => {
         jobTitle: selectedUser.jobTitle,
         role: selectedUser.role,
         isActive: selectedUser.isActive,
-        shiftStart: selectedUser.shiftStart,
-        shiftEnd: selectedUser.shiftEnd,
+        ...(selectedUser.role !== ROLES.ADMIN
+          ? {
+              shiftStart: selectedUser.shiftStart || DEFAULT_SHIFT_START,
+              shiftEnd: selectedUser.shiftEnd || DEFAULT_SHIFT_END,
+            }
+          : {}),
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
         monitorScreenshots: selectedUser.monitorScreenshots !== false,
         monitorAppUsage: selectedUser.monitorAppUsage !== false,
+        permissions: resolvePermissions(
+          selectedUser.role,
+          selectedUser.department,
+          selectedUser.permissions,
+        ),
       } as any
     }, {
       onSuccess: () => {
@@ -768,7 +868,9 @@ const TeamPage = () => {
           </Button>
 
           {/* Managers cannot edit/delete themselves via team-manage APIs */}
-          {selectedUser._id !== currentUser?._id && (
+          {canAccessTeam &&
+            selectedUser._id !== currentUser?._id &&
+            (isAdmin || selectedUser.role === ROLES.USER) && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
               <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
                 Edit
@@ -792,7 +894,8 @@ const TeamPage = () => {
           )}
         </Box>
 
-        {(isAdmin || isManager) &&
+        {canAccessTeam &&
+          selectedUser.role !== ROLES.ADMIN &&
           selectedUser._id !== currentUser?._id &&
           (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
           <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
@@ -1205,7 +1308,18 @@ const TeamPage = () => {
                     <FormControl fullWidth sx={{ mb: 2.5 }}>
                       <Select
                         value={selectedUser.department || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
+                        onChange={(e) => {
+                          const nextDept = e.target.value;
+                          setSelectedUser({
+                            ...selectedUser,
+                            department: nextDept,
+                            permissions: resolvePermissions(
+                              selectedUser.role,
+                              nextDept,
+                              selectedUser.permissions,
+                            ),
+                          });
+                        }}
                         displayEmpty
                         input={
                           <OutlinedInput
@@ -1258,7 +1372,17 @@ const TeamPage = () => {
                         ] as const).map(({ value, label }) => (
                           <Box
                             key={value}
-                            onClick={() => setSelectedUser({ ...selectedUser, role: value })}
+                            onClick={() =>
+                              setSelectedUser({
+                                ...selectedUser,
+                                role: value,
+                                permissions: resolvePermissions(
+                                  value,
+                                  selectedUser.department,
+                                  selectedUser.permissions,
+                                ),
+                              })
+                            }
                             sx={{
                               flex: 1,
                               display: 'flex',
@@ -1311,14 +1435,24 @@ const TeamPage = () => {
                   </Grid>
                 </Grid>
 
+                <AccessPermissionsFields
+                  role={selectedUser.role}
+                  department={selectedUser.department}
+                  permissions={selectedUser.permissions}
+                  onChange={(next) => setSelectedUser({ ...selectedUser, permissions: next })}
+                  isDarkMode={isDarkMode}
+                />
+
                 <Grid container spacing={2.5}>
+                  {selectedUser.role !== ROLES.ADMIN && (
+                    <>
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
                       Shift Start
                     </Typography>
                     <ShiftTimePicker
                       label="Shift Start"
-                      value={selectedUser.shiftStart || '09:00'}
+                      value={selectedUser.shiftStart || DEFAULT_SHIFT_START}
                       onChange={(v) => setSelectedUser({ ...selectedUser, shiftStart: v })}
                       isDarkMode={isDarkMode}
                     />
@@ -1329,11 +1463,13 @@ const TeamPage = () => {
                     </Typography>
                     <ShiftTimePicker
                       label="Shift End"
-                      value={selectedUser.shiftEnd || '17:00'}
+                      value={selectedUser.shiftEnd || DEFAULT_SHIFT_END}
                       onChange={(v) => setSelectedUser({ ...selectedUser, shiftEnd: v })}
                       isDarkMode={isDarkMode}
                     />
                   </Grid>
+                    </>
+                  )}
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
                       Idle timeout (minutes)
@@ -1717,7 +1853,7 @@ const TeamPage = () => {
           </Typography>
         </Box>
 
-        {canManageUsers && (
+        {canAccessTeam && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -1847,7 +1983,7 @@ const TeamPage = () => {
       </Box>
 
       {/* Team Cards Grid */}
-      {(isManager ? teamQuery.isLoading : isUsersLoading) ? (
+      {(isAdmin ? isUsersLoading : teamQuery.isLoading) ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
           <CircularProgress sx={{ color: tokens.brand.primary }} />
         </Box>
@@ -2386,7 +2522,11 @@ const TeamPage = () => {
                     <FormControl fullWidth>
                       <Select
                         value={department}
-                        onChange={(e) => setDepartment(e.target.value)}
+                        onChange={(e) => {
+                          const nextDept = e.target.value;
+                          setDepartment(nextDept);
+                          setAddPermissions((prev) => resolvePermissions(createRole, nextDept, prev));
+                        }}
                         input={
                           <OutlinedInput
                             sx={{
@@ -2434,7 +2574,10 @@ const TeamPage = () => {
                         ] as const).map(({ value, label }) => (
                           <Box
                             key={value}
-                            onClick={() => setRoleSelection(value)}
+                            onClick={() => {
+                              setRoleSelection(value);
+                              setAddPermissions((prev) => resolvePermissions(value, department, prev));
+                            }}
                             sx={{
                               flex: 1,
                               display: 'flex',
@@ -2460,6 +2603,41 @@ const TeamPage = () => {
                     )}
                   </Grid>
                 </Grid>
+
+                <AccessPermissionsFields
+                  role={createRole}
+                  department={department}
+                  permissions={addPermissions}
+                  onChange={setAddPermissions}
+                  isDarkMode={isDarkMode}
+                />
+
+                {createRole !== ROLES.ADMIN && (
+                  <Grid container spacing={2.5} sx={{ mb: 1 }}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                        Shift Start
+                      </Typography>
+                      <ShiftTimePicker
+                        label="Shift Start"
+                        value={shiftStart || DEFAULT_SHIFT_START}
+                        onChange={setShiftStart}
+                        isDarkMode={isDarkMode}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
+                        Shift End
+                      </Typography>
+                      <ShiftTimePicker
+                        label="Shift End"
+                        value={shiftEnd || DEFAULT_SHIFT_END}
+                        onChange={setShiftEnd}
+                        isDarkMode={isDarkMode}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
 
                 {/* Row 5: Bio (Scrollable Text Area) */}
                 <Box sx={{ width: '100%' }}>
