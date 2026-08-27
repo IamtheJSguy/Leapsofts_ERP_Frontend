@@ -8,7 +8,7 @@ const authApi = {
     api.post('/auth/login', credentials),
   register: (data: Record<string, string>) => api.post('/auth/register', data),
   logout: () => api.post('/auth/logout'),
-  me: () => api.get<{ data: User }>('/auth/me'),
+  me: () => api.get<{ data: User }>('/users/me'),
 };
 
 export const useLogin = () => {

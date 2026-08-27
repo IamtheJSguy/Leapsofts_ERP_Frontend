@@ -36,6 +36,7 @@ import { useShiftHistory, useTeamAttendanceSummary } from '@/hooks/api/useShifts
 import { useUsers } from '@/hooks/api/useUsers';
 import { useMyTeam } from '@/hooks/api/useTeam';
 import { useAuthStore } from '@/store/useAuthStore';
+import { usePermissions } from '@/hooks/usePermissions';
 import { format } from 'date-fns';
 
 const trackingPath = (userId: string, date: Date | string, shiftId?: string) => {
@@ -49,9 +50,10 @@ export const AttendancePage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = currentUser?.role === 'admin';
-  const isManager = currentUser?.role === 'manager';
-  const isAdminView = isAdmin || isManager;
+  const { canViewAllAttendance, canAccessTeam } = usePermissions();
+  const showOrgDirectory = canViewAllAttendance;
+  const showTeamDirectory = !showOrgDirectory && canAccessTeam;
+  const isAdminView = showOrgDirectory || showTeamDirectory;
 
   // --- Personal User States & Queries ---
   const [page, setPage] = useState(1);
@@ -209,10 +211,10 @@ export const AttendancePage = () => {
 
   const { data: allUsers = [], isLoading: isUsersLoading } = useUsers(
     { limit: '500' },
-    { enabled: isAdmin }
+    { enabled: showOrgDirectory }
   );
-  const { data: myTeam, isLoading: isTeamLoading } = useMyTeam({ enabled: isManager });
-  const isDirectoryLoading = isAdmin ? isUsersLoading : isTeamLoading;
+  const { data: myTeam, isLoading: isTeamLoading } = useMyTeam({ enabled: showTeamDirectory });
+  const isDirectoryLoading = showOrgDirectory ? isUsersLoading : isTeamLoading;
   const { data: teamSummary, isLoading: isTeamSummaryLoading } = useTeamAttendanceSummary();
   const { data: userHistoryData, isLoading: isUserHistoryLoading } = useShiftHistory(
     selectedUser && queryRange
@@ -319,10 +321,10 @@ export const AttendancePage = () => {
     }
   };
 
-  // Admin: all non-admin users. Manager: themselves plus their team members.
+  // Org-wide when viewAllAttendance; otherwise manager team (or self for users).
   const filteredUsers = useMemo(() => {
     let directoryUsers: any[];
-    if (isManager) {
+    if (showTeamDirectory) {
       const members = (myTeam?.members ?? []).filter((u) => u.role !== 'admin');
       const manager = myTeam?.managerId || currentUser;
       if (manager?._id && !members.some((m) => m._id === manager._id)) {
@@ -340,7 +342,7 @@ export const AttendancePage = () => {
       const email = (user.email || '').toLowerCase();
       return fullName.includes(query) || email.includes(query);
     });
-  }, [allUsers, myTeam?.members, myTeam?.managerId, currentUser, isManager, searchQuery]);
+  }, [allUsers, myTeam?.members, myTeam?.managerId, currentUser, showTeamDirectory, searchQuery]);
 
   const todayShiftByUserId = useMemo(() => {
     const map = new Map<string, NonNullable<typeof teamSummary>['todayShifts'][number]>();

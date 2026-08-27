@@ -56,7 +56,7 @@ const ProjectsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const navigate = useNavigate();
-  const { isElevated } = usePermissions();
+  const { canCreateProjectsAndBoards } = usePermissions();
 
   const { data: projects = [], isLoading } = useProjects();
   const createProjectMutation = useCreateProject();
@@ -153,7 +153,7 @@ const ProjectsPage = () => {
           </Typography>
         </Box>
 
-        {isElevated && (
+        {canCreateProjectsAndBoards && (
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <Button
               variant="contained"

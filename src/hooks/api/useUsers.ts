@@ -85,7 +85,10 @@ export const useCreateUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: userApi.createUser,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+    },
   });
 };
 

@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 
+import type { UserPermissions } from '@/types';
+
 export interface TeamMember {
   _id: string;
   firstName?: string;
@@ -11,6 +13,9 @@ export interface TeamMember {
   department?: string;
   teamId?: string;
   isActive?: boolean;
+  permissions?: UserPermissions;
+  shiftStart?: string;
+  shiftEnd?: string;
   idleTimeoutMinutes?: number;
   monitorScreenshots?: boolean;
   monitorAppUsage?: boolean;

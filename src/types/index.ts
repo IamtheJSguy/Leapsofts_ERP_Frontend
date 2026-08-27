@@ -57,12 +57,22 @@ export interface UserPresence {
   lastSeenAt?: string;
 }
 
+export interface UserPermissions {
+  viewSalesPage: boolean;
+  accessTeam: boolean;
+  viewAllAttendance: boolean;
+  manageSystemSettings: boolean;
+  manageSalesSettings: boolean;
+  createProjectsAndBoards: boolean;
+}
+
 export interface User {
   _id: string;
   email: string;
   firstName?: string;
   lastName?: string;
   role: Role;
+  permissions?: UserPermissions;
   isActive?: boolean;
   isOnline?: boolean;
   presenceStatus?: PresenceStatus;

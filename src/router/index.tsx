@@ -132,7 +132,10 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+          <ProtectedRoute
+            allowedRoles={[...ALL_ROLES]}
+            requirePermission={['manageSystemSettings', 'manageSalesSettings']}
+          >
             <AdminPage />
           </ProtectedRoute>,
         ),
@@ -140,7 +143,7 @@ export const router = createBrowserRouter([
       {
         path: 'team',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessTeam">
             <TeamPage />
           </ProtectedRoute>,
         ),
@@ -164,7 +167,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
             <SalesPage />
           </ProtectedRoute>,
         ),
@@ -172,7 +175,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales/add-leads',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
             <BulkAddLeadsPage />
           </ProtectedRoute>,
         ),
@@ -180,7 +183,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales/leads/:id',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
             <LeadDetailsPage />
           </ProtectedRoute>,
         ),
@@ -196,7 +199,7 @@ export const router = createBrowserRouter([
       {
         path: 'team/insights',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessTeam">
             <TeamInsightsPage />
           </ProtectedRoute>,
         ),
@@ -204,7 +207,7 @@ export const router = createBrowserRouter([
       {
         path: 'team/member/:userId',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessTeam">
             <MemberProgressPage />
           </ProtectedRoute>,
         ),
