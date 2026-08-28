@@ -16,6 +16,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -68,6 +69,8 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useConversations, useCreateBoardConversation } from '@/hooks/api/useChat';
+import { useChatStore } from '@/store/useChatStore';
 import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -1395,43 +1398,64 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const canEdit = true;
 
   const handleConfirmSave = () => {
-    // Update assignees and dates via assignCard
-    assignCardMutation.mutate({
-      cardId: task.id,
-      data: {
-        assignedTo: pendingAssignees,
-        ...(pendingDueDate ? { dueDate: pendingDueDate, kpiEndDate: pendingDueDate } : (pendingKpiEndDate ? { dueDate: pendingKpiEndDate, kpiEndDate: pendingKpiEndDate } : {})),
-      },
-    }, {
-      onSuccess: () => {
-        // Also update title, desc, and priority if they changed
-        const updates: any = {};
-        if (editTitle.trim() && editTitle.trim() !== task.title) updates.title = editTitle.trim();
-        if (editDesc.trim() !== (task.description || '')) updates.description = editDesc.trim();
-        if (pendingPriority !== (task.rawCard?.priority || 'medium')) updates.priority = pendingPriority;
-        
-        if (Object.keys(updates).length > 0) {
-          updateCardMutation.mutate({
-            cardId: task.id,
-            data: updates
-          }, {
-            onSuccess: () => {
-               addToast({ message: 'Task updated successfully', severity: 'success' });
-               onClose();
-            }
-          });
-        } else {
-           addToast({ message: 'Task updated successfully', severity: 'success' });
-           onClose();
-        }
-      },
-      onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || err?.message || 'You cannot assign this task to that user',
-          severity: 'error',
-        });
-      },
-    });
+    const currentAssigneeIds = Array.isArray(task.rawCard?.assignedTo)
+      ? task.rawCard.assignedTo.map((u: any) => (typeof u === 'object' ? u._id : u))
+      : [];
+    const assigneesChanged =
+      pendingAssignees.length !== currentAssigneeIds.length ||
+      pendingAssignees.some((id) => !currentAssigneeIds.includes(id));
+    const currentDue = task.rawCard?.dueDate ? String(task.rawCard.dueDate).split('T')[0] : '';
+    const currentKpiEnd = task.rawCard?.kpiEndDate ? String(task.rawCard.kpiEndDate).split('T')[0] : '';
+    const datesChanged = pendingDueDate !== currentDue || pendingKpiEndDate !== currentKpiEnd;
+
+    const updates: Record<string, unknown> = {};
+    if (editTitle.trim() && editTitle.trim() !== task.title) updates.title = editTitle.trim();
+    if (editDesc.trim() !== (task.description || '')) updates.description = editDesc.trim();
+    if (pendingPriority !== (task.rawCard?.priority || 'medium')) updates.priority = pendingPriority;
+
+    const finishOk = () => {
+      addToast({ message: 'Task updated successfully', severity: 'success' });
+      onClose();
+    };
+
+    const runFieldUpdates = (onDone: () => void) => {
+      if (Object.keys(updates).length === 0) {
+        onDone();
+        return;
+      }
+      updateCardMutation.mutate(
+        { cardId: task.id, data: updates },
+        { onSuccess: onDone },
+      );
+    };
+
+    if (assigneesChanged || datesChanged) {
+      assignCardMutation.mutate(
+        {
+          cardId: task.id,
+          data: {
+            assignedTo: pendingAssignees,
+            ...(pendingDueDate
+              ? { dueDate: pendingDueDate, kpiEndDate: pendingDueDate }
+              : pendingKpiEndDate
+                ? { dueDate: pendingKpiEndDate, kpiEndDate: pendingKpiEndDate }
+                : {}),
+          },
+        },
+        {
+          onSuccess: () => runFieldUpdates(finishOk),
+          onError: (err: any) => {
+            addToast({
+              message: err?.response?.data?.message || err?.message || 'You cannot assign this task to that user',
+              severity: 'error',
+            });
+          },
+        },
+      );
+      return;
+    }
+
+    runFieldUpdates(finishOk);
   };
 
   if (!task) return null;
@@ -2206,6 +2230,10 @@ export const KanbanBoardPage = () => {
 
   const { data: board, isLoading, error } = useKanbanBoard(activeBoardId);
   const { data: allUsers = [] } = useUsers();
+  const { data: conversations = [] } = useConversations();
+  const createBoardConversation = useCreateBoardConversation();
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+  const addToast = useUIStore((s) => s.addToast);
   const moveCardMutation = useMoveCard(activeBoardId);
   const createColumnMutation = useCreateColumn();
   const renameColumnMutation = useRenameColumn();
@@ -2224,6 +2252,50 @@ export const KanbanBoardPage = () => {
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
   const canManageTeam = actualBoard?.ownerId === currentUser?._id || isElevated;
+  const canManageBoardChat = Boolean(
+    currentUser &&
+      actualBoard &&
+      (actualBoard.ownerId === currentUser._id ||
+        currentUser.role === 'admin' ||
+        (actualBoard.members || []).some((m) => {
+          const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
+          return uid === currentUser._id && m.role === 'admin';
+        })),
+  );
+  const boardChat = conversations.find((c) => c.boardId === activeBoardId);
+
+  const openBoardChat = (conversationId: string) => {
+    setActiveConversation(conversationId);
+    navigate(`/chat/${conversationId}`);
+  };
+
+  const handleBoardChatClick = () => {
+    if (boardChat?._id) {
+      openBoardChat(boardChat._id);
+      return;
+    }
+    createBoardConversation.mutate(activeBoardId, {
+      onSuccess: (res) => {
+        const conv = (res.data as { data?: { _id?: string; participants?: Array<string | { _id: string }> } })?.data;
+        const id = conv?._id;
+        const participantIds = (conv?.participants || []).map((p) => (typeof p === 'string' ? p : p._id));
+        if (id && currentUser?._id && participantIds.includes(currentUser._id)) {
+          openBoardChat(id);
+          return;
+        }
+        addToast({
+          message: 'Board chat already exists. Ask the group admin to add you.',
+          severity: 'info',
+        });
+      },
+      onError: (err: unknown) => {
+        const message =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to open board chat';
+        addToast({ message, severity: 'error' });
+      },
+    });
+  };
 
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
@@ -2683,6 +2755,24 @@ export const KanbanBoardPage = () => {
           >
             <FilterListIcon fontSize="small" />
           </IconButton>
+          {canManageBoardChat && (
+            <Button
+              startIcon={<ForumOutlinedIcon />}
+              onClick={handleBoardChatClick}
+              disabled={createBoardConversation.isPending}
+              variant="outlined"
+              sx={{
+                color: tokens.brand.primary,
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(93,26,137,0.2)',
+                fontWeight: 700,
+                borderRadius: '24px',
+                textTransform: 'none',
+                px: 2.5,
+              }}
+            >
+              {boardChat ? 'Open board chat' : 'Create board chat'}
+            </Button>
+          )}
           {canManageTeam && (
             <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
           )}

@@ -736,6 +736,7 @@ export interface ProjectWithBoards {
 export interface Conversation {
   _id: string;
   isGroup?: boolean;
+  boardId?: string;
   name?: string;
   description?: string;
   admin?: string | User;
@@ -845,10 +846,11 @@ export interface DriveFile {
 export interface MessageReplySnippet {
   _id: string;
   content: string;
-  type: 'text' | 'file' | 'drive_file';
+  type: 'text' | 'file' | 'drive_file' | 'board_event';
   senderId?: string | User;
   sender?: string | User;
   driveFileName?: string;
+  fileUrl?: string;
 }
 
 export interface MessageReaction {
@@ -857,14 +859,25 @@ export interface MessageReaction {
   createdAt: string;
 }
 
+export interface BoardEvent {
+  action: string;
+  cardId?: string;
+  cardTitle?: string;
+  fromColumn?: string;
+  toColumn?: string;
+  extra?: string;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
   senderId?: string | User;
   sender?: string | User;
   content: string;
-  type: 'text' | 'file' | 'drive_file';
+  type: 'text' | 'file' | 'drive_file' | 'board_event';
   fileUrl?: string;
+  filePublicId?: string;
+  boardEvent?: BoardEvent;
   driveFileId?: string;
   driveFileName?: string;
   driveMimeType?: string;

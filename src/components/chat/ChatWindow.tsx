@@ -18,11 +18,12 @@ import FolderIcon from '@mui/icons-material/Folder';
 import ForumIcon from '@mui/icons-material/Forum';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddToDriveIcon from '@mui/icons-material/AddToDrive';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
-import { useMessages, useSendMessage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
+import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,9 +55,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { data: dbUsers = [] } = useUsers();
   const { data: messages = [], isLoading } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
+  const sendChatImage = useSendChatImage();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
   const [text, setText] = useState('');
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { joinChat, leaveChat, emitTyping, subscribePresence } = useSocket();
@@ -134,6 +140,29 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const el = messagesContainerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
+
+  const clearPendingImage = useCallback(() => {
+    setPendingImage(null);
+    setPendingPreviewUrl((url) => {
+      if (url) URL.revokeObjectURL(url);
+      return null;
+    });
+  }, []);
+
+  const stageImageFile = useCallback((file: File | undefined | null) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setPendingImage(file);
+    setPendingPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    };
+  }, [pendingPreviewUrl]);
 
   // Mark as read when new messages arrive while this conversation is open
   const lastMarkedMessageId = useRef<string | null>(null);
@@ -235,8 +264,51 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   }, [enhancedMessages]);
 
   const handleSend = () => {
-    if (!activeConversationId || !text.trim()) return;
+    if (!activeConversationId) return;
     const replyToId = replyingTo?._id;
+    const caption = text.trim();
+
+    const sendImage = (conversationId: string) => {
+      if (!pendingImage) return;
+      sendChatImage.mutate(
+        {
+          conversationId,
+          file: pendingImage,
+          content: caption || undefined,
+          replyTo: replyToId,
+        },
+        {
+          onSuccess: () => {
+            setText('');
+            setReplyingTo(null);
+            clearPendingImage();
+          },
+        },
+      );
+    };
+
+    if (pendingImage) {
+      if (activeConversationId.startsWith('mock-conv-')) {
+        const targetUserId = activeConversationId.replace('mock-conv-', '');
+        createConversation.mutate(
+          { participantId: targetUserId },
+          {
+            onSuccess: (response: any) => {
+              const newConvId = response.data?.data?._id || response.data?._id;
+              if (newConvId) {
+                setActiveConversation(newConvId);
+                sendImage(newConvId);
+              }
+            },
+          },
+        );
+        return;
+      }
+      sendImage(activeConversationId);
+      return;
+    }
+
+    if (!caption) return;
     const payload = {
       content: text,
       ...(replyToId ? { replyTo: replyToId } : {}),
@@ -367,7 +439,52 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, bgcolor: 'transparent', position: 'relative' }}>
+    <Box
+      sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, bgcolor: 'transparent', position: 'relative' }}
+      onDragOver={(e) => {
+        if ([...e.dataTransfer.types].includes('Files')) {
+          e.preventDefault();
+          setIsDraggingImage(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setIsDraggingImage(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDraggingImage(false);
+        const file = e.dataTransfer.files?.[0];
+        stageImageFile(file);
+      }}
+    >
+      {isDraggingImage && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 30,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: isDarkMode ? 'rgba(20,18,25,0.72)' : 'rgba(255,255,255,0.72)',
+            border: `2px dashed ${tokens.brand.primary}`,
+            pointerEvents: 'none',
+          }}
+        >
+          <Typography sx={{ fontWeight: 800, color: tokens.brand.primary }}>Drop image to send</Typography>
+        </Box>
+      )}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/jpg"
+        hidden
+        onChange={(e) => {
+          stageImageFile(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
       {/* Dynamic Conversational Header Bar */}
       <Box
         sx={{
@@ -627,6 +744,40 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </IconButton>
           </Box>
         )}
+        {pendingImage && pendingPreviewUrl && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              mb: 1,
+              mx: 0.5,
+              px: 1.5,
+              py: 1,
+              borderRadius: '18px',
+              bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.75)' : 'rgba(255,255,255,0.9)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.08)'}`,
+            }}
+          >
+            <Box
+              component="img"
+              src={pendingPreviewUrl}
+              alt="Pending upload"
+              sx={{ width: 56, height: 56, borderRadius: '10px', objectFit: 'cover' }}
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, display: 'block' }}>
+                {pendingImage.name}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Add an optional caption below, then send
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={clearPendingImage} aria-label="Remove image">
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        )}
         <Box
           sx={{
             display: 'flex',
@@ -683,6 +834,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
           >
 
+            <MenuItem onClick={() => { setAttachAnchorEl(null); imageInputRef.current?.click(); }} sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon>
+                <ImageOutlinedIcon fontSize="small" sx={{ color: tokens.brand.primary }} />
+              </ListItemIcon>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>Upload image</Typography>
+            </MenuItem>
             <MenuItem onClick={() => { setAttachAnchorEl(null); setDrivePickerOpen(true); }} sx={{ py: 1.5, px: 2 }}>
               <ListItemIcon>
                 <AddToDriveIcon fontSize="small" sx={{ color: '#0F9D58' }} />
@@ -704,7 +861,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 lastTypingEmit.current = now;
               }
             }}
-            placeholder="Type a message..."
+            placeholder={pendingImage ? 'Add a caption (optional)...' : 'Type a message...'}
+            onPaste={(e) => {
+              const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+              if (!item) return;
+              const file = item.getAsFile();
+              if (file) {
+                e.preventDefault();
+                stageImageFile(file);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -727,7 +893,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
           <IconButton
             onClick={handleSend}
-            disabled={sendMessage.isPending || !text.trim()}
+            disabled={sendMessage.isPending || sendChatImage.isPending || (!text.trim() && !pendingImage)}
             sx={{
               width: 44,
               height: 44,
@@ -751,7 +917,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }}
             aria-label="Send message"
           >
-            {sendMessage.isPending ? (
+            {sendMessage.isPending || sendChatImage.isPending ? (
               <CircularProgress size={20} color="inherit" />
             ) : (
               <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />

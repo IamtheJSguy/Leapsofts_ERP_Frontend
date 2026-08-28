@@ -22,6 +22,20 @@ const chatApi = {
     driveIconLink?: string;
     replyTo?: string;
   }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
+  sendChatImage: (data: {
+    conversationId: string;
+    file: File;
+    content?: string;
+    replyTo?: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('image', data.file);
+    if (data.content) formData.append('content', data.content);
+    if (data.replyTo) formData.append('replyTo', data.replyTo);
+    return api.post(`/chat/conversations/${data.conversationId}/messages/image`, formData, {
+      headers: { 'Content-Type': undefined as unknown as string },
+    });
+  },
   setMessageReaction: (data: { conversationId: string; messageId: string; emoji: string }) =>
     api.put<{ data: Message }>(
       `/chat/conversations/${data.conversationId}/messages/${data.messageId}/reaction`,
@@ -47,6 +61,10 @@ const chatApi = {
     }
     return api.post('/chat/conversations', { participantId: data.participantId });
   },
+  createBoardConversation: (boardId: string) =>
+    api.post<{ data: Conversation }>('/chat/conversations/board', { boardId }),
+  getBoardConversation: (boardId: string) =>
+    api.get<{ data: Conversation }>(`/chat/conversations/board/${boardId}`),
   searchMessages: (query: string) =>
     api.get('/chat/search', { params: { q: query } }),
   addGroupMember: (data: { conversationId: string; participantId: string }) =>
@@ -125,40 +143,54 @@ export const useMessages = (conversationId: string | null, params: Record<string
     refetchOnWindowFocus: true,
   });
 
+const applySentMessageToCache = (
+  queryClient: QueryClient,
+  conversationId: string,
+  res: AxiosResponse,
+) => {
+  const message = normalizeMessageReceipts((res.data as { data: Message }).data);
+  if (message) {
+    queryClient.setQueriesData<Message[]>(
+      { queryKey: ['messages', conversationId] },
+      (old) => {
+        if (!old) return [message];
+        if (old.some((m) => m._id === message._id)) return old;
+        return [...old, message];
+      },
+    );
+    queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+      if (!old) return old;
+      const updated = old.map((conv) =>
+        conv._id === conversationId
+          ? { ...conv, lastMessage: message, updatedAt: message.createdAt, unreadCount: 0 }
+          : conv,
+      );
+      const idx = updated.findIndex((c) => c._id === conversationId);
+      if (idx > 0) {
+        const [item] = updated.splice(idx, 1);
+        updated.unshift(item);
+      }
+      return updated;
+    });
+  } else {
+    queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
+  }
+};
+
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: chatApi.sendMessage,
-    onSuccess: (res, variables) => {
-      const message = normalizeMessageReceipts((res.data as { data: Message }).data);
-      if (message) {
-        queryClient.setQueriesData<Message[]>(
-          { queryKey: ['messages', variables.conversationId] },
-          (old) => {
-            if (!old) return [message];
-            if (old.some((m) => m._id === message._id)) return old;
-            return [...old, message];
-          },
-        );
-        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
-          if (!old) return old;
-          const updated = old.map((conv) =>
-            conv._id === variables.conversationId
-              ? { ...conv, lastMessage: message, updatedAt: message.createdAt, unreadCount: 0 }
-              : conv,
-          );
-          const idx = updated.findIndex((c) => c._id === variables.conversationId);
-          if (idx > 0) {
-            const [item] = updated.splice(idx, 1);
-            updated.unshift(item);
-          }
-          return updated;
-        });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
-        queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      }
-    },
+    onSuccess: (res, variables) => applySentMessageToCache(queryClient, variables.conversationId, res),
+  });
+};
+
+export const useSendChatImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: chatApi.sendChatImage,
+    onSuccess: (res, variables) => applySentMessageToCache(queryClient, variables.conversationId, res),
   });
 };
 
@@ -255,6 +287,33 @@ export const useCreateConversation = () => {
         });
       } else {
         // Fallback if the response shape is unexpected
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      }
+    },
+  });
+};
+
+export const useCreateBoardConversation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: chatApi.createBoardConversation,
+    onSuccess: (res) => {
+      const newConversation: Conversation | undefined =
+        (res.data as { data?: Conversation })?.data ?? (res.data as unknown as Conversation);
+      if (newConversation?._id) {
+        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+          if (!old) {
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            return old;
+          }
+          if (old.some((c) => c._id === newConversation._id)) {
+            return old.map((c) =>
+              c._id === newConversation._id ? { ...c, ...newConversation } : c,
+            );
+          }
+          return [newConversation, ...old];
+        });
+      } else {
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       }
     },
