@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -53,7 +53,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { user } = useAuth();
   const { data: conversations = [] } = useConversations();
   const { data: dbUsers = [] } = useUsers();
-  const { data: messages = [], isLoading } = useMessages(activeConversationId);
+  const {
+    messages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
   const sendChatImage = useSendChatImage();
   const createConversation = useCreateConversation();
@@ -65,6 +71,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const isPrependingRef = useRef(false);
+  const prevScrollHeightRef = useRef(0);
   const { joinChat, leaveChat, emitTyping, subscribePresence } = useSocket();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -260,11 +269,47 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   }, [displayMessages, userMap, user?._id]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [enhancedMessages]);
+    shouldStickToBottomRef.current = true;
+    isPrependingRef.current = false;
+  }, [activeConversationId]);
+
+  const loadOlderMessages = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const el = messagesContainerRef.current;
+    if (el) {
+      prevScrollHeightRef.current = el.scrollHeight;
+      isPrependingRef.current = true;
+    }
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldStickToBottomRef.current = distanceFromBottom < 96;
+    if (el.scrollTop < 72) {
+      loadOlderMessages();
+    }
+  }, [loadOlderMessages]);
+
+  useLayoutEffect(() => {
+    const el = messagesContainerRef.current;
+    if (isPrependingRef.current && el) {
+      const diff = el.scrollHeight - prevScrollHeightRef.current;
+      if (diff) el.scrollTop += diff;
+      prevScrollHeightRef.current = el.scrollHeight;
+      if (!isFetchingNextPage) isPrependingRef.current = false;
+      return;
+    }
+    if (shouldStickToBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [enhancedMessages, isFetchingNextPage]);
 
   const handleSend = () => {
     if (!activeConversationId) return;
+    shouldStickToBottomRef.current = true;
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
@@ -609,6 +654,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
       <Box
         ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
         sx={{
         flex: 1,
         overflowY: 'auto',
@@ -638,6 +684,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Box>
         ) : (
           <>
+            {(isFetchingNextPage || hasNextPage) && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 1, minHeight: 28 }}>
+                {isFetchingNextPage ? (
+                  <CircularProgress size={20} sx={{ color: tokens.brand.primary }} />
+                ) : null}
+              </Box>
+            )}
             {enhancedMessages.map(({ msg, isOwn }: any, index: number) => {
               const prevMsg = index > 0 ? enhancedMessages[index - 1]?.msg : null;
               const showDaySeparator =
