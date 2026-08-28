@@ -6,6 +6,8 @@ import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
 import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/useChatStore';
+import { useConversations } from '@/hooks/api/useChat';
+import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 
 const ChatPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -16,15 +18,33 @@ const ChatPage = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { activeConversationId, setActiveConversation } = useChatStore();
+  const { data: conversations, isSuccess: conversationsLoaded } = useConversations();
 
   useEffect(() => {
-    if (conversationId && conversationId !== activeConversationId) {
-      setActiveConversation(conversationId);
-    } else if (!conversationId && activeConversationId) {
-      // If there is no ID in the URL but we have an active chat, sync URL
+    if (conversationId) {
+      const isMock = conversationId.startsWith('mock-');
+      const stillMember =
+        isMock || conversations?.some((c) => c._id === conversationId);
+      if (conversationsLoaded && !stillMember) {
+        closeRemovedConversation(conversationId);
+        return;
+      }
+      if (conversationId !== activeConversationId) {
+        setActiveConversation(conversationId);
+      }
+      return;
+    }
+    if (activeConversationId) {
       navigate(`/chat/${activeConversationId}`, { replace: true });
     }
-  }, [conversationId, activeConversationId, setActiveConversation, navigate]);
+  }, [
+    conversationId,
+    activeConversationId,
+    conversations,
+    conversationsLoaded,
+    setActiveConversation,
+    navigate,
+  ]);
 
   useEffect(() => {
     return () => {

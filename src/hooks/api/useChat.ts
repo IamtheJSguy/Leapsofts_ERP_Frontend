@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient } from '@tanstack/react-query';
-import type { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import api from '@/lib/axios';
+import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -157,10 +158,18 @@ export const useMessages = (conversationId: string | null) => {
     queryFn: async ({ pageParam }: { pageParam: string | undefined }): Promise<MessagesPage> => {
       const params: Record<string, string> = { limit: String(CHAT_MESSAGE_PAGE_SIZE) };
       if (pageParam) params.before = pageParam;
-      const r = await chatApi.getMessages(conversationId!, params);
-      const messages = (r.data.data || []).map(normalizeMessageReceipts);
-      const hasMore = r.data.meta?.hasMore ?? messages.length === CHAT_MESSAGE_PAGE_SIZE;
-      return { messages, hasMore };
+      try {
+        const r = await chatApi.getMessages(conversationId!, params);
+        const messages = (r.data.data || []).map(normalizeMessageReceipts);
+        const hasMore = r.data.meta?.hasMore ?? messages.length === CHAT_MESSAGE_PAGE_SIZE;
+        return { messages, hasMore };
+      } catch (err) {
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        if (conversationId && (status === 403 || status === 404)) {
+          closeRemovedConversation(conversationId);
+        }
+        throw err;
+      }
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
@@ -215,6 +224,12 @@ export const useSendMessage = () => {
   return useMutation({
     mutationFn: chatApi.sendMessage,
     onSuccess: (res, variables) => applySentMessageToCache(queryClient, variables.conversationId, res),
+    onError: (err, variables) => {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status === 403 || status === 404) {
+        closeRemovedConversation(variables.conversationId);
+      }
+    },
   });
 };
 
