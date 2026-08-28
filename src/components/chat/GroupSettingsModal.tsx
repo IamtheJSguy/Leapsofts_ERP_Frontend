@@ -31,6 +31,7 @@ import type { Conversation, User } from '@/types';
 import { useAddGroupMember, useRemoveGroupMember } from '@/hooks/api/useChat';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoard } from '@/hooks/api/useKanban';
 
 interface GroupSettingsModalProps {
@@ -65,9 +66,10 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
     typeof conversation.admin === 'string' ? conversation.admin : conversation.admin?._id;
   const isAdmin = adminId === currentUser?._id;
 
-  const initial = conversation.name
-    ? conversation.name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)
-    : 'G';
+  const groupTitle =
+    getConversationTitle(conversation, boardPayload?.board?.name) ||
+    (conversationBoardId(conversation) ? 'Board' : 'Group Chat');
+  const initial = groupTitle.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
 
   // Filter users that are NOT currently in the group
   const availableUsers = useMemo(() => {
@@ -184,7 +186,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
           {initial}
         </Avatar>
         <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5, letterSpacing: '-0.02em' }}>
-          {conversation.name || 'Group Chat'}
+          {groupTitle}
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
           {conversation.description || 'No description provided.'}

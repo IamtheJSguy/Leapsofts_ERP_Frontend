@@ -39,6 +39,8 @@ import {
   getReplyPreviewText,
   isSameMessageDay,
 } from '@/utils/chatMessageUtils';
+import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
+import { useKanbanBoard, useKanbanBoards } from '@/hooks/api/useKanban';
 import type { Message, PresenceStatus } from '@/types';
 
 interface ChatWindowProps {
@@ -52,6 +54,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const { user } = useAuth();
   const { data: conversations = [] } = useConversations();
+  const { data: boards = [] } = useKanbanBoards();
   const { data: dbUsers = [] } = useUsers();
   const {
     messages,
@@ -121,6 +124,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const activeConversation = conversations.find((c) => c._id === activeConversationId);
     return Boolean(activeConversation?.isGroup);
   }, [activeConversationId, conversations]);
+
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c._id === activeConversationId),
+    [conversations, activeConversationId],
+  );
+  const headerBoardId = activeConversation ? conversationBoardId(activeConversation) : undefined;
+  const boardsLiveName = headerBoardId ? boards.find((b) => b._id === headerBoardId)?.name : undefined;
+  const needsBoardNameFetch = Boolean(headerBoardId && !getConversationTitle(activeConversation!, boardsLiveName));
+  const { data: headerBoardPayload } = useKanbanBoard(needsBoardNameFetch ? headerBoardId : undefined);
+  const liveHeaderBoardName = boardsLiveName || headerBoardPayload?.board?.name;
 
   const otherParticipants = useMemo(() => {
     return otherParticipantIds.map((id) => {
@@ -415,7 +428,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (!activeConversation) return null;
 
     if (activeConversation.isGroup) {
-      const name = activeConversation.name || 'Group Chat';
+      const name =
+        getConversationTitle(activeConversation, liveHeaderBoardName) ||
+        (conversationBoardId(activeConversation) ? 'Board' : 'Group Chat');
       const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
       const onlineCount = otherParticipantIds.filter((id) => {
         const p = presenceByUserId[id];
@@ -441,7 +456,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const mainId = typeof mainParticipant === 'object' ? mainParticipant?._id : mainParticipant;
     const presence = resolvePresence(mainId, mainParticipant);
     return { name, initial, isGroup: false, ...presence };
-  }, [activeConversationId, conversations, dbUsers, user, presenceByUserId, otherParticipantIds]);
+  }, [activeConversationId, conversations, dbUsers, user, presenceByUserId, otherParticipantIds, liveHeaderBoardName]);
 
   if (!activeConversationId) {
     return (

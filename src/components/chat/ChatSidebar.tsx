@@ -31,7 +31,8 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useConversations, useCreateConversation, useUpdatePresence } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
 import { getDisplayName, formatDateTime, getPresenceLabel } from '@/utils/formatters';
-import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
+import { getMergedUnreadCount, conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
+import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { EmptyState } from '@/components/common/EmptyState';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
@@ -43,6 +44,7 @@ import type { PresenceStatus } from '@/types';
 export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
   const { data: conversations = [] } = useConversations();
+  const { data: boards = [] } = useKanbanBoards();
   const { data: dbUsers = [] } = useUsers();
   const { activeConversationId, setActiveConversation, typingUsers, unreadCounts, clearUnread, presenceByUserId } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,9 +86,20 @@ export const ChatSidebar = () => {
     if (participantIds.length) subscribePresence(participantIds);
   }, [participantIds, subscribePresence]);
 
+  const boardNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    boards.forEach((b) => {
+      if (b._id && b.name) map[b._id] = b.name;
+    });
+    return map;
+  }, [boards]);
+
   const getChatDetails = (conv: any) => {
     if (conv.isGroup) {
-      const name = conv.name || 'Group Chat';
+      const boardId = conversationBoardId(conv);
+      const name =
+        getConversationTitle(conv, boardId ? boardNameById[boardId] : undefined) ||
+        (boardId ? 'Board' : 'Group Chat');
       const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) || 'G';
       const onlineCount = conv.participants.filter((p: any) => {
         const id = typeof p === 'string' ? p : p._id;
@@ -98,7 +111,7 @@ export const ChatSidebar = () => {
         email: `${conv.participants.length} members`,
         initial,
         status: (onlineCount > 0 ? 'online' : 'offline') as PresenceStatus,
-        presenceLabel: onlineCount > 0 ? `${onlineCount} online` : 'Group',
+        presenceLabel: onlineCount > 0 ? `${onlineCount} online` : `${conv.participants.length} members`,
         isGroup: true,
       };
     }
@@ -130,7 +143,7 @@ export const ChatSidebar = () => {
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) => {
       const names = conv.isGroup
-        ? (conv.name || 'Group Chat')
+        ? (getConversationTitle(conv, conversationBoardId(conv) ? boardNameById[conversationBoardId(conv)!] : undefined) || conv.name || '')
         : conv.participants
           .filter((p: any) => p._id !== currentUser?._id)
           .map((p: any) => getDisplayName(p))
@@ -138,7 +151,7 @@ export const ChatSidebar = () => {
       return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()));
     }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
-  }, [conversations, searchQuery, currentUser, presenceByUserId]);
+  }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById]);
 
   const handleSetPresence = (status: 'away' | 'offline' | null) => {
     updatePresence.mutate(status);
