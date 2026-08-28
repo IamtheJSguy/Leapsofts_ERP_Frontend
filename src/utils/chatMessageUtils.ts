@@ -74,7 +74,10 @@ export const getReplyPreviewText = (message: Pick<Message, 'content' | 'type' | 
     return message.driveFileName || 'Drive file';
   }
   if (message.type === 'file') {
-    return 'Attachment';
+    return message.content?.trim() || 'Photo';
+  }
+  if (message.type === 'board_event') {
+    return message.content || 'Board update';
   }
   const text = (message.content || '').trim();
   if (!text) return 'Message';

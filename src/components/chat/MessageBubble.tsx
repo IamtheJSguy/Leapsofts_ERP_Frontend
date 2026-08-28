@@ -27,6 +27,7 @@ import {
 } from './MessageInfoDialog';
 import { MessageReactionsDialog } from './MessageReactionsDialog';
 import { LinkifiedText } from './LinkifiedText';
+import { FileMessage } from './FileMessage';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -122,6 +123,9 @@ export const MessageBubble = React.memo(({
 
   const messageTime = message.createdAt ? formatTimeOnly(message.createdAt) : '';
   const isDriveFile = message.type === 'drive_file';
+  const isImageFile = message.type === 'file' && Boolean(message.fileUrl);
+  const isBoardEvent = message.type === 'board_event';
+  const compactMedia = isDriveFile || isImageFile;
   const tickStatus = isOwn ? getTickStatus(message, otherParticipantIds) : 'sent';
   const replySnippet = resolveReplySnippet(message.replyTo);
   const replySender = replySnippet
@@ -236,7 +240,7 @@ export const MessageBubble = React.memo(({
           <Paper
             elevation={0}
             sx={{
-              p: isDriveFile ? '0' : '12px 18px',
+              p: compactMedia ? '0' : isBoardEvent ? '10px 14px' : '12px 18px',
               borderRadius: '24px',
               borderBottomRightRadius: isOwn ? '4px' : '24px',
               borderBottomLeftRadius: isOwn ? '24px' : '4px',
@@ -256,9 +260,9 @@ export const MessageBubble = React.memo(({
               <Box
                 onClick={() => onQuoteClick?.(replySnippet._id)}
                 sx={{
-                  mb: isDriveFile ? 0 : 1,
-                  mx: isDriveFile ? 1.5 : 0,
-                  mt: isDriveFile ? 1.25 : 0,
+                  mb: compactMedia ? 0 : 1,
+                  mx: compactMedia ? 1.5 : 0,
+                  mt: compactMedia ? 1.25 : 0,
                   px: 1.25,
                   py: 0.75,
                   borderRadius: '10px',
@@ -368,6 +372,36 @@ export const MessageBubble = React.memo(({
                   </Typography>
                 </Box>
               </Box>
+            ) : isImageFile ? (
+              <FileMessage message={message} isOwn={isOwn} />
+            ) : isBoardEvent ? (
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    fontWeight: 800,
+                    fontSize: '0.65rem',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    opacity: 0.8,
+                    mb: 0.35,
+                  }}
+                >
+                  {message.boardEvent?.action?.replace('_', ' ') || 'Board'}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    lineHeight: 1.4,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {message.content || message.boardEvent?.cardTitle || 'Board update'}
+                </Typography>
+              </Box>
             ) : (
               /* ───── Regular Text Message ───── */
               <Typography
@@ -390,9 +424,9 @@ export const MessageBubble = React.memo(({
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 gap: 0.5,
-                mt: isDriveFile ? 0 : 0.5,
-                px: isDriveFile ? 2 : 0,
-                pb: isDriveFile ? 1 : 0,
+                mt: compactMedia ? 0 : 0.5,
+                px: compactMedia ? 2 : 0,
+                pb: compactMedia ? 1 : 0,
                 opacity: 0.85,
               }}
             >

@@ -31,6 +31,7 @@ import type { Conversation, User } from '@/types';
 import { useAddGroupMember, useRemoveGroupMember } from '@/hooks/api/useChat';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useKanbanBoard } from '@/hooks/api/useKanban';
 
 interface GroupSettingsModalProps {
   open: boolean;
@@ -43,6 +44,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
   const isDarkMode = theme.palette.mode === 'dark';
   const { user: currentUser } = useAuth();
   const { data: dbUsers = [] } = useUsers();
+  const { data: boardPayload } = useKanbanBoard(conversation.boardId);
   const addToast = useUIStore((s) => s.addToast);
 
   const { mutate: addMember, isPending: isAdding } = useAddGroupMember();
@@ -59,7 +61,9 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
   }>({ isOpen: false, action: null, participantId: null, participantName: '' });
 
   // Check if current user is the admin of the group
-  const isAdmin = conversation.admin === currentUser?._id;
+  const adminId =
+    typeof conversation.admin === 'string' ? conversation.admin : conversation.admin?._id;
+  const isAdmin = adminId === currentUser?._id;
 
   const initial = conversation.name
     ? conversation.name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)
@@ -69,6 +73,18 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
   const availableUsers = useMemo(() => {
     const participantIds = conversation.participants.map((p) => typeof p === 'string' ? p : p._id);
     let filtered = dbUsers.filter((u) => !participantIds.includes(u._id));
+
+    if (conversation.boardId && boardPayload?.board) {
+      const board = boardPayload.board;
+      const boardUserIds = new Set<string>();
+      if (board.ownerId) boardUserIds.add(board.ownerId);
+      (board.members || []).forEach((m) => {
+        const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
+        if (uid) boardUserIds.add(uid);
+      });
+      filtered = filtered.filter((u) => boardUserIds.has(u._id));
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -76,7 +92,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
       );
     }
     return filtered;
-  }, [dbUsers, conversation.participants, searchQuery]);
+  }, [dbUsers, conversation.participants, conversation.boardId, boardPayload, searchQuery]);
 
   const handleAddMemberClick = (participantId: string, name: string) => {
     setConfirmDialog({ isOpen: true, action: 'add', participantId, participantName: name });
@@ -186,7 +202,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
           {conversation.participants.map((p) => {
             const memberId = typeof p === 'string' ? p : p._id;
             const memberObj = typeof p === 'string' ? dbUsers.find((u) => u._id === p) : p;
-            const isGroupAdmin = conversation.admin === memberId;
+            const isGroupAdmin = adminId === memberId;
             const isMe = memberId === currentUser?._id;
 
             return (
@@ -259,7 +275,9 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
           ) : (
             <Box sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#f9fafb', borderRadius: '16px', p: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, flex: 1 }}>Search Team Members</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, flex: 1 }}>
+                  {conversation.boardId ? 'Search board members' : 'Search Team Members'}
+                </Typography>
                 <IconButton size="small" onClick={() => { setShowAddMember(false); setSearchQuery(''); }}>
                   <CloseIcon fontSize="small" />
                 </IconButton>

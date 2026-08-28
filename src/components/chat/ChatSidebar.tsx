@@ -19,6 +19,7 @@ import {
   MenuItem,
   ListItemIcon,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCommentIcon from '@mui/icons-material/AddComment';
@@ -424,19 +425,36 @@ export const ChatSidebar = () => {
                   <ListItemText
                     secondaryTypographyProps={{ component: 'div' }}
                     primary={
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: '0.86rem',
-                            color: active ? tokens.brand.primary : (isDarkMode ? '#fff' : tokens.text.primary),
-                            lineHeight: 1.2,
-                          }}
-                          noWrap
-                        >
-                          {details.name}
-                        </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.86rem',
+                              color: active ? tokens.brand.primary : (isDarkMode ? '#fff' : tokens.text.primary),
+                              lineHeight: 1.2,
+                            }}
+                            noWrap
+                          >
+                            {details.name}
+                          </Typography>
+                          {conv.boardId && (
+                            <Chip
+                              label="Board"
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                ml: 0.75,
+                                flexShrink: 0,
+                                bgcolor: tokens.brand.primary + '22',
+                                color: tokens.brand.primary,
+                              }}
+                            />
+                          )}
+                        </Box>
                         {(conv.lastMessageAt || conv.updatedAt) && (
                           <Typography
                             variant="caption"
