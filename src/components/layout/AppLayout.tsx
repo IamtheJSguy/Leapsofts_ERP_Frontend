@@ -58,9 +58,9 @@ export const AppLayout = () => {
     }
 
     if (totalUnread > 0) {
-      document.title = `(${totalUnread}) B2B Lead Gen`;
-    } else {
-      document.title = 'B2B Lead Gen';
+      document.title = `(${totalUnread}) Leapsofts ERP`;
+    } else {  
+      document.title = 'Leapsofts ERP';
     }
   }, [conversations, unreadCounts]);
 

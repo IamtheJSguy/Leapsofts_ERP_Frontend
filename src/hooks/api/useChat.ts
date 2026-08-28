@@ -1,15 +1,27 @@
-import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient } from '@tanstack/react-query';
 import type { AxiosResponse } from 'axios';
 import api from '@/lib/axios';
 import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { normalizeMessageReceipts } from '@/utils/chatMessageUtils';
+import {
+  appendMessageToCache,
+  CHAT_MESSAGE_PAGE_SIZE,
+  flattenMessagePages,
+  mapMessageCache,
+  type MessagesInfiniteData,
+  type MessagesPage,
+} from '@/utils/chatMessageCache';
 
 const chatApi = {
   getConversations: () => api.get<{ data: Conversation[] }>('/chat/conversations'),
   getMessages: (conversationId: string, params: Record<string, string>) =>
-    api.get<{ data: Message[] }>(`/chat/conversations/${conversationId}/messages`, { params }),
+    api.get<{ data: Message[]; meta?: { page: number; limit: number; total: number; hasMore?: boolean } }>(
+      `/chat/conversations/${conversationId}/messages`,
+      { params },
+    ),
   sendMessage: (data: {
     conversationId: string;
     content: string;
@@ -109,16 +121,21 @@ const patchMessageReactions = (
   messageId: string,
   reactions: MessageReaction[],
 ) => {
-  queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
-    if (!old) return old;
-    let changed = false;
-    const next = old.map((msg) => {
-      if (msg._id !== messageId) return msg;
-      changed = true;
-      return { ...msg, reactions };
-    });
-    return changed ? next : old;
-  });
+  queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+    { queryKey: ['messages', conversationId] },
+    (old) => {
+      if (!old) return old;
+      let changed = false;
+      const next = mapMessageCache(old, (messages) =>
+        messages.map((msg) => {
+          if (msg._id !== messageId) return msg;
+          changed = true;
+          return { ...msg, reactions };
+        }),
+      );
+      return changed ? next : old;
+    },
+  );
 };
 
 export const useConversations = () =>
@@ -134,14 +151,33 @@ export const useConversations = () =>
     refetchOnWindowFocus: true,
   });
 
-export const useMessages = (conversationId: string | null, params: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['messages', conversationId, params],
-    queryFn: () =>
-      chatApi.getMessages(conversationId!, params).then((r) => r.data.data.map(normalizeMessageReceipts)),
+export const useMessages = (conversationId: string | null) => {
+  const query = useInfiniteQuery({
+    queryKey: ['messages', conversationId],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }): Promise<MessagesPage> => {
+      const params: Record<string, string> = { limit: String(CHAT_MESSAGE_PAGE_SIZE) };
+      if (pageParam) params.before = pageParam;
+      const r = await chatApi.getMessages(conversationId!, params);
+      const messages = (r.data.data || []).map(normalizeMessageReceipts);
+      const hasMore = r.data.meta?.hasMore ?? messages.length === CHAT_MESSAGE_PAGE_SIZE;
+      return { messages, hasMore };
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore || lastPage.messages.length === 0) return undefined;
+      return lastPage.messages[0]._id;
+    },
     enabled: !!conversationId,
     refetchOnWindowFocus: true,
   });
+
+  const messages = useMemo(
+    () => flattenMessagePages(query.data as MessagesInfiniteData | undefined),
+    [query.data],
+  );
+
+  return { ...query, messages };
+};
 
 const applySentMessageToCache = (
   queryClient: QueryClient,
@@ -150,13 +186,9 @@ const applySentMessageToCache = (
 ) => {
   const message = normalizeMessageReceipts((res.data as { data: Message }).data);
   if (message) {
-    queryClient.setQueriesData<Message[]>(
+    queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
       { queryKey: ['messages', conversationId] },
-      (old) => {
-        if (!old) return [message];
-        if (old.some((m) => m._id === message._id)) return old;
-        return [...old, message];
-      },
+      (old) => appendMessageToCache(old, message),
     );
     queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
       if (!old) return old;
@@ -215,20 +247,25 @@ export const useSetMessageReaction = () => {
     mutationFn: chatApi.setMessageReaction,
     onMutate: async ({ conversationId, messageId, emoji }) => {
       await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
-      const previous = queryClient.getQueriesData<Message[]>({ queryKey: ['messages', conversationId] });
+      const previous = queryClient.getQueriesData<Message[] | MessagesInfiniteData>({
+        queryKey: ['messages', conversationId],
+      });
       const user = useAuthStore.getState().user;
       const userId = user?._id;
       if (userId) {
-        queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
-          if (!old) return old;
-          return old.map((msg) => {
-            if (msg._id !== messageId) return msg;
-            return {
-              ...msg,
-              reactions: applyOptimisticReaction(msg.reactions, userId, emoji, user),
-            };
-          });
-        });
+        queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+          { queryKey: ['messages', conversationId] },
+          (old) =>
+            mapMessageCache(old, (messages) =>
+              messages.map((msg) => {
+                if (msg._id !== messageId) return msg;
+                return {
+                  ...msg,
+                  reactions: applyOptimisticReaction(msg.reactions, userId, emoji, user),
+                };
+              }),
+            ),
+        );
       }
       return { previous };
     },
@@ -247,12 +284,12 @@ export const useSetMessageReaction = () => {
           message.reactions,
         );
       } else if (message) {
-        queryClient.setQueriesData<Message[]>(
+        queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
           { queryKey: ['messages', variables.conversationId] },
-          (old) => {
-            if (!old) return old;
-            return old.map((m) => (m._id === message._id ? { ...m, ...message } : m));
-          },
+          (old) =>
+            mapMessageCache(old, (messages) =>
+              messages.map((m) => (m._id === message._id ? { ...m, ...message } : m)),
+            ),
         );
       }
     },

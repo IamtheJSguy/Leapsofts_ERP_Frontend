@@ -6,6 +6,11 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap } from '@/utils/chatMessageUtils';
 import { getDisplayName } from '@/utils/formatters';
+import {
+  appendMessageToCache,
+  mapMessageCache,
+  type MessagesInfiniteData,
+} from '@/utils/chatMessageCache';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -49,32 +54,37 @@ const patchMessagesReceipt = (
   const timeField = field === 'deliveredTo' ? 'deliveredAt' : 'readAt';
   const atIso = at || new Date().toISOString();
   const userKey = String(userId);
+  const targetIds = messageIds?.length ? new Set(messageIds) : null;
 
-  queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
-    if (!old?.length) return old;
-    const targetIds = messageIds?.length ? new Set(messageIds) : null;
-    let changed = false;
-    const next = old.map((msg) => {
-      if (targetIds && !targetIds.has(msg._id)) return msg;
-      const current = msg[field];
-      const alreadyHas = (current || []).some((id) =>
-        typeof id === 'string' ? id === userKey : (id as User)?._id === userKey,
+  queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+    { queryKey: ['messages', conversationId] },
+    (old) => {
+      if (!old) return old;
+      let changed = false;
+      const next = mapMessageCache(old, (messages) =>
+        messages.map((msg) => {
+          if (targetIds && !targetIds.has(msg._id)) return msg;
+          const current = msg[field];
+          const alreadyHas = (current || []).some((id) =>
+            typeof id === 'string' ? id === userKey : (id as User)?._id === userKey,
+          );
+          const existingMap = serializeReceiptMap(msg[timeField] as Record<string, unknown> | undefined);
+          const existingAt = existingMap[userKey];
+          if (alreadyHas && existingAt) return msg;
+          changed = true;
+          return {
+            ...msg,
+            [field]: alreadyHas ? current : addUserToIdList(current, userKey),
+            [timeField]: {
+              ...existingMap,
+              [userKey]: existingAt || atIso,
+            },
+          };
+        }),
       );
-      const existingMap = serializeReceiptMap(msg[timeField] as Record<string, unknown> | undefined);
-      const existingAt = existingMap[userKey];
-      if (alreadyHas && existingAt) return msg;
-      changed = true;
-      return {
-        ...msg,
-        [field]: alreadyHas ? current : addUserToIdList(current, userKey),
-        [timeField]: {
-          ...existingMap,
-          [userKey]: existingAt || atIso,
-        },
-      };
-    });
-    return changed ? next : old;
-  });
+      return changed ? next : old;
+    },
+  );
 };
 
 const applyUserPresence = (
@@ -176,11 +186,10 @@ export const setupSocketEventHandlers = (
       socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, { conversationId });
     }
 
-    queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
-      if (!old) return [message];
-      if (old.some((m) => m._id === message._id)) return old;
-      return [...old, message];
-    });
+    queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+      { queryKey: ['messages', conversationId] },
+      (old) => appendMessageToCache(old, message),
+    );
 
     queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
       if (!old) return old;
@@ -370,16 +379,21 @@ export const setupSocketEventHandlers = (
     recentlyProcessedReactions.add(dedupeKey);
     setTimeout(() => recentlyProcessedReactions.delete(dedupeKey), 5000);
 
-    queryClient.setQueriesData<Message[]>({ queryKey: ['messages', conversationId] }, (old) => {
-      if (!old) return old;
-      let changed = false;
-      const next = old.map((msg) => {
-        if (msg._id !== messageId) return msg;
-        changed = true;
-        return { ...msg, reactions };
-      });
-      return changed ? next : old;
-    });
+    queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+      { queryKey: ['messages', conversationId] },
+      (old) => {
+        if (!old) return old;
+        let changed = false;
+        const next = mapMessageCache(old, (messages) =>
+          messages.map((msg) => {
+            if (msg._id !== messageId) return msg;
+            changed = true;
+            return { ...msg, reactions };
+          }),
+        );
+        return changed ? next : old;
+      },
+    );
 
     const currentUserId = useAuthStore.getState().user?._id;
     const chatStore = useChatStore.getState();
