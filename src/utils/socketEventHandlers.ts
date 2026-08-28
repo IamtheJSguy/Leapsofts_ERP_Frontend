@@ -11,6 +11,7 @@ import {
   mapMessageCache,
   type MessagesInfiniteData,
 } from '@/utils/chatMessageCache';
+import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -313,12 +314,7 @@ export const setupSocketEventHandlers = (
     const currentUserId = useAuthStore.getState().user?._id;
 
     if (payload.removed && payload.participantId === currentUserId) {
-      queryClient.setQueryData<Conversation[]>(['conversations'], (old) =>
-        old ? old.filter((c) => c._id !== payload._id) : old,
-      );
-      if (useChatStore.getState().activeConversationId === payload._id) {
-        useChatStore.getState().setActiveConversation(null);
-      }
+      closeRemovedConversation(payload._id);
       return;
     }
 
