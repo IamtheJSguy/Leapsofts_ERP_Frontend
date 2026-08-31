@@ -7,6 +7,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import { queryClient } from '@/lib/queryClient';
 import { router } from '@/router';
 import { ToastProvider } from '@/components/common/ToastProvider';
+import { AppUpdateBanner } from '@/components/common/AppUpdateBanner';
 import { useUIStore } from '@/store/useUIStore';
 import { lightTheme, darkTheme } from '@/styles/theme';
 
@@ -28,6 +29,7 @@ function App() {
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <RouterProvider router={router} />
           <ToastProvider />
+          <AppUpdateBanner />
         </LocalizationProvider>
       </ThemeProvider>
     </QueryClientProvider>
