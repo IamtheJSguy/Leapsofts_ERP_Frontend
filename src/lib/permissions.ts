@@ -45,6 +45,9 @@ export const coercePermissions = (stored?: Partial<UserPermissions> | null): Use
 export const isSalesDepartment = (department?: string | null) =>
   department === DEPARTMENT.SALES;
 
+export const requiresViewSalesPage = (department?: string | null) =>
+  department === DEPARTMENT.SALES || department === DEPARTMENT.MARKETING;
+
 /** Flags that cannot be turned off for this role/department. */
 export const getLockedPermissionKeys = (
   role: Role,
@@ -63,7 +66,7 @@ export const getLockedPermissionKeys = (
     locked.add('createProjectsAndBoards');
   }
 
-  if (isSalesDepartment(department)) {
+  if (requiresViewSalesPage(department)) {
     locked.add('viewSalesPage');
   }
 
@@ -82,8 +85,10 @@ export const permissionLockHelperText = (
   key: PermissionKey,
 ): string | undefined => {
   if (!isPermissionLocked(role, department, key)) return undefined;
-  if (key === 'viewSalesPage' && isSalesDepartment(department) && role !== ROLES.ADMIN) {
-    return 'Required for Sales department';
+  if (key === 'viewSalesPage' && requiresViewSalesPage(department) && role !== ROLES.ADMIN) {
+    return department === DEPARTMENT.MARKETING
+      ? 'Required for Marketing department'
+      : 'Required for Sales department';
   }
   if (role === ROLES.ADMIN) return 'Required for Admin';
   if (role === ROLES.MANAGER) return 'Required for Manager';
