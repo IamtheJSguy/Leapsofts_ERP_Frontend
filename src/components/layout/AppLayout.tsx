@@ -10,6 +10,7 @@ import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useConversations } from '@/hooks/api/useChat';
+import { useMe } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { tokens } from '@/styles/tokens';
@@ -19,6 +20,7 @@ export const AppLayout = () => {
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
+  useMe();
   useSocket();
 
   const { data: conversations = [] } = useConversations();
