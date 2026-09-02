@@ -371,6 +371,31 @@ export const SalesPage = () => {
   const prospectsByIdRef = useRef<Record<string, any>>({});
   const updateLead = useUpdateLead();
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
+  const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
+
+  const handleMarkConnectionAccepted = useCallback((id: string) => {
+    if (markingAcceptedIds[id]) return;
+    setMarkingAcceptedIds((prev) => ({ ...prev, [id]: true }));
+    updateLead.mutate(
+      { id, data: { connectionStatus: 'accepted' } },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Marked as accepted', severity: 'success' });
+        },
+        onError: (err: any) => {
+          const errorMsg = err?.response?.data?.error?.message || 'Failed to mark as accepted';
+          addToast({ message: errorMsg, severity: 'error' });
+        },
+        onSettled: () => {
+          setMarkingAcceptedIds((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        },
+      },
+    );
+  }, [markingAcceptedIds, updateLead, addToast]);
 
   const handleMarkMessageSent = useCallback((id: string) => {
     if (markingSentIds[id]) return;
@@ -1736,6 +1761,9 @@ export const SalesPage = () => {
                     const connToken = (connectionStatusTokens as any)[prospect.connectionStatus || 'pending'] || connectionStatusTokens.pending;
                     const msgToken = (messageStatusTokens as any)[prospect.messageStatus || 'not_sent'] || messageStatusTokens.not_sent;
                     const isMarkingSent = !!markingSentIds[prospect._id];
+                    const isMarkingAccepted = !!markingAcceptedIds[prospect._id];
+                    const canMarkConnAccepted =
+                      (prospect.connectionStatus || 'pending') === 'pending';
                     const canMarkMsgSent =
                       prospect.connectionStatus === 'accepted' &&
                       (prospect.messageStatus || 'not_sent') === 'not_sent';
@@ -1851,8 +1879,27 @@ export const SalesPage = () => {
                         <TableCell sx={{ py: 2, borderBottom: 0 }}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
                             <Chip
-                              label={`Conn: ${prospect.connectionStatus || 'not_sent'}`}
+                              label={
+                                isMarkingAccepted
+                                  ? 'Conn: saving…'
+                                  : `Conn: ${prospect.connectionStatus || 'pending'}`
+                              }
                               size="small"
+                              clickable={canMarkConnAccepted && !isMarkingAccepted}
+                              disabled={isMarkingAccepted}
+                              onClick={
+                                canMarkConnAccepted && !isMarkingAccepted
+                                  ? (e) => {
+                                      e.stopPropagation();
+                                      handleMarkConnectionAccepted(prospect._id);
+                                    }
+                                  : undefined
+                              }
+                              aria-label={
+                                canMarkConnAccepted
+                                  ? 'Mark connection as accepted'
+                                  : `Connection status ${prospect.connectionStatus || 'pending'}`
+                              }
                               sx={{
                                 bgcolor: connToken.bg,
                                 color: connToken.color,
@@ -1862,6 +1909,17 @@ export const SalesPage = () => {
                                 textTransform: 'uppercase',
                                 borderRadius: '6px',
                                 border: `1px solid ${`color-mix(in srgb, ${connToken.color} 12%, transparent)`}`,
+                                ...(canMarkConnAccepted
+                                  ? {
+                                      cursor: isMarkingAccepted ? 'wait' : 'pointer',
+                                      boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${connToken.color} 28%, transparent)`,
+                                      '&:hover': {
+                                        bgcolor: connToken.bg,
+                                        filter: 'brightness(0.96)',
+                                        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${connToken.color} 45%, transparent)`,
+                                      },
+                                    }
+                                  : {}),
                               }}
                             />
                             <Chip
