@@ -10,7 +10,8 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
@@ -49,7 +50,7 @@ export const UserDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, refetch } = useDashboard();
   const { data: boards } = useKanbanBoards();
-  const { data: dashboardTasksData } = useMyDashboardTasks();
+  const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
   const { data: salesGrouped } = useMySalesKpis({ days: 7 });
   const { data: allMeetings = [] } = useMeetings();
 
@@ -182,7 +183,7 @@ export const UserDashboard = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                My Tasks · {dashboardTasks.length} active items
+                My Tasks · {isTasksLoading ? 'loading…' : `${dashboardTasks.length} active items`}
               </Typography>
             </Box>
           </Box>
@@ -190,12 +191,20 @@ export const UserDashboard = () => {
 
         {/* Inline statistics counters - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 2.5 }}>
-          {dashboardTasks.map((task) => {
+          {isTasksLoading ? (
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                <CircularProgress size={28} sx={{ color: tokens.brand.accent }} />
+              </Box>
+            </Grid>
+          ) : dashboardTasks.map((task) => {
+            const hasTarget = task.targetValue != null && task.targetValue > 0;
             const stat = {
               label: String(task.title || 'Task').toUpperCase(),
-              val: task.currentValue ?? 0,
+              val: hasTarget ? (task.currentValue ?? 0) : null,
               target: task.targetValue,
               isOverdue: task.isOverdue,
+              hasTarget,
             };
             return (
             <Grid item xs={6} sm={4} md={2.4} key={task.id}>
@@ -238,9 +247,9 @@ export const UserDashboard = () => {
                     letterSpacing: '-0.02em'
                   }}
                 >
-                  {stat.val}
+                  {stat.hasTarget ? stat.val : '\u00a0'}
                 </Typography>
-                {('target' in stat && stat.target != null && stat.target > 0) ? (
+                {stat.hasTarget ? (
                   <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 600, mt: 0.5, display: 'block' }}>
                     of {stat.target} target
                   </Typography>
@@ -788,7 +797,19 @@ export const UserDashboard = () => {
                 </Typography>
               </Box>
 
-              {dashboardTasks.length === 0 ? (
+              {isTasksLoading ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    py: 4,
+                    flex: 1
+                  }}
+                >
+                  <CircularProgress size={28} sx={{ color: tokens.brand.accent }} />
+                </Box>
+              ) : dashboardTasks.length === 0 ? (
                 <Box
                   sx={{
                     display: 'flex',
