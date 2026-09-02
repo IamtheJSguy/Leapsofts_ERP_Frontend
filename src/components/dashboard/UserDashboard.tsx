@@ -20,10 +20,9 @@ import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { useDashboard } from '@/hooks/api/useDashboard';
+import { useDashboard, useMyDashboardTasks } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
-import { useDailyKpis } from '@/hooks/api/useShifts';
 import { useMySalesKpis } from '@/hooks/api/useSalesKpis';
 import { SALES_KPI_STATUS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
@@ -50,7 +49,7 @@ export const UserDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading, refetch } = useDashboard();
   const { data: boards } = useKanbanBoards();
-  const { data: groupedKpis } = useDailyKpis();
+  const { data: dashboardTasksData } = useMyDashboardTasks();
   const { data: salesGrouped } = useMySalesKpis({ days: 7 });
   const { data: allMeetings = [] } = useMeetings();
 
@@ -72,7 +71,7 @@ export const UserDashboard = () => {
   }, [salesGrouped]);
 
   const salesCompletedCount = salesGrouped?.counts.done ?? 0;
-  const salesOverdueCount = salesGrouped?.counts.overdue ?? 0;
+  const dashboardTasks = dashboardTasksData?.tasks ?? [];
   const todaySalesCompletedCount = useMemo(
     () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
     [todaySalesKpis],
@@ -183,7 +182,7 @@ export const UserDashboard = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                My Tasks · {stats?.metrics?.pendingTasks || 0} active items
+                My Tasks · {dashboardTasks.length} active items
               </Typography>
             </Box>
           </Box>
@@ -191,65 +190,15 @@ export const UserDashboard = () => {
 
         {/* Inline statistics counters - Soft UI card style */}
         <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 2.5 }}>
-          {(() => {
-            const dailyChartStats = (stats?.kpiChartData ?? [])
-              .filter((kpi) => kpi.type !== 'sales_kpi')
-              .map((kpi) => ({
-                label: String(kpi.name || 'KPI').toUpperCase(),
-                val: kpi.Achieved,
-                target: kpi.Target,
-              }));
-
-            // Live sales board is the source of truth for today's sales KPI cards.
-            const salesChartFromBoard = todaySalesKpis.map((entry) => ({
-              label: entry.kpiName.toUpperCase(),
-              val: entry.currentValue ?? 0,
-              target: entry.targetValue ?? 0,
-            }));
-            const boardLabels = new Set(salesChartFromBoard.map((s) => s.label));
-            const salesChartFromSummary = (stats?.kpiChartData ?? [])
-              .filter((kpi) => kpi.type === 'sales_kpi')
-              .filter((kpi) => !boardLabels.has(String(kpi.name || '').toUpperCase()))
-              .map((kpi) => ({
-                label: String(kpi.name || 'Sales KPI').toUpperCase(),
-                val: kpi.Achieved,
-                target: kpi.Target,
-              }));
-            const salesChartStats = [...salesChartFromBoard, ...salesChartFromSummary];
-
-            type ActivityStat = {
-              label: string;
-              val: number;
-              target?: number;
-              isOverdue?: boolean;
+          {dashboardTasks.map((task) => {
+            const stat = {
+              label: String(task.title || 'Task').toUpperCase(),
+              val: task.currentValue ?? 0,
+              target: task.targetValue,
+              isOverdue: task.isOverdue,
             };
-
-            const baseStats: ActivityStat[] =
-              dailyChartStats.length > 0 || salesChartStats.length > 0
-                ? [...dailyChartStats, ...salesChartStats]
-                : [
-                    {
-                      label: 'COMPLETED KPIS',
-                      val: completedKpisWithSales,
-                    },
-                  ];
-
-            const totalOverdue =
-              (stats?.metrics?.overdueTasks || 0) +
-              (groupedKpis?.counts?.overdue || 0) +
-              salesOverdueCount;
-
-            const activityStats: ActivityStat[] = [
-              ...baseStats,
-              {
-                label: 'OVERDUE',
-                val: totalOverdue,
-                isOverdue: true,
-              },
-            ];
-            return activityStats;
-          })().map((stat, i) => (
-            <Grid item xs={6} sm={4} md={2.4} key={stat.label + i}>
+            return (
+            <Grid item xs={6} sm={4} md={2.4} key={task.id}>
               <Box
                 sx={{
                   height: '100%',
@@ -302,7 +251,8 @@ export const UserDashboard = () => {
                 )}
               </Box>
             </Grid>
-          ))}
+            );
+          })}
         </Grid>
       </Box>
 
@@ -561,13 +511,6 @@ export const UserDashboard = () => {
             { label: 'Done this week', count: stats?.metrics?.completedTasks || 0, color: tokens.semantic.success, bg: 'rgba(45, 138, 94, 0.03)', border: 'rgba(45, 138, 94, 0.08)' },
             { label: 'Pending Tasks', count: stats?.metrics?.pendingTasks || 0, color: tokens.brand.accent, bg: 'rgba(255, 127, 17, 0.03)', border: 'rgba(255, 127, 17, 0.08)' },
             {
-              label: 'Overdue',
-              count: (stats?.metrics?.overdueTasks || 0) + (groupedKpis?.counts?.overdue || 0) + salesOverdueCount,
-              color: tokens.semantic.error,
-              bg: 'rgba(196, 69, 69, 0.03)',
-              border: 'rgba(196, 69, 69, 0.08)',
-            },
-            {
               label: 'Completed KPIs',
               count: completedKpisWithSales,
               color: tokens.brand.primary,
@@ -575,7 +518,7 @@ export const UserDashboard = () => {
               border: 'rgba(93, 26, 137, 0.08)',
             },
           ].map((item) => (
-            <Grid item xs={6} sm={3} key={item.label}>
+            <Grid item xs={6} sm={4} key={item.label}>
               <Box
                 sx={{
                   p: 2,
@@ -845,7 +788,7 @@ export const UserDashboard = () => {
                 </Typography>
               </Box>
 
-              {(!stats?.tasksList || stats.tasksList.length === 0) ? (
+              {dashboardTasks.length === 0 ? (
                 <Box
                   sx={{
                     display: 'flex',
@@ -863,10 +806,10 @@ export const UserDashboard = () => {
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, maxHeight: 300, overflowY: 'auto' }}>
-                  {stats.tasksList.map((task: any) => (
+                  {dashboardTasks.map((task) => (
                     <Box
                       key={task.id}
-                      onClick={() => navigate(`/projects/${task.projectId}/boards/${task.boardId}?card=${task.id}`)}
+                      onClick={() => navigate('/tasks')}
                       sx={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -890,22 +833,24 @@ export const UserDashboard = () => {
                           {task.title}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                          <Chip 
-                            label={`${task.boardName} • ${task.columnName}`} 
-                            size="small" 
-                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }} 
+                          <Chip
+                            label={task.kind === 'sales' ? 'Sales' : 'Daily'}
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }}
                           />
                         </Box>
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
-                        <Typography 
-                          sx={{ 
-                            fontSize: '0.75rem', 
-                            fontWeight: 700, 
-                            color: task.isOverdue ? tokens.semantic.error : tokens.brand.primary 
+                        <Typography
+                          sx={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            color: task.isOverdue ? tokens.semantic.error : tokens.brand.primary
                           }}
                         >
-                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {task.dueDate
+                            ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                            : '—'}
                         </Typography>
                         {task.isOverdue && (
                           <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end', mt: 0.2 }}>
