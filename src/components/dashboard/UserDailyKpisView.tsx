@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -34,6 +35,7 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { KPI_PRIORITY_OPTIONS, PRIORITY_CONFIG } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
+import api from '@/lib/axios';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import type { GroupedKpiCounts, GroupedSalesKpis, PriorityBucket, SalesKpiEntry, SectionCounts } from '@/types';
 
@@ -92,6 +94,7 @@ export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   const [filter, setFilter] = useState<StatusTab>('active');
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
@@ -399,11 +402,57 @@ export const UserDailyKpisView = () => {
                   </Typography>
                 </Box>
               )}
-              {col.sales.map((entry) => (
-                <Box key={entry._id} sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+              {col.sales.map((entry) => {
+                let kanbanLink = null;
+                const kId = (entry as any).kanbanCardId;
+                if (kId) {
+                  const isObj = typeof kId === 'object';
+                  const cardId = isObj ? kId._id : kId;
+                  const boardId = isObj ? kId.boardId : (entry as any).boardId;
+                  const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
+                  if (boardId && cardId) {
+                    kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+                  }
+                }
+                const hasKanbanLink = Boolean(kId);
+
+                return (
+                <Box 
+                  key={entry._id} 
+                  onClick={hasKanbanLink ? async (e) => {
+                    e.stopPropagation();
+                    if (kanbanLink) {
+                      navigate(kanbanLink);
+                    } else {
+                      try {
+                        const cardId = typeof kId === 'object' ? kId._id : kId;
+                        const res = await api.get(`/kanban/cards/${cardId}`);
+                        const card = res.data.data;
+                        if (card && card.boardId) {
+                          navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                        }
+                      } catch (err) {
+                        console.error('Could not route to kanban card', err);
+                      }
+                    }
+                  } : undefined}
+                  sx={{ 
+                    minWidth: 0, 
+                    maxWidth: '100%', 
+                    overflow: 'hidden',
+                    cursor: hasKanbanLink ? 'pointer' : 'default',
+                    borderRadius: `${tokens.radius.md}px`,
+                    transition: 'all 0.2s ease',
+                    '&:hover': hasKanbanLink ? {
+                      boxShadow: tokens.shadow.cardHover,
+                      transform: 'translateY(-2px)'
+                    } : {},
+                  }}
+                >
                   <SalesKpiEntryCard entry={entry} variant="board" />
                 </Box>
-              ))}
+                );
+              })}
               {col.daily.map((kpi) => {
             const isChecked = kpi.isCompleted;
             const isKpiLoading = loadingIds.has(kpi._id);
@@ -431,10 +480,40 @@ export const UserDailyKpisView = () => {
                 : hasPending(kpi)
                   ? { label: 'Pending', bgcolor: tokens.semantic.warningBg, color: tokens.semantic.warning }
                   : null;
+            let kanbanLink = null;
+            if (kpi.kanbanCardId) {
+              const kId = kpi.kanbanCardId;
+              const isObj = typeof kId === 'object';
+              const cardId = isObj ? (kId as any)._id : kId;
+              const boardId = isObj ? (kId as any).boardId : (kpi as any).boardId;
+              const projectId = isObj ? ((kId as any).projectId || (kId as any).boardId) : ((kpi as any).projectId || (kpi as any).boardId);
+              if (boardId && cardId) {
+                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+              }
+            }
+            const hasKanbanLink = Boolean(kpi.kanbanCardId);
 
             return (
               <Box
                 key={kpi._id}
+                onClick={hasKanbanLink ? async (e) => {
+                  e.stopPropagation();
+                  if (kanbanLink) {
+                    navigate(kanbanLink);
+                  } else {
+                    try {
+                      const kId = kpi.kanbanCardId;
+                      const cardId = typeof kId === 'object' ? (kId as any)._id : kId;
+                      const res = await api.get(`/kanban/cards/${cardId}`);
+                      const card = res.data.data;
+                      if (card && card.boardId) {
+                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                      }
+                    } catch (err) {
+                      console.error('Could not route to kanban card', err);
+                    }
+                  }
+                } : undefined}
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -448,12 +527,12 @@ export const UserDailyKpisView = () => {
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : tokens.surface.border}`,
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.55)' : tokens.surface.card,
                   boxShadow: tokens.shadow.card,
-                  overflow: 'hidden',
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                  '&:hover': {
-                    borderColor: tokens.brand.primaryMuted,
+                  cursor: hasKanbanLink ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                  '&:hover': hasKanbanLink ? {
                     boxShadow: tokens.shadow.cardHover,
-                  },
+                    transform: 'translateY(-2px)'
+                  } : {},
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
