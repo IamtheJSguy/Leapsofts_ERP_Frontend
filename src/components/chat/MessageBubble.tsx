@@ -217,22 +217,70 @@ export const MessageBubble = React.memo(({
 
       {/* Bubble Container */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '70%', position: 'relative' }}>
-        {/* Name (for group messaging look) */}
-        {!isOwn && (
+        {/* Message Header (Name + Time) */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            ml: isOwn ? 0 : 1,
+            mr: isOwn ? 1 : 0,
+            mb: 0.5,
+          }}
+        >
+          {!isOwn && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 700,
+                fontSize: '0.68rem',
+                letterSpacing: '0.01em',
+              }}
+            >
+              {senderName}
+            </Typography>
+          )}
           <Typography
             variant="caption"
             sx={{
+              fontSize: '0.65rem',
+              fontWeight: 500,
               color: 'text.secondary',
-              fontWeight: 700,
-              ml: 1,
-              mb: 0.5,
-              fontSize: '0.68rem',
-              letterSpacing: '0.01em',
             }}
           >
-            {senderName}
+            {messageTime}
           </Typography>
-        )}
+          {isOwn && (
+            <Box
+              component="button"
+              type="button"
+              aria-label="Message info"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setInfoOpen(true);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 0,
+                m: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                lineHeight: 0,
+                borderRadius: '4px',
+                opacity: 0.8,
+                '&:hover': { opacity: 1 },
+              }}
+            >
+              <TickIcon status={tickStatus} isOwn={false} />
+            </Box>
+          )}
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isOwn ? 'row-reverse' : 'row' }}>
           {/* Message bubble card */}
@@ -240,10 +288,10 @@ export const MessageBubble = React.memo(({
           <Paper
             elevation={0}
             sx={{
-              p: compactMedia ? '0' : isBoardEvent ? '10px 14px' : '12px 18px',
-              borderRadius: '24px',
-              borderBottomRightRadius: isOwn ? '4px' : '24px',
-              borderBottomLeftRadius: isOwn ? '24px' : '4px',
+              p: compactMedia ? '0' : isBoardEvent ? '8px 12px' : '8px 12px',
+              borderRadius: '16px',
+              borderBottomRightRadius: isOwn ? '4px' : '16px',
+              borderBottomLeftRadius: isOwn ? '16px' : '4px',
               background: isOwn
                 ? `linear-gradient(135deg, ${tokens.brand.primary}, #8A2BE2)`
                 : (isDarkMode ? 'rgba(255,255,255,0.04)' : '#ffffff'),
@@ -417,62 +465,7 @@ export const MessageBubble = React.memo(({
               </Typography>
             )}
 
-            {/* Time & status checkmark inside the bubble */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                gap: 0.5,
-                mt: compactMedia ? 0 : 0.5,
-                px: compactMedia ? 2 : 0,
-                pb: compactMedia ? 1 : 0,
-                opacity: 0.85,
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  fontSize: '0.62rem',
-                  fontWeight: 600,
-                  color: isOwn ? 'rgba(255,255,255,0.8)' : 'text.secondary',
-                }}
-              >
-                {messageTime}
-              </Typography>
-              {isOwn && (
-                <Box
-                  component="button"
-                  type="button"
-                  aria-label="Message info"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setInfoOpen(true);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    p: 0,
-                    m: 0,
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    lineHeight: 0,
-                    borderRadius: '4px',
-                    '&:hover': { opacity: 1 },
-                    '&:focus-visible': {
-                      outline: '1px solid rgba(255,255,255,0.7)',
-                      outlineOffset: 1,
-                    },
-                  }}
-                >
-                  <TickIcon status={tickStatus} isOwn={isOwn} />
-                </Box>
-              )}
-            </Box>
+            {/* Removed time & status checkmark from inside the bubble */}
           </Paper>
 
           {/* Aggregated reaction pill (WhatsApp-style overlap) */}
