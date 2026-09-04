@@ -2,13 +2,11 @@ import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  TextField,
   Button,
   Grid,
   CircularProgress,
   Paper,
   useTheme,
-  alpha,
   Divider,
   Switch,
 } from '@mui/material';
@@ -25,7 +23,6 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const { data: settings, isLoading } = useSystemSettings();
   const updateSettings = useUpdateSystemSettings();
   const addToast = useUIStore((s) => s.addToast);
-  const [retentionMonths, setRetentionMonths] = useState('12');
   const [dailyReportEnabled, setDailyReportEnabled] = useState(false);
   const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
 
@@ -34,7 +31,6 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
 
   useEffect(() => {
     if (settings) {
-      setRetentionMonths(String(settings.chatRetentionMonths ?? 12));
       setDailyReportEnabled(settings.automatedUserReportSchedule?.daily ?? false);
       setWeeklyReportEnabled(settings.automatedUserReportSchedule?.weekly ?? true);
     }
@@ -51,7 +47,6 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const handleSave = () => {
     updateSettings.mutate(
       {
-        chatRetentionMonths: Number(retentionMonths) || 12,
         automatedUserReportSchedule: {
           daily: dailyReportEnabled,
           weekly: weeklyReportEnabled,
@@ -132,7 +127,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                 fontWeight: 500,
               }}
             >
-              Manage security policies and data retention settings.
+              Manage security policies and automated report settings.
             </Typography>
           </Box>
         </Box>
@@ -140,58 +135,6 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         <Divider sx={{ my: 4, borderColor: isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
 
         <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
-                Chat Retention Duration
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
-                Set the number of months to keep chat history across the application before it is automatically deleted.
-              </Typography>
-              
-              <TextField
-                label="Months"
-                type="number"
-                fullWidth
-                value={retentionMonths}
-                onChange={(e) => setRetentionMonths(e.target.value)}
-                disabled={readOnly}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '16px',
-                    bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)`,
-                    fontSize: '0.95rem',
-                    transition: 'all 0.2s ease',
-                    '& fieldset': {
-                      borderColor: 'transparent',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: `color-mix(in srgb, ${tokens.brand.primary} 30%, transparent)`,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: tokens.brand.primary,
-                      borderWidth: '2px',
-                    },
-                    '&.Mui-focused': {
-                      bgcolor: isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)` : '#fff',
-                      boxShadow: `0 4px 20px ${`color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`}`,
-                    }
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'text.secondary',
-                    '&.Mui-focused': {
-                      color: tokens.brand.primary,
-                    }
-                  }
-                }}
-              />
-            </Box>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1, borderColor: isDarkMode ? `color-mix(in srgb, #fff 5%, transparent)` : `color-mix(in srgb, #000 5%, transparent)` }} />
-          </Grid>
-
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>

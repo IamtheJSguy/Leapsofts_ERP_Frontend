@@ -1057,7 +1057,6 @@ export interface ProfileEntry {
 
 export interface SystemSettings {
   referenceSheetUrl?: string;
-  chatRetentionMonths?: number;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
   icps?: IcpEntry[];
