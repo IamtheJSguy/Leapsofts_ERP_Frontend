@@ -9,8 +9,6 @@ const reportApi = {
   getReport: (id: string) => api.get<{ data: Report }>(`/reports/${id}`),
   exportReport: ({ id, format }: { id: string; format: string }) =>
     api.get(`/reports/${id}/export?format=${format}`, { responseType: 'blob' }),
-  getAdminSummary: (params: Record<string, string>) =>
-    api.get('/reports/admin/summary', { params }),
 };
 
 export const useReports = (filters: Record<string, string> = {}) =>
@@ -52,11 +50,4 @@ export const useExportReport = () =>
       a.click();
       window.URL.revokeObjectURL(url);
     },
-  });
-
-export const useAdminSummary = (params: Record<string, string>) =>
-  useQuery({
-    queryKey: ['adminSummary', params],
-    queryFn: () => reportApi.getAdminSummary(params).then((r) => r.data.data),
-    enabled: !!params.startDate && !!params.endDate,
   });

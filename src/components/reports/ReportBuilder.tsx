@@ -14,18 +14,11 @@ import {
   useTheme,
   Autocomplete,
 } from '@mui/material';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import DateRangeIcon from '@mui/icons-material/DateRange';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import TuneIcon from '@mui/icons-material/Tune';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupIcon from '@mui/icons-material/Group';
-import BadgeIcon from '@mui/icons-material/Badge';
-import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 import { reportFilterSchema } from '@/utils/validators';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { useGenerateReport } from '@/hooks/api/useReports';
@@ -35,11 +28,10 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
 const REPORT_TYPES = [
+  { value: 'combined_kpi', label: 'Combined KPIs', icon: <TimelineIcon fontSize="small" /> },
   { value: 'attendance', label: 'Attendance', icon: <AccessTimeIcon fontSize="small" /> },
-  { value: 'kpi_performance', label: 'KPI Performance', icon: <TimelineIcon fontSize="small" /> },
-  { value: 'employee_full', label: 'Full Employee Report', icon: <PersonIcon fontSize="small" /> },
-  { value: 'team_overview', label: 'Team Overview', icon: <GroupIcon fontSize="small" /> },
-  { value: 'user_summary', label: 'User Summary', icon: <BadgeIcon fontSize="small" /> },
+  { value: 'overall_user', label: 'Overall user', icon: <PersonIcon fontSize="small" /> },
+  { value: 'team_overview', label: 'Team overview', icon: <GroupIcon fontSize="small" /> },
 ];
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';

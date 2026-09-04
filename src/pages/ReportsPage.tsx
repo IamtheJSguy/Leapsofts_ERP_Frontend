@@ -15,6 +15,8 @@ import { ReportTable } from '@/components/reports/ReportTable';
 import { ReportExportButton } from '@/components/reports/ReportExportButton';
 import { AttendanceReportView } from '@/components/reports/AttendanceReportView';
 import { KpiPerformanceView } from '@/components/reports/KpiPerformanceView';
+import { CombinedKpiView, fromLegacyKpiPerformance } from '@/components/reports/CombinedKpiView';
+import { TeamOverviewView } from '@/components/reports/TeamOverviewView';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useReport } from '@/hooks/api/useReports';
@@ -24,6 +26,9 @@ import type {
   AttendanceMetrics,
   KpiPerformanceMetrics,
   EmployeeFullMetrics,
+  CombinedKpiMetrics,
+  OverallUserMetrics,
+  TeamOverviewMetrics,
   User,
 } from '@/types';
 
@@ -37,7 +42,7 @@ const ReportsPage = () => {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   // Controlled form states
-  const [reportType, setReportType] = useState<string>('user_summary');
+  const [reportType, setReportType] = useState<string>('combined_kpi');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
 
   const { data: users = [] } = useUsers({}, { enabled: isElevated });
@@ -138,14 +143,74 @@ const ReportsPage = () => {
             userName={userName}
           />
         );
-      case 'kpi_performance':
+      case 'combined_kpi':
         return (
-          <KpiPerformanceView
-            metrics={metrics as unknown as KpiPerformanceMetrics}
-            comparison={comparison as unknown as KpiPerformanceMetrics | undefined}
+          <CombinedKpiView
+            metrics={metrics as unknown as CombinedKpiMetrics}
+            comparison={comparison as unknown as CombinedKpiMetrics | undefined}
             userName={userName}
           />
         );
+      case 'kpi_performance':
+        return (
+          <CombinedKpiView
+            metrics={fromLegacyKpiPerformance(metrics as unknown as KpiPerformanceMetrics)}
+            userName={userName}
+          />
+        );
+      case 'overall_user': {
+        const overall = metrics as unknown as OverallUserMetrics;
+        return (
+          <Box>
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary }} />
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.02em' }}>
+                  {overall.user?.name || userName}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>
+                  {overall.user?.email} · {overall.user?.role}
+                </Typography>
+              </Box>
+            </Box>
+            <Grid container spacing={2} mb={4}>
+              {[
+                { label: 'Leads', value: overall.salesActivity?.totalLeads ?? 0 },
+                { label: 'Qualified', value: overall.salesActivity?.qualified ?? 0 },
+                { label: 'Meetings', value: overall.meetings?.completed ?? 0 },
+                { label: 'Meeting rate', value: `${overall.meetings?.completionRate ?? 0}%` },
+              ].map((item) => (
+                <Grid item xs={12} sm={6} md={3} key={item.label}>
+                  <Box
+                    sx={{
+                      p: 2.5,
+                      borderRadius: '20px',
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : tokens.brand.primary50,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.brand.primary }}>{item.value}</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>{item.label}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+            <Box mb={4}>
+              <AttendanceReportView
+                metrics={overall.attendance}
+                comparison={(comparison as unknown as OverallUserMetrics)?.attendance}
+                userName={overall.user?.name}
+              />
+            </Box>
+            <CombinedKpiView
+              metrics={overall.combinedKpi}
+              comparison={(comparison as unknown as OverallUserMetrics)?.combinedKpi}
+              userName={overall.user?.name}
+              compact
+            />
+          </Box>
+        );
+      }
       case 'employee_full': {
         const fullMetrics = metrics as unknown as EmployeeFullMetrics;
         return (
@@ -230,35 +295,7 @@ const ReportsPage = () => {
         );
       }
       case 'team_overview':
-        // For team overview, render each member as a summary card
-        return (
-          <Box>
-            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary, backgroundImage: `linear-gradient(180deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)` }} />
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                  Team Overview Report
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.5, display: 'block' }}>
-                  Aggregate Team Metrics
-                </Typography>
-              </Box>
-            </Box>
-            <Alert 
-              severity="info" 
-              sx={{ 
-                borderRadius: '20px', 
-                mb: 4, 
-                py: 1.5,
-                bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
-                color: isDarkMode ? '#93C5FD' : '#1D4ED8',
-                border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}`,
-              }}
-            >
-              Team overview contains combined data for all employees. Use the export button below to download the full report.
-            </Alert>
-          </Box>
-        );
+        return <TeamOverviewView metrics={metrics as unknown as TeamOverviewMetrics} />;
       default:
         // Legacy report types (User Summary) — show metrics dynamically
         return (

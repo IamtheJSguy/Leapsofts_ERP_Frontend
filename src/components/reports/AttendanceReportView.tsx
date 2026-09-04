@@ -134,6 +134,12 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
         delta: comparison ? Math.round((metrics.overtimeMinutes - comparison.overtimeMinutes) / 60 * 10) / 10 : undefined,
         suffix: 'h',
       },
+      {
+        label: 'Break time',
+        value: `${((metrics.totalBreakMinutes ?? 0) / 60).toFixed(1)}h`,
+        icon: <TimerIcon />,
+        color: tokens.text.secondary,
+      },
     ],
     [metrics, comparison],
   );
@@ -347,6 +353,9 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
               <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="right">
                 Hours Worked
               </TableCell>
+              <TableCell sx={{ fontWeight: 700, color: tokens.text.secondary, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} align="right">
+                Break
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -394,6 +403,11 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
                 <TableCell align="right">
                   <Typography variant="body2" sx={{ fontWeight: 800, color: tokens.text.primary, fontSize: '0.95rem' }}>
                     {(day.totalMinutes / 60).toFixed(1)}<Typography component="span" sx={{ color: 'text.secondary', fontSize: '0.8rem', ml: 0.5 }}>h</Typography>
+                  </Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: tokens.text.secondary }}>
+                    {((day.breakMinutes ?? 0) / 60).toFixed(1)}h
                   </Typography>
                 </TableCell>
               </TableRow>
