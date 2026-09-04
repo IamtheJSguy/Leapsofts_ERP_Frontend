@@ -41,20 +41,49 @@ export const appendMessageToCache = (
   if (!old) {
     return { pages: [{ messages: [message], hasMore: false }], pageParams: [undefined] };
   }
+
+  const isDuplicate = (m: Message) => m._id === message._id;
+  
+  const isOptimisticMatch = (m: Message) => 
+    m.isPending && 
+    (
+      (m.type === 'text' && m.content === message.content) || 
+      (m.type === 'file' && message.type === 'file' && m.content === message.content)
+    );
+
   if (Array.isArray(old)) {
-    if (old.some((m) => m._id === message._id)) return old;
+    if (old.some(isDuplicate)) return old;
+    const optIdx = old.findIndex(isOptimisticMatch);
+    if (optIdx !== -1) {
+      const next = [...old];
+      next[optIdx] = { ...message, clientId: next[optIdx]._id };
+      return next;
+    }
     return [...old, message];
   }
+  
   if (!isMessagesInfiniteData(old)) {
     return { pages: [{ messages: [message], hasMore: false }], pageParams: [undefined] };
   }
-  if (old.pages.some((page) => page.messages.some((m) => m._id === message._id))) {
+  
+  if (old.pages.some((page) => page.messages.some(isDuplicate))) {
     return old;
   }
+  
   if (old.pages.length === 0) {
     return { pages: [{ messages: [message], hasMore: false }], pageParams: [undefined] };
   }
+  
   const pages = [...old.pages];
-  pages[0] = { ...pages[0], messages: [...pages[0].messages, message] };
+  const firstPageMessages = [...pages[0].messages];
+  
+  const optIdx = firstPageMessages.findIndex(isOptimisticMatch);
+  if (optIdx !== -1) {
+    firstPageMessages[optIdx] = { ...message, clientId: firstPageMessages[optIdx]._id };
+  } else {
+    firstPageMessages.push(message);
+  }
+  
+  pages[0] = { ...pages[0], messages: firstPageMessages };
   return { ...old, pages };
 };

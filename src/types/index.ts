@@ -898,7 +898,9 @@ export interface Message {
   senderId?: string | User;
   sender?: string | User;
   content: string;
-  type: 'text' | 'file' | 'drive_file' | 'board_event';
+  type: 'text' | 'image' | 'file' | 'drive_file' | 'board_event';
+  isPending?: boolean;
+  clientId?: string;
   fileUrl?: string;
   filePublicId?: string;
   boardEvent?: BoardEvent;

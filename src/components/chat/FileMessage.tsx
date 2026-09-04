@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, IconButton, Modal, Typography } from '@mui/material';
+import { Box, IconButton, Modal, Typography, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Message } from '@/types';
 import { LinkifiedText } from './LinkifiedText';
@@ -23,7 +23,7 @@ export const FileMessage = ({ message, isOwn = false }: FileMessageProps) => {
       <Box
         component="button"
         type="button"
-        onClick={() => setLightboxOpen(true)}
+        onClick={() => !message.isPending && setLightboxOpen(true)}
         aria-label="View image larger"
         sx={{
           display: 'block',
@@ -33,8 +33,9 @@ export const FileMessage = ({ message, isOwn = false }: FileMessageProps) => {
           border: 'none',
           background: 'transparent',
           width: '100%',
-          cursor: 'zoom-in',
+          cursor: message.isPending ? 'default' : 'zoom-in',
           textAlign: 'left',
+          position: 'relative',
         }}
       >
         <Box
@@ -47,15 +48,38 @@ export const FileMessage = ({ message, isOwn = false }: FileMessageProps) => {
             maxHeight: 280,
             width: '100%',
             objectFit: 'cover',
+            filter: message.isPending ? 'blur(3px) brightness(0.85)' : 'none',
+            transition: 'filter 0.3s ease',
           }}
         />
+        {message.isPending && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              bgcolor: 'rgba(0,0,0,0.4)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            }}
+          >
+            <CircularProgress size={24} thickness={4} sx={{ color: '#fff' }} />
+          </Box>
+        )}
       </Box>
       {message.content?.trim() ? (
         <Typography
           variant="body2"
           sx={{
-            px: 1.5,
+            px: 2,
             pt: 1,
+            pb: 1,
             fontSize: '0.85rem',
             fontWeight: 500,
             wordBreak: 'break-word',

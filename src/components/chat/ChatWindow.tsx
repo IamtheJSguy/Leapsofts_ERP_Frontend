@@ -306,6 +306,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }
   }, [loadOlderMessages]);
 
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
+
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
     if (isPrependingRef.current && el) {
@@ -320,6 +322,19 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }
   }, [enhancedMessages, isFetchingNextPage]);
 
+  useLayoutEffect(() => {
+    const el = contentWrapperRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (isPrependingRef.current) return;
+      if (shouldStickToBottomRef.current) {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showLoader]);
+
   const handleSend = () => {
     if (!activeConversationId) return;
     shouldStickToBottomRef.current = true;
@@ -328,21 +343,22 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
     const sendImage = (conversationId: string) => {
       if (!pendingImage) return;
-      sendChatImage.mutate(
-        {
-          conversationId,
-          file: pendingImage,
-          content: caption || undefined,
-          replyTo: replyToId,
-        },
-        {
-          onSuccess: () => {
-            setText('');
-            setReplyingTo(null);
-            clearPendingImage();
-          },
-        },
-      );
+      
+      const fileToUpload = pendingImage;
+      const contentToUpload = caption;
+      const replyToIdToUpload = replyToId;
+
+      setText('');
+      setReplyingTo(null);
+      clearPendingImage();
+
+      // Send the image and caption together in a single request
+      sendChatImage.mutate({
+        conversationId,
+        file: fileToUpload,
+        content: contentToUpload || undefined,
+        replyTo: replyToIdToUpload,
+      });
     };
 
     if (pendingImage) {
@@ -698,7 +714,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             <CircularProgress size={28} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
-          <>
+          <Box ref={contentWrapperRef} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {(isFetchingNextPage || hasNextPage) && (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 1, minHeight: 28 }}>
                 {isFetchingNextPage ? (
@@ -713,7 +729,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 (!prevMsg || !isSameMessageDay(prevMsg.createdAt, msg.createdAt));
 
               return (
-                <Box key={msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box key={msg.clientId || msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                   {showDaySeparator && (
                     <Box
                       sx={{
@@ -762,7 +778,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               );
             })}
             <div ref={bottomRef} />
-          </>
+          </Box>
         )}
       </Box>
 
@@ -961,7 +977,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
           <IconButton
             onClick={handleSend}
-            disabled={sendMessage.isPending || sendChatImage.isPending || (!text.trim() && !pendingImage)}
+            disabled={!text.trim() && !pendingImage}
             sx={{
               width: 44,
               height: 44,
@@ -985,11 +1001,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }}
             aria-label="Send message"
           >
-            {sendMessage.isPending || sendChatImage.isPending ? (
-              <CircularProgress size={20} color="inherit" />
-            ) : (
-              <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />
-            )}
+            <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />
           </IconButton>
         </Box>
       </Box>

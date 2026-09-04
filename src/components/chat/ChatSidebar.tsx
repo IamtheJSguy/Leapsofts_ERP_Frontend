@@ -28,6 +28,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { useConversations, useCreateConversation, useUpdatePresence } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
 import { getDisplayName, formatDateTime, getPresenceLabel, formatRelativeChatDate } from '@/utils/formatters';
@@ -527,10 +528,18 @@ export const ChatSidebar = () => {
                               fontSize: '0.76rem',
                               fontWeight: unreadCount > 0 ? 700 : 500,
                               maxWidth: unreadCount > 0 ? '80%' : '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
                             }}
                             noWrap
                           >
-                            {conv.lastMessage?.content || 'No messages yet.'}
+                            {conv.lastMessage?.type === 'file' && (
+                              <ImageOutlinedIcon sx={{ fontSize: '0.9rem', color: 'inherit', opacity: 0.8 }} />
+                            )}
+                            {conv.lastMessage?.type === 'file'
+                              ? conv.lastMessage.content || 'Image'
+                              : conv.lastMessage?.content || 'No messages yet.'}
                           </Typography>
                         )}
                         {unreadCount > 0 && (

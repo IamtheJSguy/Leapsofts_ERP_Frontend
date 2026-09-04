@@ -230,6 +230,8 @@ export const MessageBubble = React.memo(({
         alignItems: 'flex-end',
         mb: reactions.length ? 2.75 : 2,
         gap: 1.25,
+        opacity: message.isPending ? 0.7 : 1,
+        transition: 'opacity 0.2s ease',
         '&:hover .msg-hover-action': { opacity: 1 },
       }}
     >

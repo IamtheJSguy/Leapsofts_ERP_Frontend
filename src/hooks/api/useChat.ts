@@ -223,8 +223,76 @@ export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: chatApi.sendMessage,
-    onSuccess: (res, variables) => applySentMessageToCache(queryClient, variables.conversationId, res),
-    onError: (err, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', variables.conversationId] });
+      const previous = queryClient.getQueriesData<Message[] | MessagesInfiniteData>({
+        queryKey: ['messages', variables.conversationId],
+      });
+
+      const user = useAuthStore.getState().user;
+      const tempId = `optimistic-${Date.now()}`;
+      const optimisticMessage: Message = {
+        _id: tempId,
+        conversationId: variables.conversationId,
+        sender: user,
+        senderId: user?._id,
+        content: variables.content,
+        type: variables.type || 'text',
+        createdAt: new Date().toISOString(),
+        isPending: true,
+        reactions: [],
+      } as Message;
+
+      queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+        { queryKey: ['messages', variables.conversationId] },
+        (old) => appendMessageToCache(old, optimisticMessage),
+      );
+
+      return { previous, tempId };
+    },
+    onSuccess: (res, variables, context) => {
+      const realMessage = normalizeMessageReceipts((res.data as { data: Message }).data);
+      if (realMessage) {
+        queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+          { queryKey: ['messages', variables.conversationId] },
+          (old) => {
+            return mapMessageCache(old, (messages) => {
+              const socketAppended = messages.some((m) => m._id === realMessage._id);
+              if (socketAppended) {
+                return messages
+                  .filter((m) => m._id !== context?.tempId)
+                  .map((m) =>
+                    m._id === realMessage._id ? { ...m, clientId: context?.tempId } : m
+                  );
+              }
+              return messages.map((m) =>
+                m._id === context?.tempId ? { ...m, ...realMessage, clientId: context?.tempId } : m
+              );
+            });
+          }
+        );
+        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+          if (!old) return old;
+          const updated = old.map((conv) =>
+            conv._id === variables.conversationId
+              ? { ...conv, lastMessage: realMessage, updatedAt: realMessage.createdAt, unreadCount: 0 }
+              : conv,
+          );
+          const idx = updated.findIndex((c) => c._id === variables.conversationId);
+          if (idx > 0) {
+            const [item] = updated.splice(idx, 1);
+            updated.unshift(item);
+          }
+          return updated;
+        });
+      }
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       if (status === 403 || status === 404) {
         closeRemovedConversation(variables.conversationId);
@@ -237,7 +305,78 @@ export const useSendChatImage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: chatApi.sendChatImage,
-    onSuccess: (res, variables) => applySentMessageToCache(queryClient, variables.conversationId, res),
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', variables.conversationId] });
+      const previous = queryClient.getQueriesData<Message[] | MessagesInfiniteData>({
+        queryKey: ['messages', variables.conversationId],
+      });
+
+      const user = useAuthStore.getState().user;
+      const tempId = `optimistic-${Date.now()}`;
+      const optimisticMessage: Message = {
+        _id: tempId,
+        conversationId: variables.conversationId,
+        sender: user,
+        senderId: user?._id,
+        content: variables.content || '',
+        type: 'file',
+        fileUrl: URL.createObjectURL(variables.file),
+        createdAt: new Date().toISOString(),
+        isPending: true,
+        reactions: [],
+      } as Message;
+
+      queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+        { queryKey: ['messages', variables.conversationId] },
+        (old) => appendMessageToCache(old, optimisticMessage),
+      );
+
+      return { previous, tempId };
+    },
+    onSuccess: (res, variables, context) => {
+      const realMessage = normalizeMessageReceipts((res.data as { data: Message }).data);
+      if (realMessage) {
+        queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+          { queryKey: ['messages', variables.conversationId] },
+          (old) => {
+            return mapMessageCache(old, (messages) => {
+              const socketAppended = messages.some((m) => m._id === realMessage._id);
+              if (socketAppended) {
+                return messages
+                  .filter((m) => m._id !== context?.tempId)
+                  .map((m) =>
+                    m._id === realMessage._id ? { ...m, clientId: context?.tempId } : m
+                  );
+              }
+              return messages.map((m) =>
+                m._id === context?.tempId ? { ...m, ...realMessage, clientId: context?.tempId } : m
+              );
+            });
+          }
+        );
+        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+          if (!old) return old;
+          const updated = old.map((conv) =>
+            conv._id === variables.conversationId
+              ? { ...conv, lastMessage: realMessage, updatedAt: realMessage.createdAt, unreadCount: 0 }
+              : conv,
+          );
+          const idx = updated.findIndex((c) => c._id === variables.conversationId);
+          if (idx > 0) {
+            const [item] = updated.splice(idx, 1);
+            updated.unshift(item);
+          }
+          return updated;
+        });
+      }
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
   });
 };
 
