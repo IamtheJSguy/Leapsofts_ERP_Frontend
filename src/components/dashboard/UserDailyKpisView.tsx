@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -17,58 +17,83 @@ import {
   DialogActions,
   TextField,
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
-import EventNoteIcon from '@mui/icons-material/EventNote';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { useDailyKpis, useMarkDailyKpiComplete, useMarkDailyKpiIncomplete } from '@/hooks/api/useShifts';
+import type { DailyKPIEntry, GroupedDailyKpis } from '@/hooks/api/useShifts';
+import { useAuth } from '@/hooks/useAuth';
 import { useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
 import { useMyAssignments } from '@/hooks/api/usekpiTemplate';
 import { useMySalesKpis } from '@/hooks/api/useSalesKpis';
-import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { SalesKpiEntryCard } from '@/components/kpi/SalesKpiEntryCard';
 import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components/kpi/KPIChangeRequestModal';
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
-import { sortByPriority } from '@/lib/priorityConfig';
+import { KPI_PRIORITY_OPTIONS, PRIORITY_CONFIG } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
-import type { GroupedSalesKpis, SalesKpiEntry } from '@/types';
+import type { GroupedKpiCounts, GroupedSalesKpis, PriorityBucket, SalesKpiEntry, SectionCounts } from '@/types';
 
 /** Prefer periodEnd (includes schedule endTime) over bare date. */
 const resolveKpiDueAt = (kpi: { periodEnd?: string; date?: string }): string | undefined =>
   kpi.periodEnd || kpi.date;
 
-const EMPTY_GROUPED = {
-  active: [],
-  overdue: [],
-  done: [],
-  highPriority: [],
-  counts: { active: 0, overdue: 0, done: 0, highPriority: 0 },
+const EMPTY_PRIORITY_BUCKET = <T,>(): PriorityBucket<T> => ({
+  low: [],
+  medium: [],
+  high: [],
+  urgent: [],
+});
+
+const EMPTY_SECTION_COUNTS: SectionCounts = { low: 0, medium: 0, high: 0, urgent: 0, total: 0 };
+
+const EMPTY_COUNTS: GroupedKpiCounts = {
+  active: EMPTY_SECTION_COUNTS,
+  overdue: EMPTY_SECTION_COUNTS,
+  incomplete: EMPTY_SECTION_COUNTS,
+  done: EMPTY_SECTION_COUNTS,
+};
+
+const EMPTY_GROUPED: GroupedDailyKpis = {
+  active: EMPTY_PRIORITY_BUCKET(),
+  overdue: EMPTY_PRIORITY_BUCKET(),
+  incomplete: EMPTY_PRIORITY_BUCKET(),
+  done: EMPTY_PRIORITY_BUCKET(),
+  counts: EMPTY_COUNTS,
 };
 
 const EMPTY_SALES_GROUPED: GroupedSalesKpis = {
-  active: [],
-  overdue: [],
-  incomplete: [],
-  done: [],
-  counts: { active: 0, overdue: 0, incomplete: 0, done: 0 },
+  active: EMPTY_PRIORITY_BUCKET(),
+  overdue: EMPTY_PRIORITY_BUCKET(),
+  incomplete: EMPTY_PRIORITY_BUCKET(),
+  done: EMPTY_PRIORITY_BUCKET(),
+  counts: EMPTY_COUNTS,
 };
 
-const isHighPrioritySalesKpi = (entry: SalesKpiEntry) => entry.priority === 'high' || entry.priority === 'urgent';
+/** Kanban HTML descriptions render as truncated garbage if shown raw. */
+const toPlainText = (value?: string): string => {
+  if (!value) return '';
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+type StatusTab = 'active' | 'overdue' | 'done' | 'incomplete' | 'requests';
 
 export const UserDailyKpisView = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { isAdmin } = useAuth();
 
-  const [filter, setFilter] = useState<'active' | 'overdue' | 'incomplete' | 'high' | 'done' | 'requests'>('active');
-  const [expandedKpiId, setExpandedKpiId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusTab>('active');
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
@@ -85,6 +110,12 @@ export const UserDailyKpisView = () => {
   const markIncomplete = useMarkDailyKpiIncomplete();
 
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (isAdmin && (filter === 'incomplete' || filter === 'requests')) {
+      setFilter('active');
+    }
+  }, [isAdmin, filter]);
 
   const pendingKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -156,44 +187,32 @@ export const UserDailyKpisView = () => {
     return `${actual} / ${target} (${rate}%)`;
   };
 
-  const filteredKpis = useMemo(() => {
-    const bucket =
-      filter === 'active' ? grouped.active
-      : filter === 'overdue' ? grouped.overdue
-      : filter === 'high' ? grouped.highPriority
-      : filter === 'done' ? grouped.done
-      : [];
+  const boardColumns = useMemo(() => {
+    if (filter === 'requests') return null;
+    const dailySection = grouped[filter] ?? EMPTY_PRIORITY_BUCKET<DailyKPIEntry>();
+    const salesSection = salesGrouped[filter] ?? EMPTY_PRIORITY_BUCKET<SalesKpiEntry>();
+    return [...KPI_PRIORITY_OPTIONS].reverse().map((priority) => ({
+      priority,
+      daily: dailySection[priority] ?? [],
+      sales: salesSection[priority] ?? [],
+    }));
+  }, [grouped, salesGrouped, filter]);
 
-    return [...bucket].sort((a: any, b: any) => {
-      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
-      return sortByPriority(a, b);
-    });
-  }, [grouped, filter]);
+  const boardIsEmpty = useMemo(() => {
+    if (!boardColumns) return true;
+    return boardColumns.every((col) => col.daily.length === 0 && col.sales.length === 0);
+  }, [boardColumns]);
 
-  const salesKpis = useMemo(() => {
-    const bucket =
-      filter === 'active' ? salesGrouped.active
-      : filter === 'overdue' ? salesGrouped.overdue
-      : filter === 'incomplete' ? salesGrouped.incomplete
-      : filter === 'high' ? salesGrouped.active.filter(isHighPrioritySalesKpi)
-      : filter === 'done' ? salesGrouped.done
-      : [];
-
-    return [...bucket].sort(sortByPriority);
-  }, [salesGrouped, filter]);
-
-  const salesHighPriorityCount = useMemo(
-    () => salesGrouped.active.filter(isHighPrioritySalesKpi).length,
-    [salesGrouped],
-  );
-
-  const filters = [
-    { id: 'active', label: 'Active', count: grouped.counts.active + salesGrouped.counts.active },
-    { id: 'overdue', label: 'Overdue', count: grouped.counts.overdue + salesGrouped.counts.overdue },
-    { id: 'incomplete', label: 'Incomplete', count: salesGrouped.counts.incomplete },
-    { id: 'high', label: 'High priority', count: grouped.counts.highPriority + salesHighPriorityCount },
-    { id: 'done', label: 'Done', count: grouped.counts.done + salesGrouped.counts.done },
-    { id: 'requests', label: 'Requests', count: myRequests.length },
+  const filters: { id: StatusTab; label: string; count: number }[] = [
+    { id: 'active', label: 'Active', count: grouped.counts.active.total + salesGrouped.counts.active.total },
+    { id: 'overdue', label: 'Overdue', count: grouped.counts.overdue.total + salesGrouped.counts.overdue.total },
+    { id: 'done', label: 'Done', count: grouped.counts.done.total + salesGrouped.counts.done.total },
+    ...(!isAdmin
+      ? [
+          { id: 'incomplete' as const, label: 'Incomplete', count: salesGrouped.counts.incomplete.total },
+          { id: 'requests' as const, label: 'Requests', count: myRequests.length },
+        ]
+      : []),
   ];
 
   const openModifyModal = (kpi: any) => {
@@ -313,32 +332,82 @@ export const UserDailyKpisView = () => {
 
       {filter === 'requests' ? (
         <MyChangeRequestsPanel />
-      ) : filteredKpis.length === 0 && salesKpis.length === 0 ? (
+      ) : boardIsEmpty ? (
         <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, py: 8 }}>
           <CheckRoundedIcon sx={{ fontSize: 32, color: tokens.semantic.success, mb: 2 }} />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>All caught up</Typography>
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {salesKpis.length > 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <TrackChangesOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
-              <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Sales KPIs · tracked automatically
-              </Typography>
-            </Box>
-            {salesKpis.map((entry) => (
-              <SalesKpiEntryCard key={entry._id} entry={entry} />
-            ))}
-          </Box>
-        )}
-        {filteredKpis.length > 0 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          {filteredKpis.map((kpi: any) => {
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            alignItems: 'start',
+            width: '100%',
+            minWidth: 0,
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(4, minmax(0, 1fr))',
+            },
+            pb: 1,
+          }}
+        >
+          {boardColumns?.map((col) => {
+            const colCount = col.daily.length + col.sales.length;
+            return (
+            <Box
+              key={col.priority}
+              sx={{
+                minWidth: 0,
+                width: '100%',
+                maxWidth: '100%',
+                minHeight: { xs: 0, sm: 180 },
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.25,
+                p: 1.25,
+                overflow: 'hidden',
+                borderRadius: `${tokens.radius.md}px`,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : tokens.semantic.neutralBg,
+                border: `1px solid ${PRIORITY_CONFIG[col.priority].border}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.25 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: PRIORITY_CONFIG[col.priority].color,
+                  }}
+                >
+                  {PRIORITY_CONFIG[col.priority].label}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={colCount}
+                  sx={{ height: 20, fontWeight: 700, fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums' }}
+                />
+              </Box>
+              {colCount === 0 && (
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', py: 3 }}>
+                  <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 500 }}>
+                    No tasks
+                  </Typography>
+                </Box>
+              )}
+              {col.sales.map((entry) => (
+                <Box key={entry._id} sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+                  <SalesKpiEntryCard entry={entry} variant="board" />
+                </Box>
+              ))}
+              {col.daily.map((kpi) => {
             const isChecked = kpi.isCompleted;
             const isKpiLoading = loadingIds.has(kpi._id);
-            const isOverdue = filter === 'overdue' || grouped.overdue.some((o: any) => o._id === kpi._id);
+            const isOverdue = filter === 'overdue';
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
             const hasTarget = !kpi.kanbanCardId && (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
             const dueAt = resolveKpiDueAt(kpi);
@@ -347,192 +416,215 @@ export const UserDailyKpisView = () => {
               (!kpi.periodEnd && kpi.date && hasDisplayableClockTime(kpi.date))
             );
             const dueLabel = dueAt ? formatKpiDueDate(dueAt, { includeTime }) : null;
-            const deadlineLabel = dueAt
-              ? formatKpiDueDate(dueAt, {
-                  month: 'long',
-                  separator: includeTime ? 'dot' : 'comma',
-                  includeTime,
-                })
-              : null;
             const assignedAt =
               kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
-                ? kpi.kanbanCardId.assignedAt
+                ? (kpi.kanbanCardId as { assignedAt?: string }).assignedAt
                 : undefined;
+            const description = toPlainText(
+              kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description,
+            );
+            const title = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task';
+            const statusChip = isOverdue
+              ? { label: 'Overdue', bgcolor: tokens.semantic.errorBg, color: tokens.semantic.error }
+              : isChecked
+                ? { label: 'Done', bgcolor: tokens.semantic.successBg, color: tokens.semantic.success }
+                : hasPending(kpi)
+                  ? { label: 'Pending', bgcolor: tokens.semantic.warningBg, color: tokens.semantic.warning }
+                  : null;
 
             return (
               <Box
                 key={kpi._id}
                 sx={{
-                  display: 'flex', flexDirection: 'column', borderRadius: '20px',
-                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.02)',
-                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  px: 1.25,
+                  py: 1,
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  minHeight: 72,
+                  borderRadius: `${tokens.radius.md}px`,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : tokens.surface.border}`,
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.55)' : tokens.surface.card,
+                  boxShadow: tokens.shadow.card,
                   overflow: 'hidden',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
                   '&:hover': {
-                    borderColor: expandedKpiId === kpi._id ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'),
-                    transform: expandedKpiId === kpi._id ? 'none' : 'translateY(-2px)',
-                    boxShadow: isDarkMode ? '0 8px 30px rgba(0,0,0,0.3)' : '0 8px 30px rgba(0,0,0,0.04)'
+                    borderColor: tokens.brand.primaryMuted,
+                    boxShadow: tokens.shadow.cardHover,
                   },
                 }}
               >
-                {/* Summary Section */}
-                <Box
-                  sx={{
-                    display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2.5 }, p: 2, pb: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isKpiLoading ? (
-                      <CircularProgress size={24} />
-                    ) : isChecked ? (
-                      <CheckCircleIcon sx={{ fontSize: 26, color: tokens.semantic.success }} />
-                    ) : (
-                      <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'rgba(255, 127, 17, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                         <TrackChangesIcon sx={{ fontSize: 20, color: tokens.brand.primary }} />
-                      </Box>
-                    )}
-                  </Box>
-
-                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 750, fontSize: '1rem', textDecoration: isChecked ? 'line-through' : 'none', color: isChecked ? 'text.disabled' : tokens.text.primary, letterSpacing: '-0.01em' }}>
-                        {kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task'}
-                      </Typography>
-                      <PriorityBadge priority={kpi.priority || kpi.kpiId?.priority} />
-                      {hasPending(kpi) && <Chip label="Pending review" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(245, 158, 11, 0.1)', color: tokens.semantic.warning }} />}
-                    </Box>
-                    {(kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description) && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: tokens.text.muted,
-                          fontWeight: 500,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                        }}
-                      >
-                        {kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description}
-                      </Typography>
-                    )}
-                  </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
-                    {hasTarget ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <TrackChangesIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: tokens.brand.primary }}>
-                          {isChecked && getAttainmentLabel(kpi)
-                            ? `Actual: ${getAttainmentLabel(kpi)}`
-                            : `Target: ${kpi.targetValue ?? kpi.kpiId?.targetValue}${kpi.livePipelineValue != null ? ` (live: ${kpi.livePipelineValue})` : ''}`}
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Chip label="Simple task" size="small" sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }} />
-                    )}
-                    {dueLabel ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          Due {dueLabel}
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Typography variant="caption" color="text.disabled">No due date</Typography>
-                    )}
-                    {assignedAt && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          Assigned {formatDate(assignedAt)}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
-                    {isOverdue && <Chip icon={<WarningRoundedIcon />} label="Overdue" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem', height: 22, bgcolor: 'rgba(239, 68, 68, 0.1)', color: tokens.semantic.error, border: 'none' }} />}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                  <Typography
+                    variant="subtitle2"
+                    noWrap
+                    title={title}
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontWeight: 650,
+                      fontSize: '0.875rem',
+                      lineHeight: 1.25,
+                      textDecoration: isChecked ? 'line-through' : 'none',
+                      color: isChecked ? 'text.disabled' : tokens.text.primary,
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {title}
+                  </Typography>
+                  <Box
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, alignSelf: 'center' }}
+                  >
+                    <Button
+                      size="small"
+                      aria-label={isChecked ? 'Mark as pending' : 'Mark as done'}
+                      disabled={isKpiLoading}
+                      onClick={() => handleToggle(kpi, isChecked)}
+                      startIcon={
+                        isKpiLoading ? (
+                          <CircularProgress size={12} sx={{ color: 'inherit' }} />
+                        ) : isChecked ? (
+                          <RadioButtonUncheckedIcon sx={{ fontSize: 14 }} />
+                        ) : (
+                          <CheckRoundedIcon sx={{ fontSize: 14 }} />
+                        )
+                      }
+                      sx={{
+                        minWidth: 0,
+                        height: 26,
+                        px: 0.75,
+                        py: 0,
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        lineHeight: 1,
+                        borderRadius: `${tokens.radius.sm}px`,
+                        ...(isChecked
+                          ? {
+                              bgcolor: 'rgba(45, 138, 94, 0.12)',
+                              color: tokens.semantic.success,
+                              border: '1px solid rgba(45, 138, 94, 0.28)',
+                              '&:hover': {
+                                bgcolor: 'rgba(45, 138, 94, 0.20)',
+                                color: tokens.semantic.success,
+                                borderColor: 'rgba(45, 138, 94, 0.40)',
+                              },
+                            }
+                          : {
+                              bgcolor: 'rgba(255, 127, 17, 0.16)',
+                              color: tokens.brand.accentDark,
+                              border: '1px solid transparent',
+                              '&:hover': {
+                                bgcolor: 'rgba(255, 127, 17, 0.28)',
+                                color: tokens.brand.accentDark,
+                              },
+                            }),
+                        '& .MuiButton-startIcon': { mr: 0.35, ml: 0 },
+                        '&.Mui-disabled': { opacity: 0.65 },
+                      }}
+                    >
+                      {isChecked ? 'Undo' : 'Done'}
+                    </Button>
                     {canRequestChange && !isChecked && (
-                      <IconButton size="small" onClick={(e) => openMenu(e, kpi)} sx={{ color: tokens.text.muted, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}>
-                        <MoreVertIcon fontSize="small" />
+                      <IconButton
+                        size="small"
+                        aria-label="More actions"
+                        onClick={(e) => openMenu(e, kpi)}
+                        sx={{ width: 28, height: 28, color: tokens.text.muted, '&:hover': { color: tokens.text.primary } }}
+                      >
+                        <MoreVertIcon sx={{ fontSize: 18 }} />
                       </IconButton>
                     )}
                   </Box>
                 </Box>
-                {/* Details Section */}
-                <Box
-                  sx={{
-                    bgcolor: 'transparent'
-                  }}
-                >
-                  <Box sx={{ p: 2, px: { xs: 2, sm: 8.5 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
-                    
-                    <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                      {hasTarget && (
-                        <Box>
-                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {isChecked ? 'Actual / Target' : 'Target'}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 800, color: tokens.brand.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <TrackChangesIcon sx={{ fontSize: 16 }} />
-                            {isChecked && kpi.actualValue != null
-                              ? `${kpi.actualValue} / ${kpi.targetValue ?? kpi.kpiId?.targetValue}`
-                              : (kpi.targetValue ?? kpi.kpiId?.targetValue)}
-                          </Typography>
-                        </Box>
-                      )}
-                      {deadlineLabel && (
-                        <Box>
-                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deadline</Typography>
-                          <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <EventNoteIcon sx={{ fontSize: 16 }} /> {deadlineLabel}
-                          </Typography>
-                        </Box>
-                      )}
-                      {assignedAt && (
-                        <Box>
-                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assigned</Typography>
-                          <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <EventNoteIcon sx={{ fontSize: 16 }} /> {formatDate(assignedAt)}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
 
-                    <Button
-                      variant={isChecked ? "outlined" : "contained"}
-                      color={isChecked ? "inherit" : "primary"}
-                      disableElevation
-                      startIcon={isChecked ? <RadioButtonUncheckedIcon /> : <CheckCircleIcon />}
-                      disabled={isKpiLoading}
-                      onClick={() => handleToggle(kpi, isChecked)}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, pr: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    title={dueLabel ?? undefined}
+                    sx={{
+                      color: dueLabel ? tokens.text.secondary : 'text.disabled',
+                      fontWeight: 500,
+                      fontVariantNumeric: 'tabular-nums',
+                      minWidth: 0,
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {dueLabel ?? 'No due date'}
+                  </Typography>
+                  {statusChip && (
+                    <Chip
+                      label={statusChip.label}
+                      size="small"
                       sx={{
-                        borderRadius: '12px',
+                        flexShrink: 0,
                         fontWeight: 700,
-                        textTransform: 'none',
-                        px: 3,
-                        py: 1,
-                        background: isChecked ? 'transparent' : `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.accentLight} 100%)`,
-                        borderColor: isChecked ? tokens.surface.border : 'transparent',
-                        color: isChecked ? tokens.text.secondary : '#fff',
-                        boxShadow: isChecked ? 'none' : '0 4px 14px rgba(255, 127, 17, 0.25)',
-                        '&:hover': {
-                          background: isChecked ? 'rgba(0,0,0,0.03)' : `linear-gradient(135deg, ${tokens.brand.accentDark} 0%, ${tokens.brand.accent} 100%)`,
-                          boxShadow: isChecked ? 'none' : '0 6px 20px rgba(255, 127, 17, 0.35)',
-                        }
+                        fontSize: '0.65rem',
+                        height: 20,
+                        bgcolor: statusChip.bgcolor,
+                        color: statusChip.color,
                       }}
-                    >
-                      {isChecked ? 'Mark as Pending' : 'Mark as Done'}
-                    </Button>
-                  </Box>
+                    />
+                  )}
                 </Box>
+
+                {(description.length >= 8 || hasTarget || assignedAt) && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, pt: 0.5 }}>
+                    {description.length >= 8 && (
+                      <Typography
+                        variant="caption"
+                        title={description}
+                        sx={{
+                          color: tokens.text.secondary,
+                          fontWeight: 500,
+                          lineHeight: 1.45,
+                          minWidth: 0,
+                          overflowWrap: 'anywhere',
+                          wordBreak: 'break-word',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {description}
+                      </Typography>
+                    )}
+                    {hasTarget && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 650,
+                          color: tokens.brand.primary,
+                          minWidth: 0,
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {isChecked && getAttainmentLabel(kpi)
+                          ? getAttainmentLabel(kpi)
+                          : `Target: ${kpi.targetValue ?? kpi.kpiId?.targetValue}${kpi.livePipelineValue != null ? ` (live: ${kpi.livePipelineValue})` : ''}`}
+                      </Typography>
+                    )}
+                    {assignedAt && (
+                      <Typography variant="caption" sx={{ color: tokens.text.muted }}>
+                        Assigned {formatDate(assignedAt)}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
             );
+              })}
+            </Box>
+            );
           })}
-        </Box>
-        )}
         </Box>
       )}
 

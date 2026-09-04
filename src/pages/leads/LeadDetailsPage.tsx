@@ -13,10 +13,12 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
-import { useLead } from '@/hooks/api/useLeads';
+import { useLead, useDisqualifyLead } from '@/hooks/api/useLeads';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { tokens } from '@/styles/tokens';
 import { useUIStore } from '@/store/useUIStore';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export const LeadDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +26,10 @@ export const LeadDetailsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
+  const { isElevated } = usePermissions();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
+  const disqualifyLead = useDisqualifyLead();
 
   const { data: lead, isLoading } = useLead(id);
 
@@ -118,6 +123,19 @@ export const LeadDetailsPage = () => {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1.5 }}>
+          {lead.isQualified && isElevated && (
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => setConfirmDisqualifyOpen(true)}
+              disabled={disqualifyLead.isPending}
+              sx={{
+                borderRadius: '24px', textTransform: 'none', fontWeight: 700,
+              }}
+            >
+              Disqualify
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<EditIcon sx={{ fontSize: 16 }} />}
@@ -293,6 +311,25 @@ export const LeadDetailsPage = () => {
           onClose={() => setEditModalOpen(false)}
         />
       )}
+      <ConfirmDialog
+        open={confirmDisqualifyOpen}
+        title="Disqualify lead"
+        message="This will mark the lead as not qualified. Existing Kanban cards are left as they are."
+        confirmLabel="Disqualify"
+        isPending={disqualifyLead.isPending}
+        onConfirm={() => {
+          disqualifyLead.mutate(id, {
+            onSuccess: () => {
+              addToast({ message: 'Lead marked as not qualified.', severity: 'success' });
+              setConfirmDisqualifyOpen(false);
+            },
+            onError: () => {
+              addToast({ message: 'Failed to disqualify lead.', severity: 'error' });
+            },
+          });
+        }}
+        onCancel={() => setConfirmDisqualifyOpen(false)}
+      />
     </Box>
   );
 };
