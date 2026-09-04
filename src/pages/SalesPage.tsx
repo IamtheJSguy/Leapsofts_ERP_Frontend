@@ -46,7 +46,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
-import { useLeads, useQualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import {
   useLeadAutoSync,
   buildEditDataFromProspect,
@@ -60,6 +60,7 @@ import StarIcon from '@mui/icons-material/Star';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
 import {
@@ -89,6 +90,7 @@ export const SalesPage = () => {
   const isDarkMode = muiTheme.palette.mode === 'dark';
   const { isElevated } = usePermissions();
   const qualifyLead = useQualifyLead();
+  const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
 
@@ -771,6 +773,7 @@ export const SalesPage = () => {
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [leadModalId, setLeadModalId] = useState<string>('');
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
+  const [disqualifyLeadId, setDisqualifyLeadId] = useState<string>('');
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink) {
@@ -2100,18 +2103,45 @@ export const SalesPage = () => {
                               </IconButton>
                             </Tooltip>
                             {prospect.isQualified ? (
-                              <Chip
-                                icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
-                                label="Qualified"
-                                size="small"
-                                sx={{
-                                  bgcolor: 'rgba(16, 185, 129, 0.1)',
-                                  color: '#10B981',
-                                  fontWeight: 700,
-                                  fontSize: '0.65rem',
-                                  border: '1px solid rgba(16, 185, 129, 0.2)',
-                                }}
-                              />
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Chip
+                                  icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
+                                  label="Qualified"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: 'rgba(16, 185, 129, 0.1)',
+                                    color: '#10B981',
+                                    fontWeight: 700,
+                                    fontSize: '0.65rem',
+                                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                                  }}
+                                />
+                                <Tooltip title={!isElevated ? 'Only managers and administrators can disqualify leads.' : 'Mark as not qualified. Kanban cards are unchanged.'} arrow>
+                                  <span>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      onClick={() => setDisqualifyLeadId(prospect._id)}
+                                      disabled={!isElevated || disqualifyLead.isPending}
+                                      sx={{
+                                        borderRadius: '20px',
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem',
+                                        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                        color: 'text.secondary',
+                                        '&:hover': {
+                                          bgcolor: !isElevated ? 'transparent' : 'rgba(239, 68, 68, 0.08)',
+                                          borderColor: !isElevated ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : '#EF4444',
+                                          color: !isElevated ? 'text.secondary' : '#EF4444',
+                                        },
+                                      }}
+                                    >
+                                      Disqualify
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                              </Box>
                             ) : (
                               <Tooltip title={!isElevated ? "Only managers and administrators can qualify leads." : ""} arrow>
                                 <span>
@@ -2285,6 +2315,30 @@ export const SalesPage = () => {
           onClose={handleCloseLeadModal}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={!!disqualifyLeadId}
+        title="Disqualify lead"
+        message="This will mark the lead as not qualified. Existing Kanban cards are left as they are."
+        confirmLabel="Disqualify"
+        onConfirm={() => {
+          if (!disqualifyLeadId) return;
+          disqualifyLead.mutate(disqualifyLeadId, {
+            onSuccess: () => {
+              addToast({ message: 'Lead marked as not qualified.', severity: 'success' });
+              setDisqualifyLeadId('');
+            },
+            onError: (err: any) => {
+              addToast({
+                message: err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to disqualify lead.',
+                severity: 'error',
+              });
+            },
+          });
+        }}
+        onCancel={() => setDisqualifyLeadId('')}
+        isPending={disqualifyLead.isPending}
+      />
     </Box>
   );
 };

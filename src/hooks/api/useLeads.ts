@@ -29,6 +29,7 @@ const leadApi = {
     api.post<{ data: ValidationResult }>('/leads/validate', data),
   qualifyLead: ({ id, boardId, ...data }: { id: string; boardId?: string } & Partial<Lead>) =>
     api.post(`/leads/${id}/qualify`, boardId ? { ...data, boardId } : data),
+  disqualifyLead: (id: string) => api.post(`/leads/${id}/disqualify`),
   logFollowUp: ({ id, note, number }: { id: string; note?: string; number?: number }) =>
     api.post<{ data: Lead }>(`/leads/${id}/follow-ups`, {
       ...(note ? { note } : {}),
@@ -146,6 +147,21 @@ export const useQualifyLead = () => {
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
+    },
+  });
+};
+
+export const useDisqualifyLead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.disqualifyLead,
+    onSuccess: (_res, id) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
       queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
