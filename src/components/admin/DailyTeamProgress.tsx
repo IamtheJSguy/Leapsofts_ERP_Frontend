@@ -513,7 +513,7 @@ export const DailyTeamProgress = () => {
           {(['day', 'week', 'range'] as PeriodMode[]).map((value) => (
             <ToggleButton
               key={value}
-              value={value}
+              value={value} 
               sx={{
                 color: 'text.secondary',
                 '&.Mui-selected': {
