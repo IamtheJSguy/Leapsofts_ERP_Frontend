@@ -48,6 +48,10 @@ export type NotificationType =
   | 'sheet_update_reminder'
   | 'kanban_comment_mention'
   | 'kanban_unassigned_cards'
+  | 'kanban_task_assigned'
+  | 'kanban_task_completed'
+  | 'kpi_overdue'
+  | 'task_due_soon'
   | 'report_ready';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
@@ -659,6 +663,9 @@ export interface KanbanCard {
   /** Linked meetings (ids or populated Meeting objects) */
   meetingIds?: string[] | Meeting[];
   createdBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  assignedTo?: string[] | User[];
+  assignedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  assignedAt?: string;
   lastMovedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
   lastMovedAt?: string;
 }

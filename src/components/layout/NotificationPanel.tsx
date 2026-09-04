@@ -19,6 +19,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { formatDateTime } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
 import { NOTIFICATION_TYPE } from '@/lib/constants';
+import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 
 export const NotificationPanel = () => {
   const navigate = useNavigate();
@@ -44,6 +45,14 @@ export const NotificationPanel = () => {
     }
     return <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />;
   };
+
+  const TASK_NOTIFICATION_TYPES = new Set<string>([
+    NOTIFICATION_TYPE.KANBAN_TASK_ASSIGNED,
+    NOTIFICATION_TYPE.KANBAN_TASK_COMPLETED,
+    NOTIFICATION_TYPE.KPI_OVERDUE,
+    NOTIFICATION_TYPE.TASK_DUE_SOON,
+    NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION,
+  ]);
 
   return (
     <Drawer
@@ -211,6 +220,20 @@ export const NotificationPanel = () => {
                       setNotificationPanelOpen(false);
                       const m = (n as any).metadata;
                       navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}`);
+                    } else if (
+                      (n.type === NOTIFICATION_TYPE.KANBAN_TASK_ASSIGNED ||
+                        n.type === NOTIFICATION_TYPE.KANBAN_TASK_COMPLETED ||
+                        n.type === NOTIFICATION_TYPE.TASK_DUE_SOON ||
+                        n.type === NOTIFICATION_TYPE.KPI_OVERDUE) &&
+                      (n as any).metadata?.cardId &&
+                      (n as any).metadata?.boardId
+                    ) {
+                      setNotificationPanelOpen(false);
+                      const m = (n as any).metadata;
+                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}`);
+                    } else if (n.type === NOTIFICATION_TYPE.KPI_OVERDUE) {
+                      setNotificationPanelOpen(false);
+                      navigate('/tasks');
                     }
                   }}
                   sx={{
@@ -278,16 +301,24 @@ export const NotificationPanel = () => {
                   <Box sx={{ flex: 1, minWidth: 0, pt: 0.2 }}>
                     <Typography 
                       variant="subtitle2" 
-                      noWrap 
                       sx={{ 
                         fontWeight: !n.isRead ? 800 : 650, 
                         color: isDarkMode ? '#FFF' : tokens.text.primary,
                         mb: 0.5,
                         letterSpacing: '-0.01em',
-                        fontSize: '0.92rem'
+                        fontSize: '0.92rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.75,
                       }}
                     >
-                      {n.title}
+                      <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        {n.title}
+                      </Box>
+                      {TASK_NOTIFICATION_TYPES.has(n.type) &&
+                        typeof (n as { metadata?: { priority?: string } }).metadata?.priority === 'string' && (
+                          <PriorityBadge priority={(n as { metadata?: { priority?: string } }).metadata!.priority} />
+                        )}
                     </Typography>
                     <Typography 
                       variant="body2" 
