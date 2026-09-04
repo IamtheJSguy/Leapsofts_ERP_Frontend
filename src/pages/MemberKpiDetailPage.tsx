@@ -20,6 +20,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
+import api from '@/lib/axios';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
 import { MemberKpiWeekTable } from '@/components/kpi/MemberKpiWeekTable';
 import {
@@ -424,6 +425,20 @@ export default function MemberKpiDetailPage() {
           {visibleDailyEntries.map((entry) => {
             const display = dailyTaskDisplay(entry);
             const kind = isKanbanDailyEntry(entry) ? 'kanban' : 'daily';
+            const hasKanbanLink = Boolean(entry.kanbanCardId);
+            
+            let kanbanLink = null;
+            if (entry.kanbanCardId) {
+              const kId = entry.kanbanCardId as any;
+              const isObj = typeof kId === 'object';
+              const cardId = isObj ? kId._id : kId;
+              const boardId = isObj ? kId.boardId : (entry as any).boardId;
+              const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
+              if (boardId && cardId) {
+                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+              }
+            }
+
             return (
             <Grid item xs={12} md={6} key={`daily-${entry._id}`}>
               <KpiDetailCard
@@ -438,12 +453,41 @@ export default function MemberKpiDetailPage() {
                 target={entry.targetValue}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
+                onClick={hasKanbanLink ? async () => {
+                  if (kanbanLink) {
+                    navigate(kanbanLink);
+                  } else {
+                    try {
+                      const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
+                      const card = res.data.data;
+                      if (card && card.boardId) {
+                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                      }
+                    } catch(err) {
+                      console.error("Failed to route to kanban card", err);
+                    }
+                  }
+                } : undefined}
               />
             </Grid>
             );
           })}
           {visibleSalesEntries.map((entry: SalesKpiEntry) => {
             const display = salesTaskDisplay(entry);
+            const hasKanbanLink = Boolean((entry as any).kanbanCardId);
+            
+            let kanbanLink = null;
+            if ((entry as any).kanbanCardId) {
+              const kId = (entry as any).kanbanCardId;
+              const isObj = typeof kId === 'object';
+              const cardId = isObj ? kId._id : kId;
+              const boardId = isObj ? kId.boardId : (entry as any).boardId;
+              const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
+              if (boardId && cardId) {
+                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+              }
+            }
+
             return (
             <Grid item xs={12} md={6} key={`sales-${entry._id}`}>
               <KpiDetailCard
@@ -458,6 +502,21 @@ export default function MemberKpiDetailPage() {
                 target={entry.targetValue}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
+                onClick={hasKanbanLink ? async () => {
+                  if (kanbanLink) {
+                    navigate(kanbanLink);
+                  } else {
+                    try {
+                      const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
+                      const card = res.data.data;
+                      if (card && card.boardId) {
+                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                      }
+                    } catch(err) {
+                      console.error("Failed to route to kanban card", err);
+                    }
+                  }
+                } : undefined}
               />
             </Grid>
             );
@@ -483,6 +542,20 @@ export default function MemberKpiDetailPage() {
                 <Grid container spacing={2.5}>
                   {section.kanban.map((entry) => {
                     const display = dailyTaskDisplay(entry);
+                    const hasKanbanLink = Boolean(entry.kanbanCardId);
+                    
+                    let kanbanLink = null;
+                    if (entry.kanbanCardId) {
+                      const kId = entry.kanbanCardId as any;
+                      const isObj = typeof kId === 'object';
+                      const cardId = isObj ? kId._id : kId;
+                      const boardId = isObj ? kId.boardId : (entry as any).boardId;
+                      const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
+                      if (boardId && cardId) {
+                        kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+                      }
+                    }
+
                     return (
                       <Grid item xs={12} md={6} key={`kanban-${entry._id}`}>
                         <KpiDetailCard
@@ -497,6 +570,21 @@ export default function MemberKpiDetailPage() {
                           target={entry.targetValue}
                           periodEnd={entry.periodEnd}
                           completedAt={entry.completedAt}
+                          onClick={hasKanbanLink ? async () => {
+                            if (kanbanLink) {
+                              navigate(kanbanLink);
+                            } else {
+                              try {
+                                const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
+                                const card = res.data.data;
+                                if (card && card.boardId) {
+                                  navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                                }
+                              } catch(err) {
+                                console.error("Failed to route to kanban card", err);
+                              }
+                            }
+                          } : undefined}
                         />
                       </Grid>
                     );
@@ -524,6 +612,7 @@ function KpiDetailCard({
   target,
   periodEnd,
   completedAt,
+  onClick,
 }: {
   isDarkMode: boolean;
   kind: 'daily' | 'sales' | 'kanban';
@@ -536,6 +625,7 @@ function KpiDetailCard({
   target?: number | null;
   periodEnd?: string;
   completedAt?: string | null;
+  onClick?: () => void;
 }) {
   const hasTarget = target != null && target > 0;
   const isIncomplete = !isCompleted && !isOverdue;
@@ -552,6 +642,7 @@ function KpiDetailCard({
 
   return (
     <Card
+      onClick={onClick}
       sx={{
         height: '100%',
         borderRadius: '24px',
@@ -562,6 +653,11 @@ function KpiDetailCard({
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease',
+        '&:hover': onClick ? {
+          bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+        } : {},
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>

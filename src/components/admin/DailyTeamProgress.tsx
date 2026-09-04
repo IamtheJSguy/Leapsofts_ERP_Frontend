@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import api from '@/lib/axios';
 import {
   Box,
   Typography,
@@ -45,6 +46,9 @@ type ProgressTask = {
   actualValue?: number | null;
   status?: SalesKpiStatus;
   scheduleMode?: string;
+  kanbanCardId?: any;
+  boardId?: string;
+  projectId?: string;
 };
 
 const isSalesDone = (status: SalesKpiStatus) =>
@@ -290,9 +294,39 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
       <Collapse in={expanded}>
         <Divider sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
         <Box sx={{ px: 3, py: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-          {group.tasks.map((task) => (
+          {group.tasks.map((task) => {
+            let kanbanLink = null;
+            if (task.kanbanCardId) {
+              const kId = task.kanbanCardId;
+              const isObj = typeof kId === 'object';
+              const cardId = isObj ? kId._id : kId;
+              const boardId = isObj ? kId.boardId : task.boardId;
+              const projectId = isObj ? (kId.projectId || kId.boardId) : (task.projectId || task.boardId);
+              if (boardId && cardId) {
+                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+              }
+            }
+            const hasKanbanLink = Boolean(task.kanbanCardId);
+
+            return (
             <Box
               key={task.id}
+              onClick={hasKanbanLink ? async (e) => {
+                e.stopPropagation();
+                if (kanbanLink) {
+                  navigate(kanbanLink);
+                } else {
+                  try {
+                    const res = await api.get(`/kanban/cards/${task.kanbanCardId}`);
+                    const card = res.data.data;
+                    if (card && card.boardId) {
+                      navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
+                    }
+                  } catch (err) {
+                    console.error('Could not route to kanban card', err);
+                  }
+                }
+              } : undefined}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -302,6 +336,11 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                 borderRadius: '14px',
                 bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                cursor: hasKanbanLink ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                '&:hover': hasKanbanLink ? {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                } : {},
               }}
             >
               {task.isCompleted ? (
@@ -350,7 +389,8 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                 }}
               />
             </Box>
-          ))}
+          );
+        })}
         </Box>
       </Collapse>
     </Card>
@@ -417,6 +457,9 @@ export const DailyTeamProgress = () => {
         isCompleted: !!entry.isCompleted,
         targetValue: entry.targetValue,
         actualValue: entry.actualValue,
+        kanbanCardId: entry.kanbanCardId,
+        boardId: entry.boardId,
+        projectId: entry.projectId,
       };
       group.tasks.push(task);
       group.totalCount++;
@@ -435,6 +478,9 @@ export const DailyTeamProgress = () => {
         actualValue: entry.currentValue,
         status: entry.status,
         scheduleMode: entry.scheduleMode,
+        kanbanCardId: (entry as any).kanbanCardId,
+        boardId: (entry as any).boardId,
+        projectId: (entry as any).projectId,
       };
       group.tasks.push(task);
       group.totalCount++;
