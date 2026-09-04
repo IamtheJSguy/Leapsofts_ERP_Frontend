@@ -38,7 +38,7 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { sortByPriority } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
-import { formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
+import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import type { GroupedSalesKpis, SalesKpiEntry } from '@/types';
 
 /** Prefer periodEnd (includes schedule endTime) over bare date. */
@@ -342,7 +342,10 @@ export const UserDailyKpisView = () => {
             const canRequestChange = !!(kpi.assignmentId || kpi.kpiId);
             const hasTarget = !kpi.kanbanCardId && (kpi.targetValue ?? kpi.kpiId?.targetValue) != null;
             const dueAt = resolveKpiDueAt(kpi);
-            const includeTime = !!(kpi.periodEnd && hasDisplayableClockTime(kpi.periodEnd));
+            const includeTime = !!(
+              (kpi.periodEnd && hasDisplayableClockTime(kpi.periodEnd)) ||
+              (!kpi.periodEnd && kpi.date && hasDisplayableClockTime(kpi.date))
+            );
             const dueLabel = dueAt ? formatKpiDueDate(dueAt, { includeTime }) : null;
             const deadlineLabel = dueAt
               ? formatKpiDueDate(dueAt, {
@@ -351,6 +354,10 @@ export const UserDailyKpisView = () => {
                   includeTime,
                 })
               : null;
+            const assignedAt =
+              kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
+                ? kpi.kanbanCardId.assignedAt
+                : undefined;
 
             return (
               <Box
@@ -435,6 +442,14 @@ export const UserDailyKpisView = () => {
                     ) : (
                       <Typography variant="caption" color="text.disabled">No due date</Typography>
                     )}
+                    {assignedAt && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <EventNoteIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          Assigned {formatDate(assignedAt)}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
 
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={(e) => e.stopPropagation()}>
@@ -473,6 +488,14 @@ export const UserDailyKpisView = () => {
                           <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deadline</Typography>
                           <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <EventNoteIcon sx={{ fontSize: 16 }} /> {deadlineLabel}
+                          </Typography>
+                        </Box>
+                      )}
+                      {assignedAt && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assigned</Typography>
+                          <Typography sx={{ fontWeight: 700, color: tokens.text.secondary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <EventNoteIcon sx={{ fontSize: 16 }} /> {formatDate(assignedAt)}
                           </Typography>
                         </Box>
                       )}

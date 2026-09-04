@@ -62,6 +62,10 @@ export const NOTIFICATION_TYPE = {
   SHEET_UPDATE_REMINDER: 'sheet_update_reminder',
   KANBAN_COMMENT_MENTION: 'kanban_comment_mention',
   KANBAN_UNASSIGNED_CARDS: 'kanban_unassigned_cards',
+  KANBAN_TASK_ASSIGNED: 'kanban_task_assigned',
+  KANBAN_TASK_COMPLETED: 'kanban_task_completed',
+  KPI_OVERDUE: 'kpi_overdue',
+  TASK_DUE_SOON: 'task_due_soon',
   REPORT_READY: 'report_ready',
 } as const;
 

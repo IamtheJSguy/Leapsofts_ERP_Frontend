@@ -39,6 +39,7 @@ import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
+import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 
 import {
   DndContext, DragOverlay, closestCorners, KeyboardSensor,
@@ -162,6 +163,33 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
   );
 };
 
+const DEFAULT_DUE_TIME = '17:00';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const toLocalDateStr = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const toLocalTimeStr = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+const combineDueDateTime = (dateStr: string, timeStr: string): string | undefined => {
+  if (!dateStr) return undefined;
+  const time = timeStr || DEFAULT_DUE_TIME;
+  const local = new Date(`${dateStr}T${time}:00`);
+  if (Number.isNaN(local.getTime())) return dateStr;
+  return local.toISOString();
+};
+
+const parseDueParts = (iso?: string) => {
+  if (!iso) return { date: '', time: '' };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { date: String(iso).split('T')[0] || '', time: '' };
+  return {
+    date: toLocalDateStr(d),
+    time: hasDisplayableClockTime(d) ? toLocalTimeStr(d) : '',
+  };
+};
+
 const PRIORITY_CONFIG = {
   low: { label: 'Low', color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', dot: '#3b82f6', border: 'rgba(96,165,250,0.2)' },
   medium: { label: 'Medium', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', dot: '#d97706', border: 'rgba(251,191,36,0.2)' },
@@ -183,12 +211,14 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
   const formatDue = (d: string) => {
     const date = new Date(d);
     const now = new Date();
-    // Normalize times for accurate calendar comparison
-    now.setHours(0, 0, 0, 0);
-    const compareDate = new Date(date);
-    compareDate.setHours(0, 0, 0, 0);
-    const isPast = compareDate < now;
-    return { label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), isPast };
+    const showTime = hasDisplayableClockTime(date);
+    const compare = showTime ? date : (() => {
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    })();
+    const isPast = compare.getTime() < now.getTime();
+    return { label: formatKpiDueDate(date, { includeTime: showTime }), isPast };
   };
 
   return (
@@ -1346,6 +1376,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [editDesc, setEditDesc] = useState('');
   const [pendingAssignees, setPendingAssignees] = useState<string[]>([]);
   const [pendingDueDate, setPendingDueDate] = useState('');
+  const [pendingDueTime, setPendingDueTime] = useState('');
   const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
   const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
@@ -1357,7 +1388,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       setPendingAssignees(Array.isArray(task.rawCard?.assignedTo)
         ? task.rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
         : []);
-      setPendingDueDate(task.rawCard?.dueDate ? task.rawCard.dueDate.split('T')[0] : '');
+      const dueParts = parseDueParts(task.rawCard?.dueDate);
+      setPendingDueDate(dueParts.date);
+      setPendingDueTime(dueParts.time);
       setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
       setPendingPriority(task.rawCard?.priority || 'medium');
     }
@@ -1404,9 +1437,12 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     const assigneesChanged =
       pendingAssignees.length !== currentAssigneeIds.length ||
       pendingAssignees.some((id) => !currentAssigneeIds.includes(id));
-    const currentDue = task.rawCard?.dueDate ? String(task.rawCard.dueDate).split('T')[0] : '';
+    const currentDue = parseDueParts(task.rawCard?.dueDate);
     const currentKpiEnd = task.rawCard?.kpiEndDate ? String(task.rawCard.kpiEndDate).split('T')[0] : '';
-    const datesChanged = pendingDueDate !== currentDue || pendingKpiEndDate !== currentKpiEnd;
+    const datesChanged =
+      pendingDueDate !== currentDue.date ||
+      pendingDueTime !== currentDue.time ||
+      pendingKpiEndDate !== currentKpiEnd;
 
     const updates: Record<string, unknown> = {};
     if (editTitle.trim() && editTitle.trim() !== task.title) updates.title = editTitle.trim();
@@ -1436,7 +1472,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           data: {
             assignedTo: pendingAssignees,
             ...(pendingDueDate
-              ? { dueDate: pendingDueDate, kpiEndDate: pendingDueDate }
+              ? { dueDate: combineDueDateTime(pendingDueDate, pendingDueTime), kpiEndDate: pendingDueDate }
               : pendingKpiEndDate
                 ? { dueDate: pendingKpiEndDate, kpiEndDate: pendingKpiEndDate }
                 : {}),
@@ -1854,7 +1890,15 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <CalendarTodayIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                   <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                    Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    Due: {formatKpiDueDate(task.dueDate, { month: 'long', includeTime: hasDisplayableClockTime(task.dueDate) })}
+                  </Typography>
+                </Box>
+              )}
+              {rawCard?.assignedAt && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <CalendarTodayIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    Assigned: {formatDate(rawCard.assignedAt)}
                   </Typography>
                 </Box>
               )}
@@ -1944,23 +1988,33 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         ))}
                       </Select>
                     </FormControl>
-                    <ModernDatePicker
-                      label="Due Date"
-                      value={(pendingDueDate || rawCard?.dueDate) ? new Date((pendingDueDate || rawCard.dueDate).split('T')[0] + 'T00:00:00') : null}
-                      onChange={(date) => {
-                        if (date) {
-                          const y = date.getFullYear();
-                          const m = String(date.getMonth() + 1).padStart(2, '0');
-                          const d = String(date.getDate()).padStart(2, '0');
-                          const formatted = `${y}-${m}-${d}`;
-                          setPendingDueDate(formatted);
-                          setPendingKpiEndDate(formatted);
-                        } else {
-                          setPendingDueDate('');
-                          setPendingKpiEndDate('');
-                        }
-                      }}
-                    />
+                    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ flex: 1, minWidth: 160 }}>
+                        <ModernDatePicker
+                          label="Due Date"
+                          value={pendingDueDate ? new Date(`${pendingDueDate}T00:00:00`) : null}
+                          onChange={(date) => {
+                            if (date) {
+                              const formatted = toLocalDateStr(date);
+                              setPendingDueDate(formatted);
+                              setPendingKpiEndDate(formatted);
+                              if (!pendingDueTime) setPendingDueTime(DEFAULT_DUE_TIME);
+                            } else {
+                              setPendingDueDate('');
+                              setPendingDueTime('');
+                              setPendingKpiEndDate('');
+                            }
+                          }}
+                        />
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 140 }}>
+                        <ModernTimePicker
+                          label="Due Time"
+                          value={pendingDueTime || DEFAULT_DUE_TIME}
+                          onChange={(t) => setPendingDueTime(t)}
+                        />
+                      </Box>
+                    </Box>
 
                     <Button
                       variant="contained"
@@ -2337,6 +2391,7 @@ export const KanbanBoardPage = () => {
   const [newCardDescription, setNewCardDescription] = useState('');
   const [newCardPriority, setNewCardPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [newCardDueDate, setNewCardDueDate] = useState('');
+  const [newCardDueTime, setNewCardDueTime] = useState('');
   const [newCardAssignees, setNewCardAssignees] = useState<string[]>([]);
 
   // Page Confirm Dialog State
@@ -2539,7 +2594,7 @@ export const KanbanBoardPage = () => {
         title: newCardTitle.trim(),
         description: newCardDescription.trim() || undefined,
         priority: newCardPriority,
-        dueDate: newCardDueDate || undefined,
+        dueDate: newCardDueDate ? combineDueDateTime(newCardDueDate, newCardDueTime) : undefined,
       }, {
         onSuccess: (response) => {
           const createdCard = response?.data?.data;
@@ -2554,6 +2609,7 @@ export const KanbanBoardPage = () => {
           setNewCardDescription('');
           setNewCardPriority('medium');
           setNewCardDueDate('');
+          setNewCardDueTime('');
           setNewCardAssignees([]);
           setIsCardDialogOpen(false);
         },
@@ -3072,21 +3128,27 @@ export const KanbanBoardPage = () => {
             </Box>
 
             {/* Due Date */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <ModernDatePicker
                 label="Due Date"
-                value={newCardDueDate ? new Date(newCardDueDate.split('T')[0] + 'T00:00:00') : null}
+                value={newCardDueDate ? new Date(`${newCardDueDate}T00:00:00`) : null}
                 onChange={(date) => {
                   if (date) {
-                    const y = date.getFullYear();
-                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                    const d = String(date.getDate()).padStart(2, '0');
-                    setNewCardDueDate(`${y}-${m}-${d}`);
+                    setNewCardDueDate(toLocalDateStr(date));
+                    if (!newCardDueTime) setNewCardDueTime(DEFAULT_DUE_TIME);
                   } else {
                     setNewCardDueDate('');
+                    setNewCardDueTime('');
                   }
                 }}
               />
+              {newCardDueDate && (
+                <ModernTimePicker
+                  label="Due Time"
+                  value={newCardDueTime || DEFAULT_DUE_TIME}
+                  onChange={(t) => setNewCardDueTime(t)}
+                />
+              )}
             </Box>
           </Box>
 
@@ -3146,6 +3208,7 @@ export const KanbanBoardPage = () => {
               setNewCardDescription('');
               setNewCardPriority('medium');
               setNewCardDueDate('');
+              setNewCardDueTime('');
               setNewCardAssignees([]);
             }}
             sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 3 }}

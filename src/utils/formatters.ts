@@ -15,6 +15,12 @@ export const formatDateTime = (date: string | Date): string =>
 export const hasDisplayableClockTime = (date: string | Date): boolean => {
   const d = typeof date === 'string' ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return false;
+  const utcMidnight =
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0;
+  if (utcMidnight) return false;
   const hours = d.getHours();
   const minutes = d.getMinutes();
   if (hours === 0 && minutes === 0) return false;
