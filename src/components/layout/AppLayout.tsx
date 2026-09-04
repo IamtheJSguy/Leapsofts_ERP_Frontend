@@ -12,6 +12,7 @@ import { useConversations } from '@/hooks/api/useChat';
 import { useMe } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
+import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
 
 export const AppLayout = () => {
@@ -45,12 +46,16 @@ export const AppLayout = () => {
     return () => clearInterval(interval);
   }, [isCheckedIn, tick, user?.role]);
 
+  const { data: unreadNotificationsCount = 0 } = useUnreadCount();
+
   useEffect(() => {
-    let totalUnread = 0;
+    let totalUnreadChats = 0;
     conversations.forEach((conv) => {
       const count = getMergedUnreadCount(conv, unreadCounts);
-      if (count > 0) totalUnread++;
+      if (count > 0) totalUnreadChats++;
     });
+
+    const totalUnread = totalUnreadChats + unreadNotificationsCount;
 
     const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']");
     if (favicon) {
@@ -63,7 +68,7 @@ export const AppLayout = () => {
     } else {  
       document.title = 'Leapsofts ERP';
     }
-  }, [conversations, unreadCounts]);
+  }, [conversations, unreadCounts, unreadNotificationsCount]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.surface.main }}>
