@@ -42,7 +42,7 @@ import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 
 import {
-  DndContext, DragOverlay, closestCorners, KeyboardSensor,
+  DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
   PointerSensor, useSensor, useSensors, type DragStartEvent,
   type DragEndEvent, type DragOverEvent, type CollisionDetection,
   useDroppable, MeasuringStrategy, pointerWithin, rectIntersection,
@@ -471,6 +471,9 @@ const parseColumnDroppableId = (id: string | number): string | null => {
 
 const idsEqual = (a: unknown, b: unknown) => String(a) === String(b);
 
+const isColumnSortableContainer = (container: { id: string | number; data: { current?: any } }) =>
+  container.data.current?.type === 'Column' && !parseColumnDroppableId(container.id);
+
 /** Prefer the pointer so a short empty last column is not lost among many nearby cards. */
 const kanbanCollisionDetection: CollisionDetection = (args) => {
   const activeType = args.active.data.current?.type;
@@ -478,15 +481,15 @@ const kanbanCollisionDetection: CollisionDetection = (args) => {
     Boolean(parseColumnDroppableId(container.id)),
   );
 
+  // Horizontal column reorder: ignore card stacks and prefixed card-drop zones.
+  // closestCorners on full-height columns often stays on the source or misses the last/first column.
   if (activeType === 'Column') {
-    return closestCorners({
-      ...args,
-      droppableContainers: args.droppableContainers.filter(
-        (container) =>
-          container.data.current?.type === 'Column' &&
-          !parseColumnDroppableId(container.id),
-      ),
-    });
+    const columnSortables = args.droppableContainers.filter(isColumnSortableContainer);
+    const pointerHits = pointerWithin({ ...args, droppableContainers: columnSortables });
+    const pointerTarget = pointerHits.find((hit) => !idsEqual(hit.id, args.active.id));
+    if (pointerTarget) return [pointerTarget];
+    if (pointerHits.length > 0) return [pointerHits[0]];
+    return closestCenter({ ...args, droppableContainers: columnSortables });
   }
 
   const pointerHits = pointerWithin(args);
@@ -2745,9 +2748,11 @@ export const KanbanBoardPage = () => {
   };
 
   const lastCardOverRef = useRef<{ overId: string; columnId?: string } | null>(null);
+  const lastColumnOverRef = useRef<string | null>(null);
 
   const handleDragStart = (e: DragStartEvent) => {
     lastCardOverRef.current = null;
+    lastColumnOverRef.current = null;
     const { active } = e;
     if (active.data.current?.type === 'Column') {
       setActiveColumn(active.data.current.column);
@@ -2758,8 +2763,13 @@ export const KanbanBoardPage = () => {
   };
 
   const handleDragOver = (e: DragOverEvent) => {
-    if (e.active.data.current?.type === 'Column' || !e.over) return;
     const columnIds = columns.map((c: any) => String(c.id));
+    if (e.active.data.current?.type === 'Column') {
+      const overColumnId = resolveOverColumnId(e.over, columnIds);
+      if (overColumnId) lastColumnOverRef.current = overColumnId;
+      return;
+    }
+    if (!e.over) return;
     lastCardOverRef.current = {
       overId: String(e.over.id),
       columnId: resolveOverColumnId(e.over, columnIds) || undefined,
@@ -2771,20 +2781,20 @@ export const KanbanBoardPage = () => {
     setActiveColumn(null);
     const { active } = e;
     const lastOver = lastCardOverRef.current;
+    const lastColumnOver = lastColumnOverRef.current;
     lastCardOverRef.current = null;
+    lastColumnOverRef.current = null;
     const over = e.over;
-    if (!over && !lastOver) return;
     const activeId = String(active.id);
-    const overId = over ? String(over.id) : lastOver!.overId;
     const columnIds = columns.map((c: any) => String(c.id));
 
     if (active.data.current?.type === 'Column') {
-      if (!over) return;
-      const overColumnId = parseColumnDroppableId(overId) || overId;
+      const overColumnId = resolveOverColumnId(over, columnIds) || lastColumnOver;
+      if (!overColumnId || idsEqual(overColumnId, activeId)) return;
       const activeColIndex = columns.findIndex((c: any) => idsEqual(c.id, activeId));
       const overColIndex = columns.findIndex((c: any) => idsEqual(c.id, overColumnId));
-      
-      if (activeColIndex !== overColIndex && activeColIndex !== -1 && overColIndex !== -1) {
+
+      if (activeColIndex !== overColIndex && activeColIndex !== -1 && overColIndex !== -1 && activeBoardId) {
         const colIds = columns.map((c: any) => c.id);
         const newColIds = arrayMove(colIds, activeColIndex, overColIndex);
         reorderColumnsMutation.mutate({
@@ -2794,6 +2804,9 @@ export const KanbanBoardPage = () => {
       }
       return;
     }
+
+    if (!over && !lastOver) return;
+    const overId = over ? String(over.id) : lastOver!.overId;
 
     const activeTaskMatch = tasks.find(t => idsEqual(t.id, activeId));
     if (!activeTaskMatch) return;
