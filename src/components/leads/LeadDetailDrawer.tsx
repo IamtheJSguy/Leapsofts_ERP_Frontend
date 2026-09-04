@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
-import { useLeadHistory, useQualifyLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import { useLeadHistory, useQualifyLead, useDisqualifyLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -38,9 +38,11 @@ export const LeadDetailDrawer = ({
 }: LeadDetailDrawerProps) => {
   const { data: history = [] } = useLeadHistory(lead?._id);
   const qualifyLeadMutation = useQualifyLead();
+  const disqualifyLeadMutation = useDisqualifyLead();
   const logFollowUpMutation = useLogFollowUp();
   const addToast = useUIStore((s) => s.addToast);
   const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
+  const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
 
   const handleConfirmQualify = () => {
     if (!lead) return;
@@ -58,6 +60,20 @@ export const LeadDetailDrawer = ({
         },
       }
     );
+  };
+
+  const handleConfirmDisqualify = () => {
+    if (!lead) return;
+    disqualifyLeadMutation.mutate(lead._id, {
+      onSuccess: () => {
+        addToast({ message: 'Lead marked as not qualified.', severity: 'success' });
+        setConfirmDisqualifyOpen(false);
+      },
+      onError: () => {
+        setConfirmDisqualifyOpen(false);
+        addToast({ message: 'Failed to disqualify lead.', severity: 'error' });
+      },
+    });
   };
 
   const handleSelectFollowUpNumber = (number: number) => {
@@ -148,6 +164,16 @@ export const LeadDetailDrawer = ({
               Qualify
             </Button>
           )}
+          {lead.isQualified && (
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => setConfirmDisqualifyOpen(true)}
+              disabled={disqualifyLeadMutation.isPending}
+            >
+              Disqualify
+            </Button>
+          )}
         </Box>
 
         {followUps.length > 0 && (
@@ -187,6 +213,15 @@ export const LeadDetailDrawer = ({
         message="Move this lead to the Qualified Kanban board?"
         onConfirm={handleConfirmQualify}
         onCancel={() => setConfirmQualifyOpen(false)}
+      />
+      <ConfirmDialog
+        open={confirmDisqualifyOpen}
+        title="Disqualify lead"
+        message="This will mark the lead as not qualified. Existing Kanban cards are left as they are."
+        confirmLabel="Disqualify"
+        onConfirm={handleConfirmDisqualify}
+        onCancel={() => setConfirmDisqualifyOpen(false)}
+        isPending={disqualifyLeadMutation.isPending}
       />
     </Drawer>
   );
