@@ -169,6 +169,42 @@ export const MessageBubble = React.memo(({
 
   const canReact = Boolean(currentUserId && conversationId && !message._id.startsWith('temp-'));
 
+  if (isBoardEvent) {
+    const actionText = (message.content || message.boardEvent?.cardTitle || 'updated the board').trim();
+    const actor = isOwn ? 'You' : senderName || 'Someone';
+    const line =
+      actionText.length > 0
+        ? `${actor} ${actionText.charAt(0).toLowerCase()}${actionText.slice(1)}`
+        : actor;
+
+    return (
+      <Box
+        data-message-id={message._id}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          my: 1.25,
+          px: 2,
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            textAlign: 'center',
+            fontSize: '0.72rem',
+            fontWeight: 500,
+            lineHeight: 1.45,
+            color: isDarkMode ? 'rgba(255,255,255,0.48)' : 'rgba(0,0,0,0.45)',
+            maxWidth: '85%',
+          }}
+        >
+          {line}
+        </Typography>
+      </Box>
+    );
+  }
+
   const handlePickEmoji = (emoji: string) => {
     if (!canReact || !currentUserId || !conversationId) return;
     setQuickAnchor(null);
@@ -288,7 +324,7 @@ export const MessageBubble = React.memo(({
           <Paper
             elevation={0}
             sx={{
-              p: compactMedia ? '0' : isBoardEvent ? '8px 12px' : '8px 12px',
+              p: compactMedia ? '0' : '8px 12px',
               borderRadius: '16px',
               borderBottomRightRadius: isOwn ? '4px' : '16px',
               borderBottomLeftRadius: isOwn ? '16px' : '4px',
@@ -422,34 +458,6 @@ export const MessageBubble = React.memo(({
               </Box>
             ) : isImageFile ? (
               <FileMessage message={message} isOwn={isOwn} />
-            ) : isBoardEvent ? (
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    display: 'block',
-                    fontWeight: 800,
-                    fontSize: '0.65rem',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    opacity: 0.8,
-                    mb: 0.35,
-                  }}
-                >
-                  {message.boardEvent?.action?.replace('_', ' ') || 'Board'}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    lineHeight: 1.4,
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {message.content || message.boardEvent?.cardTitle || 'Board update'}
-                </Typography>
-              </Box>
             ) : (
               /* ───── Regular Text Message ───── */
               <Typography
