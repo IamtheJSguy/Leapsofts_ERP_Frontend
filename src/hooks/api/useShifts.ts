@@ -8,6 +8,9 @@ import type {
   AppUsageSegment,
   AppUsageSummary,
   ActivitySamplesRange,
+  PriorityBucket,
+  GroupedKpiCounts,
+  SectionCounts,
 } from '@/types';
 
 export interface DailyKPIEntry {
@@ -40,16 +43,11 @@ export interface DailyKPIEntry {
 }
 
 export interface GroupedDailyKpis {
-  active: DailyKPIEntry[];
-  overdue: DailyKPIEntry[];
-  done: DailyKPIEntry[];
-  highPriority: DailyKPIEntry[];
-  counts: {
-    active: number;
-    overdue: number;
-    done: number;
-    highPriority: number;
-  };
+  active: PriorityBucket<DailyKPIEntry>;
+  overdue: PriorityBucket<DailyKPIEntry>;
+  incomplete: PriorityBucket<DailyKPIEntry>;
+  done: PriorityBucket<DailyKPIEntry>;
+  counts: GroupedKpiCounts;
 }
 
 export interface DailyKpiSummary {
@@ -227,23 +225,39 @@ export const useEndBreak = () => {
 
 // ─── Daily KPI Hooks ──────────────────────────────────────────────
 
+const filterPriorityBucket = (
+  bucket: PriorityBucket<DailyKPIEntry> | undefined,
+  now: Date,
+): PriorityBucket<DailyKPIEntry> => ({
+  low: (bucket?.low ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  medium: (bucket?.medium ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  high: (bucket?.high ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  urgent: (bucket?.urgent ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+});
+
+const countsFromBucket = (bucket: PriorityBucket<DailyKPIEntry>): SectionCounts => {
+  const low = bucket.low.length;
+  const medium = bucket.medium.length;
+  const high = bucket.high.length;
+  const urgent = bucket.urgent.length;
+  return { low, medium, high, urgent, total: low + medium + high + urgent };
+};
+
 const filterStartedDailyKpis = (grouped: GroupedDailyKpis, now = new Date()): GroupedDailyKpis => {
-  const filter = (entries: DailyKPIEntry[]) =>
-    entries.filter((entry) => hasPeriodStarted(entry.periodStart, now));
-  const active = filter(grouped.active);
-  const overdue = filter(grouped.overdue);
-  const done = filter(grouped.done);
-  const highPriority = filter(grouped.highPriority);
+  const active = filterPriorityBucket(grouped.active, now);
+  const overdue = filterPriorityBucket(grouped.overdue, now);
+  const incomplete = filterPriorityBucket(grouped.incomplete, now);
+  const done = filterPriorityBucket(grouped.done, now);
   return {
     active,
     overdue,
+    incomplete,
     done,
-    highPriority,
     counts: {
-      active: active.length,
-      overdue: overdue.length,
-      done: done.length,
-      highPriority: highPriority.length,
+      active: countsFromBucket(active),
+      overdue: countsFromBucket(overdue),
+      incomplete: countsFromBucket(incomplete),
+      done: countsFromBucket(done),
     },
   };
 };

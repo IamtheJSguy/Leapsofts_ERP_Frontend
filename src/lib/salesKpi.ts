@@ -1,5 +1,12 @@
 import { SALES_KPI_MANUAL_TARGET_METRICS, WEEKDAY_SHORT_LABELS } from '@/lib/constants';
-import type { GroupedSalesKpis, SalesKpiEntry, SalesKpiMetric, SalesKpiTargetMode } from '@/types';
+import type {
+  GroupedSalesKpis,
+  PriorityBucket,
+  SalesKpiEntry,
+  SalesKpiMetric,
+  SalesKpiTargetMode,
+  SectionCounts,
+} from '@/types';
 
 /**
  * Mirrors the backend's SALES_KPI_DEFAULT_TARGET_MODE: only new_prospects is
@@ -26,23 +33,39 @@ export const hasPeriodStarted = (periodStart?: string | null, now = new Date()):
   return new Date(periodStart).getTime() <= now.getTime();
 };
 
+const filterPriorityBucket = (
+  bucket: PriorityBucket<SalesKpiEntry> | undefined,
+  now: Date,
+): PriorityBucket<SalesKpiEntry> => ({
+  low: (bucket?.low ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  medium: (bucket?.medium ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  high: (bucket?.high ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+  urgent: (bucket?.urgent ?? []).filter((entry) => hasPeriodStarted(entry.periodStart, now)),
+});
+
+const countsFromBucket = (bucket: PriorityBucket<SalesKpiEntry>): SectionCounts => {
+  const low = bucket.low.length;
+  const medium = bucket.medium.length;
+  const high = bucket.high.length;
+  const urgent = bucket.urgent.length;
+  return { low, medium, high, urgent, total: low + medium + high + urgent };
+};
+
 export const filterStartedSalesKpis = (grouped: GroupedSalesKpis, now = new Date()): GroupedSalesKpis => {
-  const filter = (entries: SalesKpiEntry[]) =>
-    entries.filter((entry) => hasPeriodStarted(entry.periodStart, now));
-  const active = filter(grouped.active);
-  const overdue = filter(grouped.overdue);
-  const incomplete = filter(grouped.incomplete);
-  const done = filter(grouped.done);
+  const active = filterPriorityBucket(grouped.active, now);
+  const overdue = filterPriorityBucket(grouped.overdue, now);
+  const incomplete = filterPriorityBucket(grouped.incomplete, now);
+  const done = filterPriorityBucket(grouped.done, now);
   return {
     active,
     overdue,
     incomplete,
     done,
     counts: {
-      active: active.length,
-      overdue: overdue.length,
-      incomplete: incomplete.length,
-      done: done.length,
+      active: countsFromBucket(active),
+      overdue: countsFromBucket(overdue),
+      incomplete: countsFromBucket(incomplete),
+      done: countsFromBucket(done),
     },
   };
 };
