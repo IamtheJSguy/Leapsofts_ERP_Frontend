@@ -433,17 +433,34 @@ export interface SalesKpiProgressEvent {
   occurredAt: string;
 }
 
+export type PriorityBucket<T> = {
+  low: T[];
+  medium: T[];
+  high: T[];
+  urgent: T[];
+};
+
+export type SectionCounts = {
+  low: number;
+  medium: number;
+  high: number;
+  urgent: number;
+  total: number;
+};
+
+export type GroupedKpiCounts = {
+  active: SectionCounts;
+  overdue: SectionCounts;
+  incomplete: SectionCounts;
+  done: SectionCounts;
+};
+
 export interface GroupedSalesKpis {
-  active: SalesKpiEntry[];
-  overdue: SalesKpiEntry[];
-  incomplete: SalesKpiEntry[];
-  done: SalesKpiEntry[];
-  counts: {
-    active: number;
-    overdue: number;
-    incomplete: number;
-    done: number;
-  };
+  active: PriorityBucket<SalesKpiEntry>;
+  overdue: PriorityBucket<SalesKpiEntry>;
+  incomplete: PriorityBucket<SalesKpiEntry>;
+  done: PriorityBucket<SalesKpiEntry>;
+  counts: GroupedKpiCounts;
 }
 
 export interface SalesKpiSummary {

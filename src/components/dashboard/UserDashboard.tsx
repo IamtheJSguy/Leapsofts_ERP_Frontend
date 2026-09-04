@@ -62,16 +62,22 @@ export const UserDashboard = () => {
 
   const todaySalesKpis = useMemo(() => {
     if (!salesGrouped) return [] as SalesKpiEntry[];
+    const flatten = (bucket: typeof salesGrouped.active) => [
+      ...bucket.low,
+      ...bucket.medium,
+      ...bucket.high,
+      ...bucket.urgent,
+    ];
     const all = [
-      ...salesGrouped.active,
-      ...salesGrouped.overdue,
-      ...salesGrouped.incomplete,
-      ...salesGrouped.done,
+      ...flatten(salesGrouped.active),
+      ...flatten(salesGrouped.overdue),
+      ...flatten(salesGrouped.incomplete),
+      ...flatten(salesGrouped.done),
     ];
     return all.filter((entry) => overlapsLocalDay(entry));
   }, [salesGrouped]);
 
-  const salesCompletedCount = salesGrouped?.counts.done ?? 0;
+  const salesCompletedCount = salesGrouped?.counts.done.total ?? 0;
   const dashboardTasks = dashboardTasksData?.tasks ?? [];
   const todaySalesCompletedCount = useMemo(
     () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
