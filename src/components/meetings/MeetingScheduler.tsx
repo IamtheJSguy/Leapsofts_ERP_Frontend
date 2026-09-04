@@ -413,6 +413,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
         PaperProps={{
           sx: {
             borderRadius: '24px',
@@ -421,11 +422,23 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             bgcolor: 'background.paper',
             boxShadow: tokens.shadow.cardHover,
             overflow: 'hidden',
+            maxHeight: { xs: 'calc(100dvh - 24px)', sm: 'calc(100dvh - 48px)' },
+            display: 'flex',
+            flexDirection: 'column',
           }
         }}
       >
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle sx={{ pb: 1, pt: 2.5, px: 3 }}>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1,
+            overflow: 'hidden',
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 2.5, px: 3, flexShrink: 0 }}>
             <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
               Schedule Meeting
             </Typography>
@@ -433,7 +446,17 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               Enter meeting details below to coordinate with your team.
             </Typography>
           </DialogTitle>
-          <DialogContent sx={{ px: 3, pb: 1, pt: 0, overflowX: 'hidden' }}>
+          <DialogContent
+            sx={{
+              px: 3,
+              pb: 1,
+              pt: 0,
+              overflowX: 'hidden',
+              overflowY: 'auto',
+              flex: '1 1 auto',
+              minHeight: 0,
+            }}
+          >
             <TextField
               {...register('title')}
               label="Meeting Title *"
@@ -626,7 +649,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               }}
             />
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5 }}>
+          <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
             {editingMeeting && canEditOrDelete(editingMeeting) && (
               <Button
                 onClick={handleDelete}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Box, Typography, Button, useTheme, IconButton, InputAdornment,
@@ -44,8 +44,8 @@ import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/f
 import {
   DndContext, DragOverlay, closestCorners, KeyboardSensor,
   PointerSensor, useSensor, useSensors, type DragStartEvent,
-  type DragEndEvent,
-  useDroppable, MeasuringStrategy
+  type DragEndEvent, type DragOverEvent, type CollisionDetection,
+  useDroppable, MeasuringStrategy, pointerWithin, rectIntersection,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -458,9 +458,81 @@ const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
   );
 };
 
+const COLUMN_DROPPABLE_PREFIX = 'droppable-column-';
+
+const columnDroppableId = (columnId: string) => `${COLUMN_DROPPABLE_PREFIX}${columnId}`;
+
+const parseColumnDroppableId = (id: string | number): string | null => {
+  const value = String(id);
+  return value.startsWith(COLUMN_DROPPABLE_PREFIX)
+    ? value.slice(COLUMN_DROPPABLE_PREFIX.length)
+    : null;
+};
+
+const idsEqual = (a: unknown, b: unknown) => String(a) === String(b);
+
+/** Prefer the pointer so a short empty last column is not lost among many nearby cards. */
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const activeType = args.active.data.current?.type;
+  const columnContainers = args.droppableContainers.filter((container) =>
+    Boolean(parseColumnDroppableId(container.id)),
+  );
+
+  if (activeType === 'Column') {
+    return closestCorners({
+      ...args,
+      droppableContainers: args.droppableContainers.filter(
+        (container) =>
+          container.data.current?.type === 'Column' &&
+          !parseColumnDroppableId(container.id),
+      ),
+    });
+  }
+
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const taskHit = pointerHits.find((hit) => {
+      const container = args.droppableContainers.find((c) => c.id === hit.id);
+      return container?.data.current?.type === 'Task';
+    });
+    if (taskHit) return [taskHit];
+
+    const columnHit = pointerHits.find((hit) => parseColumnDroppableId(hit.id));
+    if (columnHit) return [columnHit];
+
+    return pointerHits;
+  }
+
+  if (columnContainers.length > 0) {
+    const intersecting = rectIntersection({
+      ...args,
+      droppableContainers: columnContainers,
+    });
+    if (intersecting.length > 0) return intersecting;
+    return closestCorners({ ...args, droppableContainers: columnContainers });
+  }
+
+  return closestCorners(args);
+};
+
+const resolveOverColumnId = (
+  over: { id: string | number; data: { current?: any } } | null,
+  columnIds: string[],
+): string | null => {
+  if (!over) return null;
+  const fromPrefix = parseColumnDroppableId(over.id);
+  if (fromPrefix) return fromPrefix;
+  if (over.data.current?.type === 'Column') {
+    const id = over.data.current.column?.id ?? over.data.current.column?._id;
+    if (id) return String(id);
+  }
+  const overId = String(over.id);
+  return columnIds.some((id) => idsEqual(id, overId)) ? overId : null;
+};
+
 const DroppableColumn = ({ col, isDarkMode, children }: any) => {
   const { setNodeRef } = useDroppable({
-    id: col.id,
+    id: columnDroppableId(col.id),
     data: { type: 'Column', column: col },
   });
 
@@ -468,9 +540,15 @@ const DroppableColumn = ({ col, isDarkMode, children }: any) => {
     <Box
       ref={setNodeRef}
       sx={{
-        flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2,
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
         bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-        borderRadius: '16px', p: 1.5, minHeight: 150
+        borderRadius: '16px',
+        p: 1.5,
+        overflowY: 'auto',
       }}
     >
       {children}
@@ -501,7 +579,16 @@ const SortableBoardColumn = ({
     <Box
       ref={setNodeRef}
       style={style}
-      sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column' }}
+      sx={{
+        minWidth: { xs: 280, sm: 320 },
+        width: { xs: 280, sm: 320 },
+        height: '100%',
+        maxHeight: '100%',
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignSelf: 'stretch',
+      }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box 
@@ -2425,7 +2512,7 @@ export const KanbanBoardPage = () => {
       .filter((col: any) => col.isActive !== false)
       .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
       .map((col: any) => ({
-        id: col._id,
+        id: String(col._id),
         title: col.name,
       }));
   }, [actualBoard]);
@@ -2450,7 +2537,7 @@ export const KanbanBoardPage = () => {
 
       tList.push({
         id: card._id,
-        columnId: card.columnId,
+        columnId: String(card.columnId),
         title: card.title || (assignedLead ? `${assignedLead.firstName || ''} ${assignedLead.lastName || ''}`.trim() : 'Untitled Card'),
         lead: assignedLead,
         description: card.description,
@@ -2657,27 +2744,45 @@ export const KanbanBoardPage = () => {
     }
   };
 
+  const lastCardOverRef = useRef<{ overId: string; columnId?: string } | null>(null);
+
   const handleDragStart = (e: DragStartEvent) => {
+    lastCardOverRef.current = null;
     const { active } = e;
     if (active.data.current?.type === 'Column') {
       setActiveColumn(active.data.current.column);
       return;
     }
-    const task = tasks.find(t => t.id === active.id);
+    const task = tasks.find(t => idsEqual(t.id, active.id));
     if (task) setActiveTask(task);
+  };
+
+  const handleDragOver = (e: DragOverEvent) => {
+    if (e.active.data.current?.type === 'Column' || !e.over) return;
+    const columnIds = columns.map((c: any) => String(c.id));
+    lastCardOverRef.current = {
+      overId: String(e.over.id),
+      columnId: resolveOverColumnId(e.over, columnIds) || undefined,
+    };
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
     setActiveTask(null);
     setActiveColumn(null);
-    const { active, over } = e;
-    if (!over) return;
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const { active } = e;
+    const lastOver = lastCardOverRef.current;
+    lastCardOverRef.current = null;
+    const over = e.over;
+    if (!over && !lastOver) return;
+    const activeId = String(active.id);
+    const overId = over ? String(over.id) : lastOver!.overId;
+    const columnIds = columns.map((c: any) => String(c.id));
 
     if (active.data.current?.type === 'Column') {
-      const activeColIndex = columns.findIndex((c: any) => c.id === activeId);
-      const overColIndex = columns.findIndex((c: any) => c.id === overId);
+      if (!over) return;
+      const overColumnId = parseColumnDroppableId(overId) || overId;
+      const activeColIndex = columns.findIndex((c: any) => idsEqual(c.id, activeId));
+      const overColIndex = columns.findIndex((c: any) => idsEqual(c.id, overColumnId));
       
       if (activeColIndex !== overColIndex && activeColIndex !== -1 && overColIndex !== -1) {
         const colIds = columns.map((c: any) => c.id);
@@ -2690,32 +2795,40 @@ export const KanbanBoardPage = () => {
       return;
     }
 
-    const activeTaskMatch = tasks.find(t => t.id === activeId);
+    const activeTaskMatch = tasks.find(t => idsEqual(t.id, activeId));
     if (!activeTaskMatch) return;
 
-    const targetColumn = actualBoard?.columns.find((c: any) => c._id === overId);
-    if (targetColumn) {
-      const targetColumnCards = tasks.filter(t => t.columnId === targetColumn._id);
-      const newPos = targetColumnCards.length;
+    const targetColumnIdFromOver =
+      resolveOverColumnId(over, columnIds) ||
+      lastOver?.columnId ||
+      null;
+
+    if (targetColumnIdFromOver) {
+      const targetColumn = actualBoard?.columns.find((c: any) => idsEqual(c._id, targetColumnIdFromOver));
+      if (!targetColumn?._id) return;
+      const targetColumnCards = tasks.filter(t => idsEqual(t.columnId, targetColumn._id));
+      const newPos = idsEqual(activeTaskMatch.columnId, targetColumn._id)
+        ? Math.max(targetColumnCards.length - 1, 0)
+        : targetColumnCards.length;
       moveCardMutation.mutate({
         cardId: activeId,
         data: {
-          columnId: targetColumn._id,
+          columnId: String(targetColumn._id),
           position: newPos,
         }
       });
       return;
     }
 
-    const targetCardMatch = tasks.find(t => t.id === overId);
+    const targetCardMatch = tasks.find(t => idsEqual(t.id, overId));
     if (targetCardMatch) {
-      const targetColumnId = targetCardMatch.columnId;
-      const targetColumnCards = tasks.filter(t => t.columnId === targetColumnId).sort((a, b) => a.position - b.position);
-      const targetIndex = targetColumnCards.findIndex(t => t.id === targetCardMatch.id);
+      const targetColumnId = String(targetCardMatch.columnId);
+      const targetColumnCards = tasks.filter(t => idsEqual(t.columnId, targetColumnId)).sort((a, b) => a.position - b.position);
+      const targetIndex = targetColumnCards.findIndex(t => idsEqual(t.id, targetCardMatch.id));
 
       let newPos = targetIndex;
-      if (activeTaskMatch.columnId === targetColumnId) {
-        const oldIndex = targetColumnCards.findIndex(t => t.id === activeId);
+      if (idsEqual(activeTaskMatch.columnId, targetColumnId)) {
+        const oldIndex = targetColumnCards.findIndex(t => idsEqual(t.id, activeId));
         if (oldIndex < targetIndex) {
           newPos = targetIndex;
         }
@@ -2835,21 +2948,34 @@ export const KanbanBoardPage = () => {
         </Box>
       </Box>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', gap: 3, overflowX: 'auto', pb: 2, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }, '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          measuring={{
-            droppable: {
-              strategy: MeasuringStrategy.Always,
-            }
-          }}
-        >
+      <DndContext
+        sensors={sensors}
+        collisionDetection={kanbanCollisionDetection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          }
+        }}
+      >
+      <Box sx={{
+        flexGrow: 1,
+        minHeight: 0,
+        display: 'flex',
+        alignItems: 'stretch',
+        gap: 3,
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        pb: 2,
+        '&::-webkit-scrollbar': { height: 8 },
+        '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+        '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 },
+      }}>
           <SortableContext items={columns.map((c: any) => c.id)} strategy={horizontalListSortingStrategy}>
             {columns.map((col: any) => {
-              const colTasks = filteredTasks.filter(t => t.columnId === col.id);
+              const colTasks = filteredTasks.filter(t => idsEqual(t.columnId, col.id));
               return (
                 <SortableBoardColumn
                   key={col.id}
@@ -2878,7 +3004,7 @@ export const KanbanBoardPage = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, py: 0.5, cursor: 'grabbing' }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{activeColumn.title}</Typography>
-                      <Chip label={filteredTasks.filter(t => t.columnId === activeColumn.id).length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
+                      <Chip label={filteredTasks.filter(t => idsEqual(t.columnId, activeColumn.id)).length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
                     </Box>
                     <Box>
                       <IconButton size="small" sx={{ color: 'text.secondary' }}><AddIcon fontSize="small" /></IconButton>
@@ -2886,7 +3012,7 @@ export const KanbanBoardPage = () => {
                     </Box>
                   </Box>
                   <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '16px', p: 1.5, minHeight: 150 }}>
-                    {filteredTasks.filter(t => t.columnId === activeColumn.id).map(task => (
+                    {filteredTasks.filter(t => idsEqual(t.columnId, activeColumn.id)).map(task => (
                       <TaskCardVisual key={task.id} task={task} isDarkMode={isDarkMode} />
                     ))}
                   </Box>
@@ -2899,12 +3025,11 @@ export const KanbanBoardPage = () => {
             </DragOverlay>,
             document.body
           ) : null}
-        </DndContext>
-
-        <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <Button onClick={() => setIsColumnDialogOpen(true)} startIcon={<AddIcon />} sx={{ height: 52, border: `2px dashed ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: '16px', color: 'text.secondary', fontWeight: 650, textTransform: 'none', bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', color: 'text.primary' } }}>Add Column</Button>
         </Box>
       </Box>
+      </DndContext>
 
       {/* Column Action Menu */}
       <Menu

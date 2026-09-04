@@ -1030,6 +1030,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
         onClose={() => setEditMeeting(null)}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
         PaperProps={{
           sx: {
             borderRadius: '24px',
@@ -1038,6 +1039,10 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
             p: 1.5,
             bgcolor: 'background.paper',
             boxShadow: tokens.shadow.cardHover,
+            overflow: 'hidden',
+            maxHeight: { xs: 'calc(100dvh - 24px)', sm: 'calc(100dvh - 48px)' },
+            display: 'flex',
+            flexDirection: 'column',
           }
         }}
       >
@@ -1132,8 +1137,17 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <DialogTitle sx={{ pb: 1, pt: 2, px: 3 }}>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        flex: 1,
+        overflow: 'hidden',
+      }}
+    >
+      <DialogTitle sx={{ pb: 1, pt: 2, px: 3, flexShrink: 0 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
           Edit Meeting Details
         </Typography>
@@ -1141,7 +1155,16 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
           Update the fields below to edit this scheduled meeting.
         </Typography>
       </DialogTitle>
-      <DialogContent sx={{ px: 3, py: 2 }}>
+      <DialogContent
+        sx={{
+          px: 3,
+          py: 2,
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          flex: '1 1 auto',
+          minHeight: 0,
+        }}
+      >
         <TextField
           {...register('title')}
           label="Meeting Title"
@@ -1291,7 +1314,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
           }}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5 }}>
+      <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
         {canDelete && (
           <Button
             onClick={() => {

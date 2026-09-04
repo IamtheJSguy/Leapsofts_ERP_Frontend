@@ -523,6 +523,7 @@ export interface AttendanceDayBreakdown {
   checkOut: string | null;
   totalMinutes: number;
   scheduledMinutes: number;
+  breakMinutes?: number;
 }
 
 export interface AttendanceMetrics {
@@ -534,6 +535,7 @@ export interface AttendanceMetrics {
   totalMinutesWorked: number;
   averageMinutesPerDay: number;
   overtimeMinutes: number;
+  totalBreakMinutes?: number;
   attendanceRate: number;
   dailyBreakdown: AttendanceDayBreakdown[];
 }
@@ -601,13 +603,78 @@ export interface EmployeeFullMetrics {
   meetings: MeetingMetrics;
 }
 
+export interface CombinedKpiRow {
+  name: string;
+  assigned: number;
+  completed: number;
+  overdue: number;
+  completionRate: number;
+  target?: number;
+  actual?: number;
+  attainmentRate?: number;
+}
+
+export interface CombinedKpiSection {
+  assigned: number;
+  completed: number;
+  overdue: number;
+  completionRate: number;
+  completedLate?: number;
+  attainmentRate?: number;
+  rows: CombinedKpiRow[];
+  byName: CombinedKpiRow[];
+  dailyTrend: KpiDailyTrend[];
+}
+
+export interface CombinedKpiHeadlines {
+  assigned: number;
+  completed: number;
+  overdue: number;
+  completionRate: number;
+  salesAttainment: number;
+  simpleCompletionRate: number;
+  kanbanCompletionRate: number;
+  completedLate: number;
+}
+
+export interface CombinedKpiMetrics {
+  headlines: CombinedKpiHeadlines;
+  simple: CombinedKpiSection;
+  kanban: CombinedKpiSection;
+  sales: CombinedKpiSection;
+}
+
+export interface OverallUserMetrics {
+  user: { _id: string; name: string; email: string; role: string; jobTitle?: string };
+  attendance: AttendanceMetrics;
+  combinedKpi: CombinedKpiMetrics;
+  salesActivity: SalesMetrics;
+  meetings: MeetingMetrics;
+}
+
+export interface TeamOverviewMemberRow {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  attendanceRate: number;
+  combinedCompletionRate: number;
+  salesAttainment: number;
+  overdueCount: number;
+  hoursWorked: number;
+}
+
 export interface TeamOverviewMetrics {
   teamSize: number;
-  members: EmployeeFullMetrics[];
-  topPerformers: { userId: string; name: string; completionRate: number }[];
-  bottomPerformers: { userId: string; name: string; completionRate: number }[];
   avgAttendanceRate: number;
-  avgKpiCompletionRate: number;
+  avgCombinedCompletionRate?: number;
+  avgSalesAttainment?: number;
+  totalOverdue?: number;
+  totalHoursWorked?: number;
+  members: TeamOverviewMemberRow[] | EmployeeFullMetrics[];
+  topPerformers?: { userId: string; name: string; completionRate: number }[];
+  bottomPerformers?: { userId: string; name: string; completionRate: number }[];
+  avgKpiCompletionRate?: number;
 }
 
 export interface Notification {
