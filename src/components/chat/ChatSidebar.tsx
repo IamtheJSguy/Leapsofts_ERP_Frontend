@@ -30,7 +30,7 @@ import DoNotDisturbOnIcon from '@mui/icons-material/DoNotDisturbOn';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useConversations, useCreateConversation, useUpdatePresence } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
-import { getDisplayName, formatDateTime, getPresenceLabel } from '@/utils/formatters';
+import { getDisplayName, formatDateTime, getPresenceLabel, formatRelativeChatDate } from '@/utils/formatters';
 import { getMergedUnreadCount, conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -469,17 +469,37 @@ export const ChatSidebar = () => {
                           )}
                         </Box>
                         {(conv.lastMessageAt || conv.updatedAt) && (
-                          <Typography
-                            variant="caption"
+                          <Box
                             sx={{
-                              color: active ? tokens.brand.primary : 'text.secondary',
-                              opacity: active ? 0.85 : 0.6,
-                              fontSize: '0.68rem',
-                              fontWeight: 500,
+                              bgcolor: active
+                                ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)')
+                                : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93, 26, 137, 0.06)'),
+                              px: 1,
+                              py: 0.35,
+                              borderRadius: '12px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backdropFilter: 'blur(4px)',
+                              flexShrink: 0,
                             }}
                           >
-                            {formatDateTime(conv.lastMessageAt || conv.updatedAt).split(' ')[0]}
-                          </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: active
+                                  ? tokens.brand.primary
+                                  : (isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.brand.primary),
+                                fontSize: '0.6rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                lineHeight: 1,
+                              }}
+                            >
+                              {formatRelativeChatDate(conv.lastMessageAt || conv.updatedAt)}
+                            </Typography>
+                          </Box>
                         )}
                       </Box>
                     }

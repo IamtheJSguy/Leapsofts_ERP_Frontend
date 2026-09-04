@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday, isYesterday } from 'date-fns';
 
 export const formatDate = (date: string | Date, pattern = 'MMM d, yyyy'): string => {
   const d = typeof date === 'string' ? parseISO(date) : date;
@@ -153,4 +153,17 @@ export const getPresenceLabel = (
   if (status === 'online') return 'Active now';
   if (status === 'away') return 'Away';
   return formatLastSeen(lastSeenAt);
+};
+
+export const formatRelativeChatDate = (date: string | Date): string => {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  if (Number.isNaN(d.getTime())) return '';
+  
+  if (isToday(d)) {
+    return 'Today ' + format(d, 'h:mm a');
+  }
+  if (isYesterday(d)) {
+    return 'Yesterday at ' + format(d, 'h:mm a');
+  }
+  return format(d, 'MMM d, h:mm a');
 };
