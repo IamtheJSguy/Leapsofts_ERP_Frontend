@@ -714,6 +714,24 @@ export interface KanbanCardLink {
   url: string;
 }
 
+export interface KanbanSubtask {
+  _id: string;
+  cardId: string;
+  boardId: string;
+  title: string;
+  description?: string;
+  assignedTo?: string[] | User[];
+  assignedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  assignedAt?: string;
+  dueDate?: string;
+  priority?: string;
+  isDone?: boolean;
+  completedAt?: string | null;
+  order?: number;
+  createdBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
+  isActive?: boolean;
+}
+
 export interface KanbanColumn {
   _id: string;
   name: string;
@@ -754,6 +772,7 @@ export interface KanbanCard {
   assignedAt?: string;
   lastMovedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
   lastMovedAt?: string;
+  subtasks?: KanbanSubtask[];
 }
 
 export interface KanbanComment {

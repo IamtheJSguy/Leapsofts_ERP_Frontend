@@ -19,7 +19,8 @@ export interface DailyKPIEntry {
   kpiId?: { _id: string; name: string; description?: string; targetValue?: number; priority?: string };
   assignmentId?: any;
   assignmentItemId?: string;
-  kanbanCardId?: { _id: string; title: string; description?: string; dueDate?: string; kpiEndDate?: string; boardId?: string };
+  kanbanCardId?: { _id: string; title: string; description?: string; dueDate?: string; kpiEndDate?: string; boardId?: string; assignedAt?: string };
+  kanbanSubtaskId?: { _id: string; title?: string; cardId?: string; boardId?: string; assignedAt?: string } | string;
   kpiName?: string;
   name?: string;
   description?: string;
