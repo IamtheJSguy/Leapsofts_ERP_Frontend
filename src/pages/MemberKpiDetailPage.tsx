@@ -13,6 +13,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  Tooltip,
   useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -42,6 +43,7 @@ import {
   type MemberDailyKpiEntry,
 } from '@/lib/memberKpiWeekTable';
 import { tokens } from '@/styles/tokens';
+import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
 
@@ -499,6 +501,7 @@ export default function MemberKpiDetailPage() {
                 isOverdue={display.isOverdue}
                 isCompletedLate={display.isCompletedLate}
                 actual={entry.currentValue}
+                extra={entry.extraValue}
                 target={entry.targetValue}
                 periodEnd={entry.periodEnd}
                 completedAt={entry.completedAt}
@@ -609,6 +612,7 @@ function KpiDetailCard({
   isOverdue,
   isCompletedLate,
   actual,
+  extra,
   target,
   periodEnd,
   completedAt,
@@ -622,6 +626,7 @@ function KpiDetailCard({
   isOverdue: boolean;
   isCompletedLate: boolean;
   actual?: number | null;
+  extra?: number | null;
   target?: number | null;
   periodEnd?: string;
   completedAt?: string | null;
@@ -689,9 +694,16 @@ function KpiDetailCard({
             {name}
           </Typography>
           {hasTarget && (
-            <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary', mt: 0.25 }}>
-              Actual {actual ?? 0} / Target {target}
-            </Typography>
+            <Tooltip
+              title={kind === 'sales' && (extra ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
+              disableHoverListener={kind !== 'sales' || (extra ?? 0) <= 0}
+            >
+              <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary', mt: 0.25 }}>
+                {kind === 'sales'
+                  ? formatSalesKpiActual(actual ?? 0, target, extra)
+                  : `Actual ${actual ?? 0} / Target ${target}`}
+              </Typography>
+            </Tooltip>
           )}
         </Box>
         <Chip

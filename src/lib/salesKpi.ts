@@ -51,6 +51,33 @@ const countsFromBucket = (bucket: PriorityBucket<SalesKpiEntry>): SectionCounts 
   return { low, medium, high, urgent, total: low + medium + high + urgent };
 };
 
+export const SALES_KPI_EXTRA_TOOLTIP =
+  'Added after the KPI time window — not counted.';
+
+/** Day / detail actuals: `1/2` or `(3)  1/2` when extras were added after the window. */
+export const formatSalesKpiActual = (
+  current: number,
+  target: number,
+  extra?: number | null,
+): string => {
+  const extraCount = extra ?? 0;
+  const counted = `${current}/${target}`;
+  if (extraCount <= 0) return counted;
+  return `(${extraCount})  ${counted}`;
+};
+
+/** Week TOTAL column only: `1/2` or `(3)  +  1/2  =4/2` when extras > 0. */
+export const formatSalesKpiWeekTotal = (
+  current: number,
+  target: number,
+  extra?: number | null,
+): string => {
+  const extraCount = extra ?? 0;
+  const counted = `${current}/${target}`;
+  if (extraCount <= 0) return counted;
+  return `(${extraCount})  +  ${counted}  =${current + extraCount}/${target}`;
+};
+
 export const filterStartedSalesKpis = (grouped: GroupedSalesKpis, now = new Date()): GroupedSalesKpis => {
   const active = filterPriorityBucket(grouped.active, now);
   const overdue = filterPriorityBucket(grouped.overdue, now);

@@ -27,6 +27,7 @@ import {
   Tabs,
   Tab,
   Alert,
+  Tooltip,
   Popover,
   FormControlLabel,
   Switch,
@@ -90,6 +91,7 @@ import {
   isPermissionLocked,
   permissionLockHelperText,
 } from '@/lib/permissions';
+import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
 
 const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
@@ -109,6 +111,7 @@ type MemberSalesKpiStat = {
   label: string;
   current: number;
   target: number;
+  extra: number;
 };
 
 const resolveSalesKpiUserId = (userRef: SalesKpiEntry['userId']) =>
@@ -137,6 +140,7 @@ const buildSalesKpisByUser = (entries: SalesKpiEntry[]) => {
         label: SALES_KPI_SHORT_LABELS[metric],
         current: entry?.currentValue ?? 0,
         target: entry?.targetValue ?? 0,
+        extra: entry?.extraValue ?? 0,
       };
     });
   }
@@ -194,6 +198,7 @@ const emptySalesKpiStats = (): MemberSalesKpiStat[] =>
     label: SALES_KPI_SHORT_LABELS[metric],
     current: 0,
     target: 0,
+    extra: 0,
   }));
 
 /* ─── Modern Shift Time Picker ──────────────────────────────────────────────── */
@@ -1054,9 +1059,11 @@ const TeamPage = () => {
                   >
                     {SALES_KPI_METRIC_LABELS[item.metric] ?? item.label}
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.94rem', lineHeight: 1.1 }}>
-                    {item.current}/{item.target}
-                  </Typography>
+                  <Tooltip title={item.extra > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''} disableHoverListener={item.extra <= 0}>
+                    <Typography variant="body1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.94rem', lineHeight: 1.1 }}>
+                      {formatSalesKpiActual(item.current, item.target, item.extra)}
+                    </Typography>
+                  </Tooltip>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
                     sales KPI
                   </Typography>
@@ -2122,7 +2129,8 @@ const TeamPage = () => {
                         ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                             key: stat.metric,
                             label: stat.label,
-                            display: `${stat.current}/${stat.target}`,
+                            display: formatSalesKpiActual(stat.current, stat.target, stat.extra),
+                            extra: stat.extra,
                           }))
                         : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
                             key: stat.key,
@@ -2148,17 +2156,22 @@ const TeamPage = () => {
                           >
                             {stat.label}
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 800,
-                              color: isDarkMode ? '#fff' : tokens.text.primary,
-                              fontSize: '0.82rem',
-                              lineHeight: 1.1,
-                            }}
+                          <Tooltip
+                            title={'extra' in stat && stat.extra > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
+                            disableHoverListener={!('extra' in stat) || stat.extra <= 0}
                           >
-                            {stat.display}
-                          </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 800,
+                                color: isDarkMode ? '#fff' : tokens.text.primary,
+                                fontSize: '0.82rem',
+                                lineHeight: 1.1,
+                              }}
+                            >
+                              {stat.display}
+                            </Typography>
+                          </Tooltip>
                         </Box>
                       ))}
                     </Box>
@@ -2278,7 +2291,8 @@ const TeamPage = () => {
                       ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                           key: stat.metric,
                           label: stat.label,
-                          display: `${stat.current}/${stat.target}`,
+                          display: formatSalesKpiActual(stat.current, stat.target, stat.extra),
+                          extra: stat.extra,
                         }))
                       : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
                           key: stat.key,
@@ -2301,17 +2315,22 @@ const TeamPage = () => {
                         >
                           {stat.label}
                         </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 800,
-                            color: isDarkMode ? '#fff' : tokens.text.primary,
-                            fontSize: '0.8rem',
-                            lineHeight: 1.1,
-                          }}
+                        <Tooltip
+                          title={'extra' in stat && stat.extra > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
+                          disableHoverListener={!('extra' in stat) || stat.extra <= 0}
                         >
-                          {stat.display}
-                        </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 800,
+                              color: isDarkMode ? '#fff' : tokens.text.primary,
+                              fontSize: '0.8rem',
+                              lineHeight: 1.1,
+                            }}
+                          >
+                            {stat.display}
+                          </Typography>
+                        </Tooltip>
                       </Box>
                     ))}
                   </Box>
