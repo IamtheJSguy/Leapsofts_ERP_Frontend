@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink } from '@/types';
+import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
 
 export type CreateMeetingOnCardPayload = {
   title: string;
@@ -87,6 +87,36 @@ const kanbanApi = {
     api.delete(`/kanban/cards/${cardId}/meetings/${meetingId}`),
   createMeetingOnCard: ({ cardId, data }: { cardId: string; data: CreateMeetingOnCardPayload }) =>
     api.post<{ data: KanbanCard }>(`/kanban/cards/${cardId}/meetings/create`, data),
+  listSubtasks: (cardId: string) =>
+    api.get<{ data: KanbanSubtask[] }>(`/kanban/cards/${cardId}/subtasks`),
+  createSubtask: ({
+    cardId,
+    data,
+  }: {
+    cardId: string;
+    data: {
+      title: string;
+      description?: string;
+      assignedTo?: string[];
+      dueDate?: string;
+      priority?: 'low' | 'medium' | 'high' | 'urgent';
+    };
+  }) => api.post<{ data: KanbanSubtask }>(`/kanban/cards/${cardId}/subtasks`, data),
+  updateSubtask: ({
+    subtaskId,
+    data,
+  }: {
+    subtaskId: string;
+    data: Partial<KanbanSubtask> & { assignedTo?: string[]; isDone?: boolean };
+  }) => api.patch<{ data: KanbanSubtask }>(`/kanban/subtasks/${subtaskId}`, data),
+  assignSubtask: ({
+    subtaskId,
+    data,
+  }: {
+    subtaskId: string;
+    data: { assignedTo: string[]; dueDate?: string };
+  }) => api.patch<{ data: KanbanSubtask }>(`/kanban/subtasks/${subtaskId}/assign`, data),
+  deleteSubtask: (subtaskId: string) => api.delete(`/kanban/subtasks/${subtaskId}`),
 };
 
 const sortByOrder = (a: any, b: any) =>
@@ -493,5 +523,43 @@ export const useCreateMeetingOnCard = (boardId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
+  });
+};
+
+const invalidateSubtaskQueries = (queryClient: ReturnType<typeof useQueryClient>, boardId?: string) => {
+  invalidateBoard(queryClient, boardId);
+  queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
+  queryClient.invalidateQueries({ queryKey: ['myDailyKpis'] });
+};
+
+export const useCreateSubtask = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.createSubtask,
+    onSuccess: () => invalidateSubtaskQueries(queryClient, boardId),
+  });
+};
+
+export const useUpdateSubtask = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.updateSubtask,
+    onSuccess: () => invalidateSubtaskQueries(queryClient, boardId),
+  });
+};
+
+export const useAssignSubtask = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.assignSubtask,
+    onSuccess: () => invalidateSubtaskQueries(queryClient, boardId),
+  });
+};
+
+export const useDeleteSubtask = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.deleteSubtask,
+    onSuccess: () => invalidateSubtaskQueries(queryClient, boardId),
   });
 };

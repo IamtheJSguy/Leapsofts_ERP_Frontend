@@ -63,6 +63,7 @@ import {
   useEditComment, useDeleteComment,
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
+  useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
 } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
@@ -374,6 +375,16 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
               <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem', color: 'text.secondary' }}>{commentsCount}</Typography>
             </Box>
           )}
+          {(() => {
+            const subtasks = Array.isArray(task.rawCard?.subtasks) ? task.rawCard.subtasks : [];
+            if (subtasks.length === 0) return null;
+            const doneCount = subtasks.filter((s: any) => s.isDone).length;
+            return (
+              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem', color: 'text.secondary' }}>
+                {doneCount}/{subtasks.length}
+              </Typography>
+            );
+          })()}
           {hasDueDate && (() => {
             const { label, isPast } = formatDue(hasDueDate);
             return (
@@ -1458,6 +1469,8 @@ const CardMeetingsSection = ({
 };
 
 const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard }: any) => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -1483,18 +1496,35 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       setPendingDueTime(dueParts.time);
       setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
       setPendingPriority(task.rawCard?.priority || 'medium');
+      setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
+      setNewSubPriority((task.rawCard?.priority as keyof typeof PRIORITY_CONFIG) || 'medium');
     }
-  }, [task, open]);
+  }, [task, open, searchParams]);
 
   // Confirmation Dialog States for Deletion only
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmDesc, setConfirmDesc] = useState('');
-  const [confirmAction, setConfirmAction] = useState<'deleteCard' | 'deleteComment' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'deleteCard' | 'deleteComment' | 'deleteSubtask' | null>(null);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
+  const [targetSubtaskId, setTargetSubtaskId] = useState<string | null>(null);
+
+  const [newSubTitle, setNewSubTitle] = useState('');
+  const [newSubDesc, setNewSubDesc] = useState('');
+  const [newSubAssignees, setNewSubAssignees] = useState<string[]>([]);
+  const [newSubDueDate, setNewSubDueDate] = useState('');
+  const [newSubDueTime, setNewSubDueTime] = useState('');
+  const [newSubPriority, setNewSubPriority] = useState<keyof typeof PRIORITY_CONFIG>('medium');
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editSubTitle, setEditSubTitle] = useState('');
+  const [editSubDesc, setEditSubDesc] = useState('');
+  const [editSubAssignees, setEditSubAssignees] = useState<string[]>([]);
+  const [editSubDueDate, setEditSubDueDate] = useState('');
+  const [editSubDueTime, setEditSubDueTime] = useState('');
+  const [editSubPriority, setEditSubPriority] = useState<keyof typeof PRIORITY_CONFIG>('medium');
 
   // Tabs State
-  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'subtasks' | 'comments'>('details');
 
   const addCommentMutation = useAddComment(boardId);
   const editCommentMutation = useEditComment(boardId);
@@ -1507,9 +1537,11 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const attachMeetingMutation = useAttachCardMeeting(boardId);
   const detachMeetingMutation = useDetachCardMeeting(boardId);
   const createMeetingOnCardMutation = useCreateMeetingOnCard(boardId);
+  const createSubtaskMutation = useCreateSubtask(boardId);
+  const updateSubtaskMutation = useUpdateSubtask(boardId);
+  const deleteSubtaskMutation = useDeleteSubtask(boardId);
   const currentUser = useAuthStore((s) => s.user);
   const addToast = useUIStore((s) => s.addToast);
-  const navigate = useNavigate();
 
   const mentionableUsers = useMemo(() => {
     const memberIds = new Set(boardMembers.map((user: any) => user._id));
@@ -1672,9 +1704,12 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           onClose();
         }
       });
+    } else if (confirmAction === 'deleteSubtask' && targetSubtaskId) {
+      deleteSubtaskMutation.mutate(targetSubtaskId);
     }
     setConfirmAction(null);
     setTargetCommentId(null);
+    setTargetSubtaskId(null);
   };
 
 
@@ -1892,11 +1927,12 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           >
             {[
               { id: 'details', label: 'Details & Assignees' },
-              { id: 'comments', label: 'Comments' }
+              { id: 'subtasks', label: 'Sub-tasks' },
+              { id: 'comments', label: 'Comments' },
             ].map((tab) => (
               <Button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'details' | 'comments')}
+                onClick={() => setActiveTab(tab.id as 'details' | 'subtasks' | 'comments')}
                 sx={{
                   px: 3, py: 0.75,
                   borderRadius: '16px',
@@ -2226,6 +2262,384 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </Box>
               )}
             </>
+          )}
+
+          {activeTab === 'subtasks' && (
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary' }}>
+                <FormatListBulletedIcon fontSize="small" />
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Sub-tasks ({(Array.isArray(rawCard?.subtasks) ? rawCard.subtasks : []).length})
+                </Typography>
+              </Box>
+              {(Array.isArray(rawCard?.subtasks) ? rawCard.subtasks : []).map((sub: any) => {
+                const subAssigneeIds = Array.isArray(sub.assignedTo)
+                  ? sub.assignedTo.map((u: any) => (typeof u === 'object' ? u._id : u))
+                  : [];
+                const isEditing = editingSubtaskId === sub._id;
+                return (
+                  <Box
+                    key={sub._id}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.75,
+                      mb: 1.25,
+                      p: 1.25,
+                      borderRadius: '12px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                    }}
+                  >
+                    {isEditing ? (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                        <TextField
+                          size="small"
+                          label="Sub-task title"
+                          value={editSubTitle}
+                          onChange={(e) => setEditSubTitle(e.target.value)}
+                        />
+                        <TextField
+                          size="small"
+                          label="Details"
+                          value={editSubDesc}
+                          onChange={(e) => setEditSubDesc(e.target.value)}
+                          multiline
+                          minRows={2}
+                        />
+                        <FormControl fullWidth size="small">
+                          <InputLabel id={`edit-subtask-assign-${sub._id}`}>Assignees</InputLabel>
+                          <Select
+                            labelId={`edit-subtask-assign-${sub._id}`}
+                            multiple
+                            value={editSubAssignees}
+                            onChange={(e) => setEditSubAssignees(e.target.value as string[])}
+                            input={<OutlinedInput label="Assignees" />}
+                            renderValue={(selected) => (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {(selected as string[]).map((value) => {
+                                  const matched = allUsers.find((u: any) => u._id === value);
+                                  const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
+                                  return <Chip key={value} label={name} size="small" />;
+                                })}
+                              </Box>
+                            )}
+                          >
+                            {boardMembers.map((u: any) => (
+                              <MenuItem key={u._id} value={u._id}>
+                                {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl fullWidth size="small">
+                          <InputLabel id={`edit-subtask-priority-${sub._id}`}>Priority</InputLabel>
+                          <Select
+                            labelId={`edit-subtask-priority-${sub._id}`}
+                            label="Priority"
+                            value={editSubPriority}
+                            onChange={(e) => setEditSubPriority(e.target.value as keyof typeof PRIORITY_CONFIG)}
+                          >
+                            {(Object.entries(PRIORITY_CONFIG) as [string, (typeof PRIORITY_CONFIG)[keyof typeof PRIORITY_CONFIG]][]).map(([key, cfg]) => (
+                              <MenuItem key={key} value={key}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cfg.dot }} />
+                                  {cfg.label}
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                          <Box sx={{ flex: 1, minWidth: 160 }}>
+                            <ModernDatePicker
+                              label="Due Date"
+                              value={editSubDueDate ? new Date(`${editSubDueDate}T00:00:00`) : null}
+                              onChange={(date) => {
+                                if (date) {
+                                  const formatted = toLocalDateStr(date);
+                                  setEditSubDueDate(formatted);
+                                  if (!editSubDueTime) setEditSubDueTime(DEFAULT_DUE_TIME);
+                                } else {
+                                  setEditSubDueDate('');
+                                  setEditSubDueTime('');
+                                }
+                              }}
+                            />
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 140 }}>
+                            <ModernTimePicker
+                              label="Due Time"
+                              value={editSubDueTime || DEFAULT_DUE_TIME}
+                              onChange={(t) => setEditSubDueTime(t)}
+                            />
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            disabled={!editSubTitle.trim() || updateSubtaskMutation.isPending}
+                            onClick={() => {
+                              updateSubtaskMutation.mutate(
+                                {
+                                  subtaskId: sub._id,
+                                  data: {
+                                    title: editSubTitle.trim(),
+                                    description: editSubDesc.trim(),
+                                    assignedTo: editSubAssignees,
+                                    priority: editSubPriority,
+                                    ...(editSubDueDate
+                                      ? { dueDate: combineDueDateTime(editSubDueDate, editSubDueTime) }
+                                      : { dueDate: '' }),
+                                  },
+                                },
+                                {
+                                  onSuccess: () => {
+                                    setEditingSubtaskId(null);
+                                    addToast({ message: 'Sub-task updated', severity: 'success' });
+                                  },
+                                  onError: (err: any) => {
+                                    addToast({
+                                      message: err?.response?.data?.message || 'Failed to update sub-task',
+                                      severity: 'error',
+                                    });
+                                  },
+                                },
+                              );
+                            }}
+                          >
+                            Save
+                          </Button>
+                          <Button size="small" onClick={() => setEditingSubtaskId(null)}>Cancel</Button>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
+                        <Checkbox
+                          size="small"
+                          checked={Boolean(sub.isDone)}
+                          disabled={!canEdit || updateSubtaskMutation.isPending}
+                          onChange={() =>
+                            updateSubtaskMutation.mutate({
+                              subtaskId: sub._id,
+                              data: { isDone: !sub.isDone },
+                            })
+                          }
+                          sx={{ mt: -0.5, p: 0.5 }}
+                        />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 700,
+                              textDecoration: sub.isDone ? 'line-through' : 'none',
+                              color: sub.isDone ? 'text.secondary' : 'text.primary',
+                            }}
+                          >
+                            {sub.title}
+                          </Typography>
+                          {sub.description && (
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                              {sub.description}
+                            </Typography>
+                          )}
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {subAssigneeIds.map((id: string) => {
+                              const matched = allUsers.find((u: any) => u._id === id);
+                              const name = matched
+                                ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() || matched.email
+                                : id;
+                              return <Chip key={id} label={name} size="small" />;
+                            })}
+                            {sub.priority && PRIORITY_CONFIG[sub.priority as keyof typeof PRIORITY_CONFIG] && (
+                              <Chip
+                                size="small"
+                                label={PRIORITY_CONFIG[sub.priority as keyof typeof PRIORITY_CONFIG].label}
+                                sx={{
+                                  bgcolor: PRIORITY_CONFIG[sub.priority as keyof typeof PRIORITY_CONFIG].bg,
+                                  color: PRIORITY_CONFIG[sub.priority as keyof typeof PRIORITY_CONFIG].dot,
+                                }}
+                              />
+                            )}
+                            {sub.dueDate && (
+                              <Chip
+                                size="small"
+                                label={formatKpiDueDate(sub.dueDate, { includeTime: hasDisplayableClockTime(sub.dueDate) })}
+                              />
+                            )}
+                          </Box>
+                        </Box>
+                        {canEdit && (
+                          <Box sx={{ display: 'flex', gap: 0.25 }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const dueParts = parseDueParts(sub.dueDate);
+                                setEditingSubtaskId(sub._id);
+                                setEditSubTitle(sub.title || '');
+                                setEditSubDesc(sub.description || '');
+                                setEditSubAssignees(subAssigneeIds);
+                                setEditSubDueDate(dueParts.date);
+                                setEditSubDueTime(dueParts.time);
+                                setEditSubPriority(
+                                  (sub.priority as keyof typeof PRIORITY_CONFIG)
+                                  || (task.rawCard?.priority as keyof typeof PRIORITY_CONFIG)
+                                  || 'medium',
+                                );
+                              }}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setConfirmTitle('Delete Sub-task');
+                                setConfirmDesc(`Delete "${sub.title}"? This will remove it from /tasks for assignees.`);
+                                setConfirmAction('deleteSubtask');
+                                setTargetSubtaskId(sub._id);
+                                setConfirmOpen(true);
+                              }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+              {(Array.isArray(rawCard?.subtasks) ? rawCard.subtasks : []).length === 0 && (
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                  No sub-tasks yet.
+                </Typography>
+              )}
+              {canEdit && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
+                  <TextField
+                    size="small"
+                    label="Sub-task title"
+                    value={newSubTitle}
+                    onChange={(e) => setNewSubTitle(e.target.value)}
+                  />
+                  <TextField
+                    size="small"
+                    label="Details"
+                    value={newSubDesc}
+                    onChange={(e) => setNewSubDesc(e.target.value)}
+                    multiline
+                    minRows={2}
+                  />
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="subtask-assign-label">Assignees</InputLabel>
+                    <Select
+                      labelId="subtask-assign-label"
+                      multiple
+                      value={newSubAssignees}
+                      onChange={(e) => setNewSubAssignees(e.target.value as string[])}
+                      input={<OutlinedInput label="Assignees" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {(selected as string[]).map((value) => {
+                            const matched = allUsers.find((u: any) => u._id === value);
+                            const name = matched ? `${matched.firstName || ''} ${matched.lastName || ''}`.trim() : value;
+                            return <Chip key={value} label={name} size="small" />;
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {boardMembers.map((u: any) => (
+                        <MenuItem key={u._id} value={u._id}>
+                          {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="subtask-priority-label">Priority</InputLabel>
+                    <Select
+                      labelId="subtask-priority-label"
+                      label="Priority"
+                      value={newSubPriority}
+                      onChange={(e) => setNewSubPriority(e.target.value as keyof typeof PRIORITY_CONFIG)}
+                    >
+                      {(Object.entries(PRIORITY_CONFIG) as [string, (typeof PRIORITY_CONFIG)[keyof typeof PRIORITY_CONFIG]][]).map(([key, cfg]) => (
+                        <MenuItem key={key} value={key}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cfg.dot }} />
+                            {cfg.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Box sx={{ flex: 1, minWidth: 160 }}>
+                      <ModernDatePicker
+                        label="Due Date"
+                        value={newSubDueDate ? new Date(`${newSubDueDate}T00:00:00`) : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const formatted = toLocalDateStr(date);
+                            setNewSubDueDate(formatted);
+                            if (!newSubDueTime) setNewSubDueTime(DEFAULT_DUE_TIME);
+                          } else {
+                            setNewSubDueDate('');
+                            setNewSubDueTime('');
+                          }
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 140 }}>
+                      <ModernTimePicker
+                        label="Due Time"
+                        value={newSubDueTime || DEFAULT_DUE_TIME}
+                        onChange={(t) => setNewSubDueTime(t)}
+                      />
+                    </Box>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    disabled={!newSubTitle.trim() || createSubtaskMutation.isPending}
+                    onClick={() => {
+                      createSubtaskMutation.mutate(
+                        {
+                          cardId: task.id,
+                          data: {
+                            title: newSubTitle.trim(),
+                            ...(newSubDesc.trim() ? { description: newSubDesc.trim() } : {}),
+                            assignedTo: newSubAssignees,
+                            priority: newSubPriority,
+                            ...(newSubDueDate
+                              ? { dueDate: combineDueDateTime(newSubDueDate, newSubDueTime) }
+                              : {}),
+                          },
+                        },
+                        {
+                          onSuccess: () => {
+                            setNewSubTitle('');
+                            setNewSubDesc('');
+                            setNewSubAssignees([]);
+                            setNewSubDueDate('');
+                            setNewSubDueTime('');
+                            setNewSubPriority((task.rawCard?.priority as keyof typeof PRIORITY_CONFIG) || 'medium');
+                            addToast({ message: 'Sub-task added', severity: 'success' });
+                          },
+                          onError: (err: any) => {
+                            addToast({
+                              message: err?.response?.data?.message || 'Failed to add sub-task',
+                              severity: 'error',
+                            });
+                          },
+                        },
+                      );
+                    }}
+                  >
+                    {createSubtaskMutation.isPending ? 'Adding...' : 'Add sub-task'}
+                  </Button>
+                </Box>
+              )}
+            </Box>
           )}
 
           {activeTab === 'comments' && (

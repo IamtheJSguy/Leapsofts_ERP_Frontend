@@ -469,14 +469,24 @@ export const UserDailyKpisView = () => {
               (!kpi.periodEnd && kpi.date && hasDisplayableClockTime(kpi.date))
             );
             const dueLabel = dueAt ? formatKpiDueDate(dueAt, { includeTime }) : null;
-            const assignedAt =
-              kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
-                ? (kpi.kanbanCardId as { assignedAt?: string }).assignedAt
+            const subtaskAssignedAt =
+              kpi.kanbanSubtaskId && typeof kpi.kanbanSubtaskId === 'object'
+                ? kpi.kanbanSubtaskId.assignedAt
                 : undefined;
+            const cardAssignedAt =
+              kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
+                ? kpi.kanbanCardId.assignedAt
+                : undefined;
+            const assignedAt = subtaskAssignedAt ?? cardAssignedAt;
             const description = toPlainText(
               kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description,
             );
             const title = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task';
+            const parentCardTitle =
+              kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
+                ? (kpi.kanbanCardId as { title?: string }).title
+                : undefined;
+            const isSubtask = Boolean((kpi as any).kanbanSubtaskId);
             const statusChip = isOverdue
               ? { label: 'Overdue', bgcolor: tokens.semantic.errorBg, color: tokens.semantic.error }
               : isChecked
@@ -492,7 +502,11 @@ export const UserDailyKpisView = () => {
               const boardId = isObj ? (kId as any).boardId : (kpi as any).boardId;
               const projectId = isObj ? ((kId as any).projectId || (kId as any).boardId) : ((kpi as any).projectId || (kpi as any).boardId);
               if (boardId && cardId) {
-                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
+                const subId =
+                  typeof (kpi as any).kanbanSubtaskId === 'object'
+                    ? (kpi as any).kanbanSubtaskId?._id
+                    : (kpi as any).kanbanSubtaskId;
+                kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}${subId ? `&subtask=${subId}` : ''}`;
               }
             }
             const hasKanbanLink = Boolean(kpi.kanbanCardId);
@@ -541,12 +555,12 @@ export const UserDailyKpisView = () => {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.15, flex: 1, minWidth: 0 }}>
                   <Typography
                     variant="subtitle2"
                     noWrap
                     title={title}
                     sx={{
-                      flex: 1,
                       minWidth: 0,
                       fontWeight: 650,
                       fontSize: '0.875rem',
@@ -558,6 +572,16 @@ export const UserDailyKpisView = () => {
                   >
                     {title}
                   </Typography>
+                  {isSubtask && parentCardTitle && (
+                    <Typography
+                      variant="caption"
+                      noWrap
+                      sx={{ color: tokens.text.muted, fontWeight: 500, fontSize: '0.7rem' }}
+                    >
+                      Sub-task of {parentCardTitle}
+                    </Typography>
+                  )}
+                </Box>
                   <Box
                     sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, alignSelf: 'center' }}
                   >
