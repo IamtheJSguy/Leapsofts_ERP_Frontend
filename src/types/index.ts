@@ -411,6 +411,7 @@ export interface SalesKpiEntry {
   periodEnd: string;
   targetValue: number;
   currentValue: number;
+  extraValue?: number;
   status: SalesKpiStatus;
   completedAt?: string | null;
   /** Set once the deadline passed; frozen entries never increment again. */
@@ -431,6 +432,7 @@ export interface SalesKpiProgressEvent {
   sourceId: string;
   sequence: number;
   occurredAt: string;
+  countedInKpi?: boolean;
 }
 
 export type PriorityBucket<T> = {

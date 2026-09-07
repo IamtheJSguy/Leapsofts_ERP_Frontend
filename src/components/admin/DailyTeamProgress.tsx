@@ -15,6 +15,7 @@ import {
   ToggleButtonGroup,
   Chip,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -34,6 +35,7 @@ import {
   type PeriodMode,
 } from '@/lib/kpiPeriod';
 import { tokens } from '@/styles/tokens';
+import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { SalesKpiEntry, SalesKpiStatus } from '@/types';
 
 type ProgressTask = {
@@ -43,6 +45,7 @@ type ProgressTask = {
   isCompleted: boolean;
   targetValue?: number | null;
   actualValue?: number | null;
+  extraValue?: number | null;
   status?: SalesKpiStatus;
   scheduleMode?: string;
 };
@@ -325,10 +328,17 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                   {task.name}
                 </Typography>
                 {(task.targetValue != null && task.targetValue > 0) && (
-                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600 }}>
-                    {task.actualValue ?? 0} / {task.targetValue}
-                    {task.scheduleMode === 'span' ? ' · Multi-day' : ''}
-                  </Typography>
+                  <Tooltip
+                    title={task.kind === 'sales' && (task.extraValue ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
+                    disableHoverListener={task.kind !== 'sales' || (task.extraValue ?? 0) <= 0}
+                  >
+                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600 }}>
+                      {task.kind === 'sales'
+                        ? formatSalesKpiActual(task.actualValue ?? 0, task.targetValue, task.extraValue)
+                        : `${task.actualValue ?? 0} / ${task.targetValue}`}
+                      {task.scheduleMode === 'span' ? ' · Multi-day' : ''}
+                    </Typography>
+                  </Tooltip>
                 )}
               </Box>
               <Chip
@@ -433,6 +443,7 @@ export const DailyTeamProgress = () => {
         isCompleted: isSalesDone(entry.status),
         targetValue: entry.targetValue,
         actualValue: entry.currentValue,
+        extraValue: entry.extraValue,
         status: entry.status,
         scheduleMode: entry.scheduleMode,
       };

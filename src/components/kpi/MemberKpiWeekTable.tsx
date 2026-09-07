@@ -13,10 +13,16 @@ import { tokens } from '@/styles/tokens';
 import {
   cellStatusTooltip,
   formatDoneTargetPair,
+  kpiHasTarget,
   type TaskDisplay,
   type WeekTableCell,
   type WeekTableModel,
 } from '@/lib/memberKpiWeekTable';
+import {
+  formatSalesKpiActual,
+  formatSalesKpiWeekTotal,
+  SALES_KPI_EXTRA_TOOLTIP,
+} from '@/lib/salesKpi';
 
 const statusColors = (display: TaskDisplay) => {
   if (display.isOverdue) {
@@ -39,8 +45,16 @@ const statusColors = (display: TaskDisplay) => {
 
 const ValueCell = ({ cell, isDarkMode }: { cell: WeekTableCell; isDarkMode: boolean }) => {
   const { color, bg } = statusColors(cell.display);
-  const pair = formatDoneTargetPair(cell.done, cell.target);
-  const label = cellStatusTooltip(cell.display.statusLabel, cell.done, cell.target);
+  const pair =
+    (cell.extra ?? 0) > 0
+      ? formatSalesKpiActual(cell.done, cell.target, cell.extra)
+      : formatDoneTargetPair(cell.done, cell.target);
+  const label = [
+    cellStatusTooltip(cell.display.statusLabel, cell.done, cell.target),
+    (cell.extra ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <TableCell
       colSpan={cell.colSpan}
@@ -139,12 +153,19 @@ export function MemberKpiWeekTable({
           <TableBody>
             {model.rows.map((row) => {
               const totalColors = statusColors(row.totalDisplay);
-              const totalPair = formatDoneTargetPair(row.totalDone, row.totalTarget);
-              const totalLabel = cellStatusTooltip(
-                row.totalDisplay.statusLabel,
-                row.totalDone,
-                row.totalTarget,
-              );
+              const totalPair = kpiHasTarget(row.totalTarget)
+                ? formatSalesKpiWeekTotal(row.totalDone, row.totalTarget, row.totalExtra)
+                : null;
+              const totalLabel = [
+                cellStatusTooltip(
+                  row.totalDisplay.statusLabel,
+                  row.totalDone,
+                  row.totalTarget,
+                ),
+                (row.totalExtra ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : null,
+              ]
+                .filter(Boolean)
+                .join(' · ');
               return (
                 <TableRow key={row.id}>
                   <TableCell
@@ -182,7 +203,7 @@ export function MemberKpiWeekTable({
                     }}
                   >
                     <Tooltip title={totalLabel}>
-                      <Box component="span" sx={{ cursor: 'default' }}>
+                      <Box component="span" sx={{ cursor: 'default', whiteSpace: 'nowrap' }}>
                         {totalPair ?? row.totalDisplay.statusLabel}
                       </Box>
                     </Tooltip>

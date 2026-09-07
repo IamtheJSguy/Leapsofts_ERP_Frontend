@@ -29,6 +29,7 @@ export type MemberDailyKpiEntry = {
 export type WeekTableCell = {
   done: number;
   target: number;
+  extra?: number;
   display: TaskDisplay;
   colSpan: number;
 };
@@ -40,6 +41,7 @@ export type WeekTableRow = {
   cells: Array<WeekTableCell | 'covered' | null>;
   totalDone: number;
   totalTarget: number;
+  totalExtra?: number;
   totalDisplay: TaskDisplay;
 };
 
@@ -194,6 +196,7 @@ const intersectWorkingDays = (entryDays: string[], workingDays: string[]) =>
 type NumericContribution = {
   done: number;
   target: number;
+  extra?: number;
   salesStatus?: SalesKpiStatus;
   periodEnd?: string | null;
   completedAt?: string | null;
@@ -287,6 +290,7 @@ const paintSegments = (workingDays: string[], segments: Segment[]): WeekTableRow
     cells[seg.startIdx] = {
       done,
       target,
+      extra: seg.parts.reduce((s, p) => s + (p.extra ?? 0), 0),
       display: combinedDisplay(seg.parts),
       colSpan,
     };
@@ -302,6 +306,7 @@ const uniqueEntryTotal = (segments: Segment[]) => {
   return {
     totalDone: parts.reduce((s, p) => s + p.done, 0),
     totalTarget: parts.reduce((s, p) => s + p.target, 0),
+    totalExtra: parts.reduce((s, p) => s + (p.extra ?? 0), 0),
     totalDisplay: combinedDisplay(parts),
   };
 };
@@ -325,6 +330,7 @@ const salesToSegment = (entry: SalesKpiEntry, workingDays: string[]): Segment | 
       {
         done: entry.currentValue ?? 0,
         target: entry.targetValue ?? 0,
+        extra: entry.extraValue ?? 0,
         salesStatus: entry.status,
         periodEnd: entry.periodEnd,
         completedAt: entry.completedAt,
