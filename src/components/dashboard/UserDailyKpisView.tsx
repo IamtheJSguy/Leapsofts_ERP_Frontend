@@ -136,6 +136,9 @@ export const UserDailyKpisView = () => {
 
   const primaryAssignmentId = myAssignments[0]?._id as string | undefined;
 
+  const clickCameFromControl = (e: React.MouseEvent) =>
+    Boolean((e.target as HTMLElement).closest('button, a, input, textarea, [role="menuitem"]'));
+
   const handleToggle = (kpi: any, isCompleted: boolean) => {
     if (isCompleted) {
       setLoadingIds((prev) => new Set(prev).add(kpi._id));
@@ -421,6 +424,7 @@ export const UserDailyKpisView = () => {
                   key={entry._id} 
                   onClick={hasKanbanLink ? async (e) => {
                     e.stopPropagation();
+                    if (clickCameFromControl(e)) return;
                     if (kanbanLink) {
                       navigate(kanbanLink);
                     } else {
@@ -498,6 +502,7 @@ export const UserDailyKpisView = () => {
                 key={kpi._id}
                 onClick={hasKanbanLink ? async (e) => {
                   e.stopPropagation();
+                  if (clickCameFromControl(e)) return;
                   if (kanbanLink) {
                     navigate(kanbanLink);
                   } else {
@@ -560,7 +565,10 @@ export const UserDailyKpisView = () => {
                       size="small"
                       aria-label={isChecked ? 'Mark as pending' : 'Mark as done'}
                       disabled={isKpiLoading}
-                      onClick={() => handleToggle(kpi, isChecked)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggle(kpi, isChecked);
+                      }}
                       startIcon={
                         isKpiLoading ? (
                           <CircularProgress size={12} sx={{ color: 'inherit' }} />
