@@ -10,6 +10,8 @@ import {
   Popover,
   ClickAwayListener,
 } from '@mui/material';
+import DOMPurify from 'dompurify';
+import linkifyHtml from 'linkify-html';
 import type { Message, MessageReaction } from '@/types';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
@@ -331,9 +333,9 @@ export const MessageBubble = React.memo(({
               borderBottomRightRadius: isOwn ? '4px' : '16px',
               borderBottomLeftRadius: isOwn ? '16px' : '4px',
               background: isOwn
-                ? `linear-gradient(135deg, ${tokens.brand.primary}, #8A2BE2)`
+                ? `#d1a7fc`
                 : (isDarkMode ? 'rgba(255,255,255,0.04)' : '#ffffff'),
-              color: isOwn ? '#fff' : 'text.primary',
+              color: isOwn ? '#000' : 'text.primary',
               border: isOwn
                 ? 'none'
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
@@ -352,11 +354,11 @@ export const MessageBubble = React.memo(({
                   px: 1.25,
                   py: 0.75,
                   borderRadius: '10px',
-                  borderLeft: `3px solid ${isOwn ? 'rgba(255,255,255,0.85)' : tokens.brand.primary}`,
-                  bgcolor: isOwn ? 'rgba(255,255,255,0.12)' : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(93, 26, 137, 0.06)'),
+                  borderLeft: `3px solid ${isOwn ? 'rgba(0,0,0,0.5)' : tokens.brand.primary}`,
+                  bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(93, 26, 137, 0.06)'),
                   cursor: onQuoteClick ? 'pointer' : 'default',
                   '&:hover': onQuoteClick
-                    ? { bgcolor: isOwn ? 'rgba(255,255,255,0.18)' : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(93, 26, 137, 0.1)') }
+                    ? { bgcolor: isOwn ? 'rgba(0,0,0,0.1)' : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(93, 26, 137, 0.1)') }
                     : undefined,
                 }}
               >
@@ -366,7 +368,7 @@ export const MessageBubble = React.memo(({
                     display: 'block',
                     fontWeight: 800,
                     fontSize: '0.68rem',
-                    color: isOwn ? 'rgba(255,255,255,0.95)' : tokens.brand.primary,
+                    color: isOwn ? '#000' : tokens.brand.primary,
                     mb: 0.15,
                   }}
                   noWrap
@@ -379,7 +381,7 @@ export const MessageBubble = React.memo(({
                     display: 'block',
                     fontSize: '0.7rem',
                     fontWeight: 500,
-                    color: isOwn ? 'rgba(255,255,255,0.75)' : 'text.secondary',
+                    color: isOwn ? 'rgba(0,0,0,0.7)' : 'text.secondary',
                   }}
                   noWrap
                 >
@@ -405,7 +407,7 @@ export const MessageBubble = React.memo(({
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    bgcolor: isOwn ? 'rgba(255,255,255,0.08)' : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)'),
+                    bgcolor: isOwn ? 'rgba(0,0,0,0.05)' : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)'),
                   },
                 }}
               >
@@ -417,12 +419,12 @@ export const MessageBubble = React.memo(({
                         width: 42,
                         height: 42,
                         borderRadius: '12px',
-                        bgcolor: isOwn ? 'rgba(255,255,255,0.15)' : bgColor,
+                        bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : bgColor,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        color: isOwn ? '#fff' : color,
+                        color: isOwn ? '#000' : color,
                         '& svg': { fontSize: 22 },
                       }}
                     >
@@ -437,7 +439,7 @@ export const MessageBubble = React.memo(({
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.85rem',
-                      color: isOwn ? '#fff' : 'text.primary',
+                      color: isOwn ? '#000' : 'text.primary',
                     }}
                   >
                     {message.driveFileName || message.content}
@@ -446,7 +448,7 @@ export const MessageBubble = React.memo(({
                     variant="caption"
                     sx={{
                       fontWeight: 500,
-                      color: isOwn ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                      color: isOwn ? 'rgba(0,0,0,0.65)' : 'text.secondary',
                       fontSize: '0.7rem',
                       display: 'flex',
                       alignItems: 'center',
@@ -462,17 +464,32 @@ export const MessageBubble = React.memo(({
               <FileMessage message={message} isOwn={isOwn} />
             ) : (
               /* ───── Regular Text Message ───── */
-              <Typography
-                variant="body2"
+              <Box
+                className="prose tiptap-content"
                 sx={{
                   fontSize: '0.85rem',
                   fontWeight: 500,
                   lineHeight: 1.5,
                   wordBreak: 'break-word',
+                  color: isOwn ? '#000' : 'text.primary',
+                  '& p': { m: 0 },
+                  '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
+                  '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
+                  '& a': {
+                    color: isOwn ? '#000' : tokens.brand.primary,
+                    textDecoration: 'underline',
+                  },
+                  '& mark': {
+                    backgroundColor: '#ffcc00',
+                    color: '#000',
+                    borderRadius: '2px',
+                    padding: '0 2px',
+                  },
                 }}
-              >
-                <LinkifiedText text={message.content} />
-              </Typography>
+                dangerouslySetInnerHTML={{ 
+                  __html: linkifyHtml(DOMPurify.sanitize(message.content || '', { ADD_ATTR: ['target'] }), { target: '_blank', rel: 'noopener noreferrer' }) 
+                }}
+              />
             )}
 
             {/* Removed time & status checkmark from inside the bubble */}

@@ -69,6 +69,14 @@ export const resolveReplySnippet = (
   return replyTo;
 };
 
+export const stripHtml = (html: string): string => {
+  if (typeof window !== 'undefined' && window.DOMParser) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || doc.body.innerText || '';
+  }
+  return html.replace(/<[^>]*>?/gm, '');
+};
+
 export const getReplyPreviewText = (message: Pick<Message, 'content' | 'type' | 'driveFileName'>): string => {
   if (message.type === 'drive_file') {
     return message.driveFileName || 'Drive file';
@@ -77,9 +85,9 @@ export const getReplyPreviewText = (message: Pick<Message, 'content' | 'type' | 
     return message.content?.trim() || 'Photo';
   }
   if (message.type === 'board_event') {
-    return message.content || 'Board update';
+    return stripHtml(message.content || '') || 'Board update';
   }
-  const text = (message.content || '').trim();
+  const text = stripHtml(message.content || '').trim();
   if (!text) return 'Message';
   return text.length > 120 ? `${text.slice(0, 120)}…` : text;
 };
