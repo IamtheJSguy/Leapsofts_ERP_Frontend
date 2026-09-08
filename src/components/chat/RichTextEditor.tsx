@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -36,6 +35,7 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [isToolbarVisible, setIsToolbarVisible] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   const editor = useEditor({
@@ -57,6 +57,10 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
       }),
     ],
     content: value,
+    onSelectionUpdate: ({ editor }) => {
+      const { empty } = editor.state.selection;
+      setHasSelection(!empty);
+    },
     onUpdate: ({ editor }) => {
       if (editor.isEmpty) {
         onChange('');
@@ -180,53 +184,38 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
   );
 
   return (
-    <Box sx={{ width: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <Box id="rich-text-editor-wrapper" sx={{ width: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
       
-      <Collapse in={isToolbarVisible}>
+      {/* Unified toolbar: shows when A is clicked OR when text is selected */}
+      <Collapse in={isToolbarVisible || hasSelection}>
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 0.25,
-            p: 1,
+            p: 0.75,
             px: 1.5,
             borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.9)' : 'rgba(248, 245, 255, 0.95)',
           }}
         >
           {renderToolbarButtons()}
         </Box>
       </Collapse>
-
-      {!isToolbarVisible && (
-        // @ts-expect-error - tippyOptions is valid but may lack proper typings in this tiptap version
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: 'top' }}>
-          <Paper
-            elevation={0}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.25,
-              p: 0.75,
-              borderRadius: '12px',
-              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(10px)',
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
-              boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
-              animation: 'fadeInUp 0.2s ease-out',
-              transformOrigin: 'bottom center',
-            }}
-          >
-            {renderToolbarButtons()}
-          </Paper>
-        </BubbleMenu>
-      )}
       
       <Box sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
         <Box
           sx={{
             flex: 1,
             minWidth: 0,
+            '.tiptap-editor-content .ProseMirror': {
+              maxHeight: '160px',
+              overflowY: 'auto',
+              outline: 'none',
+              paddingRight: '4px',
+              '&::-webkit-scrollbar': { width: '4px' },
+              '&::-webkit-scrollbar-thumb': { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', borderRadius: '4px' },
+            },
             '.tiptap-editor-content p.is-editor-empty:first-of-type::before': {
               content: 'attr(data-placeholder)',
               float: 'left',
