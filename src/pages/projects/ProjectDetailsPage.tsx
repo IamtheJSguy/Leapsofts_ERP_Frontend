@@ -37,6 +37,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import { tokens } from '@/styles/tokens';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -50,7 +51,7 @@ import {
   useRemoveProjectMember,
   useCreateProjectBoard,
 } from '@/hooks/api/useProjects';
-import { useDeleteBoard } from '@/hooks/api/useKanban';
+import { useDeleteBoard, useUpdateBoard } from '@/hooks/api/useKanban';
 import type { ProjectStatus, ProjectMember } from '@/types';
 
 const TABS = ['Board', 'Overview', 'Team'];
@@ -85,10 +86,12 @@ export const ProjectDetailsPage = () => {
   const removeProjectMemberMutation = useRemoveProjectMember(projectId);
   const createProjectBoardMutation = useCreateProjectBoard(projectId);
   const deleteBoardMutation = useDeleteBoard();
+  const updateBoardMutation = useUpdateBoard();
   const queryClient = useQueryClient();
 
   const { data: dbUsers = [] } = useUsers();
   const currentUser = useAuthStore((s) => s.user);
+  const addToast = useUIStore((s) => s.addToast);
   const { isElevated } = useAuth();
   const { canCreateProjectsAndBoards } = usePermissions();
 
@@ -103,6 +106,12 @@ export const ProjectDetailsPage = () => {
 
   // New board input states
   const [newBoardName, setNewBoardName] = useState('');
+
+  // Edit board states
+  const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
+  const [boardToEditId, setBoardToEditId] = useState<string | null>(null);
+  const [editBoardName, setEditBoardName] = useState('');
+  const [editBoardError, setEditBoardError] = useState('');
 
   // Add member states
   const [selectedUserToAdd, setSelectedUserToAdd] = useState<any | null>(null);
@@ -213,12 +222,63 @@ export const ProjectDetailsPage = () => {
         onSuccess: () => {
           setBoardToDelete(null);
           setIsDeleteBoardConfirmOpen(false);
+          addToast({ message: 'Board deleted successfully', severity: 'success' });
           if (projectId) {
             queryClient.invalidateQueries({ queryKey: ['project', projectId] });
           }
-        }
+        },
+        onError: (err: any) => {
+          const backendMessage =
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to delete board';
+          addToast({ message: backendMessage, severity: 'error' });
+        },
       });
     }
+  };
+
+  const handleOpenEditBoard = (board: any) => {
+    setBoardToEditId(board._id);
+    setEditBoardName(board.name || '');
+    setEditBoardError('');
+    setIsEditBoardModalOpen(true);
+  };
+
+  const handleSaveBoardEdit = () => {
+    const trimmed = editBoardName.trim();
+    if (!trimmed) {
+      setEditBoardError('Board name is required');
+      return;
+    }
+    if (trimmed.length > 100) {
+      setEditBoardError('Board name cannot exceed 100 characters');
+      return;
+    }
+    if (!boardToEditId) return;
+
+    setEditBoardError('');
+    updateBoardMutation.mutate(
+      { id: boardToEditId, name: trimmed },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Board name updated successfully', severity: 'success' });
+          setIsEditBoardModalOpen(false);
+          setBoardToEditId(null);
+          if (projectId) {
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+          }
+        },
+        onError: (err: any) => {
+          const backendMessage =
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            'Failed to update board name';
+          addToast({ message: backendMessage, severity: 'error' });
+        },
+      },
+    );
   };
 
   const projectOwnerUser = useMemo(() => {
@@ -461,6 +521,10 @@ export const ProjectDetailsPage = () => {
                       key={board._id}
                       board={board}
                       onClick={() => navigate(`/projects/${project._id}/boards/${board._id}`)}
+                      onEdit={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditBoard(board);
+                      }}
                       onDelete={
                         canDeleteBoard
                           ? (e) => {
@@ -756,6 +820,55 @@ export const ProjectDetailsPage = () => {
           setBoardToDelete(null);
         }}
       />
+
+      {/* Edit Board Name Dialog */}
+      <Dialog
+        open={isEditBoardModalOpen}
+        onClose={() => setIsEditBoardModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Edit Board Name</DialogTitle>
+        <DialogContent sx={{ overflow: 'visible' }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Board Name"
+            variant="outlined"
+            size="small"
+            value={editBoardName}
+            onChange={(e) => {
+              setEditBoardName(e.target.value);
+              if (editBoardError) setEditBoardError('');
+            }}
+            error={Boolean(editBoardError)}
+            helperText={editBoardError || `${editBoardName.trim().length}/100`}
+            inputProps={{ maxLength: 100 }}
+            sx={{ mt: 1.5 }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveBoardEdit();
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setIsEditBoardModalOpen(false)}
+            disabled={updateBoardMutation.isPending}
+            sx={{ color: 'text.secondary', fontWeight: 600 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveBoardEdit}
+            disabled={!editBoardName.trim() || updateBoardMutation.isPending}
+            variant="contained"
+            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+          >
+            {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <ConfirmDialog
         open={!!memberToRemove}

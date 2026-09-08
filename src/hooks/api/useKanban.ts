@@ -15,8 +15,8 @@ const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
   getBoard: (id: string) => api.get<{ data: KanbanBoardResponse }>(`/kanban/board/${id}`),
   createBoard: (data: { name: string; type?: string; description?: string; status?: string; techStack?: string[] }) => api.post('/kanban/boards', data),
-  updateBoard: ({ id, data }: { id: string; data: Partial<KanbanBoard> }) =>
-    api.put(`/kanban/boards/${id}`, data),
+  updateBoard: ({ id, name }: { id: string; name: string }) =>
+    api.patch<{ data: { message: string; board: KanbanBoard } }>(`/kanban/boards/${id}`, { name }),
   createColumn: ({ boardId, name }: { boardId: string; name: string }) =>
     api.post(`/kanban/boards/${boardId}/columns`, { name }),
   moveCard: ({ cardId, data }: { cardId: string; data: { columnId: string; position: number } }) =>
@@ -226,6 +226,17 @@ export const useDeleteBoard = () => {
     mutationFn: kanbanApi.deleteBoard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+    },
+  });
+};
+
+export const useUpdateBoard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.updateBoard,
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.id] });
     },
   });
 };

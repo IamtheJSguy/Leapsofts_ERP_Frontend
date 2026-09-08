@@ -64,6 +64,7 @@ import {
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
+  useUpdateBoard,
 } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
@@ -2799,6 +2800,49 @@ export const KanbanBoardPage = () => {
   const reorderColumnsMutation = useReorderColumns();
   const createCardMutation = useCreateCard(activeBoardId);
   const assignCardMutation = useAssignCard(activeBoardId);
+  const updateBoardMutation = useUpdateBoard();
+
+  const [isEditBoardNameOpen, setIsEditBoardNameOpen] = useState(false);
+  const [editBoardNameValue, setEditBoardNameValue] = useState('');
+  const [editBoardNameError, setEditBoardNameError] = useState('');
+
+  const handleOpenEditBoardModal = () => {
+    if (actualBoard) {
+      setEditBoardNameValue(actualBoard.name || '');
+      setEditBoardNameError('');
+      setIsEditBoardNameOpen(true);
+    }
+  };
+
+  const handleSaveBoardName = () => {
+    const trimmed = editBoardNameValue.trim();
+    if (!trimmed) {
+      setEditBoardNameError('Board name is required');
+      return;
+    }
+    if (trimmed.length > 100) {
+      setEditBoardNameError('Board name cannot exceed 100 characters');
+      return;
+    }
+    setEditBoardNameError('');
+    updateBoardMutation.mutate(
+      { id: activeBoardId, name: trimmed },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Board name updated successfully', severity: 'success' });
+          setIsEditBoardNameOpen(false);
+        },
+        onError: (err: any) => {
+          const backendMessage =
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            'Failed to update board name';
+          addToast({ message: backendMessage, severity: 'error' });
+        },
+      },
+    );
+  };
 
   const actualBoard = useMemo(() => board?.board, [board]);
   const cardsList = useMemo(() => board?.cards || [], [board]);
@@ -3303,11 +3347,26 @@ export const KanbanBoardPage = () => {
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>/</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>{actualBoard.name}</Typography>
           </Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
-            {boardLead
-              ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
-              : `${actualBoard.name}`}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
+              {boardLead
+                ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
+                : `${actualBoard.name}`}
+            </Typography>
+            <Tooltip title="Edit Board Name">
+              <IconButton
+                size="small"
+                onClick={handleOpenEditBoardModal}
+                sx={{
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
           {boardLead?.company && (
             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>
               {boardLead.company}{(boardLead.jobTitle || boardLead.title) ? ` · ${boardLead.jobTitle || boardLead.title}` : ''}
@@ -3585,6 +3644,45 @@ export const KanbanBoardPage = () => {
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setIsRenameColumnOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
           <Button onClick={handleRenameColumnSubmit} disabled={!renameColumnText.trim() || renameColumnMutation.isPending} variant="contained" sx={{ bgcolor: '#FF5733', borderRadius: '24px', '&:hover': { bgcolor: '#E04A2A' } }}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Board Name Dialog */}
+      <Dialog open={isEditBoardNameOpen} onClose={() => setIsEditBoardNameOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Edit Board Name</DialogTitle>
+        <DialogContent sx={{ overflow: 'visible' }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Board Name"
+            variant="outlined"
+            size="small"
+            value={editBoardNameValue}
+            onChange={(e) => {
+              setEditBoardNameValue(e.target.value);
+              if (editBoardNameError) setEditBoardNameError('');
+            }}
+            error={Boolean(editBoardNameError)}
+            helperText={editBoardNameError || `${editBoardNameValue.trim().length}/100`}
+            inputProps={{ maxLength: 100 }}
+            sx={{ mt: 1.5 }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveBoardName();
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setIsEditBoardNameOpen(false)} disabled={updateBoardMutation.isPending} sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveBoardName}
+            disabled={!editBoardNameValue.trim() || updateBoardMutation.isPending}
+            variant="contained"
+            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+          >
+            {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
 

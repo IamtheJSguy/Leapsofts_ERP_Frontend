@@ -9,6 +9,7 @@ import {
   IconButton,
 } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { tokens } from '@/styles/tokens';
 import type { KanbanBoard, User } from '@/types';
@@ -17,10 +18,11 @@ import { useUsers } from '@/hooks/api/useUsers';
 interface BoardCardProps {
   board: KanbanBoard;
   onClick: () => void;
+  onEdit?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
 }
 
-export const BoardCard = ({ board, onClick, onDelete }: BoardCardProps) => {
+export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { data: dbUsers = [] } = useUsers();
@@ -68,21 +70,38 @@ export const BoardCard = ({ board, onClick, onDelete }: BoardCardProps) => {
             {board.name}
           </Typography>
         </Box>
-        {onDelete && (
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(e);
-            }}
-            sx={{
-              color: 'text.secondary',
-              '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
-            }}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {onEdit && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(e);
+              }}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          )}
+          {onDelete && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(e);
+              }}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
