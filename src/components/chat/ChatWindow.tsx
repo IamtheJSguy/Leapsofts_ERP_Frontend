@@ -31,6 +31,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
+import { RichTextEditor } from './RichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { getDisplayName, getPresenceLabel } from '@/utils/formatters';
@@ -67,7 +68,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const sendChatImage = useSendChatImage();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
-  const [text, setText] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const text = activeConversationId ? (drafts[activeConversationId] || '') : '';
+  const setText = (newText: string) => {
+    if (activeConversationId) {
+      setDrafts(prev => ({ ...prev, [activeConversationId]: newText }));
+    }
+  };
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -932,20 +939,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </MenuItem>
           </Menu>
 
-          <TextField
-            fullWidth
-            multiline
-            maxRows={5}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              const now = Date.now();
-              if (activeConversationId && !activeConversationId.startsWith('mock-') && now - lastTypingEmit.current > 1500) {
-                emitTyping(activeConversationId);
-                lastTypingEmit.current = now;
-              }
-            }}
-            placeholder={pendingImage ? 'Add a caption (optional)...' : 'Type a message...'}
+          <Box
+            sx={{ flex: 1, minWidth: 0 }}
             onPaste={(e) => {
               const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
               if (!item) return;
@@ -955,25 +950,23 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 stageImageFile(file);
               }
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            variant="standard"
-            InputProps={{
-              disableUnderline: true,
-            }}
-            sx={{
-              '& .MuiInputBase-root': {
-                fontSize: '0.95rem',
-                color: 'text.primary',
-                py: 1,
-              },
-            }}
-            aria-label="Message input"
-          />
+          >
+            <RichTextEditor
+              key={activeConversationId}
+              value={text}
+              onChange={(html) => {
+                setText(html);
+                const now = Date.now();
+                if (activeConversationId && !activeConversationId.startsWith('mock-') && now - lastTypingEmit.current > 1500) {
+                  emitTyping(activeConversationId);
+                  lastTypingEmit.current = now;
+                }
+              }}
+              onSubmit={handleSend}
+              placeholder={pendingImage ? 'Add a caption (optional)...' : 'Type a message...'}
+              autoFocus={true}
+            />
+          </Box>
 
           <IconButton
             onClick={handleSend}

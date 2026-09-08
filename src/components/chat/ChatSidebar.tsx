@@ -21,6 +21,15 @@ import {
   Tooltip,
   Chip,
 } from '@mui/material';
+
+const stripHtml = (html: string) => {
+  if (!html) return '';
+  const decoded = html.replace(/<br\s*\/?>/gi, ' ').replace(/<\/(p|div|li|h[1-6])>/gi, ' ').replace(/<[^>]*>?/gm, '');
+  const tmp = document.createElement("div");
+  tmp.innerHTML = decoded;
+  return (tmp.textContent || tmp.innerText || "").trim();
+};
+
 import SearchIcon from '@mui/icons-material/Search';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -150,7 +159,7 @@ export const ChatSidebar = () => {
           .map((p: any) => getDisplayName(p))
           .join(', ');
       return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()));
+        (conv.lastMessage?.content && stripHtml(conv.lastMessage.content).toLowerCase().includes(searchQuery.toLowerCase()));
     }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
   }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById]);
 
@@ -524,9 +533,9 @@ export const ChatSidebar = () => {
                           <Typography
                             variant="body2"
                             sx={{
-                              color: 'text.secondary',
+                              color: unreadCount > 0 ? 'text.primary' : 'text.secondary',
                               fontSize: '0.76rem',
-                              fontWeight: unreadCount > 0 ? 700 : 500,
+                              fontWeight: unreadCount > 0 ? 800 : 500,
                               maxWidth: unreadCount > 0 ? '80%' : '100%',
                               display: 'flex',
                               alignItems: 'center',
@@ -539,7 +548,7 @@ export const ChatSidebar = () => {
                             )}
                             {conv.lastMessage?.type === 'file'
                               ? conv.lastMessage.content || 'Image'
-                              : conv.lastMessage?.content || 'No messages yet.'}
+                              : stripHtml(conv.lastMessage?.content) || 'No messages yet.'}
                           </Typography>
                         )}
                         {unreadCount > 0 && (
