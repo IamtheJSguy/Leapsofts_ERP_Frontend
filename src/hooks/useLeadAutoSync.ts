@@ -10,6 +10,7 @@ export type EditableLeadData = {
   lastName: string;
   prospectName: string;
   email: string;
+  profileUrl: string;
   icp: string;
   profile: string;
   connectionStatus: ConnectionStatus;
@@ -32,6 +33,7 @@ const EDITABLE_FIELDS = [
   'lastName',
   'prospectName',
   'email',
+  'profileUrl',
   'icp',
   'profile',
   'connectionStatus',
@@ -80,6 +82,7 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
       prospectName: prospect.prospectName,
     }),
     email: prospect.email || '',
+    profileUrl: prospect.profileUrl || '',
     icp: prospect.icp || '',
     profile: prospect.profile || '',
     connectionStatus: (prospect.connectionStatus || 'pending') as ConnectionStatus,
@@ -397,6 +400,7 @@ export const useLeadAutoSync = ({
               lastName: data.lastName,
             }),
           email: data.email || '',
+          profileUrl: data.profileUrl || '',
           icp: data.icp || '',
           profile: data.profile || '',
           connectionStatus: (data.connectionStatus || 'pending') as ConnectionStatus,
@@ -419,6 +423,7 @@ export const useLeadAutoSync = ({
               lastName: data.lastName,
             }),
           email: data.email || '',
+          profileUrl: data.profileUrl || '',
           icp: data.icp || '',
           profile: data.profile || '',
           connectionStatus: (data.connectionStatus || 'pending') as ConnectionStatus,

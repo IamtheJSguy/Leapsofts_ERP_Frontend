@@ -106,7 +106,7 @@ export interface Lead {
   firstName?: string;
   lastName?: string;
   email?: string;
-  linkedInUrl?: string;
+  profileUrl?: string;
   salesNavigatorUrl?: string;
   company?: string;
   title?: string;

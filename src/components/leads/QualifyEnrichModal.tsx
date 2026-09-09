@@ -153,7 +153,7 @@ const LeadSummaryColumn = memo(({
         {renderField('Company', 'company')}
         {renderField('Email', 'email')}
         {renderField('Phone', 'phone')}
-        {renderField('LinkedIn', 'linkedInUrl')}
+        {renderField('Profile URL', 'profileUrl')}
         {renderField('Industry', 'industry')}
         {renderField('Company Size', 'companySize')}
         {renderField('Location', 'location')}
@@ -530,7 +530,7 @@ export const QualifyEnrichModal = ({
   const [leadData, setLeadData] = useState<Partial<Lead>>({});
   const [notes, setNotes] = useState('');
   const [sections, setSections] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<{ email?: string; linkedInUrl?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; profileUrl?: string }>({});
   const [sharedWith, setSharedWith] = useState<User[]>([]);
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [meetingForm, setMeetingForm] = useState({
@@ -546,9 +546,14 @@ export const QualifyEnrichModal = ({
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const validateLinkedIn = (url: string) => {
+  const validateProfileUrl = (url: string) => {
     if (!url) return true;
-    return /^https?:\/\/(www\.)?linkedin\.com\/.*$/.test(url);
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -563,7 +568,7 @@ export const QualifyEnrichModal = ({
         industry: lead.industry || '',
         phone: lead.phone || '',
         companySize: lead.companySize || '',
-        linkedInUrl: lead.linkedInUrl || '',
+        profileUrl: lead.profileUrl || '',
         location: lead.location || '',
       });
       setNotes(lead.notes || '');
@@ -610,7 +615,7 @@ export const QualifyEnrichModal = ({
       return;
     }
     setLeadData((prev) => ({ ...prev, [field]: value }));
-    if (field === 'email' || field === 'linkedInUrl') {
+    if (field === 'email' || field === 'profileUrl') {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   }, []);
@@ -624,14 +629,14 @@ export const QualifyEnrichModal = ({
   }, []);
 
   const validateFields = () => {
-    const newErrors: { email?: string; linkedInUrl?: string } = {};
+    const newErrors: { email?: string; profileUrl?: string } = {};
     let hasError = false;
     if (!validateEmail(leadData.email || '')) {
       newErrors.email = 'Invalid email format';
       hasError = true;
     }
-    if (!validateLinkedIn(leadData.linkedInUrl || '')) {
-      newErrors.linkedInUrl = 'Must be a valid LinkedIn URL';
+    if (!validateProfileUrl(leadData.profileUrl || '')) {
+      newErrors.profileUrl = 'Must be a valid URL';
       hasError = true;
     }
     setErrors(newErrors);
@@ -639,7 +644,7 @@ export const QualifyEnrichModal = ({
   };
 
   const buildLeadPayload = () => {
-    const { title, email, linkedInUrl, ...restLeadData } = leadData;
+    const { title, email, profileUrl, ...restLeadData } = leadData;
     const nameParts = splitProspectName(
       leadData.prospectName || composeProspectName(leadData),
     );
@@ -650,7 +655,7 @@ export const QualifyEnrichModal = ({
       prospectName: nameParts.prospectName.trim(),
       ...(title ? { jobTitle: title } : {}),
       ...(email?.trim() ? { email: email.trim() } : { email: '' }),
-      ...(linkedInUrl?.trim() ? { linkedInUrl: linkedInUrl.trim() } : { linkedInUrl: '' }),
+      ...(profileUrl?.trim() ? { profileUrl: profileUrl.trim() } : { profileUrl: '' }),
       ...(notes?.trim() ? { notes } : { notes: '' }),
       sharedWith: sharedWith.map((u) => u._id),
     };
