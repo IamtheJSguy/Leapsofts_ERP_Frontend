@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
+import Mention from '@tiptap/extension-mention';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
-import { Box, IconButton, useTheme, Tooltip, Paper, Popover, Collapse } from '@mui/material';
+import { Box, IconButton, useTheme, Tooltip, Popover, Collapse } from '@mui/material';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
@@ -21,6 +22,8 @@ import TextFormatIcon from '@mui/icons-material/TextFormat';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { tokens } from '@/styles/tokens';
+import type { User } from '@/types';
+import { createMentionSuggestion } from './MentionSuggestionList';
 
 export interface RichTextEditorProps {
   value: string;
@@ -28,15 +31,29 @@ export interface RichTextEditorProps {
   onSubmit: () => void;
   placeholder?: string;
   autoFocus?: boolean;
+  mentionableUsers?: User[];
 }
 
-export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type a message...', autoFocus }: RichTextEditorProps) => {
+export const RichTextEditor = ({
+  value,
+  onChange,
+  onSubmit,
+  placeholder = 'Type a message...',
+  autoFocus,
+  mentionableUsers = [],
+}: RichTextEditorProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [isToolbarVisible, setIsToolbarVisible] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLButtonElement | null>(null);
+
+  const mentionableUsersRef = useRef(mentionableUsers);
+  mentionableUsersRef.current = mentionableUsers;
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
+  const mentionMenuOpenRef = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -54,6 +71,17 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
       }),
       Placeholder.configure({
         placeholder,
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: createMentionSuggestion(
+          () => mentionableUsersRef.current,
+          (open) => {
+            mentionMenuOpenRef.current = open;
+          },
+        ),
       }),
     ],
     content: value,
@@ -75,6 +103,10 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
       },
       handleKeyDown: (view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
+          if (mentionMenuOpenRef.current) {
+            return false;
+          }
+
           let inList = false;
           const { $from } = view.state.selection;
           for (let i = $from.depth; i > 0; i--) {
@@ -89,7 +121,7 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
           }
 
           event.preventDefault();
-          onSubmit();
+          onSubmitRef.current();
           return true;
         }
         return false;
@@ -246,6 +278,10 @@ export const RichTextEditor = ({ value, onChange, onSubmit, placeholder = 'Type 
               color: '#000',
               borderRadius: '2px',
               padding: '0 2px',
+            },
+            '.tiptap-editor-content .mention, .tiptap-editor-content span[data-type="mention"]': {
+              color: tokens.brand.primary,
+              fontWeight: 700,
             },
           }}
         >

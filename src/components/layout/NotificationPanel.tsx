@@ -20,6 +20,45 @@ import { formatDateTime } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
 import { NOTIFICATION_TYPE } from '@/lib/constants';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
+import type { Notification } from '@/types';
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+const asIdString = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (value && typeof value === 'object' && 'toString' in value) {
+    const text = String(value);
+    if (text && text !== '[object Object]') return text;
+  }
+  return undefined;
+};
+
+/** conversationId may live on metadata (API) or data (legacy / socket payloads). */
+const getChatMentionConversationId = (notification: Notification): string | undefined => {
+  const extra = notification as Notification & { data?: unknown };
+  const metadata = asRecord(extra.metadata);
+  const data = asRecord(extra.data);
+  return (
+    asIdString(metadata?.conversationId) ||
+    asIdString(data?.conversationId) ||
+    asIdString(asRecord(metadata?.data)?.conversationId)
+  );
+};
+
+const getChatMentionMessageId = (notification: Notification): string | undefined => {
+  const extra = notification as Notification & { data?: unknown };
+  const metadata = asRecord(extra.metadata);
+  const data = asRecord(extra.data);
+  return (
+    asIdString(metadata?.messageId) ||
+    asIdString(data?.messageId) ||
+    asIdString(asRecord(metadata?.data)?.messageId)
+  );
+};
 
 export const NotificationPanel = () => {
   const navigate = useNavigate();
@@ -40,7 +79,10 @@ export const NotificationPanel = () => {
   };
 
   const getNotificationIcon = (notification: { title: string; type?: string }) => {
-    if (notification.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION) {
+    if (
+      notification.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION ||
+      notification.type === NOTIFICATION_TYPE.CHAT_MESSAGE_MENTION
+    ) {
       return <AlternateEmailIcon sx={{ fontSize: 20 }} />;
     }
     return <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />;
@@ -212,6 +254,16 @@ export const NotificationPanel = () => {
                     } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {
                       setNotificationPanelOpen(false);
                       navigate(`/meetings?meetingId=${(n as any).metadata.meetingId}`);
+                    } else if (n.type === NOTIFICATION_TYPE.CHAT_MESSAGE_MENTION) {
+                      const conversationId = getChatMentionConversationId(n);
+                      if (conversationId) {
+                        setNotificationPanelOpen(false);
+                        const messageId = getChatMentionMessageId(n);
+                        const search = messageId
+                          ? `?message=${encodeURIComponent(messageId)}`
+                          : '';
+                        navigate(`/chat/${conversationId}${search}`);
+                      }
                     } else if (n.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION && (n as any).metadata?.boardId) {
                       setNotificationPanelOpen(false);
                       const m = (n as any).metadata;
@@ -242,7 +294,7 @@ export const NotificationPanel = () => {
                     borderRadius: '20px',
                     display: 'flex',
                     gap: { xs: 1.5, sm: 2.5 },
-                    cursor: n.isRead ? 'default' : 'pointer',
+                    cursor: 'pointer',
                     bgcolor: !n.isRead 
                       ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 6%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 3%, transparent)`) 
                       : (isDarkMode ? `color-mix(in srgb, #FFF 1.5%, transparent)` : '#FFFFFF'),

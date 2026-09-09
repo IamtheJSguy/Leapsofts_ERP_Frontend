@@ -47,6 +47,7 @@ export type NotificationType =
   | 'kpi_end_of_shift'
   | 'sheet_update_reminder'
   | 'kanban_comment_mention'
+  | 'chat_message_mention'
   | 'kanban_unassigned_cards'
   | 'kanban_task_assigned'
   | 'kanban_task_completed'

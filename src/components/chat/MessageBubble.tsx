@@ -10,9 +10,8 @@ import {
   Popover,
   ClickAwayListener,
 } from '@mui/material';
-import DOMPurify from 'dompurify';
-import linkifyHtml from 'linkify-html';
-import type { Message, MessageReaction } from '@/types';
+import type { Message, MessageReaction, User } from '@/types';
+import { chatMentionSx, sanitizeChatHtml } from '@/utils/chatHtml';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
 import { MESSAGE_SEEN_TICK_COLOR, QUICK_REACTION_EMOJIS } from '@/lib/constants';
@@ -86,6 +85,7 @@ interface MessageBubbleProps {
   currentUserId?: string;
   otherParticipantIds?: string[];
   otherParticipants?: MessageInfoParticipant[];
+  mentionableUsers?: User[];
   isGroup?: boolean;
   onReply?: (message: Message) => void;
   onQuoteClick?: (messageId: string) => void;
@@ -97,6 +97,7 @@ export const MessageBubble = React.memo(({
   currentUserId,
   otherParticipantIds = [],
   otherParticipants = [],
+  mentionableUsers = [],
   isGroup = false,
   onReply,
   onQuoteClick,
@@ -461,7 +462,7 @@ export const MessageBubble = React.memo(({
                 </Box>
               </Box>
             ) : isImageFile ? (
-              <FileMessage message={message} isOwn={isOwn} />
+              <FileMessage message={message} isOwn={isOwn} mentionableUsers={mentionableUsers} />
             ) : (
               /* ───── Regular Text Message ───── */
               <Box
@@ -485,9 +486,10 @@ export const MessageBubble = React.memo(({
                     borderRadius: '2px',
                     padding: '0 2px',
                   },
+                  ...chatMentionSx,
                 }}
-                dangerouslySetInnerHTML={{ 
-                  __html: linkifyHtml(DOMPurify.sanitize(message.content || '', { ADD_ATTR: ['target'] }), { target: '_blank', rel: 'noopener noreferrer' }) 
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeChatHtml(message.content || '', mentionableUsers),
                 }}
               />
             )}
