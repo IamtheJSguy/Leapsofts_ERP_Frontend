@@ -690,6 +690,22 @@ export interface Notification {
   metadata?: Record<string, unknown>;
 }
 
+export interface MeetingLinkedCard {
+  _id: string;
+  title: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent' | string;
+  dueDate?: string;
+  isDone?: boolean;
+  boardId?: string;
+  boardName?: string;
+  projectId?: string;
+  columnId?: string;
+  columnName?: string;
+  assignedTo?: string[] | User[];
+  leadId?: string | Lead;
+}
+
 export interface Meeting {
   _id: string;
   title: string;
@@ -701,6 +717,7 @@ export interface Meeting {
   status?: 'scheduled' | 'completed' | 'cancelled';
   createdBy?: string | User; // the user who created this meeting
   leadId?: string | Lead;
+  linkedCards?: MeetingLinkedCard[];
 }
 
 export interface KanbanLabel {

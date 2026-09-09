@@ -27,7 +27,9 @@ import { tokens } from '@/styles/tokens';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useLeads } from '@/hooks/api/useLeads';
 import { useAuth } from '@/hooks/useAuth';
+import { canEditOrDeleteMeeting } from '@/utils/meetingPermissions';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
+import { LinkedKanbanCards } from './LinkedKanbanCards';
 
 interface MeetingDetailModalProps {
   meeting: Meeting | null;
@@ -46,7 +48,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const { user: currentUser, isAdmin } = useAuth();
+  const { user: currentUser, isElevated } = useAuth();
 
   const { data: allUsers = [] } = useUsers();
   const { data: leadsResponse } = useLeads();
@@ -84,12 +86,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     return null;
   };
 
-  const canEditOrDelete = () => {
-    if (!currentUser || !meeting) return false;
-    if (isAdmin) return true;
-    const createdById = typeof meeting.createdBy === 'object' ? meeting.createdBy._id : meeting.createdBy;
-    return createdById === currentUser._id;
-  };
+  const canEditOrDelete = () =>
+    canEditOrDeleteMeeting(meeting, currentUser, { isElevated, allUsers });
 
   const createdById = meeting.createdBy
     ? typeof meeting.createdBy === 'string'
@@ -246,6 +244,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             </Box>
           );
         })()}
+
+        <LinkedKanbanCards cards={meeting.linkedCards} isDarkMode={isDarkMode} />
 
         {/* Organizer */}
         {(() => {

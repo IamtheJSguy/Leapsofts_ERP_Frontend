@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Typography, Button, useTheme } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import { MeetingScheduler } from '@/components/meetings/MeetingScheduler';
 import { MeetingList } from '@/components/meetings/MeetingList';
@@ -12,6 +13,13 @@ const MeetingsPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('meetingId')) {
+      setTab(1);
+    }
+  }, [searchParams]);
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 4 }}>
