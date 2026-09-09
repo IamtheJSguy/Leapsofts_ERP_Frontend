@@ -79,6 +79,12 @@ export const SalesEditRow = memo(function SalesEditRow({
               onChange={(e) => onUpdate(leadId, { email: e.target.value })}
               style={field}
             />
+            <input
+              placeholder="Profile URL"
+              value={editData.profileUrl}
+              onChange={(e) => onUpdate(leadId, { profileUrl: e.target.value })}
+              style={field}
+            />
           </Box>
           <LeadCommentButton
             comment={editData.leadComment}
@@ -233,6 +239,7 @@ type SalesInlineAddRowProps = {
     lastName?: string;
     prospectName?: string;
     email?: string;
+    profileUrl?: string;
     icp?: string;
     profile?: string;
     connectionStatus?: ConnectionStatus | string;
@@ -288,6 +295,12 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
               placeholder="Email"
               value={data.email || ''}
               onChange={(e) => onUpdate({ email: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+            <input
+              placeholder="Profile URL"
+              value={data.profileUrl || ''}
+              onChange={(e) => onUpdate({ profileUrl: e.target.value })}
               style={nativeFieldStyle(isDarkMode)}
             />
           </Box>

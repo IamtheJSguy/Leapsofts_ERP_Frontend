@@ -79,7 +79,7 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
             {(
               [
                 ['email', 'Email'],
-                ['linkedInUrl', 'LinkedIn URL'],
+                ['profileUrl', 'Profile URL'],
                 ['salesNavigatorUrl', 'Sales Navigator URL'],
                 ['company', 'Company'],
                 ['title', 'Title'],

@@ -28,6 +28,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import DownloadIcon from '@mui/icons-material/Download';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
@@ -1026,6 +1027,26 @@ export default function ProfilePage() {
                       }}
                       sx={textFieldSx}
                     />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+                      Profile URL is an optional last column. Existing sheets without it continue to sync as before.
+                    </Typography>
+                    <Button
+                      component="a"
+                      href="/google-sheet-leads-template.xlsx"
+                      download="google-sheet-leads-template.xlsx"
+                      startIcon={<DownloadIcon />}
+                      sx={{
+                        mt: 1.5,
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        color: tokens.brand.primary,
+                        px: 0,
+                        minWidth: 0,
+                        '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+                      }}
+                    >
+                      Download sheet format (Excel)
+                    </Button>
                   </Box>
 
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

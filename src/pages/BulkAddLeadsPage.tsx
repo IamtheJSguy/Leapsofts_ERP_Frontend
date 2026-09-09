@@ -39,6 +39,7 @@ const DRAFT_SAVE_DEBOUNCE_MS = 1000; // 1 second
 type BulkLeadRow = {
   prospectName: string;
   email: string;
+  profileUrl: string;
   icp: string;
   profile: string;
   connectionStatus: ConnectionStatus | '';
@@ -57,6 +58,7 @@ const EMPTY_ERRORS: RowErrors = {};
 const createEmptyRow = (): BulkLeadRow => ({
   prospectName: '',
   email: '',
+  profileUrl: '',
   icp: '',
   profile: '',
   connectionStatus: 'pending',
@@ -68,6 +70,7 @@ const createEmptyRow = (): BulkLeadRow => ({
 const isRowEmpty = (row: BulkLeadRow) =>
   !row.prospectName.trim() &&
   !row.email.trim() &&
+  !row.profileUrl.trim() &&
   !row.icp.trim() &&
   !row.profile.trim();
 
@@ -89,6 +92,7 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
     return {
       prospectName,
       email: typeof row.email === 'string' ? row.email : '',
+      profileUrl: typeof row.profileUrl === 'string' ? row.profileUrl : '',
       icp: typeof row.icp === 'string' ? row.icp : '',
       profile: typeof row.profile === 'string' ? row.profile : '',
       connectionStatus: (row.connectionStatus ?? 'pending') as ConnectionStatus | '',
@@ -189,6 +193,12 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
               placeholder="Email"
               value={row.email}
               onChange={(e) => onUpdate(index, { email: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+            <input
+              placeholder="Profile URL"
+              value={row.profileUrl}
+              onChange={(e) => onUpdate(index, { profileUrl: e.target.value })}
               style={nativeFieldStyle(isDarkMode)}
             />
           </div>
@@ -460,6 +470,7 @@ export const BulkAddLeadsPage = () => {
         const mapped = normalizeDraftRows(imported) ?? imported.map((row) => ({
           prospectName: [row.firstName, row.lastName].filter(Boolean).join(' ').trim(),
           email: row.email,
+          profileUrl: row.profileUrl,
           icp: row.icp,
           profile: row.profile,
           connectionStatus: row.connectionStatus,
@@ -555,6 +566,7 @@ export const BulkAddLeadsPage = () => {
         lastName: nameParts.lastName,
         prospectName: nameParts.prospectName.trim(),
         email: row.email.trim(),
+        profileUrl: row.profileUrl.trim(),
         icp: row.icp.trim(),
         profile: row.profile.trim(),
         connectionStatus,

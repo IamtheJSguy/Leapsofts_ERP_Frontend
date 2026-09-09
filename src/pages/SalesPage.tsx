@@ -38,6 +38,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SyncIcon from '@mui/icons-material/Sync';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import EmailIcon from '@mui/icons-material/Email';
+import LinkIcon from '@mui/icons-material/Link';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -298,6 +299,7 @@ export const SalesPage = () => {
     lastName: '',
     prospectName: '',
     email: '',
+    profileUrl: '',
     icp: '',
     profile: '',
     connectionStatus: 'pending',
@@ -350,7 +352,7 @@ export const SalesPage = () => {
           setIsAddingInline(false);
           setAddLeadErrors({});
           setNewLeadData({
-            firstName: '', lastName: '', prospectName: '', email: '', icp: '', profile: '',
+            firstName: '', lastName: '', prospectName: '', email: '', profileUrl: '', icp: '', profile: '',
             connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
             futureLeadDate: undefined,
           });
@@ -511,6 +513,7 @@ export const SalesPage = () => {
         payload.firstName !== (originalProspect.firstName || '') ||
         payload.lastName !== (originalProspect.lastName || '') ||
         payload.email !== (originalProspect.email || '') ||
+        payload.profileUrl !== (originalProspect.profileUrl || '') ||
         payload.icp !== (originalProspect.icp || '') ||
         payload.profile !== (originalProspect.profile || '') ||
         payload.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
@@ -1840,6 +1843,32 @@ export const SalesPage = () => {
                                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                                     <EmailIcon sx={{ fontSize: 12 }} />
                                     {prospect.email}
+                                  </Typography>
+                                )}
+                                {prospect.profileUrl && (
+                                  <Typography
+                                    component="a"
+                                    href={prospect.profileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    variant="caption"
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      color: 'text.secondary',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.5,
+                                      mt: 0.25,
+                                      textDecoration: 'none',
+                                      maxWidth: 220,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                    }}
+                                  >
+                                    <LinkIcon sx={{ fontSize: 12, flexShrink: 0 }} />
+                                    {prospect.profileUrl}
                                   </Typography>
                                 )}
                               </Box>

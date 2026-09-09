@@ -36,7 +36,7 @@ export const leadSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
-  linkedInUrl: z.string().url().optional().or(z.literal('')),
+  profileUrl: z.string().url().optional().or(z.literal('')),
   salesNavigatorUrl: z.string().url().optional().or(z.literal('')),
   company: z.string().optional(),
   title: z.string().optional(),

@@ -7,7 +7,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import LinkIcon from '@mui/icons-material/Link';
 import EditIcon from '@mui/icons-material/Edit';
 import LaunchIcon from '@mui/icons-material/Launch';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -246,13 +246,13 @@ export const LeadDetailsPage = () => {
                 )}
               </Box>
 
-              {lead.linkedInUrl && (
+              {lead.profileUrl && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
                   <Button
                     variant="outlined"
-                    startIcon={<LinkedInIcon />}
+                    startIcon={<LinkIcon />}
                     endIcon={<LaunchIcon sx={{ fontSize: 14 }} />}
-                    href={lead.linkedInUrl}
+                    href={lead.profileUrl}
                     target="_blank"
                     rel="noreferrer"
                     fullWidth
@@ -262,7 +262,7 @@ export const LeadDetailsPage = () => {
                       '&:hover': { bgcolor: 'rgba(0, 119, 181, 0.08)' }
                     }}
                   >
-                    View LinkedIn Profile
+                    View Profile
                   </Button>
                 </Box>
               )}
