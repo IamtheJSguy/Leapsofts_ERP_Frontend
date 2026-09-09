@@ -61,6 +61,7 @@ export const NOTIFICATION_TYPE = {
   KPI_END_OF_SHIFT: 'kpi_end_of_shift',
   SHEET_UPDATE_REMINDER: 'sheet_update_reminder',
   KANBAN_COMMENT_MENTION: 'kanban_comment_mention',
+  CHAT_MESSAGE_MENTION: 'chat_message_mention',
   KANBAN_UNASSIGNED_CARDS: 'kanban_unassigned_cards',
   KANBAN_TASK_ASSIGNED: 'kanban_task_assigned',
   KANBAN_TASK_COMPLETED: 'kanban_task_completed',

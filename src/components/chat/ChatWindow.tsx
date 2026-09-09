@@ -23,6 +23,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
+import { useSearchParams } from 'react-router-dom';
 import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
@@ -42,7 +43,7 @@ import {
 } from '@/utils/chatMessageUtils';
 import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoard, useKanbanBoards } from '@/hooks/api/useKanban';
-import type { Message, PresenceStatus } from '@/types';
+import type { Message, PresenceStatus, User } from '@/types';
 
 interface ChatWindowProps {
   onSearchOpen?: () => void;
@@ -51,6 +52,8 @@ interface ChatWindowProps {
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { activeConversationId, setActiveConversation, clearUnread, setReplyingTo } = useChatStore();
+  const [searchParams] = useSearchParams();
+  const highlightMessageId = searchParams.get('message');
   const replyingTo = useChatStore((s) => s.replyingTo);
   const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const { user } = useAuth();
@@ -141,6 +144,21 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const needsBoardNameFetch = Boolean(headerBoardId && !getConversationTitle(activeConversation!, boardsLiveName));
   const { data: headerBoardPayload } = useKanbanBoard(needsBoardNameFetch ? headerBoardId : undefined);
   const liveHeaderBoardName = boardsLiveName || headerBoardPayload?.board?.name;
+
+  const conversationUsers = useMemo((): User[] => {
+    if (!activeConversation?.participants?.length) return [];
+    return activeConversation.participants
+      .map((participant) => {
+        if (typeof participant === 'object' && participant && '_id' in participant) {
+          return participant;
+        }
+        const id = typeof participant === 'string' ? participant : '';
+        return dbUsers.find((u) => u._id === id);
+      })
+      .filter((u): u is User => Boolean(u));
+  }, [activeConversation, dbUsers]);
+
+  const mentionableUsers = isGroupConversation ? conversationUsers : [];
 
   const otherParticipants = useMemo(() => {
     return otherParticipantIds.map((id) => {
@@ -259,6 +277,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const displayMessages = activeConversationId?.startsWith('mock-conv-') ? mockMessages : messages;
   const showLoader = isLoading && !activeConversationId?.startsWith('mock-conv-');
+
+  useEffect(() => {
+    if (!highlightMessageId || !activeConversationId || showLoader) return;
+    shouldStickToBottomRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      const el = messagesContainerRef.current?.querySelector(
+        `[data-message-id="${highlightMessageId}"]`,
+      );
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightMessageId, activeConversationId, displayMessages, showLoader]);
 
   // Memoize user lookup map for O(1) sender resolution
   const userMap = useMemo(() => {
@@ -777,6 +807,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                     currentUserId={user?._id}
                     otherParticipantIds={otherParticipantIds}
                     otherParticipants={otherParticipants}
+                    mentionableUsers={conversationUsers}
                     isGroup={isGroupConversation}
                     onReply={handleReply}
                     onQuoteClick={handleQuoteClick}
@@ -965,6 +996,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               onSubmit={handleSend}
               placeholder={pendingImage ? 'Add a caption (optional)...' : 'Type a message...'}
               autoFocus={true}
+              mentionableUsers={mentionableUsers}
             />
           </Box>
 

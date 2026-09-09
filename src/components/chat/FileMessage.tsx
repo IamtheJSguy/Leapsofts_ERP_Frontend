@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Box, IconButton, Modal, Typography, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import type { Message } from '@/types';
-import { LinkifiedText } from './LinkifiedText';
+import type { Message, User } from '@/types';
+import { chatMentionSx, sanitizeChatHtml } from '@/utils/chatHtml';
+import { tokens } from '@/styles/tokens';
 
 interface FileMessageProps {
   message: Message;
   isOwn?: boolean;
+  mentionableUsers?: User[];
 }
 
-export const FileMessage = ({ message, isOwn = false }: FileMessageProps) => {
+export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: FileMessageProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (!message.fileUrl) {
@@ -74,20 +76,36 @@ export const FileMessage = ({ message, isOwn = false }: FileMessageProps) => {
         )}
       </Box>
       {message.content?.trim() ? (
-        <Typography
-          variant="body2"
+        <Box
+          className="prose tiptap-content"
           sx={{
             px: 2,
             pt: 1,
             pb: 1,
             fontSize: '0.85rem',
             fontWeight: 500,
+            lineHeight: 1.5,
             wordBreak: 'break-word',
             color: isOwn ? '#fff' : 'inherit',
+            '& p': { m: 0 },
+            '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
+            '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
+            '& a': {
+              color: isOwn ? '#fff' : tokens.brand.primary,
+              textDecoration: 'underline',
+            },
+            '& mark': {
+              backgroundColor: '#ffcc00',
+              color: '#000',
+              borderRadius: '2px',
+              padding: '0 2px',
+            },
+            ...chatMentionSx,
           }}
-        >
-          <LinkifiedText text={message.content} />
-        </Typography>
+          dangerouslySetInnerHTML={{
+            __html: sanitizeChatHtml(message.content, mentionableUsers),
+          }}
+        />
       ) : null}
 
       <Modal

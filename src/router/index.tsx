@@ -114,15 +114,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'chat',
-        element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
-            <ChatPage />
-          </ProtectedRoute>,
-        ),
-      },
-      {
-        path: 'chat/:conversationId',
+        path: 'chat/:conversationId?',
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
             <ChatPage />
