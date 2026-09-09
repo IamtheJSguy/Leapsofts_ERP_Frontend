@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -95,8 +95,31 @@ export const UserDailyKpisView = () => {
   const isDarkMode = theme.palette.mode === 'dark';
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [filter, setFilter] = useState<StatusTab>('active');
+  const filter: StatusTab = useMemo(() => {
+    const rawStatus = searchParams.get('status');
+    if (rawStatus && ['active', 'overdue', 'done', 'incomplete', 'requests'].includes(rawStatus)) {
+      return rawStatus as StatusTab;
+    }
+    return 'active';
+  }, [searchParams]);
+
+  const handleFilterChange = (newFilter: StatusTab) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (newFilter === 'active') {
+          next.delete('status');
+        } else {
+          next.set('status', newFilter);
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
   const [changeModal, setChangeModal] = useState<ChangeRequestModalMode | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuKpi, setMenuKpi] = useState<any>(null);
@@ -116,7 +139,7 @@ export const UserDailyKpisView = () => {
 
   useEffect(() => {
     if (isAdmin && (filter === 'incomplete' || filter === 'requests')) {
-      setFilter('active');
+      handleFilterChange('active');
     }
   }, [isAdmin, filter]);
 
@@ -326,7 +349,7 @@ export const UserDailyKpisView = () => {
           <Chip
             key={f.id}
             label={`${f.label} ${f.count}`}
-            onClick={() => setFilter(f.id as typeof filter)}
+            onClick={() => handleFilterChange(f.id as StatusTab)}
             sx={{
               px: 1, height: 38, borderRadius: '12px', fontWeight: filter === f.id ? 800 : 600, fontSize: '0.9rem', cursor: 'pointer',
               bgcolor: filter === f.id ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)') : 'transparent',
