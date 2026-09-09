@@ -963,10 +963,11 @@ export const SalesPage = () => {
               xs: 'repeat(2, minmax(0, 1fr))',
               sm: 'repeat(3, minmax(0, 1fr))',
               md: 'repeat(4, minmax(0, 1fr))',
-              lg: 'repeat(4, minmax(0, 1fr))',
-              xl: 'repeat(7, minmax(0, 1fr))',
             },
-            gap: 2,
+            '@media (min-width: 1024px)': {
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+            },
+            gap: { xs: 1.25, md: 1.5, lg: 1.25, xl: 1.75 },
             mb: 1.5,
           }}
         >
@@ -979,14 +980,13 @@ export const SalesPage = () => {
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
-                  borderRadius: '24px',
-                  p: { xs: 1.5, md: 2, xl: 2.25 },
-                  height: '100%',
+                  borderRadius: '20px',
+                  p: { xs: 1.25, md: 1.5, xl: 1.75 },
                   minWidth: 0,
                   display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row', lg: 'column', xl: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center', lg: 'flex-start', xl: 'center' },
-                  gap: { xs: 1.2, sm: 1.75 },
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: 1.25,
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
                   cursor: 'pointer',
@@ -997,34 +997,85 @@ export const SalesPage = () => {
                   },
                 }}
               >
+                {/* Top Row: Icon on left, Percentage on right */}
                 <Box
                   sx={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: '12px',
-                    bgcolor: theme.bgcolor,
-                    color: theme.color,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    gap: 0.5,
                   }}
                 >
-                  {theme.icon}
+                  <Box
+                    sx={{
+                      width: { xs: 32, md: 34, xl: 36 },
+                      height: { xs: 32, md: 34, xl: 36 },
+                      borderRadius: '10px',
+                      bgcolor: theme.bgcolor,
+                      color: theme.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      '& .MuiSvgIcon-root': {
+                        fontSize: { xs: '1.1rem', xl: '1.25rem' },
+                      },
+                    }}
+                  >
+                    {theme.icon}
+                  </Box>
+
+                  {item.percent && (
+                    <Chip
+                      label={item.percent}
+                      size="small"
+                      sx={{
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                        color: 'text.secondary',
+                        fontSize: '0.62rem',
+                        height: 20,
+                        fontWeight: 800,
+                        px: 0.2,
+                        '& .MuiChip-label': { px: 0.75 },
+                      }}
+                    />
+                  )}
                 </Box>
-                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+
+                {/* Bottom Section: Label & Stat Value */}
+                <Box sx={{ minWidth: 0, width: '100%', mt: 'auto' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 0.5,
+                      minHeight: 26,
+                      mb: 0.5,
+                    }}
+                  >
                     <Typography
                       variant="caption"
+                      title={
+                        item.label === 'FOLLOW UP'
+                          ? followUpView === '1'
+                            ? 'FOLLOW UP 1'
+                            : followUpView === '2'
+                              ? 'FOLLOW UP 2'
+                              : 'FOLLOW UP'
+                          : item.label
+                      }
                       sx={{
                         color: 'text.secondary',
                         fontWeight: 750,
-                        fontSize: '0.6rem',
-                        letterSpacing: '0.04em',
+                        fontSize: { xs: '0.6rem', xl: '0.65rem' },
+                        letterSpacing: '0.03em',
                         lineHeight: 1.2,
-                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        whiteSpace: 'nowrap',
                       }}
                     >
                       {item.label === 'FOLLOW UP'
@@ -1035,6 +1086,7 @@ export const SalesPage = () => {
                             : 'FOLLOW UP'
                         : item.label}
                     </Typography>
+
                     {item.label === 'FOLLOW UP' && (
                       <Select
                         size="small"
@@ -1046,43 +1098,39 @@ export const SalesPage = () => {
                           applyFunnelCard('FOLLOW UP');
                         }}
                         sx={{
-                          minWidth: 58,
+                          minWidth: 50,
                           height: 20,
-                          fontSize: '0.58rem',
+                          fontSize: '0.6rem',
                           fontWeight: 800,
+                          flexShrink: 0,
                           '& .MuiSelect-select': {
                             py: 0,
-                            px: 0.75,
-                            pr: '18px !important',
+                            px: 0.6,
+                            pr: '16px !important',
                           },
                           '& .MuiOutlinedInput-notchedOutline': {
                             borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
                           },
-                          '& .MuiSvgIcon-root': { fontSize: 14 },
+                          '& .MuiSvgIcon-root': { fontSize: 13 },
                         }}
                       >
-                        <MenuItem value="all" sx={{ fontSize: '0.75rem' }}>All</MenuItem>
-                        <MenuItem value="1" sx={{ fontSize: '0.75rem' }}>#1</MenuItem>
-                        <MenuItem value="2" sx={{ fontSize: '0.75rem' }}>#2</MenuItem>
+                        <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                        <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>#1</MenuItem>
+                        <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>#2</MenuItem>
                       </Select>
                     )}
-                    {item.percent && (
-                      <Chip
-                        label={item.percent}
-                        size="small"
-                        sx={{
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                          color: 'text.secondary',
-                          fontSize: '0.58rem',
-                          height: 16,
-                          fontWeight: 800,
-                          px: 0.2,
-                          '& .MuiChip-label': { px: 0.75 }
-                        }}
-                      />
-                    )}
                   </Box>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: theme.color, lineHeight: 1 }}>
+
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 800,
+                      color: theme.color,
+                      fontSize: { xs: '1.25rem', md: '1.35rem', xl: '1.55rem' },
+                      lineHeight: 1,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
                     {item.value}
                   </Typography>
                 </Box>
