@@ -33,7 +33,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+    const url = String(originalRequest.url ?? '');
+    const isAuthChallenge = url.includes('/auth/login') || url.includes('/auth/2fa/');
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthChallenge) {
       originalRequest._retry = true;
       if (isRefreshing) {
         return new Promise((resolve) => {
