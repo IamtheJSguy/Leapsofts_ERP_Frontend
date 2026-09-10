@@ -18,6 +18,7 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { useAuth } from '@/hooks/useAuth';
 import { useDashboard, useMyDashboardTasks } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
@@ -43,13 +44,60 @@ const overlapsLocalDay = (entry: SalesKpiEntry, day = new Date()) => {
 const isSalesKpiDone = (status?: string) =>
   status === SALES_KPI_STATUS.COMPLETED_ON_TIME || status === SALES_KPI_STATUS.COMPLETED_LATE;
 
+const getLocalDateString = (dateInput?: string | Date, timeZone?: string): string => {
+  if (!dateInput) return '';
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (Number.isNaN(d.getTime())) return '';
+  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  }
+};
+
+const formatTaskDate = (dateInput?: string | Date, timeZone?: string): string => {
+  if (!dateInput) return '';
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (Number.isNaN(d.getTime())) return '';
+  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(d);
+  }
+};
+
 export const UserDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: stats, isLoading, refetch } = useDashboard();
   const { data: boards } = useKanbanBoards();
   const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
   const { data: salesGrouped } = useMySalesKpis({ days: 7 });
   const { data: allMeetings = [] } = useMeetings();
+
+  const userTimeZone = useMemo(() => {
+    return (user as any)?.timezone || (user as any)?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }, [user]);
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [logType, setLogType] = useState('connection');
@@ -76,6 +124,20 @@ export const UserDashboard = () => {
 
   const salesCompletedCount = salesGrouped?.counts.done.total ?? 0;
   const dashboardTasks = dashboardTasksData?.tasks ?? [];
+
+  const overdueTasks = useMemo(() => {
+    return dashboardTasks.filter((task) => task.isOverdue);
+  }, [dashboardTasks]);
+
+  const activeTodayTasks = useMemo(() => {
+    const todayLocalStr = getLocalDateString(new Date(), userTimeZone);
+    return dashboardTasks.filter((task) => {
+      if (task.isOverdue) return false;
+      if (!task.dueDate) return true;
+      const taskLocalStr = getLocalDateString(task.dueDate, userTimeZone);
+      return taskLocalStr === todayLocalStr;
+    });
+  }, [dashboardTasks, userTimeZone]);
   const todaySalesCompletedCount = useMemo(
     () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
     [todaySalesKpis],
@@ -88,7 +150,7 @@ export const UserDashboard = () => {
   const completedDailyKpisCount = Math.max(
     0,
     (stats?.metrics?.completedKpis || 0) -
-      (summaryIncludesSalesKpis ? todaySalesCompletedCount : 0),
+    (summaryIncludesSalesKpis ? todaySalesCompletedCount : 0),
   );
   const completedKpisWithSales = completedDailyKpisCount + salesCompletedCount;
 
@@ -167,11 +229,11 @@ export const UserDashboard = () => {
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 2.5 }}>
               <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '1rem' }, color: tokens.text.primary, display: 'flex', alignItems: 'center', gap: 1, letterSpacing: '-0.01em' }}>
                 <CheckCircleOutlinedIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} />
-                My Boards
+                My Tasks
               </Typography>
               <Button
                 variant="text"
-                onClick={() => navigate('/projects')}
+                onClick={() => navigate('/tasks')}
                 sx={{
                   textTransform: 'none',
                   color: tokens.text.muted,
@@ -180,72 +242,141 @@ export const UserDashboard = () => {
                   '&:hover': { color: tokens.brand.primary }
                 }}
               >
-                View all ({totalBoardsCount}) &gt;
+                View all &gt;
               </Button>
             </Box>
 
-            {/* Board header */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.text.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                RECENT BOARDS
-              </Typography>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.text.muted }}>
-                {totalBoardsCount}
-              </Typography>
-            </Box>
-
-            {/* Boards list entries */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
-              {boardsList.map((board: any) => (
-                <Box
-                  key={board._id}
-                  onClick={() => navigate(`/projects/${board.projectId}/boards/${board._id}`)}
+            {/* 1. Due Tasks (Top) */}
+            {overdueTasks.length > 0 && (
+              <Box sx={{ mb: 2.5 }}>
+                <Typography
                   sx={{
+                    fontWeight: 800,
+                    fontSize: '0.72rem',
+                    color: tokens.semantic.error,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    p: 1.8,
-                    borderRadius: '12px',
-                    bgcolor: 'rgba(0,0,0,0.006)',
-                    border: '1px solid rgba(0,0,0,0.02)',
-                    cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                    '&:hover': {
-                      bgcolor: 'rgba(0,0,0,0.015)',
-                      borderColor: 'rgba(0,0,0,0.05)',
-                      transform: 'translateX(2px)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-                    }
+                    gap: 0.8,
+                    mb: 1.2,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.12)' }} />
-                    <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                      {board.name}
-                    </Typography>
-                  </Box>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
-                    {board.columns?.length || 0} columns
-                  </Typography>
+                  <WarningAmberOutlinedIcon sx={{ fontSize: 16 }} />
+                  Due Tasks ({overdueTasks.length})
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {overdueTasks.map((task) => (
+                    <Box
+                      key={task.id}
+                      onClick={() => navigate('/tasks')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1.8,
+                        borderRadius: '12px',
+                        bgcolor: 'rgba(239, 68, 68, 0.04)',
+                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                        cursor: 'pointer',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(239, 68, 68, 0.08)',
+                          transform: 'translateX(2px)',
+                        },
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                        {task.title}
+                        {task.currentValue !== undefined || task.targetValue !== undefined
+                          ? ` — ${task.currentValue ?? 0} / ${task.targetValue ?? 0}`
+                          : ''}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {task.dueDate && (
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: tokens.text.muted }}>
+                            Date: {formatTaskDate(task.dueDate, userTimeZone)}
+                          </Typography>
+                        )}
+                        <Chip
+                          label="Overdue"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            bgcolor: 'rgba(239, 68, 68, 0.12)',
+                            color: tokens.semantic.error,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
-              ))}
-            </Box>
+              </Box>
+            )}
 
-            {totalBoardsCount > boardsList.length && (
-              <Typography
-                onClick={() => navigate('/projects')}
-                sx={{
-                  mt: 'auto',
-                  pt: 1,
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  color: tokens.text.muted,
-                  cursor: 'pointer',
-                  transition: 'color 0.2s',
-                  '&:hover': { color: tokens.brand.primary }
-                }}
-              >
-                +{totalBoardsCount - boardsList.length} more of your boards →
+            {/* 2. Active Tasks (Below) */}
+            {activeTodayTasks.length > 0 && (
+              <Box sx={{ mb: 2.5 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.72rem',
+                    color: tokens.text.muted,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.8,
+                    mb: 1.2,
+                  }}
+                >
+                  <AccessTimeOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.accent }} />
+                  Active Tasks ({activeTodayTasks.length})
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {activeTodayTasks.map((task) => (
+                    <Box
+                      key={task.id}
+                      onClick={() => navigate('/tasks')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1.8,
+                        borderRadius: '12px',
+                        bgcolor: 'rgba(0,0,0,0.006)',
+                        border: '1px solid rgba(0,0,0,0.02)',
+                        cursor: 'pointer',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(0,0,0,0.015)',
+                          borderColor: 'rgba(0,0,0,0.05)',
+                          transform: 'translateX(2px)',
+                        },
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                        {task.title}
+                        {task.currentValue !== undefined || task.targetValue !== undefined
+                          ? ` — ${task.currentValue ?? 0} / ${task.targetValue ?? 0}`
+                          : ''}
+                      </Typography>
+                      {task.dueDate && (
+                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: tokens.text.muted }}>
+                          Date: {formatTaskDate(task.dueDate, userTimeZone)}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {overdueTasks.length === 0 && activeTodayTasks.length === 0 && (
+              <Typography sx={{ fontSize: '0.86rem', color: tokens.text.muted, py: 2, textAlign: 'center' }}>
+                No tasks scheduled for today.
               </Typography>
             )}
           </Box>
