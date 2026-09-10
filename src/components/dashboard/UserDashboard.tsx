@@ -162,20 +162,6 @@ export const UserDashboard = () => {
   const salesCompletedCount = salesGrouped?.counts.done.total ?? 0;
   const dashboardTasks = dashboardTasksData?.tasks ?? [];
 
-<<<<<<< Updated upstream
-  const overdueTasks = useMemo(() => {
-    return dashboardTasks.filter((task) => task.isOverdue);
-  }, [dashboardTasks]);
-
-  const activeTodayTasks = useMemo(() => {
-    const todayLocalStr = getLocalDateString(new Date(), userTimeZone);
-    return dashboardTasks.filter((task) => {
-      if (task.isOverdue) return false;
-      if (!task.dueDate) return true;
-      const taskLocalStr = getLocalDateString(task.dueDate, userTimeZone);
-      return taskLocalStr === todayLocalStr;
-    });
-=======
   const userTimeZone = useMemo(() => getUserTimeZone(user), [user]);
 
   const { dueTasks, activeTasks } = useMemo(() => {
@@ -197,7 +183,6 @@ export const UserDashboard = () => {
     });
 
     return { dueTasks: due, activeTasks: active };
->>>>>>> Stashed changes
   }, [dashboardTasks, userTimeZone]);
   const todaySalesCompletedCount = useMemo(
     () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
@@ -303,144 +288,6 @@ export const UserDashboard = () => {
                   '&:hover': { color: tokens.brand.primary }
                 }}
               >
-<<<<<<< Updated upstream
-                View all &gt;
-              </Button>
-            </Box>
-
-            {/* 1. Due Tasks (Top) */}
-            {overdueTasks.length > 0 && (
-              <Box sx={{ mb: 2.5 }}>
-                <Typography
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: '0.72rem',
-                    color: tokens.semantic.error,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.8,
-                    mb: 1.2,
-                  }}
-                >
-                  <WarningAmberOutlinedIcon sx={{ fontSize: 16 }} />
-                  Due Tasks ({overdueTasks.length})
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {overdueTasks.map((task) => (
-                    <Box
-                      key={task.id}
-                      onClick={() => navigate('/tasks')}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1.8,
-                        borderRadius: '12px',
-                        bgcolor: 'rgba(239, 68, 68, 0.04)',
-                        border: '1px solid rgba(239, 68, 68, 0.15)',
-                        cursor: 'pointer',
-                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': {
-                          bgcolor: 'rgba(239, 68, 68, 0.08)',
-                          transform: 'translateX(2px)',
-                        },
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                        {task.title}
-                        {task.currentValue !== undefined || task.targetValue !== undefined
-                          ? ` — ${task.currentValue ?? 0} / ${task.targetValue ?? 0}`
-                          : ''}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {task.dueDate && (
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: tokens.text.muted }}>
-                            Date: {formatTaskDate(task.dueDate, userTimeZone)}
-                          </Typography>
-                        )}
-                        <Chip
-                          label="Overdue"
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            bgcolor: 'rgba(239, 68, 68, 0.12)',
-                            color: tokens.semantic.error,
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* 2. Active Tasks (Below) */}
-            {activeTodayTasks.length > 0 && (
-              <Box sx={{ mb: 2.5 }}>
-                <Typography
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: '0.72rem',
-                    color: tokens.text.muted,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.8,
-                    mb: 1.2,
-                  }}
-                >
-                  <AccessTimeOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.accent }} />
-                  Active Tasks ({activeTodayTasks.length})
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {activeTodayTasks.map((task) => (
-                    <Box
-                      key={task.id}
-                      onClick={() => navigate('/tasks')}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1.8,
-                        borderRadius: '12px',
-                        bgcolor: 'rgba(0,0,0,0.006)',
-                        border: '1px solid rgba(0,0,0,0.02)',
-                        cursor: 'pointer',
-                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': {
-                          bgcolor: 'rgba(0,0,0,0.015)',
-                          borderColor: 'rgba(0,0,0,0.05)',
-                          transform: 'translateX(2px)',
-                        },
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                        {task.title}
-                        {task.currentValue !== undefined || task.targetValue !== undefined
-                          ? ` — ${task.currentValue ?? 0} / ${task.targetValue ?? 0}`
-                          : ''}
-                      </Typography>
-                      {task.dueDate && (
-                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: tokens.text.muted }}>
-                          Date: {formatTaskDate(task.dueDate, userTimeZone)}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {overdueTasks.length === 0 && activeTodayTasks.length === 0 && (
-              <Typography sx={{ fontSize: '0.86rem', color: tokens.text.muted, py: 2, textAlign: 'center' }}>
-                No tasks scheduled for today.
-              </Typography>
-=======
                 View all ({dueTasks.length + activeTasks.length}) &gt;
               </Button>
             </Box>
@@ -599,7 +446,6 @@ export const UserDashboard = () => {
                   </Box>
                 )}
               </Box>
->>>>>>> Stashed changes
             )}
           </Box>
         </Grid>
