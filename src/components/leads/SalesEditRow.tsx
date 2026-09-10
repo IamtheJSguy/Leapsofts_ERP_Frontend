@@ -156,6 +156,7 @@ export const SalesEditRow = memo(function SalesEditRow({
           >
             <option value="not_sent">Msg: Not Sent</option>
             <option value="sent">Msg: Sent</option>
+            <option value="in_conversation">Msg: In Conversation</option>
             <option value="replied">Msg: Replied</option>
             <option value="follow_up">Msg: Follow Up</option>
             <option value="negative">Msg: Negative</option>
@@ -372,6 +373,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
           >
             <option value="not_sent">Msg: Not Sent</option>
             <option value="sent">Msg: Sent</option>
+            <option value="in_conversation">Msg: In Conversation</option>
             <option value="replied">Msg: Replied</option>
             <option value="follow_up">Msg: Follow Up</option>
             <option value="negative">Msg: Negative</option>

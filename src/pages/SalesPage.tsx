@@ -298,6 +298,7 @@ export const SalesPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
+  const [dateFilterField, setDateFilterField] = useState<'date' | 'updatedAt'>('date');
 
   // Inline Lead Creation State
   const [isAddingInline, setIsAddingInline] = useState(false);
@@ -589,7 +590,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly, followUpView]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -603,16 +604,13 @@ export const SalesPage = () => {
       ...(selectedConnectionStatus ? { connectionStatus: selectedConnectionStatus } : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
+      dateField: dateFilterField,
       ...(messagedOnly ? { messaged: true } : {}),
       ...(futureLeadWindow ? { futureLeadWindow } : {}),
     };
 
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
-    if (activeCard === 'IN CONVERSATION') {
-      filters.inConversation = true;
-      delete filters.messageStatus;
-      delete filters.messaged;
-    }
+    if (activeCard === 'IN CONVERSATION') filters.messageStatus = 'in_conversation';
     if (activeCard === 'MESSAGE SENT') {
       filters.messaged = true;
       delete filters.messageStatus;
@@ -627,7 +625,7 @@ export const SalesPage = () => {
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, futureLeadWindow, messagedOnly, followUpView]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
@@ -774,10 +772,11 @@ export const SalesPage = () => {
   const pipelineFilters = useMemo(() => ({
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
+    dateField: dateFilterField,
     ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
     ...(selectedIcp ? { icp: selectedIcp } : {}),
     ...(selectedProfile ? { profile: selectedProfile } : {}),
-  }), [startDate, endDate, selectedUserId, selectedIcp, selectedProfile]);
+  }), [startDate, endDate, dateFilterField, selectedUserId, selectedIcp, selectedProfile]);
   const { data: pipelineStats, isLoading: isPipelineLoading } = useSalesPipelineStats(pipelineFilters);
 
   // Qualify Lead Modal state
@@ -847,7 +846,7 @@ export const SalesPage = () => {
       setMessagedOnly(true);
       setSelectedConnectionStatus('');
     } else if (label === 'IN CONVERSATION') {
-      setSelectedStatus('All statuses');
+      setSelectedStatus('in_conversation');
       setSelectedConnectionStatus('');
     } else if (label === 'RESPONDED') {
       setSelectedStatus('replied');
@@ -951,16 +950,39 @@ export const SalesPage = () => {
         </Box>
 
         {/* Date Range Filter in Header */}
-        <Box sx={{ minWidth: { xs: '100%', sm: 260 }, maxWidth: { sm: 300 } }}>
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onStartChange={setStartDate}
-            onEndChange={setEndDate}
-            size="small"
-            layout="compact"
-            maxDate={new Date()}
-          />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: '100%', sm: 380 }, maxWidth: { sm: 520 }, flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ minWidth: 168 }}>
+            <Select
+              value={dateFilterField}
+              onChange={(e) => setDateFilterField(e.target.value as 'date' | 'updatedAt')}
+              input={<OutlinedInput />}
+              sx={{
+                borderRadius: '12px',
+                height: 40,
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                '& fieldset': {
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                },
+              }}
+              aria-label="Date filter basis"
+            >
+              <MenuItem value="date">Filter by creation</MenuItem>
+              <MenuItem value="updatedAt">Filter by update</MenuItem>
+            </Select>
+          </FormControl>
+          <Box sx={{ flex: 1, minWidth: 220 }}>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onStartChange={setStartDate}
+              onEndChange={setEndDate}
+              size="small"
+              layout="compact"
+              maxDate={new Date()}
+            />
+          </Box>
         </Box>
       </Box>
 
@@ -1521,6 +1543,7 @@ export const SalesPage = () => {
                   setFutureLeadWindow('');
                   setMessagedOnly(false);
                   if (val === 'replied') setActiveCard('RESPONDED');
+                  else if (val === 'in_conversation') setActiveCard('IN CONVERSATION');
                   else if (val === 'follow_up') setActiveCard('FOLLOW UP');
                   else if (val === 'negative') setActiveCard('NEGATIVE');
                   else if (val === 'positive') setActiveCard('POSITIVE');
@@ -1531,6 +1554,7 @@ export const SalesPage = () => {
                 <MenuItem value="All statuses">Message status</MenuItem>
                 <MenuItem value="not_sent">Not Sent</MenuItem>
                 <MenuItem value="sent">Sent</MenuItem>
+                <MenuItem value="in_conversation">In Conversation</MenuItem>
                 <MenuItem value="replied">Replied</MenuItem>
                 <MenuItem value="follow_up">Follow Up</MenuItem>
                 <MenuItem value="negative">Negative</MenuItem>

@@ -9,6 +9,7 @@ export const CONNECTION_STATUS = {
 export const MESSAGE_STATUS = {
   NOT_SENT: 'not_sent',
   SENT: 'sent',
+  IN_CONVERSATION: 'in_conversation',
   REPLIED: 'replied',
   FOLLOW_UP: 'follow_up',
   NEGATIVE: 'negative',
