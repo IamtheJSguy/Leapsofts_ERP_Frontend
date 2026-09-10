@@ -15,6 +15,11 @@ import {
   Switch,
   Fade,
   Alert,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -34,10 +39,12 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import WebAssetIcon from '@mui/icons-material/WebAsset';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUpdateMe, useMe, useChangePassword, useUploadAvatar } from '@/hooks/api/useUsers';
+import { useRegenerateBackupCodes } from '@/hooks/api/useTwoFactor';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -75,6 +82,10 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+  const [totpCode, setTotpCode] = useState('');
+  const [freshBackupCodes, setFreshBackupCodes] = useState<string[] | null>(null);
+  const [isRegenOpen, setIsRegenOpen] = useState(false);
+  const regenerateBackupCodes = useRegenerateBackupCodes();
 
   // Preferences State
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -795,6 +806,35 @@ export default function ProfilePage() {
                 </Box>
               </Box>
             </Card>
+
+            <Card sx={cardSx}>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1, letterSpacing: '-0.015em' }}>
+                Two-factor authentication
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+                Authenticator-app 2FA is required for every account. If you lose your device and backup codes, ask an administrator to reset 2FA.
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <ShieldOutlinedIcon sx={{ color: tokens.brand.primary }} />
+                <Chip
+                  label={user?.twoFactorEnabled === false ? 'Setup required' : 'Enabled'}
+                  color={user?.twoFactorEnabled === false ? 'warning' : 'success'}
+                  size="small"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Box>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setTotpCode('');
+                  setIsRegenOpen(true);
+                }}
+                disabled={user?.twoFactorEnabled === false}
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
+              >
+                Regenerate backup codes
+              </Button>
+            </Card>
             </Box>
           </Fade>
         )}
@@ -1126,6 +1166,64 @@ export default function ProfilePage() {
         )}
 
       </Box>
+
+      <Dialog open={isRegenOpen} onClose={() => setIsRegenOpen(false)} PaperProps={{ sx: { borderRadius: '20px' } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Regenerate backup codes</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            Enter a current authenticator code. This replaces all unused backup codes.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="6-digit code"
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            inputProps={{ inputMode: 'numeric', maxLength: 6 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setIsRegenOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={regenerateBackupCodes.isPending || totpCode.length !== 6}
+            onClick={() => {
+              regenerateBackupCodes.mutate(totpCode, {
+                onSuccess: (data) => {
+                  setFreshBackupCodes(data.backupCodes);
+                  setIsRegenOpen(false);
+                  setTotpCode('');
+                  addToast({ message: 'Backup codes regenerated', severity: 'success' });
+                },
+                onError: (err: unknown) => {
+                  const message =
+                    (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+                    'Could not regenerate backup codes';
+                  addToast({ message, severity: 'error' });
+                },
+              });
+            }}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            {regenerateBackupCodes.isPending ? 'Verifying...' : 'Generate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(freshBackupCodes)} onClose={() => setFreshBackupCodes(null)} PaperProps={{ sx: { borderRadius: '20px' } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Save your new backup codes</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>Each code works only once. Store them somewhere safe.</Alert>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontFamily: 'monospace' }}>
+            {(freshBackupCodes ?? []).map((code) => (
+              <Typography key={code} sx={{ fontFamily: 'inherit', fontWeight: 700 }}>{code}</Typography>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setFreshBackupCodes(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>Done</Button>
+        </DialogActions>
+      </Dialog>
 
       <ConfirmDialog
         open={isConnectConfirmOpen}

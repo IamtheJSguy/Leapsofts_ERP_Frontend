@@ -51,7 +51,20 @@ const LoginPage = () => {
 
   const onSubmit = (data: LoginFormData) => {
     login.mutate(data, {
-      onSuccess: () => navigate('/'),
+      onSuccess: (res) => {
+        const payload = res.data.data;
+        if (payload.requires2FA && payload.tempToken) {
+          sessionStorage.setItem('2faTempToken', payload.tempToken);
+          navigate('/login/2fa', { state: { tempToken: payload.tempToken } });
+          return;
+        }
+        if (payload.requires2FASetup && payload.tempToken) {
+          sessionStorage.setItem('2faTempToken', payload.tempToken);
+          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken } });
+          return;
+        }
+        navigate('/');
+      },
       onError: () => {
         setShake(true);
         setTimeout(() => setShake(false), 500);

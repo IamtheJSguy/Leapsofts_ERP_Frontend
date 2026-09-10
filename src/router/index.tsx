@@ -8,6 +8,8 @@ import { PageLoader } from '@/components/common/PageLoader';
 import { ROLES } from '@/lib/constants';
 import {
   LoginPage,
+  TwoFactorVerifyPage,
+  TwoFactorSetupPage,
   DashboardPage,
   TasksPage,
   ReportsPage,
@@ -45,6 +47,22 @@ export const router = createBrowserRouter([
     element: wrap(
       <GuestRoute>
         <LoginPage />
+      </GuestRoute>
+    ),
+  },
+  {
+    path: '/login/2fa',
+    element: wrap(
+      <GuestRoute>
+        <TwoFactorVerifyPage />
+      </GuestRoute>
+    ),
+  },
+  {
+    path: '/login/2fa-setup',
+    element: wrap(
+      <GuestRoute>
+        <TwoFactorSetupPage />
       </GuestRoute>
     ),
   },

@@ -99,6 +99,7 @@ export interface User {
   idleTimeoutMinutes?: number;
   monitorScreenshots?: boolean;
   monitorAppUsage?: boolean;
+  twoFactorEnabled?: boolean;
   createdAt?: string;
 }
 
