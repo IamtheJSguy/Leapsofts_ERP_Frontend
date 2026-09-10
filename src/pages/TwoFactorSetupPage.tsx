@@ -227,13 +227,25 @@ const TwoFactorSetupPage = () => {
               }}
             >
               {backupCodes.map((item) => (
-                <Typography key={item} sx={{ fontFamily: 'inherit', fontWeight: 700, letterSpacing: '0.06em' }}>
-                  {item}
-                </Typography>
+                <Box key={item} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
+                  <Typography sx={{ fontFamily: 'inherit', fontWeight: 700, letterSpacing: '0.06em' }}>
+                    {item}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    aria-label={`Copy ${item}`}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(item);
+                      addToast({ message: 'Copied', severity: 'success' });
+                    }}
+                  >
+                    <ContentCopyIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Box>
               ))}
             </Box>
-            <Button onClick={copyBackupCodes} sx={{ mb: 1, textTransform: 'none' }}>
-              Copy codes
+            <Button startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />} onClick={copyBackupCodes} sx={{ mb: 1, textTransform: 'none' }}>
+              Copy all
             </Button>
             <FormControlLabel
               control={<Checkbox checked={saved} onChange={(e) => setSaved(e.target.checked)} />}

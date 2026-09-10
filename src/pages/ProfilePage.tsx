@@ -20,6 +20,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -40,11 +42,12 @@ import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsAc
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import WebAssetIcon from '@mui/icons-material/WebAsset';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUpdateMe, useMe, useChangePassword, useUploadAvatar } from '@/hooks/api/useUsers';
-import { useRegenerateBackupCodes } from '@/hooks/api/useTwoFactor';
+import { useRegenerateBackupCodes, useEnrollTwoFactorSetup, useEnrollTwoFactorVerify } from '@/hooks/api/useTwoFactor';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -85,7 +88,14 @@ export default function ProfilePage() {
   const [totpCode, setTotpCode] = useState('');
   const [freshBackupCodes, setFreshBackupCodes] = useState<string[] | null>(null);
   const [isRegenOpen, setIsRegenOpen] = useState(false);
+  const [isEnrollOpen, setIsEnrollOpen] = useState(false);
+  const [enrollCode, setEnrollCode] = useState('');
+  const [enrollSaved, setEnrollSaved] = useState(false);
+  const [enrollBackupCodes, setEnrollBackupCodes] = useState<string[] | null>(null);
   const regenerateBackupCodes = useRegenerateBackupCodes();
+  const enrollSetup = useEnrollTwoFactorSetup(isEnrollOpen);
+  const enrollVerify = useEnrollTwoFactorVerify();
+  const twoFactorEnabled = user?.twoFactorEnabled === true;
 
   // Preferences State
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -200,6 +210,16 @@ export default function ProfilePage() {
         },
       }
     );
+  };
+
+  const copyBackupCodes = async (codes: string[]) => {
+    await navigator.clipboard.writeText(codes.join('\n'));
+    addToast({ message: 'Backup codes copied', severity: 'success' });
+  };
+
+  const copyBackupCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    addToast({ message: 'Copied', severity: 'success' });
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -817,23 +837,43 @@ export default function ProfilePage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                 <ShieldOutlinedIcon sx={{ color: tokens.brand.primary }} />
                 <Chip
-                  label={user?.twoFactorEnabled === false ? 'Setup required' : 'Enabled'}
-                  color={user?.twoFactorEnabled === false ? 'warning' : 'success'}
+                  label={twoFactorEnabled ? 'Enabled' : 'Setup required'}
+                  color={twoFactorEnabled ? 'success' : 'warning'}
                   size="small"
                   sx={{ fontWeight: 700 }}
                 />
               </Box>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setTotpCode('');
-                  setIsRegenOpen(true);
-                }}
-                disabled={user?.twoFactorEnabled === false}
-                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
-              >
-                Regenerate backup codes
-              </Button>
+              {twoFactorEnabled ? (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setTotpCode('');
+                    setIsRegenOpen(true);
+                  }}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
+                >
+                  Regenerate backup codes
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setEnrollCode('');
+                    setEnrollSaved(false);
+                    setEnrollBackupCodes(null);
+                    setIsEnrollOpen(true);
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    borderRadius: '12px',
+                    bgcolor: tokens.brand.primary,
+                    '&:hover': { bgcolor: tokens.brand.primaryLight },
+                  }}
+                >
+                  Set up 2FA
+                </Button>
+              )}
             </Card>
             </Box>
           </Fade>
@@ -1167,6 +1207,133 @@ export default function ProfilePage() {
 
       </Box>
 
+      <Dialog
+        open={isEnrollOpen}
+        onClose={() => {
+          if (enrollBackupCodes) return;
+          setIsEnrollOpen(false);
+        }}
+        PaperProps={{ sx: { borderRadius: '20px', maxWidth: 440 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          {enrollBackupCodes ? 'Save your backup codes' : 'Set up two-factor authentication'}
+        </DialogTitle>
+        <DialogContent>
+          {!enrollBackupCodes && (
+            <>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                Scan this QR code with Google Authenticator, Authy, or 1Password, then enter the 6-digit code.
+              </Typography>
+              {enrollSetup.isLoading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              )}
+              {enrollSetup.error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {(enrollSetup.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+                    || 'Could not start 2FA setup'}
+                </Alert>
+              )}
+              {enrollSetup.data && (
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                    <Box
+                      component="img"
+                      src={enrollSetup.data.qrDataUrl}
+                      alt="Authenticator QR code"
+                      sx={{ width: 200, height: 200, bgcolor: '#fff', borderRadius: 2, p: 1 }}
+                    />
+                  </Box>
+                  <Typography variant="body2" sx={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, mb: 2, letterSpacing: '0.06em' }}>
+                    {enrollSetup.data.secret}
+                  </Typography>
+                  <TextField
+                    autoFocus
+                    fullWidth
+                    label="6-digit code"
+                    value={enrollCode}
+                    onChange={(e) => setEnrollCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputProps={{ inputMode: 'numeric', maxLength: 6 }}
+                  />
+                </>
+              )}
+            </>
+          )}
+          {enrollBackupCodes && (
+            <>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Store these backup codes somewhere safe. Each code can be used only once.
+              </Alert>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontFamily: 'monospace', mb: 1.5 }}>
+                {enrollBackupCodes.map((code) => (
+                  <Box key={code} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
+                    <Typography sx={{ fontFamily: 'inherit', fontWeight: 700 }}>{code}</Typography>
+                    <IconButton size="small" aria-label={`Copy ${code}`} onClick={() => copyBackupCode(code)}>
+                      <ContentCopyIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+              <Button
+                startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />}
+                onClick={() => copyBackupCodes(enrollBackupCodes)}
+                sx={{ textTransform: 'none', fontWeight: 700, mb: 1 }}
+              >
+                Copy all
+              </Button>
+              <FormControlLabel
+                control={<Checkbox checked={enrollSaved} onChange={(e) => setEnrollSaved(e.target.checked)} />}
+                label="I have saved these backup codes"
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          {!enrollBackupCodes ? (
+            <>
+              <Button onClick={() => setIsEnrollOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+              <Button
+                variant="contained"
+                disabled={enrollVerify.isPending || enrollCode.length !== 6 || !enrollSetup.data}
+                onClick={() => {
+                  enrollVerify.mutate(enrollCode, {
+                    onSuccess: (data) => {
+                      setEnrollBackupCodes(data.backupCodes);
+                      setEnrollCode('');
+                      updateAuthUser({ twoFactorEnabled: true });
+                    },
+                    onError: (err: unknown) => {
+                      const message =
+                        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+                        'Invalid verification code';
+                      addToast({ message, severity: 'error' });
+                    },
+                  });
+                }}
+                sx={{ textTransform: 'none', fontWeight: 700 }}
+              >
+                {enrollVerify.isPending ? 'Verifying...' : 'Verify'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="contained"
+              disabled={!enrollSaved}
+              onClick={() => {
+                setIsEnrollOpen(false);
+                setEnrollBackupCodes(null);
+                setEnrollSaved(false);
+                addToast({ message: 'Two-factor authentication is enabled', severity: 'success' });
+              }}
+              sx={{ textTransform: 'none', fontWeight: 700 }}
+            >
+              Done
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={isRegenOpen} onClose={() => setIsRegenOpen(false)} PaperProps={{ sx: { borderRadius: '20px' } }}>
         <DialogTitle sx={{ fontWeight: 800 }}>Regenerate backup codes</DialogTitle>
         <DialogContent>
@@ -1214,11 +1381,23 @@ export default function ProfilePage() {
         <DialogTitle sx={{ fontWeight: 800 }}>Save your new backup codes</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>Each code works only once. Store them somewhere safe.</Alert>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontFamily: 'monospace' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontFamily: 'monospace', mb: 1.5 }}>
             {(freshBackupCodes ?? []).map((code) => (
-              <Typography key={code} sx={{ fontFamily: 'inherit', fontWeight: 700 }}>{code}</Typography>
+              <Box key={code} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
+                <Typography sx={{ fontFamily: 'inherit', fontWeight: 700 }}>{code}</Typography>
+                <IconButton size="small" aria-label={`Copy ${code}`} onClick={() => copyBackupCode(code)}>
+                  <ContentCopyIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
             ))}
           </Box>
+          <Button
+            startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />}
+            onClick={() => copyBackupCodes(freshBackupCodes ?? [])}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Copy all
+          </Button>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button onClick={() => setFreshBackupCodes(null)} sx={{ textTransform: 'none', fontWeight: 700 }}>Done</Button>
