@@ -819,7 +819,7 @@ export const SalesPage = () => {
       { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
       { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
       { label: 'MESSAGE SENT', value: String(pipelineStats.messageSent ?? 0), percent: pct(conversionRates.messageSentRate ?? 0) },
-      { label: 'IN CONVERSATION', value: String(pipelineStats.responded ?? 0), percent: pct(conversionRates.respondedRate ?? 0) },
+      { label: 'IN CONVERSATION', value: String(pipelineStats.inConversation ?? 0), percent: pct(conversionRates.conversationRate ?? 0) },
       { label: 'FOLLOW UP', value: followUpValue, percent: followUpPercent },
       { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
       { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
