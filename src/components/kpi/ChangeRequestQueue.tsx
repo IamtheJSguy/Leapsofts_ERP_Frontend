@@ -99,25 +99,31 @@ export const ChangeRequestQueue = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.95rem' }}>{userName}</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Chip 
-                      label={r.sourceType === 'assignment' ? 'Assignment' : 'Standalone'} 
+                      label={
+                        r.sourceType === 'sales'
+                          ? 'Sales KPI'
+                          : r.sourceType === 'standalone'
+                            ? 'Standalone KPI'
+                            : 'KPI Template'
+                      } 
                       size="small" 
-                      sx={{ height: 18, fontSize: '0.65rem', fontWeight: 800, bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', textTransform: 'uppercase' }} 
+                      color={r.sourceType === 'sales' ? 'info' : r.sourceType === 'standalone' ? 'secondary' : 'default'}
+                      sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }} 
                     />
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>{r.kpiName ?? 'Unknown Target'}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                      {r.kpiName ?? 'KPI Target'}
+                    </Typography>
                   </Box>
                 </Box>
               </Box>
               
               <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Requested Change ({r.type})
+                  User Reason / Description
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }}>
-                  {formatChange(r)}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.25, fontStyle: 'italic', maxWidth: 400, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                <Typography variant="body2" sx={{ fontStyle: 'italic', color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)', maxWidth: 500 }}>
                   "{r.reason}"
                 </Typography>
               </Box>

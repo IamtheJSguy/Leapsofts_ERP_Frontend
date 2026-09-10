@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,6 +19,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import { useReviewKPIChangeRequest } from '@/hooks/api/useKPIChangeRequests';
 import { useUIStore } from '@/store/useUIStore';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
@@ -72,6 +74,13 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
 
   if (!request) return null;
 
+  const requestTypeLabel =
+    request.sourceType === 'sales'
+      ? 'Sales KPI'
+      : request.sourceType === 'standalone'
+        ? 'Standalone KPI'
+        : 'KPI Template';
+
   return (
     <Dialog 
       open={open} 
@@ -104,8 +113,13 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
         
         {/* Header Summary */}
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-          <Chip label={request.sourceType === 'assignment' ? 'Assignment' : 'Standalone'} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem', height: 20, bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', textTransform: 'uppercase' }} />
-          <Chip label={request.type} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem', height: 20, bgcolor: tokens.brand.primary100, color: tokens.brand.primary, textTransform: 'uppercase' }} />
+          <Chip
+            label={requestTypeLabel}
+            size="small"
+            color={request.sourceType === 'sales' ? 'info' : request.sourceType === 'standalone' ? 'secondary' : 'default'}
+            sx={{ fontWeight: 800, fontSize: '0.65rem', height: 22, textTransform: 'uppercase' }}
+          />
+          <Chip label={request.type} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem', height: 22, bgcolor: tokens.brand.primary100, color: tokens.brand.primary, textTransform: 'uppercase' }} />
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -121,33 +135,14 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
 
           <Box sx={{ p: 2.5, borderRadius: '16px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
             <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}>
-              Target: {request.kpiName ?? 'Unknown'}
+              Target KPI: {request.kpiName ?? 'KPI Target'}
             </Typography>
-            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', mb: 2 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mt: 1, mb: 0.5 }}>
+              User Problem Description / Reason:
+            </Typography>
+            <Typography variant="body2" sx={{ fontStyle: 'italic', color: isDarkMode ? '#fff' : tokens.text.primary, p: 1.5, borderRadius: '10px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }}>
               "{request.reason}"
             </Typography>
-            
-            <Divider sx={{ my: 1.5, opacity: 0.5 }} />
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {diffLine('Target', request.currentTargetValue, request.requestedTargetValue)}
-              {diffLine('Due Date', request.currentDueDate, request.requestedDueDate)}
-              {(request.requestedPriority && request.requestedPriority !== request.currentPriority) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2"><strong>Priority:</strong></Typography>
-                  <PriorityBadge priority={request.currentPriority} />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>→</Typography>
-                  <PriorityBadge priority={request.requestedPriority} />
-                </Box>
-              )}
-              {request.proposedItem && (
-                <Typography variant="body2" sx={{ bgcolor: 'rgba(45, 138, 94, 0.1)', p: 1, borderRadius: 1, color: tokens.semantic.success }}>
-                  <strong>New item:</strong> {request.proposedItem.name}
-                  {request.proposedItem.targetValue != null && ` — target ${request.proposedItem.targetValue}`}
-                  {request.proposedItem.dueDate && ` (due ${new Date(request.proposedItem.dueDate).toLocaleDateString()})`}
-                </Typography>
-              )}
-            </Box>
           </Box>
         </Box>
 
