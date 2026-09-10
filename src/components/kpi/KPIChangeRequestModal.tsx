@@ -25,21 +25,13 @@ import { tokens } from '@/styles/tokens';
 export type ChangeRequestModalMode =
   | {
       sourceType: 'assignment';
-      type: 'modify';
+      type: 'modify' | 'add' | 'remove';
       assignmentId: string;
-      assignmentItemId: string;
-      kpiName: string;
+      assignmentItemId?: string;
+      kpiName?: string;
       currentTargetValue?: number;
       currentDueDate?: string;
       currentPriority?: KpiPriority;
-    }
-  | { sourceType: 'assignment'; type: 'add'; assignmentId: string }
-  | {
-      sourceType: 'assignment';
-      type: 'remove';
-      assignmentId: string;
-      assignmentItemId: string;
-      kpiName: string;
     }
   | {
       sourceType: 'standalone';
@@ -49,6 +41,13 @@ export type ChangeRequestModalMode =
       currentTargetValue?: number;
       currentDueDate?: string;
       currentPriority?: KpiPriority;
+    }
+  | {
+      sourceType: 'sales';
+      type?: 'modify';
+      kpiId?: string;
+      kpiName?: string;
+      currentTargetValue?: number;
     };
 
 interface Props {
@@ -63,26 +62,10 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
   const addToast = useUIStore((s) => s.addToast);
   const submitMutation = useSubmitKPIChangeRequest();
 
-  const [targetValue, setTargetValue] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<KpiPriority>('medium');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [reason, setReason] = useState('');
 
   useEffect(() => {
     if (!mode) return;
-    if (mode.type === 'modify') {
-      setTargetValue(mode.currentTargetValue != null ? String(mode.currentTargetValue) : '');
-      setDueDate(mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '');
-      setPriority(mode.currentPriority ?? 'medium');
-    } else if (mode.type === 'add') {
-      setName('');
-      setDescription('');
-      setTargetValue('');
-      setDueDate('');
-      setPriority('medium');
-    }
     setReason('');
   }, [mode]);
 
@@ -94,37 +77,21 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
 
     let payload: SubmitChangeRequestPayload;
 
-    if (mode.sourceType === 'assignment' && mode.type === 'modify') {
+    if (mode.sourceType === 'sales') {
       payload = {
-        sourceType: 'assignment',
+        sourceType: 'sales',
         type: 'modify',
-        assignmentId: mode.assignmentId,
-        assignmentItemId: mode.assignmentItemId,
+        kpiId: mode.kpiId,
+        kpiName: mode.kpiName ?? 'Sales KPI Target',
         reason: reason.trim(),
-        requestedTargetValue: targetValue !== '' && Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
-        requestedDueDate: dueDate && dueDate !== (mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '') ? dueDate : undefined,
-        requestedPriority: priority !== (mode.currentPriority ?? 'medium') ? priority : undefined,
       };
-    } else if (mode.sourceType === 'assignment' && mode.type === 'add') {
+    } else if (mode.sourceType === 'assignment') {
       payload = {
         sourceType: 'assignment',
-        type: 'add',
-        assignmentId: mode.assignmentId,
-        reason: reason.trim(),
-        proposedItem: {
-          name: name.trim(),
-          description: description.trim() || undefined,
-          targetValue: targetValue === '' ? undefined : Number(targetValue),
-          dueDate: dueDate || undefined,
-          priority,
-        },
-      };
-    } else if (mode.sourceType === 'assignment' && mode.type === 'remove') {
-      payload = {
-        sourceType: 'assignment',
-        type: 'remove',
+        type: mode.type,
         assignmentId: mode.assignmentId,
         assignmentItemId: mode.assignmentItemId,
+        kpiName: mode.kpiName,
         reason: reason.trim(),
       };
     } else {
@@ -132,10 +99,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
         sourceType: 'standalone',
         type: 'modify',
         kpiId: mode.kpiId,
+        kpiName: mode.kpiName,
         reason: reason.trim(),
-        requestedTargetValue: targetValue !== '' && Number(targetValue) !== mode.currentTargetValue ? Number(targetValue) : undefined,
-        requestedDueDate: dueDate && dueDate !== (mode.currentDueDate ? mode.currentDueDate.slice(0, 10) : '') ? dueDate : undefined,
-        requestedPriority: priority !== (mode.currentPriority ?? 'medium') ? priority : undefined,
       };
     }
 
@@ -148,14 +113,15 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
     }
   };
 
-  const title =
-    mode?.type === 'add'
-      ? 'Request Add KPI'
-      : mode?.type === 'remove'
-        ? `Request Remove: ${mode.kpiName}`
-        : `Request Change: ${mode && 'kpiName' in mode ? mode.kpiName : 'KPI'}`;
+  const kpiNameDisplay = mode && 'kpiName' in mode && mode.kpiName ? mode.kpiName : 'KPI Target';
+  const requestTypeLabel =
+    mode?.sourceType === 'sales'
+      ? 'Sales KPI'
+      : mode?.sourceType === 'standalone'
+        ? 'Standalone KPI'
+        : 'KPI Template';
 
-  const headerIcon = mode?.type === 'add' ? <AddCircleOutlineIcon sx={{ mr: 1.5, color: tokens.brand.primary, fontSize: 26 }} /> : mode?.type === 'remove' ? <RemoveCircleOutlineIcon sx={{ mr: 1.5, color: tokens.semantic.error, fontSize: 26 }} /> : <EditNoteIcon sx={{ mr: 1.5, color: tokens.brand.accent, fontSize: 26 }} />;
+  const title = `Request Change: ${kpiNameDisplay}`;
 
   const textFieldStyle = {
     '& .MuiOutlinedInput-root': {
@@ -192,50 +158,32 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
       }}
     >
       <DialogTitle sx={{ fontWeight: 800, pr: 5, pb: 2, pt: 3, display: 'flex', alignItems: 'center', color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em' }}>
-        {headerIcon}
+        <EditNoteIcon sx={{ mr: 1.5, color: tokens.brand.accent, fontSize: 26 }} />
         {title}
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 16, top: 16, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: '8px !important' }}>
-        {mode?.type === 'remove' && (
-          <Typography variant="body1" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, p: 2, bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}` }}>
-            This will request removal of <strong>&quot;{mode.kpiName}&quot;</strong> from your assignment after admin approval.
-          </Typography>
-        )}
-
-        {mode?.type === 'add' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <TextField label="KPI Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required sx={textFieldStyle} />
-            <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline rows={2} sx={textFieldStyle} />
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '8px !important' }}>
+        <Box sx={{ p: 2, borderRadius: '12px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}>
+              Target KPI / Task
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+              {kpiNameDisplay}
+            </Typography>
           </Box>
-        )}
 
-        {(mode?.type === 'modify' || mode?.type === 'add') && (
-          <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
-            <TextField
-              label="Target Value (optional)"
-              type="number"
-              value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
-              sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}
-            />
-            <TextField
-              label="Due Date (optional)"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}
-            />
-            <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as KpiPriority)} sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}>
-              {KPI_PRIORITY_OPTIONS.map((p) => (
-                <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
-              ))}
-            </TextField>
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}>
+              Type
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 800, color: isDarkMode ? 'rgba(255,255,255,0.9)' : tokens.text.primary }}>
+              {requestTypeLabel}
+            </Typography>
           </Box>
-        )}
+        </Box>
 
         <TextField
           label="Reason for Request *"
@@ -244,7 +192,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
           fullWidth
           required
           multiline
-          rows={3}
+          rows={4}
+          placeholder="Explain why you are requesting a change to this KPI..."
           helperText="Minimum 10 characters to explain your request"
           sx={textFieldStyle}
         />
@@ -264,9 +213,9 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
             py: 1.25, 
             fontWeight: 700, 
             boxShadow: 'none',
-            bgcolor: mode?.type === 'remove' ? tokens.semantic.error : tokens.brand.primary,
+            bgcolor: tokens.brand.primary,
             '&:hover': {
-              bgcolor: mode?.type === 'remove' ? tokens.semantic.error : tokens.brand.primary,
+              bgcolor: tokens.brand.primary,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               transform: 'translateY(-1px)'
             },

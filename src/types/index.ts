@@ -29,7 +29,7 @@ export type PipelineMetric = 'new_prospects' | 'follow_ups' | 'meetings_taken';
 
 export type KpiPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export type KpiChangeSource = 'assignment' | 'standalone';
+export type KpiChangeSource = 'assignment' | 'standalone' | 'sales';
 
 export type KpiChangeType = 'modify' | 'add' | 'remove';
 

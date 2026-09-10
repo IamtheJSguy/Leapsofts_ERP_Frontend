@@ -9,6 +9,7 @@ export type SubmitChangeRequestPayload = {
   assignmentId?: string;
   assignmentItemId?: string;
   kpiId?: string;
+  kpiName?: string;
   requestedTargetValue?: number;
   requestedDueDate?: string;
   requestedPriority?: KpiPriority;
@@ -31,6 +32,7 @@ export type ReviewChangeRequestPayload = {
   approved: boolean;
   effectiveWhen?: ChangeEffectiveWhen;
   adminNote?: string;
+  targetValue?: number;
 };
 
 const changeRequestApi = {

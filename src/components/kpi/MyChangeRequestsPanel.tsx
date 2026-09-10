@@ -62,10 +62,29 @@ export const MyChangeRequestsPanel = ({ assignmentId, limit = 50 }: Props) => {
             }}
           >
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5 }}>
-                {r.kpiName ?? r.type.toUpperCase()}
-              </Typography>
-              <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                  {r.kpiName ?? r.type.toUpperCase()}
+                </Typography>
+                <Chip
+                  label={
+                    r.sourceType === 'sales'
+                      ? 'Sales KPI'
+                      : r.sourceType === 'standalone'
+                        ? 'Standalone KPI'
+                        : 'KPI Template'
+                  }
+                  size="small"
+                  color={r.sourceType === 'sales' ? 'info' : r.sourceType === 'standalone' ? 'secondary' : 'default'}
+                  sx={{
+                    height: 20,
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                  }}
+                />
+              </Box>
+              <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.secondary, fontWeight: 500 }}>
                 {r.reason}
               </Typography>
             </Box>
