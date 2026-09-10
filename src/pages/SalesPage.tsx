@@ -149,6 +149,13 @@ export const SalesPage = () => {
           bgcolor: isDarkMode ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)',
           hoverBorder: '#0EA5E9',
         };
+      case 'IN CONVERSATION':
+        return {
+          icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />,
+          color: '#8B5CF6',
+          bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
+          hoverBorder: '#8B5CF6',
+        };
       case 'RESPONDED':
         return {
           icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />,
@@ -601,6 +608,11 @@ export const SalesPage = () => {
     };
 
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
+    if (activeCard === 'IN CONVERSATION') {
+      filters.inConversation = true;
+      delete filters.messageStatus;
+      delete filters.messaged;
+    }
     if (activeCard === 'MESSAGE SENT') {
       filters.messaged = true;
       delete filters.messageStatus;
@@ -833,6 +845,9 @@ export const SalesPage = () => {
     if (label === 'MESSAGE SENT') {
       setSelectedStatus('All statuses');
       setMessagedOnly(true);
+      setSelectedConnectionStatus('');
+    } else if (label === 'IN CONVERSATION') {
+      setSelectedStatus('All statuses');
       setSelectedConnectionStatus('');
     } else if (label === 'RESPONDED') {
       setSelectedStatus('replied');

@@ -1184,6 +1184,8 @@ export interface LeadFilters {
   messageStatus?: string;
   /** When true, messageStatus is any of the messaged funnel statuses (not not_sent) */
   messaged?: boolean;
+  /** When true, messageStatus is sent | replied | follow_up | positive (in-conversation funnel) */
+  inConversation?: boolean;
   futureLeadWindow?: 'upcoming' | 'due' | 'overdue' | 'due_soon';
   status?: string;
   location?: string;
