@@ -30,6 +30,43 @@ import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
 
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
 import type { Meeting, SalesKpiEntry } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+
+const getUserTimeZone = (user?: any) => {
+  return (
+    user?.timezone ||
+    user?.timeZone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    'UTC'
+  );
+};
+
+const getLocalDateString = (dateInput?: string | Date | null, timeZone?: string) => {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(d);
+};
+
+const formatTaskDate = (dateInput?: string | Date | null, timeZone?: string) => {
+  if (!dateInput) return '—';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '—';
+  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  return d.toLocaleDateString(undefined, {
+    timeZone: tz,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
 
 const overlapsLocalDay = (entry: SalesKpiEntry, day = new Date()) => {
   const dayStart = new Date(day);
@@ -125,6 +162,7 @@ export const UserDashboard = () => {
   const salesCompletedCount = salesGrouped?.counts.done.total ?? 0;
   const dashboardTasks = dashboardTasksData?.tasks ?? [];
 
+<<<<<<< Updated upstream
   const overdueTasks = useMemo(() => {
     return dashboardTasks.filter((task) => task.isOverdue);
   }, [dashboardTasks]);
@@ -137,6 +175,29 @@ export const UserDashboard = () => {
       const taskLocalStr = getLocalDateString(task.dueDate, userTimeZone);
       return taskLocalStr === todayLocalStr;
     });
+=======
+  const userTimeZone = useMemo(() => getUserTimeZone(user), [user]);
+
+  const { dueTasks, activeTasks } = useMemo(() => {
+    const due: typeof dashboardTasks = [];
+    const active: typeof dashboardTasks = [];
+    const todayStr = getLocalDateString(new Date(), userTimeZone);
+
+    dashboardTasks.forEach((task) => {
+      const taskDateStr = getLocalDateString(task.dueDate, userTimeZone);
+      const isDueOrOverdue =
+        task.isOverdue || (taskDateStr !== '' && taskDateStr < todayStr);
+
+      if (isDueOrOverdue) {
+        due.push(task);
+      } else if (!taskDateStr || taskDateStr === todayStr) {
+        active.push(task);
+      }
+      // Future tasks (taskDateStr > todayStr) are excluded from Active Tasks
+    });
+
+    return { dueTasks: due, activeTasks: active };
+>>>>>>> Stashed changes
   }, [dashboardTasks, userTimeZone]);
   const todaySalesCompletedCount = useMemo(
     () => todaySalesKpis.filter((entry) => isSalesKpiDone(entry.status)).length,
@@ -207,7 +268,7 @@ export const UserDashboard = () => {
 
       {/* 1. My Boards, Meetings & Deadlines Grid */}
       <Grid container spacing={3.5}>
-        {/* Column 1: My Boards list (60%) */}
+        {/* Column 1: My Tasks list (60%) */}
         <Grid item xs={12} md={7}>
           <Box
             sx={{
@@ -242,6 +303,7 @@ export const UserDashboard = () => {
                   '&:hover': { color: tokens.brand.primary }
                 }}
               >
+<<<<<<< Updated upstream
                 View all &gt;
               </Button>
             </Box>
@@ -378,6 +440,166 @@ export const UserDashboard = () => {
               <Typography sx={{ fontSize: '0.86rem', color: tokens.text.muted, py: 2, textAlign: 'center' }}>
                 No tasks scheduled for today.
               </Typography>
+=======
+                View all ({dueTasks.length + activeTasks.length}) &gt;
+              </Button>
+            </Box>
+
+            {isTasksLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6, flex: 1 }}>
+                <CircularProgress size={28} sx={{ color: tokens.brand.accent }} />
+              </Box>
+            ) : dueTasks.length === 0 && activeTasks.length === 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, flex: 1 }}>
+                <CheckCircleOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
+                <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
+                  No active tasks for today
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                {/* Due Tasks Subsection */}
+                {dueTasks.length > 0 && (
+                  <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.semantic.error, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        DUE TASKS
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.semantic.error }}>
+                        {dueTasks.length}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                      {dueTasks.map((task) => {
+                        const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
+                        return (
+                          <Box
+                            key={task.id}
+                            onClick={() => navigate('/tasks')}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: 1.8,
+                              borderRadius: '12px',
+                              bgcolor: 'rgba(239, 68, 68, 0.03)',
+                              border: '1px solid rgba(239, 68, 68, 0.12)',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '&:hover': {
+                                bgcolor: 'rgba(239, 68, 68, 0.06)',
+                                borderColor: 'rgba(239, 68, 68, 0.2)',
+                                transform: 'translateX(2px)',
+                                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.04)'
+                              }
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.error }} />
+                              <Box>
+                                <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                                  {task.title}
+                                  {hasProgress && (
+                                    <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
+                                      {task.currentValue} / {task.targetValue}
+                                    </Typography>
+                                  )}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.3 }}>
+                                  <Chip
+                                    label={task.kind === 'sales' ? 'Sales' : 'Daily'}
+                                    size="small"
+                                    sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }}
+                                  />
+                                </Box>
+                              </Box>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.error }}>
+                                <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
+                                {formatTaskDate(task.dueDate, userTimeZone)}
+                              </Typography>
+                              <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end', mt: 0.2 }}>
+                                <WarningAmberOutlinedIcon sx={{ fontSize: 12 }} /> Overdue
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Active Tasks Subsection */}
+                {activeTasks.length > 0 && (
+                  <Box sx={{ mt: dueTasks.length > 0 ? 1 : 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.text.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        ACTIVE TASKS
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.text.muted }}>
+                        {activeTasks.length}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                      {activeTasks.map((task) => {
+                        const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
+                        return (
+                          <Box
+                            key={task.id}
+                            onClick={() => navigate('/tasks')}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: 1.8,
+                              borderRadius: '12px',
+                              bgcolor: 'rgba(0,0,0,0.006)',
+                              border: '1px solid rgba(0,0,0,0.02)',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '&:hover': {
+                                bgcolor: 'rgba(0,0,0,0.015)',
+                                borderColor: 'rgba(0,0,0,0.05)',
+                                transform: 'translateX(2px)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+                              }
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.accent }} />
+                              <Box>
+                                <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                                  {task.title}
+                                  {hasProgress && (
+                                    <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
+                                      {task.currentValue} / {task.targetValue}
+                                    </Typography>
+                                  )}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.3 }}>
+                                  <Chip
+                                    label={task.kind === 'sales' ? 'Sales' : 'Daily'}
+                                    size="small"
+                                    sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }}
+                                  />
+                                </Box>
+                              </Box>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                                <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
+                                {formatTaskDate(task.dueDate, userTimeZone)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+>>>>>>> Stashed changes
             )}
           </Box>
         </Grid>
@@ -588,9 +810,8 @@ export const UserDashboard = () => {
                             color: task.isOverdue ? tokens.semantic.error : tokens.brand.primary
                           }}
                         >
-                          {task.dueDate
-                            ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                            : '—'}
+                          <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
+                          {formatTaskDate(task.dueDate, userTimeZone)}
                         </Typography>
                         {task.isOverdue && (
                           <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end', mt: 0.2 }}>
