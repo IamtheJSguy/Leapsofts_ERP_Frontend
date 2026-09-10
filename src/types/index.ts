@@ -9,6 +9,7 @@ export type ConnectionStatus =
 export type MessageStatus =
   | 'not_sent'
   | 'sent'
+  | 'in_conversation'
   | 'replied'
   | 'follow_up'
   | 'negative'
@@ -1180,12 +1181,12 @@ export interface LeadValidationResult {
 export interface LeadFilters {
   startDate?: string;
   endDate?: string;
+  /** Filter range applies to lead creation date (`date`) or last update (`updatedAt`). */
+  dateField?: 'date' | 'updatedAt';
   connectionStatus?: string;
   messageStatus?: string;
   /** When true, messageStatus is any of the messaged funnel statuses (not not_sent) */
   messaged?: boolean;
-  /** When true, messageStatus is sent | replied | follow_up | positive (in-conversation funnel) */
-  inConversation?: boolean;
   futureLeadWindow?: 'upcoming' | 'due' | 'overdue' | 'due_soon';
   status?: string;
   location?: string;

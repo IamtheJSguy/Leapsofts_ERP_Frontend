@@ -91,6 +91,7 @@ export const connectionStatusTokens = {
 export const messageStatusTokens = {
   not_sent: { color: tokens.semantic.neutral, bg: tokens.semantic.neutralBg },
   sent: { color: tokens.brand.primary, bg: tokens.semantic.infoBg },
+  in_conversation: { color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
   replied: { color: tokens.semantic.warning, bg: tokens.semantic.warningBg },
   follow_up: { color: tokens.brand.accentDark, bg: tokens.brand.accent50 },
   negative: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },

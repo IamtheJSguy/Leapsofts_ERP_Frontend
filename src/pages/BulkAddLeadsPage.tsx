@@ -297,6 +297,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
             <option value="">Message</option>
             <option value="not_sent">Not Sent</option>
             <option value="sent">Sent</option>
+            <option value="in_conversation">In Conversation</option>
             <option value="replied">Replied</option>
             <option value="follow_up">Follow Up</option>
             <option value="negative">Negative</option>
