@@ -64,6 +64,7 @@ import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
+import { useAdminResetTwoFactor } from '@/hooks/api/useTwoFactor';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
@@ -635,6 +636,7 @@ const TeamPage = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isReset2faOpen, setIsReset2faOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields matching Reference mockup exactly
@@ -736,6 +738,7 @@ const TeamPage = () => {
 
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
+  const resetTwoFactorMutation = useAdminResetTwoFactor();
 
   const handleDeleteUser = () => {
     if (!selectedUser?._id) return;
@@ -880,6 +883,16 @@ const TeamPage = () => {
               <Button startIcon={<EditIcon sx={{ fontSize: 15 }} />} sx={actionButtonSx} onClick={() => setIsEditUserOpen(true)}>
                 Edit
               </Button>
+
+              {isAdmin && (
+                <Button
+                  startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                  sx={actionButtonSx}
+                  onClick={() => setIsReset2faOpen(true)}
+                >
+                  Reset 2FA
+                </Button>
+              )}
 
               <Button
                 startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
@@ -1637,6 +1650,63 @@ const TeamPage = () => {
               }}
             >
               {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isReset2faOpen}
+          onClose={() => setIsReset2faOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              maxWidth: 420,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Reset two-factor authentication</Typography>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3 }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? '#e0e0e0' : tokens.text.primary }}>
+              This clears 2FA for {userFullName}. They will be required to set it up again on next login.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 2 }}>
+            <Button onClick={() => setIsReset2faOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedUser?._id) return;
+                resetTwoFactorMutation.mutate(selectedUser._id, {
+                  onSuccess: () => {
+                    addToast({ message: '2FA reset. The user must enroll again on next login.', severity: 'success' });
+                    setIsReset2faOpen(false);
+                  },
+                  onError: (err: any) => {
+                    addToast({
+                      message: err?.response?.data?.error?.message || 'Failed to reset 2FA.',
+                      severity: 'error',
+                    });
+                  },
+                });
+              }}
+              variant="contained"
+              disabled={resetTwoFactorMutation.isPending}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 3,
+                boxShadow: 'none',
+              }}
+            >
+              {resetTwoFactorMutation.isPending ? 'Resetting...' : 'Reset 2FA'}
             </Button>
           </DialogActions>
         </Dialog>

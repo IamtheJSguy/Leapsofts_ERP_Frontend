@@ -17,9 +17,13 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (res) => {
-      localStorage.setItem('accessToken', res.data.data.accessToken);
-      setAuth(res.data.data.user);
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      const data = res.data.data;
+      if (data.requires2FA || data.requires2FASetup) return;
+      if (data.accessToken && data.user) {
+        localStorage.setItem('accessToken', data.accessToken);
+        setAuth(data.user);
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
     },
   });
 };

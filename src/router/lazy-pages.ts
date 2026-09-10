@@ -1,6 +1,8 @@
 import { lazyRetry } from '@/utils/lazyRetry';
 
 export const LoginPage = lazyRetry(() => import('@/pages/LoginPage'));
+export const TwoFactorVerifyPage = lazyRetry(() => import('@/pages/TwoFactorVerifyPage'));
+export const TwoFactorSetupPage = lazyRetry(() => import('@/pages/TwoFactorSetupPage'));
 export const DashboardPage = lazyRetry(() => import('@/pages/DashboardPage'));
 export const TasksPage = lazyRetry(() => import('@/pages/TasksPage'));
 export const ReportsPage = lazyRetry(() => import('@/pages/ReportsPage'));
