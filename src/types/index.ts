@@ -165,6 +165,22 @@ export interface VersionHistoryEntry {
   changedAt: string;
 }
 
+export type LeadTimelineEventType =
+  | 'created'
+  | 'connection'
+  | 'message'
+  | 'follow_up'
+  | 'qualified';
+
+export interface LeadTimelineEvent {
+  id: string;
+  type: LeadTimelineEventType;
+  label: string;
+  detail?: string;
+  at: string;
+  byName?: string;
+}
+
 export interface PaginatedResponse<T> {
   success: boolean;
   data: T[];
