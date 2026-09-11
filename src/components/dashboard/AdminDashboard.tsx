@@ -376,7 +376,7 @@ export const AdminDashboard = () => {
                   '&:hover': { color: tokens.brand.primary }
                 }}
               >
-                View all ({dueTasks.length + activeTasks.length}) >
+                View all ({dueTasks.length + activeTasks.length}) &gt;
               </Button>
             </Box>
 
