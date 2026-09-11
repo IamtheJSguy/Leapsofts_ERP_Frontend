@@ -30,7 +30,6 @@ import { StatCardSkeleton, ChartSkeleton } from './DashboardSkeletons';
 
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
 import type { Meeting, SalesKpiEntry } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
 
 const getUserTimeZone = (user?: any) => {
   return (
@@ -41,32 +40,7 @@ const getUserTimeZone = (user?: any) => {
   );
 };
 
-const getLocalDateString = (dateInput?: string | Date | null, timeZone?: string) => {
-  if (!dateInput) return '';
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
-  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return formatter.format(d);
-};
 
-const formatTaskDate = (dateInput?: string | Date | null, timeZone?: string) => {
-  if (!dateInput) return '—';
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '—';
-  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  return d.toLocaleDateString(undefined, {
-    timeZone: tz,
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
 
 const overlapsLocalDay = (entry: SalesKpiEntry, day = new Date()) => {
   const dayStart = new Date(day);
@@ -131,10 +105,6 @@ export const UserDashboard = () => {
   const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
   const { data: salesGrouped } = useMySalesKpis({ days: 7 });
   const { data: allMeetings = [] } = useMeetings();
-
-  const userTimeZone = useMemo(() => {
-    return (user as any)?.timezone || (user as any)?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  }, [user]);
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [logType, setLogType] = useState('connection');
