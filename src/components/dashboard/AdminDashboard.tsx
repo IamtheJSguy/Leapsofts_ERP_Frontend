@@ -339,10 +339,10 @@ export const AdminDashboard = () => {
         </Grid>
       </Box>
 
-      {/* 2. Tasks Overview, test Upcoming Meetings & Deadlines Grid */}
-      <Grid container spacing={3.5}>
+      {/* 2. Tasks Overview, Upcoming Meetings & Deadlines Bento Grid */}
+      <Grid container spacing={3.5} alignItems="stretch">
         {/* Column 1: My Tasks list (60%) */}
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={7} sx={{ display: 'flex' }}>
           <Box
             sx={{
               p: 3.5,
@@ -350,9 +350,10 @@ export const AdminDashboard = () => {
               bgcolor: tokens.surface.card,
               border: `1px solid ${tokens.surface.border}`,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.015)',
-              height: '100%',
+              flex: 1,
               display: 'flex',
               flexDirection: 'column',
+              minHeight: 460,
               transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': { 
                 boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
@@ -385,152 +386,153 @@ export const AdminDashboard = () => {
                 <CircularProgress size={28} sx={{ color: tokens.brand.accent }} />
               </Box>
             ) : dueTasks.length === 0 && activeTasks.length === 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, flex: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, flex: 1, my: 'auto' }}>
                 <CheckCircleOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
                 <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
                   No active tasks for today
                 </Typography>
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                {/* Overdue Tasks Subsection */}
-                {dueTasks.length > 0 && (
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.semantic.error, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        OVERDUE TASKS
-                      </Typography>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.semantic.error }}>
-                        {dueTasks.length}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                      {dueTasks.map((task) => {
-                        const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
-                        return (
-                          <Box
-                            key={task.id}
-                            onClick={() => navigate('/tasks?status=overdue')}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 1.8,
-                              borderRadius: '12px',
-                              bgcolor: 'rgba(239, 68, 68, 0.03)',
-                              border: '1px solid rgba(239, 68, 68, 0.12)',
-                              cursor: 'pointer',
-                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                              '&:hover': {
-                                bgcolor: 'rgba(239, 68, 68, 0.06)',
-                                borderColor: 'rgba(239, 68, 68, 0.2)',
-                                transform: 'translateX(2px)',
-                                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.04)'
-                              }
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.error }} />
-                              <Box>
-                                <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                                  {task.title}
-                                  {hasProgress && (
-                                    <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
-                                      {task.currentValue} / {task.targetValue}
-                                    </Typography>
-                                  )}
-                                </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                  flex: 1,
+                  maxHeight: 380,
+                  overflowY: 'auto',
+                  pr: 0.5,
+                  '&::-webkit-scrollbar': { width: 5 },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(0, 0, 0, 0.15)',
+                    borderRadius: 3,
+                  },
+                }}
+              >
+                {/* Active Tasks Subsection (Top Priority) */}
+                {activeTasks.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                    {activeTasks.map((task) => {
+                      const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
+                      return (
+                        <Box
+                          key={task.id}
+                          onClick={() => navigate('/tasks')}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            py: 1,
+                            px: 1.5,
+                            borderRadius: '12px',
+                            bgcolor: 'rgba(0,0,0,0.006)',
+                            border: '1px solid rgba(0,0,0,0.02)',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                            '&:hover': {
+                              bgcolor: 'rgba(0,0,0,0.015)',
+                              borderColor: 'rgba(0,0,0,0.05)',
+                              transform: 'translateX(2px)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+                            }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.accent }} />
+                            <Box>
+                              <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                                {task.title}
+                                {hasProgress && (
+                                  <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
+                                    {task.currentValue} / {task.targetValue}
+                                  </Typography>
+                                )}
+                              </Typography>
+                              {task.kind === 'sales' && (
                                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.3 }}>
                                   <Chip
-                                    label={task.kind === 'sales' ? 'Sales' : 'Daily'}
+                                    label="Sales"
                                     size="small"
                                     sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }}
                                   />
                                 </Box>
-                              </Box>
-                            </Box>
-                            <Box sx={{ textAlign: 'right' }}>
-                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.error }}>
-                                <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
-                                {formatTaskDate(task.dueDate, userTimeZone)}
-                              </Typography>
-                              <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end', mt: 0.2 }}>
-                                <WarningAmberOutlinedIcon sx={{ fontSize: 12 }} /> Overdue
-                              </Typography>
+                              )}
                             </Box>
                           </Box>
-                        );
-                      })}
-                    </Box>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                              <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
+                              {formatTaskDate(task.dueDate, userTimeZone)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      );
+                    })}
                   </Box>
                 )}
 
-                {/* Active Tasks Subsection */}
-                {activeTasks.length > 0 && (
-                  <Box sx={{ mt: dueTasks.length > 0 ? 1 : 0 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.text.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        ACTIVE TASKS
-                      </Typography>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.text.muted }}>
-                        {activeTasks.length}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                      {activeTasks.map((task) => {
-                        const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
-                        return (
-                          <Box
-                            key={task.id}
-                            onClick={() => navigate('/tasks')}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 1.8,
-                              borderRadius: '12px',
-                              bgcolor: 'rgba(0,0,0,0.006)',
-                              border: '1px solid rgba(0,0,0,0.02)',
-                              cursor: 'pointer',
-                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                              '&:hover': {
-                                bgcolor: 'rgba(0,0,0,0.015)',
-                                borderColor: 'rgba(0,0,0,0.05)',
-                                transform: 'translateX(2px)',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-                              }
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.accent }} />
-                              <Box>
-                                <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
-                                  {task.title}
-                                  {hasProgress && (
-                                    <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
-                                      {task.currentValue} / {task.targetValue}
-                                    </Typography>
-                                  )}
-                                </Typography>
+                {/* Overdue Tasks Subsection */}
+                {dueTasks.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                    {dueTasks.map((task) => {
+                      const hasProgress = task.currentValue !== undefined && task.targetValue !== undefined && task.targetValue > 0;
+                      return (
+                        <Box
+                          key={task.id}
+                          onClick={() => navigate('/tasks?status=overdue')}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            py: 1,
+                            px: 1.5,
+                            borderRadius: '12px',
+                            bgcolor: 'rgba(239, 68, 68, 0.03)',
+                            border: '1px solid rgba(239, 68, 68, 0.12)',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                            '&:hover': {
+                              bgcolor: 'rgba(239, 68, 68, 0.06)',
+                              borderColor: 'rgba(239, 68, 68, 0.2)',
+                              transform: 'translateX(2px)',
+                              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.04)'
+                            }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.error }} />
+                            <Box>
+                              <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                                {task.title}
+                                {hasProgress && (
+                                  <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
+                                    {task.currentValue} / {task.targetValue}
+                                  </Typography>
+                                )}
+                              </Typography>
+                              {task.kind === 'sales' && (
                                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.3 }}>
                                   <Chip
-                                    label={task.kind === 'sales' ? 'Sales' : 'Daily'}
+                                    label="Sales"
                                     size="small"
                                     sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(0,0,0,0.04)', color: tokens.text.secondary }}
                                   />
                                 </Box>
-                              </Box>
-                            </Box>
-                            <Box sx={{ textAlign: 'right' }}>
-                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
-                                <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
-                                {formatTaskDate(task.dueDate, userTimeZone)}
-                              </Typography>
+                              )}
                             </Box>
                           </Box>
-                        );
-                      })}
-                    </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                              <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} /> Overdue
+                            </Typography>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.error }}>
+                              <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
+                              {formatTaskDate(task.dueDate, userTimeZone)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      );
+                    })}
                   </Box>
                 )}
               </Box>
@@ -539,8 +541,8 @@ export const AdminDashboard = () => {
         </Grid>
 
         {/* Column 2: Reminders & Deadlines (40%) */}
-        <Grid item xs={12} md={5}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, height: '100%' }}>
+        <Grid item xs={12} md={5} sx={{ display: 'flex' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, width: '100%', height: '100%' }}>
             {/* Reminders Card */}
             <Box
               sx={{
@@ -552,6 +554,7 @@ export const AdminDashboard = () => {
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
+                minHeight: 215,
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': { 
                   boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
@@ -581,9 +584,9 @@ export const AdminDashboard = () => {
 
               {/* Reminders / upcoming meetings */}
               {upcomingMeetings.length === 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto' }}>
-                  <NotificationsNoneOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1, opacity: 0.5 }} />
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.muted }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto', flex: 1 }}>
+                  <NotificationsNoneOutlinedIcon sx={{ fontSize: 36, color: 'rgba(0,0,0,0.1)', mb: 1.5 }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
                     No upcoming meetings
                   </Typography>
                   <Typography 
@@ -594,7 +597,22 @@ export const AdminDashboard = () => {
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
+                    maxHeight: 150,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    pr: 0.5,
+                    '&::-webkit-scrollbar': { width: 5 },
+                    '&::-webkit-scrollbar-thumb': {
+                      bgcolor: 'rgba(0, 0, 0, 0.15)',
+                      borderRadius: 3,
+                    },
+                  }}
+                >
                   {upcomingMeetings.map((meeting: any) => (
                     <Box
                       key={meeting._id}
@@ -603,7 +621,8 @@ export const AdminDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        p: 1.8,
+                        py: 1,
+                        px: 1.5,
                         borderRadius: '12px',
                         bgcolor: 'rgba(0,0,0,0.006)',
                         border: '1px solid rgba(0,0,0,0.02)',
@@ -617,10 +636,10 @@ export const AdminDashboard = () => {
                         }
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.12)' }} />
-                        <Box>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.12)', flexShrink: 0 }} />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography noWrap sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
                             {meeting.title}
                           </Typography>
                           <Typography sx={{ fontWeight: 500, fontSize: '0.75rem', color: tokens.text.muted }}>
@@ -628,7 +647,7 @@ export const AdminDashboard = () => {
                           </Typography>
                         </Box>
                       </Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent, flexShrink: 0, ml: 1 }}>
                         {formatShortDate(meeting.scheduledAt)}
                       </Typography>
                     </Box>
@@ -648,6 +667,7 @@ export const AdminDashboard = () => {
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
+                minHeight: 215,
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': { 
                   boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
@@ -664,14 +684,29 @@ export const AdminDashboard = () => {
 
               {/* Deadlines */}
               {upcomingDeadlines.length === 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto' }}>
-                  <AccessTimeOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 1, opacity: 0.5 }} />
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', color: tokens.text.muted }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 3, my: 'auto', flex: 1 }}>
+                  <AccessTimeOutlinedIcon sx={{ fontSize: 36, color: 'rgba(0,0,0,0.1)', mb: 1.5 }} />
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
                     No upcoming deadlines
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
+                    maxHeight: 150,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    pr: 0.5,
+                    '&::-webkit-scrollbar': { width: 5 },
+                    '&::-webkit-scrollbar-thumb': {
+                      bgcolor: 'rgba(0, 0, 0, 0.15)',
+                      borderRadius: 3,
+                    },
+                  }}
+                >
                   {upcomingDeadlines.map((deadline) => (
                     <Box
                       key={deadline.id}
@@ -679,23 +714,17 @@ export const AdminDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        p: 1.8,
+                        py: 1,
+                        px: 1.5,
                         borderRadius: '12px',
                         bgcolor: 'rgba(0,0,0,0.006)',
                         border: '1px solid rgba(0,0,0,0.02)',
-                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:hover': {
-                          bgcolor: 'rgba(0,0,0,0.015)',
-                          borderColor: 'rgba(0,0,0,0.05)',
-                          transform: 'translateX(2px)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-                        }
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255,127,17,0.3)' }} />
-                        <Box>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255,127,17,0.3)', flexShrink: 0 }} />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography noWrap sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
                             {deadline.title || (deadline as any).taskTitle}
                           </Typography>
                           <Typography sx={{ fontWeight: 500, fontSize: '0.75rem', color: tokens.text.muted }}>
@@ -703,7 +732,7 @@ export const AdminDashboard = () => {
                           </Typography>
                         </Box>
                       </Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent, flexShrink: 0, ml: 1 }}>
                         {formatShortDate(deadline.date)}
                       </Typography>
                     </Box>
