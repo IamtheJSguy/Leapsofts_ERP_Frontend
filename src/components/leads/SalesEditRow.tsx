@@ -124,21 +124,19 @@ export const SalesEditRow = memo(function SalesEditRow({
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>
-        <select
-          value={editData.connectionStatus}
-          onChange={(e) =>
-            onUpdate(leadId, { connectionStatus: e.target.value as ConnectionStatus })
-          }
-          style={field}
-        >
-          <option value="pending">Conn: Pending</option>
-          <option value="accepted">Conn: Accepted</option>
-          <option value="declined">Conn: Declined</option>
-          <option value="no_response">Conn: No Response</option>
-        </select>
-      </TableCell>
-      <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <select
+            value={editData.connectionStatus}
+            onChange={(e) =>
+              onUpdate(leadId, { connectionStatus: e.target.value as ConnectionStatus })
+            }
+            style={field}
+          >
+            <option value="pending">Conn: Pending</option>
+            <option value="accepted">Conn: Accepted</option>
+            <option value="declined">Conn: Declined</option>
+            <option value="no_response">Conn: No Response</option>
+          </select>
           <select
             value={editData.messageStatus}
             onChange={(e) => {
@@ -343,19 +341,17 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>
-        <select
-          value={data.connectionStatus || 'pending'}
-          onChange={(e) => onUpdate({ connectionStatus: e.target.value })}
-          style={nativeFieldStyle(isDarkMode)}
-        >
-          <option value="pending">Conn: Pending</option>
-          <option value="accepted">Conn: Accepted</option>
-          <option value="declined">Conn: Declined</option>
-          <option value="no_response">Conn: No Response</option>
-        </select>
-      </TableCell>
-      <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <select
+            value={data.connectionStatus || 'pending'}
+            onChange={(e) => onUpdate({ connectionStatus: e.target.value })}
+            style={nativeFieldStyle(isDarkMode)}
+          >
+            <option value="pending">Conn: Pending</option>
+            <option value="accepted">Conn: Accepted</option>
+            <option value="declined">Conn: Declined</option>
+            <option value="no_response">Conn: No Response</option>
+          </select>
           <select
             value={data.messageStatus || 'not_sent'}
             onChange={(e) => {

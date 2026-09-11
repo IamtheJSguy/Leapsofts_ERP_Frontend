@@ -194,13 +194,24 @@ export const LeadDetailDrawer = ({
         )}
 
         <Divider sx={{ my: 2 }} />
-        <Typography variant="subtitle2">Version History</Typography>
+        <Typography variant="subtitle2">Activity</Typography>
         <List dense>
-          {history.map((entry: { field: string; oldValue: unknown; newValue: unknown; changedAt: string }, i: number) => (
-            <ListItem key={i}>
+          {history.length === 0 && (
+            <ListItem disableGutters>
               <ListItemText
-                primary={`${entry.field}: ${String(entry.oldValue)} → ${String(entry.newValue)}`}
-                secondary={formatDateTime(entry.changedAt)}
+                primary={
+                  <Typography variant="body2" color="text.secondary">
+                    No tracked changes yet
+                  </Typography>
+                }
+              />
+            </ListItem>
+          )}
+          {history.map((event) => (
+            <ListItem key={event.id} disableGutters>
+              <ListItemText
+                primary={`${event.label}${event.detail ? ` — ${event.detail}` : ''}`}
+                secondary={`${formatDateTime(event.at)}${event.byName ? ` · ${event.byName}` : ''}`}
               />
             </ListItem>
           ))}
