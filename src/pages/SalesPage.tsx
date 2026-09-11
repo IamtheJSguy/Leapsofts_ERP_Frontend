@@ -80,6 +80,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
+import { resolvePermissions } from '@/lib/permissions';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
@@ -286,7 +287,13 @@ export const SalesPage = () => {
   const [followUpView, setFollowUpView] = useState<'all' | '1' | '2'>('all');
 
   const { data: usersData } = useUsers();
-  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
+  const usersList = useMemo(() => {
+    return (usersData || []).filter((u: any) => {
+      if (u.role === 'admin') return false;
+      const perms = resolvePermissions(u.role, u.department, u.permissions);
+      return perms.viewSalesPage === true;
+    });
+  }, [usersData]);
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
   const { data: profilesData } = useProfiles();
