@@ -1800,7 +1800,8 @@ export const SalesPage = () => {
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>PROSPECT</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3, width: 60 }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>PROSPECT</TableCell>
                     <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>CAMPAIGN (ICP)</TableCell>
                     <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>OUTREACH STATUS</TableCell>
                     <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>ASSIGNED AGENT</TableCell>
@@ -1821,7 +1822,7 @@ export const SalesPage = () => {
                       onCancel={handleInlineAddCancel}
                     />
                   )}
-                  {prospects.map((prospect) => {
+                  {prospects.map((prospect, idx) => {
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
@@ -1849,6 +1850,7 @@ export const SalesPage = () => {
                       );
                     }
 
+                    const globalRowIndex = (page - 1) * rowsPerPage + idx + 1;
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1873,8 +1875,37 @@ export const SalesPage = () => {
                           },
                         }}
                       >
+                        {/* Continuous Index / Counter */}
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3, width: 60 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: 32,
+                              height: 24,
+                              px: 0.8,
+                              borderRadius: '8px',
+                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                              color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.muted,
+                              fontSize: '0.74rem',
+                              fontWeight: 750,
+                              fontVariantNumeric: 'tabular-nums',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '.MuiTableRow-root:hover &': {
+                                bgcolor: isDarkMode ? 'rgba(255,127,17,0.15)' : 'rgba(255,127,17,0.08)',
+                                color: tokens.brand.accent,
+                                borderColor: 'rgba(255,127,17,0.25)',
+                              },
+                            }}
+                          >
+                            {String(globalRowIndex).padStart(2, '0')}
+                          </Box>
+                        </TableCell>
+
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
+                        <TableCell sx={{ py: 2, borderBottom: 0 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
                               role="button"
