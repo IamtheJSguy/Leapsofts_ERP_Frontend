@@ -280,7 +280,7 @@ export const UserDashboard = () => {
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
                       <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: tokens.semantic.error, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        DUE TASKS
+                        OVERDUE TASKS
                       </Typography>
                       <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: tokens.semantic.error }}>
                         {dueTasks.length}
@@ -292,7 +292,7 @@ export const UserDashboard = () => {
                         return (
                           <Box
                             key={task.id}
-                            onClick={() => navigate('/tasks')}
+                            onClick={() => navigate('/tasks?status=overdue')}
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
