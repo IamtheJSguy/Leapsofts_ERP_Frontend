@@ -3718,7 +3718,7 @@ export const KanbanBoardPage = () => {
         <DialogContent
           sx={{
             px: 3,
-            pt: 2,
+            pt: 3,
             pb: 3,
             display: 'flex',
             flexDirection: 'column',
@@ -3745,6 +3745,7 @@ export const KanbanBoardPage = () => {
             onChange={(e) => setNewCardTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleCreateCardSubmit(); }}
             sx={{
+              mt: 0.75,
               '& .MuiOutlinedInput-root': {
                 borderRadius: '14px',
                 fontWeight: 650,
