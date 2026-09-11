@@ -95,8 +95,8 @@ const TwoFactorVerifyPage = () => {
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
           {useBackup
-            ? 'Enter one of your unused backup codes.'
-            : 'Enter the 6-digit code from your authenticator app.'}
+            ? 'Enter one of your unused backup codes (letters and numbers).'
+            : 'Enter the 6-digit authenticator code, or a backup code if you cannot use the app.'}
         </Typography>
 
         {errorMessage && (
@@ -109,13 +109,18 @@ const TwoFactorVerifyPage = () => {
           <TextField
             autoFocus
             fullWidth
-            label={useBackup ? 'Backup code' : 'Authenticator code'}
+            label={useBackup ? 'Backup code' : 'Authenticator or backup code'}
             value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
+              setCode(next);
+              if (/[A-Z]/.test(next)) setUseBackup(true);
+            }}
             inputProps={{
-              inputMode: useBackup ? 'text' : 'numeric',
+              inputMode: 'text',
               autoComplete: 'one-time-code',
-              maxLength: useBackup ? 16 : 6,
+              maxLength: 16,
+              pattern: '[A-Za-z0-9]*',
             }}
             sx={{ mb: 2 }}
           />
