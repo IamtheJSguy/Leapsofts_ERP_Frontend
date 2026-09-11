@@ -115,26 +115,38 @@ const TwoFactorSetupPage = () => {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 3, sm: 5 },
+          p: { xs: 2.5, sm: 3.5 },
           width: '100%',
-          maxWidth: 480,
-          borderRadius: 6,
+          maxWidth: 410,
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          borderRadius: 3,
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.55)' : 'rgba(255, 255, 255, 0.65)',
           border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)'}`,
           boxShadow: isDarkMode ? '0 24px 64px rgba(0, 0, 0, 0.35)' : tokens.shadow.card,
         }}
       >
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 0.25, fontSize: '0.95rem' }}>
           {APP_NAME}
         </Typography>
-        <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.03em', mb: 1, fontSize: { xs: '1.5rem', sm: '1.85rem' } }}>
+        <Typography variant="h5" fontWeight={900} sx={{ letterSpacing: '-0.02em', mb: 0.75, fontSize: { xs: '1.25rem', sm: '1.45rem' } }}>
           Set up two-factor authentication
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.8rem' }}>
           Authenticator apps are required for every account. Scan the QR code, then save your backup codes.
         </Typography>
 
-        <Stepper activeStep={backupCodes ? 2 : 1} alternativeLabel sx={{ mb: 3 }}>
+        <Stepper
+          activeStep={backupCodes ? 2 : 1}
+          alternativeLabel
+          sx={{
+            mb: 2,
+            '& .MuiStepLabel-label': { fontSize: '0.75rem' },
+          }}
+        >
           <Step>
             <StepLabel>Scan QR</StepLabel>
           </Step>
@@ -147,36 +159,36 @@ const TwoFactorSetupPage = () => {
         </Stepper>
 
         {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}>
             {errorMessage}
           </Alert>
         )}
 
         {setup.isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={32} />
           </Box>
         )}
 
         {!backupCodes && setup.data && (
           <>
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
               <Box
                 component="img"
                 src={setup.data.qrDataUrl}
                 alt="Authenticator QR code"
-                sx={{ width: 200, height: 200, bgcolor: '#fff', borderRadius: 2, p: 1 }}
+                sx={{ width: 150, height: 150, bgcolor: '#fff', borderRadius: 2, p: 0.75 }}
               />
             </Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1, textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5, textAlign: 'center', fontSize: '0.8rem' }}>
               Can&apos;t scan? Enter this key manually:
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 3 }}>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.08em' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 1.75 }}>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.08em', fontSize: '0.8rem' }}>
                 {setup.data.secret}
               </Typography>
-              <IconButton size="small" onClick={copySecret} aria-label="Copy secret key">
-                <ContentCopyIcon fontSize="small" />
+              <IconButton size="small" onClick={copySecret} aria-label="Copy secret key" sx={{ p: 0.25 }}>
+                <ContentCopyIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Box>
 
@@ -184,26 +196,27 @@ const TwoFactorSetupPage = () => {
               <TextField
                 autoFocus
                 fullWidth
+                size="small"
                 label="6-digit code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputProps={{ inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 6 }}
-                sx={{ mb: 2 }}
+                sx={{ mb: 1.75, '& input': { fontSize: '0.875rem' } }}
               />
               <Button
                 type="submit"
                 variant="contained"
                 fullWidth
-                size="large"
                 disabled={verifySetup.isPending || code.length !== 6}
                 sx={{
-                  py: 1.4,
+                  py: 1,
+                  fontSize: '0.875rem',
                   borderRadius: tokens.radius.pill,
                   fontWeight: 600,
                   background: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
                 }}
               >
-                {verifySetup.isPending ? <CircularProgress size={22} color="inherit" /> : 'Verify and continue'}
+                {verifySetup.isPending ? <CircularProgress size={20} color="inherit" /> : 'Verify and continue'}
               </Button>
             </Box>
           </>
