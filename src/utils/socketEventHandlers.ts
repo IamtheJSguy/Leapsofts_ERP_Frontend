@@ -4,7 +4,7 @@ import type { Conversation, Message, MessageReaction, Notification, PresenceStat
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
-import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap } from '@/utils/chatMessageUtils';
+import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap, stripHtml } from '@/utils/chatMessageUtils';
 import { getDisplayName } from '@/utils/formatters';
 import {
   appendMessageToCache,
@@ -229,23 +229,66 @@ export const setupSocketEventHandlers = (
         console.error("Audio not supported");
       }
 
-      let senderName = 'New Message';
+      let senderName = '';
       let senderAvatar = undefined;
 
+      // 1. If message.sender is populated as an object
       if (typeof message.sender === 'object' && message.sender !== null) {
-        const s = message.sender as any;
-        if (s.firstName || s.lastName) {
-          senderName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
-        } else if (s.name) {
-          senderName = s.name;
-        }
-        senderAvatar = s.avatar;
+        senderName = getDisplayName(message.sender as any);
+        senderAvatar = (message.sender as any).avatar;
       }
 
+      // 2. Fallback: Search conversation participants for senderId
+      if ((!senderName || senderName === 'Unknown') && senderId) {
+        try {
+          const conversations = queryClient.getQueryData<Conversation[]>(['conversations']);
+          const conv = conversations?.find((c) => c._id === conversationId);
+          const participant = conv?.participants?.find((p: any) => (p._id || p) === senderId);
+          if (participant && typeof participant === 'object') {
+            senderName = getDisplayName(participant as any);
+            senderAvatar = (participant as any).avatar;
+          }
+        } catch (e) {
+          console.error("Failed to look up sender in conversation participants:", e);
+        }
+      }
+
+      // 3. Fallback: Search global users query cache if available
+      if ((!senderName || senderName === 'Unknown') && senderId) {
+        try {
+          const users = queryClient.getQueryData<User[]>(['users']);
+          const u = users?.find((user) => user._id === senderId);
+          if (u) {
+            senderName = getDisplayName(u);
+            senderAvatar = (u as any).avatar;
+          }
+        } catch (e) {
+          console.error("Failed to look up sender in users cache:", e);
+        }
+      }
+
+      if (!senderName || senderName === 'Unknown') {
+        senderName = 'New Message';
+      }
+
+      // Check if conversation is a group chat to format title as "Sender Name (Group Name)"
+      let toastTitle = senderName;
+      try {
+        const conversations = queryClient.getQueryData<Conversation[]>(['conversations']);
+        const conv = conversations?.find((c) => c._id === conversationId);
+        if (conv?.isGroup && conv?.name) {
+          toastTitle = `${conv.name} (${senderName})`;
+        }
+      } catch (e) {
+        console.error("Failed to extract group name for toast:", e);
+      }
+
+      const cleanContent = stripHtml(message.content || '').trim() || (message.type === 'file' ? 'Sent an attachment' : 'Sent a message');
+
       useUIStore.getState().addToast({
-        message: message.content || 'Sent an attachment',
+        message: cleanContent,
         severity: 'message',
-        title: senderName,
+        title: toastTitle,
         avatar: senderAvatar,
         conversationId
       });
