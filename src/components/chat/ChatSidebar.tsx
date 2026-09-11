@@ -547,8 +547,8 @@ export const ChatSidebar = () => {
                               <ImageOutlinedIcon sx={{ fontSize: '0.9rem', color: 'inherit', opacity: 0.8 }} />
                             )}
                             {conv.lastMessage?.type === 'file'
-                              ? conv.lastMessage.content || 'Image'
-                              : stripHtml(conv.lastMessage?.content) || 'No messages yet.'}
+                              ? stripHtml(conv.lastMessage.content || '').trim() || 'Photo'
+                              : stripHtml(conv.lastMessage?.content || '') || 'No messages yet.'}
                           </Typography>
                         )}
                         {unreadCount > 0 && (
