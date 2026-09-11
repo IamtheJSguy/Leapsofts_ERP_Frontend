@@ -591,13 +591,26 @@ export const ChatSidebar = () => {
             boxShadow: isDarkMode ? '0 24px 64px rgba(0,0,0,0.4)' : '0 24px 64px rgba(0,0,0,0.08)',
             width: '100%',
             maxWidth: 440,
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
             overflow: 'hidden',
             m: { xs: 2, sm: 3 }
           }
         }}
       >
-        <Box sx={{ p: { xs: 2.5, sm: 4 }, pb: { xs: 1.5, sm: 2 } }}>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, textAlign: 'center', letterSpacing: '-0.02em' }}>
+        {/* Scrollable Content Container (Scrollbar Hidden) */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            p: { xs: 2.5, sm: 3.5 },
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+            '&::-webkit-scrollbar': { display: 'none' }, // Chrome/Safari/Webkit
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 2.5, textAlign: 'center', letterSpacing: '-0.02em' }}>
             New Conversation
           </Typography>
 
@@ -608,7 +621,7 @@ export const ChatSidebar = () => {
               p: 0.5,
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : '#f3f4f6',
               borderRadius: '20px',
-              mb: 3,
+              mb: 2.5,
             }}
           >
             {[
@@ -656,7 +669,7 @@ export const ChatSidebar = () => {
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                   borderRadius: '16px',
                   px: 2,
-                  py: 1.5,
+                  py: 1.25,
                   '& input': { fontWeight: 600, fontSize: '0.9rem' }
                 }}
               />
@@ -671,7 +684,7 @@ export const ChatSidebar = () => {
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                   borderRadius: '16px',
                   px: 2,
-                  py: 1.5,
+                  py: 1.25,
                   '& input': { fontSize: '0.9rem' }
                 }}
               />
@@ -696,15 +709,14 @@ export const ChatSidebar = () => {
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
               borderRadius: '16px',
               px: 2,
-              py: 1.5,
+              py: 1.25,
               mb: 2,
               '& input': { fontSize: '0.9rem' }
             }}
           />
-        </Box>
 
-        <Box sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 2, sm: 3 } }}>
-          <List sx={{ maxHeight: 280, overflowY: 'auto', p: 0 }}>
+          {/* Member Selection List */}
+          <List sx={{ p: 0 }}>
             {filteredNewChatUsers.map((user, index) => {
               const name = getDisplayName(user);
               const initial = name.charAt(0).toUpperCase();
@@ -726,9 +738,8 @@ export const ChatSidebar = () => {
                   }}
                   sx={{
                     px: { xs: 1.5, sm: 2 },
-                    py: 1.5,
-                    mb: 1,
-                    mx: { xs: 1, sm: 2 },
+                    py: 1.25,
+                    mb: 0.75,
                     borderRadius: '18px',
                     bgcolor: isTopMatch
                       ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)')
@@ -755,8 +766,8 @@ export const ChatSidebar = () => {
                   )}
                   <Avatar
                     sx={{
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       mr: 2,
                       bgcolor: isTopMatch ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6'),
                       color: isTopMatch ? '#fff' : tokens.brand.primary,
@@ -778,41 +789,49 @@ export const ChatSidebar = () => {
               );
             })}
             {filteredNewChatUsers.length === 0 && (
-              <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 5 }}>
+              <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
                 No users found matching your search.
               </Typography>
             )}
           </List>
-
-          {chatTab === 1 && (
-            <Box sx={{ px: 2, pt: 2 }}>
-              <Button
-                fullWidth
-                onClick={handleCreateChat}
-                disabled={isCreating || !groupName.trim() || selectedGroupMembers.length === 0}
-                variant="contained"
-                sx={{
-                  bgcolor: tokens.brand.primary,
-                  color: '#fff',
-                  borderRadius: '16px',
-                  py: 1.5,
-                  fontWeight: 800,
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  boxShadow: '0 8px 24px rgba(93, 26, 137, 0.25)',
-                  '&:hover': { bgcolor: tokens.brand.primaryDark, boxShadow: '0 12px 28px rgba(93, 26, 137, 0.35)' },
-                  '&.Mui-disabled': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    color: 'text.disabled',
-                    boxShadow: 'none',
-                  }
-                }}
-              >
-                {isCreating ? 'Creating...' : `Create Group (${selectedGroupMembers.length} members)`}
-              </Button>
-            </Box>
-          )}
         </Box>
+
+        {/* Sticky Action Footer for Group Chat Creation */}
+        {chatTab === 1 && (
+          <Box
+            sx={{
+              px: { xs: 2.5, sm: 3.5 },
+              py: 2,
+              bgcolor: isDarkMode ? '#171421' : '#ffffff',
+              borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+            }}
+          >
+            <Button
+              fullWidth
+              onClick={handleCreateChat}
+              disabled={isCreating || !groupName.trim() || selectedGroupMembers.length === 0}
+              variant="contained"
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                borderRadius: '16px',
+                py: 1.5,
+                fontWeight: 800,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                boxShadow: '0 8px 24px rgba(93, 26, 137, 0.25)',
+                '&:hover': { bgcolor: tokens.brand.primaryDark, boxShadow: '0 12px 28px rgba(93, 26, 137, 0.35)' },
+                '&.Mui-disabled': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  color: 'text.disabled',
+                  boxShadow: 'none',
+                }
+              }}
+            >
+              {isCreating ? 'Creating...' : `Create Group (${selectedGroupMembers.length} members)`}
+            </Button>
+          </Box>
+        )}
       </Dialog>
 
       {/* Direct Chat Confirmation Dialog */}
