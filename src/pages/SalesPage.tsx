@@ -289,7 +289,7 @@ export const SalesPage = () => {
   const { data: usersData } = useUsers();
   const usersList = useMemo(() => {
     return (usersData || []).filter((u: any) => {
-      if (u.role === 'admin') return false;
+      if (u.role === 'admin') return true;
       const perms = resolvePermissions(u.role, u.department, u.permissions);
       return perms.viewSalesPage === true;
     });

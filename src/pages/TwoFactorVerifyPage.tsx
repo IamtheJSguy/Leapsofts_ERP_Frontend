@@ -74,33 +74,33 @@ const TwoFactorVerifyPage = () => {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 3, sm: 5 },
+          p: { xs: 2.5, sm: 3.5 },
           width: '100%',
-          maxWidth: 430,
+          maxWidth: 390,
           borderRadius: 6,
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.55)' : 'rgba(255, 255, 255, 0.65)',
           border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)'}`,
           boxShadow: isDarkMode ? '0 24px 64px rgba(0, 0, 0, 0.35)' : tokens.shadow.card,
         }}
       >
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 0.25, fontSize: '0.95rem' }}>
           {APP_NAME}
         </Typography>
         <Typography
-          variant="h4"
+          variant="h5"
           fontWeight={900}
-          sx={{ letterSpacing: '-0.03em', mb: 1, fontSize: { xs: '1.5rem', sm: '2rem' } }}
+          sx={{ letterSpacing: '-0.02em', mb: 0.75, fontSize: { xs: '1.25rem', sm: '1.45rem' } }}
         >
           Two-factor authentication
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.8rem' }}>
           {useBackup
             ? 'Enter one of your unused backup codes (letters and numbers).'
             : 'Enter the 6-digit authenticator code, or a backup code if you cannot use the app.'}
         </Typography>
 
         {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}>
             {errorMessage}
           </Alert>
         )}
@@ -122,26 +122,26 @@ const TwoFactorVerifyPage = () => {
               maxLength: 16,
               pattern: '[A-Za-z0-9]*',
             }}
-            sx={{ mb: 2 }}
+            sx={{ mb: 1.75, '& input': { fontSize: '0.875rem' } }}
           />
           <Button
             type="submit"
             variant="contained"
             fullWidth
-            size="large"
             disabled={verifyLogin.isPending || code.trim().length < 6}
             sx={{
-              py: 1.4,
+              py: 1,
+              fontSize: '0.875rem',
               borderRadius: tokens.radius.pill,
               fontWeight: 600,
               background: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
             }}
           >
-            {verifyLogin.isPending ? <CircularProgress size={22} color="inherit" /> : 'Verify'}
+            {verifyLogin.isPending ? <CircularProgress size={20} color="inherit" /> : 'Verify'}
           </Button>
         </Box>
 
-        <Box sx={{ mt: 2.5, display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
           <Link
             component="button"
             type="button"
@@ -150,7 +150,7 @@ const TwoFactorVerifyPage = () => {
               setUseBackup((v) => !v);
               setCode('');
             }}
-            sx={{ fontSize: '0.85rem', color: tokens.brand.primaryMuted }}
+            sx={{ fontSize: '0.8rem', color: tokens.brand.primaryMuted }}
           >
             {useBackup ? 'Use authenticator code' : 'Use backup code instead'}
           </Link>
@@ -162,7 +162,7 @@ const TwoFactorVerifyPage = () => {
               sessionStorage.removeItem(TEMP_TOKEN_KEY);
               navigate('/login');
             }}
-            sx={{ fontSize: '0.85rem', color: 'text.secondary' }}
+            sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
           >
             Back to login
           </Link>

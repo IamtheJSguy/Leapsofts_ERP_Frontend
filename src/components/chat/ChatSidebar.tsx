@@ -585,19 +585,32 @@ export const ChatSidebar = () => {
         onClose={() => setIsNewChatModalOpen(false)}
         PaperProps={{
           sx: {
-            borderRadius: '28px',
+            borderRadius: '24px',
             bgcolor: isDarkMode ? '#13111a' : '#ffffff',
             backgroundImage: 'none',
             boxShadow: isDarkMode ? '0 24px 64px rgba(0,0,0,0.4)' : '0 24px 64px rgba(0,0,0,0.08)',
             width: '100%',
-            maxWidth: 440,
+            maxWidth: 400,
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
             overflow: 'hidden',
             m: { xs: 2, sm: 3 }
           }
         }}
       >
-        <Box sx={{ p: { xs: 2.5, sm: 4 }, pb: { xs: 1.5, sm: 2 } }}>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, textAlign: 'center', letterSpacing: '-0.02em' }}>
+        {/* Scrollable Content Container (Scrollbar Hidden) */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            p: { xs: 2, sm: 2.5 },
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+            '&::-webkit-scrollbar': { display: 'none' }, // Chrome/Safari/Webkit
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.15rem', mb: 2, textAlign: 'center', letterSpacing: '-0.01em' }}>
             New Conversation
           </Typography>
 
@@ -607,8 +620,8 @@ export const ChatSidebar = () => {
               display: 'flex',
               p: 0.5,
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : '#f3f4f6',
-              borderRadius: '20px',
-              mb: 3,
+              borderRadius: '16px',
+              mb: 2,
             }}
           >
             {[
@@ -620,12 +633,12 @@ export const ChatSidebar = () => {
                 onClick={() => setChatTab(tab.val)}
                 sx={{
                   flex: 1,
-                  py: 1,
+                  py: 0.6,
                   textAlign: 'center',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
                   color: chatTab === tab.val
                     ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
@@ -644,7 +657,7 @@ export const ChatSidebar = () => {
           </Box>
 
           {chatTab === 1 && (
-            <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
               <TextField
                 fullWidth
                 placeholder="Group Name"
@@ -654,10 +667,10 @@ export const ChatSidebar = () => {
                 variant="standard"
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                  borderRadius: '16px',
-                  px: 2,
-                  py: 1.5,
-                  '& input': { fontWeight: 600, fontSize: '0.9rem' }
+                  borderRadius: '14px',
+                  px: 1.75,
+                  py: 0.85,
+                  '& input': { fontWeight: 500, fontSize: '0.85rem' }
                 }}
               />
               <TextField
@@ -669,10 +682,10 @@ export const ChatSidebar = () => {
                 variant="standard"
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                  borderRadius: '16px',
-                  px: 2,
-                  py: 1.5,
-                  '& input': { fontSize: '0.9rem' }
+                  borderRadius: '14px',
+                  px: 1.75,
+                  py: 0.85,
+                  '& input': { fontSize: '0.85rem' }
                 }}
               />
             </Box>
@@ -687,24 +700,23 @@ export const ChatSidebar = () => {
             InputProps={{
               disableUnderline: true,
               startAdornment: (
-                <InputAdornment position="start" sx={{ mr: 1.5 }}>
-                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                <InputAdornment position="start" sx={{ mr: 1.25 }}>
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
                 </InputAdornment>
               ),
             }}
             sx={{
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-              borderRadius: '16px',
-              px: 2,
-              py: 1.5,
-              mb: 2,
-              '& input': { fontSize: '0.9rem' }
+              borderRadius: '14px',
+              px: 1.75,
+              py: 0.85,
+              mb: 1.5,
+              '& input': { fontSize: '0.85rem' }
             }}
           />
-        </Box>
 
-        <Box sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 2, sm: 3 } }}>
-          <List sx={{ maxHeight: 280, overflowY: 'auto', p: 0 }}>
+          {/* Member Selection List */}
+          <List sx={{ p: 0 }}>
             {filteredNewChatUsers.map((user, index) => {
               const name = getDisplayName(user);
               const initial = name.charAt(0).toUpperCase();
@@ -725,11 +737,10 @@ export const ChatSidebar = () => {
                     }
                   }}
                   sx={{
-                    px: { xs: 1.5, sm: 2 },
-                    py: 1.5,
-                    mb: 1,
-                    mx: { xs: 1, sm: 2 },
-                    borderRadius: '18px',
+                    px: { xs: 1.25, sm: 1.5 },
+                    py: 0.85,
+                    mb: 0.5,
+                    borderRadius: '14px',
                     bgcolor: isTopMatch
                       ? (isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)')
                       : (isSelectedGroupMember ? (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f9fafb') : 'transparent'),
@@ -745,19 +756,20 @@ export const ChatSidebar = () => {
                   }}
                 >
                   {chatTab === 1 && (
-                    <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center' }}>
                       {isSelectedGroupMember ? (
-                        <CheckCircleIcon sx={{ color: tokens.brand.primary, fontSize: 22 }} />
+                        <CheckCircleIcon sx={{ color: tokens.brand.primary, fontSize: 19 }} />
                       ) : (
-                        <RadioButtonUncheckedIcon sx={{ color: 'text.secondary', fontSize: 22, opacity: 0.5 }} />
+                        <RadioButtonUncheckedIcon sx={{ color: 'text.secondary', fontSize: 19, opacity: 0.5 }} />
                       )}
                     </Box>
                   )}
                   <Avatar
                     sx={{
-                      width: 44,
-                      height: 44,
-                      mr: 2,
+                      width: 34,
+                      height: 34,
+                      mr: 1.5,
+                      fontSize: '0.8rem',
                       bgcolor: isTopMatch ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6'),
                       color: isTopMatch ? '#fff' : tokens.brand.primary,
                       fontWeight: 700,
@@ -767,52 +779,60 @@ export const ChatSidebar = () => {
                   </Avatar>
                   <ListItemText
                     primary={
-                      <Typography variant="subtitle2" noWrap sx={{ fontWeight: 800, color: isTopMatch ? tokens.brand.primary : 'text.primary', letterSpacing: '-0.01em' }}>
+                      <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600, fontSize: '0.85rem', color: isTopMatch ? tokens.brand.primary : 'text.primary', letterSpacing: '-0.01em' }}>
                         {name}
                       </Typography>
                     }
-                    secondary={<Typography variant="body2" noWrap sx={{ color: 'text.secondary', fontWeight: 500 }}>{user.email}</Typography>}
+                    secondary={<Typography variant="body2" noWrap sx={{ color: 'text.secondary', fontSize: '0.75rem', fontWeight: 500 }}>{user.email}</Typography>}
                     sx={{ overflow: 'hidden' }}
                   />
                 </ListItemButton>
               );
             })}
             {filteredNewChatUsers.length === 0 && (
-              <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 5 }}>
+              <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 3, fontSize: '0.825rem' }}>
                 No users found matching your search.
               </Typography>
             )}
           </List>
-
-          {chatTab === 1 && (
-            <Box sx={{ px: 2, pt: 2 }}>
-              <Button
-                fullWidth
-                onClick={handleCreateChat}
-                disabled={isCreating || !groupName.trim() || selectedGroupMembers.length === 0}
-                variant="contained"
-                sx={{
-                  bgcolor: tokens.brand.primary,
-                  color: '#fff',
-                  borderRadius: '16px',
-                  py: 1.5,
-                  fontWeight: 800,
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  boxShadow: '0 8px 24px rgba(93, 26, 137, 0.25)',
-                  '&:hover': { bgcolor: tokens.brand.primaryDark, boxShadow: '0 12px 28px rgba(93, 26, 137, 0.35)' },
-                  '&.Mui-disabled': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    color: 'text.disabled',
-                    boxShadow: 'none',
-                  }
-                }}
-              >
-                {isCreating ? 'Creating...' : `Create Group (${selectedGroupMembers.length} members)`}
-              </Button>
-            </Box>
-          )}
         </Box>
+
+        {/* Sticky Action Footer for Group Chat Creation */}
+        {chatTab === 1 && (
+          <Box
+            sx={{
+              px: { xs: 2, sm: 2.5 },
+              py: 1.5,
+              bgcolor: isDarkMode ? '#171421' : '#ffffff',
+              borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+            }}
+          >
+            <Button
+              fullWidth
+              onClick={handleCreateChat}
+              disabled={isCreating || !groupName.trim() || selectedGroupMembers.length === 0}
+              variant="contained"
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                borderRadius: '14px',
+                py: 1.1,
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                boxShadow: '0 6px 20px rgba(93, 26, 137, 0.2)',
+                '&:hover': { bgcolor: tokens.brand.primaryDark, boxShadow: '0 10px 24px rgba(93, 26, 137, 0.3)' },
+                '&.Mui-disabled': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  color: 'text.disabled',
+                  boxShadow: 'none',
+                }
+              }}
+            >
+              {isCreating ? 'Creating...' : `Create Group (${selectedGroupMembers.length} members)`}
+            </Button>
+          </Box>
+        )}
       </Dialog>
 
       {/* Direct Chat Confirmation Dialog */}
