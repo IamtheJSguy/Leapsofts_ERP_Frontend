@@ -3695,20 +3695,45 @@ export const KanbanBoardPage = () => {
         PaperProps={{
           sx: {
             borderRadius: '24px',
-            p: 1.5,
             bgcolor: isDarkMode ? '#1E1B24' : '#fff',
             backgroundImage: 'none',
             boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-            overflow: 'visible',
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Create New Card</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>Add a custom task to this column</Typography>
+        <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Create New Card</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>Add a custom task to this column</Typography>
+          </Box>
+          <IconButton onClick={() => setIsCardDialogOpen(false)} size="small" sx={{ color: 'text.secondary' }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 3.5, pb: 3, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible' }}>
+        <DialogContent
+          sx={{
+            px: 3,
+            pt: 2,
+            pb: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2.5,
+            flexGrow: 1,
+            overflowY: 'auto',
+            minHeight: 0,
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+              borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+          }}
+        >
           {/* Title */}
           <TextField
             autoFocus
@@ -3850,7 +3875,15 @@ export const KanbanBoardPage = () => {
           </FormControl>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1.5 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            gap: 1.5,
+            flexShrink: 0,
+            borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          }}
+        >
           <Button
             onClick={() => {
               setIsCardDialogOpen(false);
