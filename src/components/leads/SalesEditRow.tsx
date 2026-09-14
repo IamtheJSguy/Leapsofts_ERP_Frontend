@@ -64,7 +64,28 @@ export const SalesEditRow = memo(function SalesEditRow({
         borderBottom: `2px solid ${tokens.brand.primary}`,
       }}
     >
-      <TableCell sx={{ py: 2, pl: 3 }}>
+      <TableCell sx={{ py: 2, pl: 3, width: 60 }}>
+        <Box
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 32,
+            height: 24,
+            px: 0.8,
+            borderRadius: '8px',
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+            color: isDarkMode ? 'rgba(255,255,255,0.4)' : tokens.text.muted,
+            fontSize: '0.74rem',
+            fontWeight: 750,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          •
+        </Box>
+      </TableCell>
+      <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
             <input
@@ -281,7 +302,28 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
         borderBottom: `2px solid ${tokens.brand.primary}`,
       }}
     >
-      <TableCell sx={{ py: 2, pl: 3 }}>
+      <TableCell sx={{ py: 2, pl: 3, width: 60 }}>
+        <Box
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 32,
+            height: 24,
+            px: 0.8,
+            borderRadius: '8px',
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+            color: isDarkMode ? 'rgba(255,255,255,0.4)' : tokens.text.muted,
+            fontSize: '0.74rem',
+            fontWeight: 750,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          +
+        </Box>
+      </TableCell>
+      <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
             <input

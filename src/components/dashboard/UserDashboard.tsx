@@ -234,6 +234,7 @@ export const UserDashboard = () => {
               width: '100%',
               display: 'flex',
               flexDirection: 'column',
+              minHeight: 420,
               transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
                 boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
@@ -266,20 +267,20 @@ export const UserDashboard = () => {
                 <CircularProgress size={28} sx={{ color: tokens.brand.accent }} />
               </Box>
             ) : dueTasks.length === 0 && activeTasks.length === 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, flex: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, flex: 1, my: 'auto' }}>
                 <CheckCircleOutlinedIcon sx={{ color: 'rgba(0,0,0,0.1)', fontSize: 40, mb: 1.5 }} />
                 <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
                   No active tasks for today
                 </Typography>
               </Box>
             ) : (
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: 1.2, 
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
                   flex: 1,
-                  maxHeight: 330,
+                  maxHeight: 420,
                   overflowY: 'auto',
                   overflowX: 'hidden',
                   pr: 0.5,
@@ -488,11 +489,11 @@ export const UserDashboard = () => {
                   </Typography>
                 </Box>
               ) : (
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 1.2, 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
                     maxHeight: 150,
                     overflowY: 'auto',
                     overflowX: 'hidden',
@@ -605,12 +606,12 @@ export const UserDashboard = () => {
                   </Typography>
                 </Box>
               ) : (
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 1.2, 
-                    maxHeight: 150, 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
+                    maxHeight: 150,
                     overflowY: 'auto',
                     overflowX: 'hidden',
                     pr: 0.5,

@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Grid, 
-  Box, 
-  Typography, 
-  Button, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  TextField, 
+import {
+  Grid,
+  Box,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   MenuItem,
   Chip,
   CircularProgress
@@ -101,11 +101,6 @@ export const AdminDashboard = () => {
   const formatShortDate = (value: string) =>
     new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-  const tasksOverview = teamAnalysis?.tasks;
-  const tasksList = tasksOverview?.items ?? [];
-  const totalTasksCount = tasksOverview?.total ?? 0;
-  const boardLabel = tasksOverview?.boardName?.toUpperCase() ?? 'TEAM BOARD';
-
   const upcomingMeetings = allMeetings
     .filter((m: any) => m.status !== 'cancelled' && new Date(m.scheduledAt).getTime() > Date.now())
     .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
@@ -186,23 +181,23 @@ export const AdminDashboard = () => {
           }
         }}
       >
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: { xs: 'column', sm: 'row' }, 
-            justifyContent: 'space-between', 
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             gap: 2,
-            mb: 2 
+            mb: 2
           }}
         >
           {/* Badge & Title */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.8, sm: 1.2 } }}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 0.5,
                   bgcolor: 'rgba(255, 127, 17, 0.06)',
                   px: 1.5,
@@ -252,10 +247,10 @@ export const AdminDashboard = () => {
         </Box>
 
         {/* Subtitle text */}
-        <Typography 
-          sx={{ 
-            color: tokens.text.secondary, 
-            fontSize: '0.85rem', 
+        <Typography
+          sx={{
+            color: tokens.text.secondary,
+            fontSize: '0.85rem',
             fontWeight: 500,
             mb: 4,
             maxWidth: '750px',
@@ -295,12 +290,12 @@ export const AdminDashboard = () => {
                   }
                 }}
               >
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    color: tokens.text.muted, 
-                    fontWeight: 750, 
-                    letterSpacing: '0.08em', 
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: tokens.text.muted,
+                    fontWeight: 750,
+                    letterSpacing: '0.08em',
                     fontSize: '0.62rem',
                     display: 'block',
                     mb: 0.5
@@ -308,10 +303,10 @@ export const AdminDashboard = () => {
                 >
                   {stat.label}
                 </Typography>
-                <Typography 
-                  sx={{ 
-                    fontSize: { xs: '1.4rem', sm: '1.8rem' }, 
-                    fontWeight: 850, 
+                <Typography
+                  sx={{
+                    fontSize: { xs: '1.4rem', sm: '1.8rem' },
+                    fontWeight: 850,
                     color: tokens.text.primary,
                     lineHeight: 1,
                     letterSpacing: '-0.02em'
@@ -355,7 +350,7 @@ export const AdminDashboard = () => {
               flexDirection: 'column',
               minHeight: 460,
               transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { 
+              '&:hover': {
                 boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
                 borderColor: 'rgba(0,0,0,0.06)'
               }
@@ -556,7 +551,7 @@ export const AdminDashboard = () => {
                 flexDirection: 'column',
                 minHeight: 215,
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': { 
+                '&:hover': {
                   boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
                   borderColor: 'rgba(0,0,0,0.06)'
                 }
@@ -567,15 +562,15 @@ export const AdminDashboard = () => {
                   <NotificationsNoneOutlinedIcon sx={{ color: tokens.brand.accent, fontSize: 20 }} />
                   Upcoming Meetings
                 </Typography>
-                <Button 
-                  variant="text" 
+                <Button
+                  variant="text"
                   onClick={() => navigate('/meetings')}
-                  sx={{ 
-                    textTransform: 'none', 
-                    color: tokens.text.muted, 
+                  sx={{
+                    textTransform: 'none',
+                    color: tokens.text.muted,
                     fontWeight: 700,
                     fontSize: '0.8rem',
-                    '&:hover': { color: tokens.brand.primary } 
+                    '&:hover': { color: tokens.brand.primary }
                   }}
                 >
                   View all &gt;
@@ -589,7 +584,7 @@ export const AdminDashboard = () => {
                   <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', color: tokens.text.muted }}>
                     No upcoming meetings
                   </Typography>
-                  <Typography 
+                  <Typography
                     onClick={() => navigate('/meetings')}
                     sx={{ fontWeight: 700, fontSize: '0.78rem', color: tokens.brand.accent, cursor: 'pointer', mt: 0.5, '&:hover': { textDecoration: 'underline' } }}
                   >
@@ -669,7 +664,7 @@ export const AdminDashboard = () => {
                 flexDirection: 'column',
                 minHeight: 215,
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': { 
+                '&:hover': {
                   boxShadow: '0 10px 30px rgba(26, 22, 37, 0.03)',
                   borderColor: 'rgba(0,0,0,0.06)'
                 }
