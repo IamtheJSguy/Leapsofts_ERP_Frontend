@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -24,12 +24,14 @@ import { useTwoFactorSetup, useTwoFactorVerifySetup } from '@/hooks/api/useTwoFa
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
+import { getSanitizedRedirectUrl } from '@/utils/redirect';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
 const TwoFactorSetupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -41,6 +43,12 @@ const TwoFactorSetupPage = () => {
     (location.state as { tempToken?: string } | null)?.tempToken ||
     sessionStorage.getItem(TEMP_TOKEN_KEY) ||
     '';
+
+  const rawRedirect =
+    (location.state as { redirect?: string } | null)?.redirect ||
+    searchParams.get('redirect') ||
+    sessionStorage.getItem('postLoginRedirect');
+  const targetUrl = getSanitizedRedirectUrl(rawRedirect);
 
   const setup = useTwoFactorSetup(tempToken || undefined);
   const [code, setCode] = useState('');
@@ -76,10 +84,11 @@ const TwoFactorSetupPage = () => {
   const finish = () => {
     if (!pendingSession) return;
     sessionStorage.removeItem(TEMP_TOKEN_KEY);
+    sessionStorage.removeItem('postLoginRedirect');
     localStorage.setItem('accessToken', pendingSession.accessToken);
     setAuth(pendingSession.user);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    navigate('/', { replace: true });
+    navigate(targetUrl, { replace: true });
   };
 
   const copySecret = async () => {
