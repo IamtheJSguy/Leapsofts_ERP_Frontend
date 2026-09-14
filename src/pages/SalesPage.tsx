@@ -615,12 +615,13 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+  const filterToolbarRef = useRef<HTMLDivElement>(null);
   const shouldScrollToTopRef = useRef(false);
 
   useEffect(() => {
     if (!isLeadsFetching && leadsResponse && shouldScrollToTopRef.current) {
       shouldScrollToTopRef.current = false;
-      tableContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      filterToolbarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [isLeadsFetching, leadsResponse]);
 
@@ -1340,6 +1341,7 @@ export const SalesPage = () => {
         <Box className="animate-fade-in-up">
           {/* Filters Command Toolbar */}
           <Box
+            ref={filterToolbarRef}
             sx={{
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
@@ -1810,11 +1812,11 @@ export const SalesPage = () => {
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3, width: 60 }}>#</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>PROSPECT</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>CAMPAIGN (ICP)</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>OUTREACH STATUS</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>ASSIGNED AGENT</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, px: 1, width: 60, minWidth: 60, whiteSpace: 'nowrap' }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 2, whiteSpace: 'nowrap' }}>PROSPECT</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>CAMPAIGN (ICP)</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>OUTREACH STATUS</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>ASSIGNED AGENT</TableCell>
                     <TableCell sx={{ borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }} />
                   </TableRow>
                 </TableHead>
@@ -1860,7 +1862,8 @@ export const SalesPage = () => {
                       );
                     }
 
-                    const globalRowIndex = (page - 1) * rowsPerPage + idx + 1;
+                    const responsePage = leadsResponse?.meta?.page ?? page;
+                    const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1886,7 +1889,7 @@ export const SalesPage = () => {
                         }}
                       >
                         {/* Continuous Index / Counter */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3, width: 60 }}>
+                        <TableCell align="center" sx={{ py: 2, borderBottom: 0, px: 1, width: 60, minWidth: 60 }}>
                           <Box
                             sx={{
                               display: 'inline-flex',
@@ -1915,7 +1918,7 @@ export const SalesPage = () => {
                         </TableCell>
 
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0 }}>
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
                               role="button"
