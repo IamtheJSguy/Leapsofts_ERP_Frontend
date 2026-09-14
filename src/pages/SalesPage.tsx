@@ -97,6 +97,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -614,6 +615,14 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+  const shouldScrollToTopRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLeadsFetching && leadsResponse && shouldScrollToTopRef.current) {
+      shouldScrollToTopRef.current = false;
+      tableContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isLeadsFetching, leadsResponse]);
 
   useEffect(() => {
     const map: Record<string, any> = {};
@@ -1787,6 +1796,7 @@ export const SalesPage = () => {
           ) : (
             /* Connected Prospects View - Show Table */
             <TableContainer
+              ref={tableContainerRef}
               component={Paper}
               sx={{
                 borderRadius: '24px',
@@ -2329,7 +2339,10 @@ export const SalesPage = () => {
               component="div"
               count={totalProspects}
               page={page - 1}
-              onPageChange={(_, newPage) => setPage(newPage + 1)}
+              onPageChange={(_, newPage) => {
+                setPage(newPage + 1);
+                shouldScrollToTopRef.current = true;
+              }}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={(event) => {
                 setRowsPerPage(parseInt(event.target.value, 10));
