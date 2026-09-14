@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Typography, Button, useTheme } from '@mui/material';
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
@@ -13,10 +14,44 @@ import { tokens } from '@/styles/tokens';
 import type { Meeting } from '@/types';
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isElevated, user } = useAuth();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
+
+  useEffect(() => {
+    const rawTab = searchParams.get('tab');
+    if (!rawTab) return;
+
+    const otherParams = new URLSearchParams(searchParams);
+    otherParams.delete('tab');
+    const queryString = otherParams.toString() ? `?${otherParams.toString()}` : '';
+
+    const tab = rawTab.toLowerCase().trim();
+    if (tab === 'meetings') {
+      navigate(`/meetings${queryString}`, { replace: true });
+    } else if (tab === 'tasks') {
+      navigate(`/tasks${queryString}`, { replace: true });
+    } else if (tab === 'kpi' || tab === 'kpis') {
+      const q = otherParams.toString() ? `&${otherParams.toString()}` : '';
+      navigate(`/tasks?tab=standalone${q}`, { replace: true });
+    } else if (tab === 'change-requests' || tab === 'change_requests') {
+      const q = otherParams.toString() ? `&${otherParams.toString()}` : '';
+      navigate(`/tasks?tab=change_requests${q}`, { replace: true });
+    } else if (tab === 'sales') {
+      navigate(`/sales${queryString}`, { replace: true });
+    } else if (tab === 'attendance') {
+      navigate(`/attendance${queryString}`, { replace: true });
+    } else if (tab === 'reports') {
+      navigate(`/reports${queryString}`, { replace: true });
+    } else if (tab === 'team') {
+      navigate(`/team${queryString}`, { replace: true });
+    } else if (tab === 'projects') {
+      navigate(`/projects${queryString}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Fetch scheduled meetings
   const { data: meetings } = useMeetings({ status: 'scheduled' });

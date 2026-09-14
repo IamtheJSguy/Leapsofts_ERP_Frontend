@@ -75,6 +75,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: wrap(<DashboardPage />) },
+      { path: 'dashboard', element: wrap(<DashboardPage />) },
       {
         path: 'tasks',
         element: wrap(
