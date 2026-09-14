@@ -20,6 +20,7 @@ type OptionItem = { _id: string; name: string };
 type SalesEditRowProps = {
   leadId: string;
   editData: EditableLeadData;
+  indexNumber?: number;
   isDarkMode: boolean;
   icpsList: OptionItem[];
   profileUsersList: OptionItem[];
@@ -37,6 +38,7 @@ type SalesEditRowProps = {
 export const SalesEditRow = memo(function SalesEditRow({
   leadId,
   editData,
+  indexNumber,
   isDarkMode,
   icpsList,
   profileUsersList,
@@ -64,7 +66,7 @@ export const SalesEditRow = memo(function SalesEditRow({
         borderBottom: `2px solid ${tokens.brand.primary}`,
       }}
     >
-      <TableCell sx={{ py: 2, pl: 3, width: 60 }}>
+      <TableCell align="center" sx={{ py: 2, px: 1, width: 60, minWidth: 60 }}>
         <Box
           sx={{
             display: 'inline-flex',
@@ -74,15 +76,15 @@ export const SalesEditRow = memo(function SalesEditRow({
             height: 24,
             px: 0.8,
             borderRadius: '8px',
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
-            color: isDarkMode ? 'rgba(255,255,255,0.4)' : tokens.text.muted,
+            bgcolor: isDarkMode ? 'rgba(255,127,17,0.15)' : 'rgba(255,127,17,0.08)',
+            border: '1px solid rgba(255,127,17,0.25)',
+            color: tokens.brand.accent,
             fontSize: '0.74rem',
             fontWeight: 750,
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          •
+          {indexNumber !== undefined ? String(indexNumber).padStart(2, '0') : '•'}
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>

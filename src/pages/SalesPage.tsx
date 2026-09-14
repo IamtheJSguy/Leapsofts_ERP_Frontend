@@ -1835,6 +1835,8 @@ export const SalesPage = () => {
                     />
                   )}
                   {prospects.map((prospect, idx) => {
+                    const responsePage = leadsResponse?.meta?.page ?? page;
+                    const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
@@ -1843,6 +1845,7 @@ export const SalesPage = () => {
                           key={`edit-${prospect._id}`}
                           leadId={prospect._id}
                           editData={editData}
+                          indexNumber={globalRowIndex}
                           isDarkMode={isDarkMode}
                           icpsList={icpsList}
                           profileUsersList={profileUsersList}
@@ -1861,9 +1864,6 @@ export const SalesPage = () => {
                         />
                       );
                     }
-
-                    const responsePage = leadsResponse?.meta?.page ?? page;
-                    const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
