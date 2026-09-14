@@ -94,6 +94,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -630,6 +631,14 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+  const shouldScrollToTopRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLeadsFetching && leadsResponse && shouldScrollToTopRef.current) {
+      shouldScrollToTopRef.current = false;
+      tableContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isLeadsFetching, leadsResponse]);
 
   useEffect(() => {
     const map: Record<string, any> = {};
@@ -1786,6 +1795,7 @@ export const SalesPage = () => {
           ) : (
             /* Connected Prospects View - Show Table */
             <TableContainer
+              ref={tableContainerRef}
               component={Paper}
               sx={{
                 borderRadius: '24px',
@@ -1799,11 +1809,12 @@ export const SalesPage = () => {
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>PROSPECT</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>CAMPAIGN (ICP)</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>OUTREACH STATUS</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>LINKEDIN ACTION</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>ASSIGNED AGENT</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, px: 1, width: 60, minWidth: 60, whiteSpace: 'nowrap' }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 2, whiteSpace: 'nowrap' }}>PROSPECT</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>CAMPAIGN (ICP)</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>OUTREACH STATUS</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>LINKEDIN ACTION</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>ASSIGNED AGENT</TableCell>
                     <TableCell sx={{ borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }} />
                   </TableRow>
                 </TableHead>
@@ -1821,7 +1832,7 @@ export const SalesPage = () => {
                       onCancel={handleInlineAddCancel}
                     />
                   )}
-                  {prospects.map((prospect) => {
+                  {prospects.map((prospect, idx) => {
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
@@ -1849,6 +1860,7 @@ export const SalesPage = () => {
                       );
                     }
 
+                    const globalRowIndex = (page - 1) * rowsPerPage + idx + 1;
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1876,8 +1888,37 @@ export const SalesPage = () => {
                           },
                         }}
                       >
+                        {/* Continuous Index / Counter */}
+                        <TableCell align="center" sx={{ py: 2, borderBottom: 0, px: 1, width: 60, minWidth: 60 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: 32,
+                              height: 24,
+                              px: 0.8,
+                              borderRadius: '8px',
+                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                              color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.muted,
+                              fontSize: '0.74rem',
+                              fontWeight: 750,
+                              fontVariantNumeric: 'tabular-nums',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '.MuiTableRow-root:hover &': {
+                                bgcolor: isDarkMode ? 'rgba(255,127,17,0.15)' : 'rgba(255,127,17,0.08)',
+                                color: tokens.brand.accent,
+                                borderColor: 'rgba(255,127,17,0.25)',
+                              },
+                            }}
+                          >
+                            {String(globalRowIndex).padStart(2, '0')}
+                          </Box>
+                        </TableCell>
+
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
                               role="button"
@@ -2306,7 +2347,10 @@ export const SalesPage = () => {
               component="div"
               count={totalProspects}
               page={page - 1}
-              onPageChange={(_, newPage) => setPage(newPage + 1)}
+              onPageChange={(_, newPage) => {
+                setPage(newPage + 1);
+                shouldScrollToTopRef.current = true;
+              }}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={(event) => {
                 setRowsPerPage(parseInt(event.target.value, 10));
