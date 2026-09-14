@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -16,14 +16,12 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTwoFactorVerifyLogin } from '@/hooks/api/useTwoFactor';
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
-import { getSanitizedRedirectUrl } from '@/utils/redirect';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
 const TwoFactorVerifyPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -34,12 +32,6 @@ const TwoFactorVerifyPage = () => {
     (location.state as { tempToken?: string } | null)?.tempToken ||
     sessionStorage.getItem(TEMP_TOKEN_KEY) ||
     '';
-
-  const rawRedirect =
-    (location.state as { redirect?: string } | null)?.redirect ||
-    searchParams.get('redirect') ||
-    sessionStorage.getItem('postLoginRedirect');
-  const targetUrl = getSanitizedRedirectUrl(rawRedirect);
 
   const [code, setCode] = useState('');
   const [useBackup, setUseBackup] = useState(false);
@@ -55,11 +47,10 @@ const TwoFactorVerifyPage = () => {
       {
         onSuccess: (data) => {
           sessionStorage.removeItem(TEMP_TOKEN_KEY);
-          sessionStorage.removeItem('postLoginRedirect');
           localStorage.setItem('accessToken', data.accessToken);
           setAuth(data.user as Parameters<typeof setAuth>[0]);
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
-          navigate(targetUrl, { replace: true });
+          navigate('/', { replace: true });
         },
       },
     );
