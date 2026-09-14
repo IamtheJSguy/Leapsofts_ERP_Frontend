@@ -70,11 +70,16 @@ export const resolveReplySnippet = (
 };
 
 export const stripHtml = (html: string): string => {
+  if (!html) return '';
+  const cleaned = html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]*>?/gm, '');
   if (typeof window !== 'undefined' && window.DOMParser) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.body.textContent || doc.body.innerText || '';
+    const doc = new DOMParser().parseFromString(cleaned, 'text/html');
+    return (doc.body.textContent || doc.body.innerText || '').replace(/\s+/g, ' ').trim();
   }
-  return html.replace(/<[^>]*>?/gm, '');
+  return cleaned.replace(/\s+/g, ' ').trim();
 };
 
 export const getReplyPreviewText = (message: Pick<Message, 'content' | 'type' | 'driveFileName'>): string => {
@@ -82,7 +87,8 @@ export const getReplyPreviewText = (message: Pick<Message, 'content' | 'type' | 
     return message.driveFileName || 'Drive file';
   }
   if (message.type === 'file') {
-    return message.content?.trim() || 'Photo';
+    const text = stripHtml(message.content || '').trim();
+    return text || 'Photo';
   }
   if (message.type === 'board_event') {
     return stripHtml(message.content || '') || 'Board update';

@@ -76,8 +76,10 @@ const TickIcon = ({ status, isOwn }: { status: TickStatus; isOwn: boolean }) => 
   );
 };
 
-const getReactionUserId = (reaction: MessageReaction): string =>
-  typeof reaction.userId === 'string' ? reaction.userId : reaction.userId._id;
+const getReactionUserId = (reaction: MessageReaction): string => {
+  if (!reaction || !reaction.userId) return '';
+  return typeof reaction.userId === 'string' ? reaction.userId : (reaction.userId._id || '');
+};
 
 interface MessageBubbleProps {
   message: Message;
