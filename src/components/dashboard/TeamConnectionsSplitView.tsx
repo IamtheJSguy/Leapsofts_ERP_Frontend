@@ -364,7 +364,10 @@ export const TeamConnectionsSplitView = () => {
                     <Box
                       key={user.userId}
                       onClick={() => {
-                        const currentOrigin = location.pathname + location.search;
+                        const currentOrigin =
+                          (location.pathname === '/' || location.pathname === '/dashboard')
+                            ? (location.pathname + location.search) || '/dashboard'
+                            : (location.pathname + location.search);
                         const search = buildMemberDetailSearchForFilter(
                           activeDateFilter,
                           customStartDate,
