@@ -25,6 +25,26 @@ const projectsApi = {
   getBoards: (id: string) => api.get<{ data: KanbanBoard[] }>(`/projects/${id}/boards`),
   createBoard: ({ id, data }: { id: string; data: { name: string; columns?: { name: string; order: number }[] } }) =>
     api.post<{ data: KanbanBoard }>(`/projects/${id}/boards`, data),
+  importBoard: ({
+    id,
+    data,
+  }: {
+    id: string;
+    data: {
+      name: string;
+      columns: { name: string; order: number }[];
+      cards: {
+        title: string;
+        description?: string;
+        columnName: string;
+        assignedTo?: string[];
+        priority?: 'low' | 'medium' | 'high' | 'urgent';
+        dueDate?: string;
+        isDone?: boolean;
+      }[];
+      memberUserIds?: string[];
+    };
+  }) => api.post<{ data: KanbanBoard }>(`/projects/${id}/boards/import`, data),
 
   getBoardMembers: ({ id, boardId }: { id: string; boardId: string }) =>
     api.get<{ data: any[] }>(`/projects/${id}/boards/${boardId}/members`),
@@ -133,6 +153,22 @@ export const useCreateProjectBoard = (id?: string) => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['project', id] });
+        queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
+      }
+    },
+  });
+};
+
+export const useImportProjectBoard = (id?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: projectsApi.importBoard,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['projectBoards', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       if (id) {
         queryClient.invalidateQueries({ queryKey: ['project', id] });
         queryClient.invalidateQueries({ queryKey: ['projectBoards', id] });
