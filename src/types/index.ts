@@ -101,6 +101,10 @@ export interface User {
   monitorScreenshots?: boolean;
   monitorAppUsage?: boolean;
   twoFactorEnabled?: boolean;
+  impersonatedBy?: string;
+  impersonationReadOnly?: boolean;
+  monitoringPolicyAcknowledgedAt?: string;
+  organizationId?: string;
   createdAt?: string;
 }
 
@@ -1183,6 +1187,12 @@ export interface SystemSettings {
   referenceSheetUrl?: string;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
+  notificationPreferences?: {
+    email: boolean;
+    portal: boolean;
+    kpiAlerts: boolean;
+    meetingReminders: boolean;
+  };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
 }

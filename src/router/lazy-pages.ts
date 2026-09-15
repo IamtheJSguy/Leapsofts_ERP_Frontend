@@ -1,5 +1,6 @@
 import { lazyRetry } from '@/utils/lazyRetry';
 
+export const ImpersonatePage = lazyRetry(() => import('@/pages/ImpersonatePage'));
 export const LoginPage = lazyRetry(() => import('@/pages/LoginPage'));
 export const TwoFactorVerifyPage = lazyRetry(() => import('@/pages/TwoFactorVerifyPage'));
 export const TwoFactorSetupPage = lazyRetry(() => import('@/pages/TwoFactorSetupPage'));

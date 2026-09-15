@@ -729,7 +729,10 @@ const TeamPage = () => {
       },
       onError: (err: any) => {
         addToast({
-          message: err?.response?.data?.message || 'Failed to add team member.',
+          message:
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to add team member.',
           severity: 'error'
         });
       },

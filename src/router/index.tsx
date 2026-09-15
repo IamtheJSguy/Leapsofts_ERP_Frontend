@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PageLoader } from '@/components/common/PageLoader';
 import { ROLES } from '@/lib/constants';
 import {
+  ImpersonatePage,
   LoginPage,
   TwoFactorVerifyPage,
   TwoFactorSetupPage,
@@ -42,6 +43,10 @@ const wrap = (element: React.ReactNode) => (
 );
 
 export const router = createBrowserRouter([
+  {
+    path: '/impersonate',
+    element: wrap(<ImpersonatePage />),
+  },
   {
     path: '/login',
     element: wrap(
