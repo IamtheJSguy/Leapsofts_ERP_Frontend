@@ -40,6 +40,8 @@ import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
+import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
@@ -362,9 +364,20 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
 
       {/* Description preview */}
       {task.description && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 2, lineHeight: 1.5, fontWeight: 500 }}>
-          {task.description}
-        </Typography>
+        <RichTextContent
+          content={task.description}
+          sx={{
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            mb: 1.5,
+            fontSize: '0.8rem',
+            lineHeight: 1.5,
+            color: 'text.secondary',
+            '& p': { m: 0, mb: 0.25 },
+          }}
+        />
       )}
 
       {/* Bottom row */}
@@ -1979,36 +1992,32 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   </Box>
                   </Box>
                   {canEdit ? (
-                    <Box sx={{ mt: 1 }}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        minRows={3}
-                        placeholder="Add a detailed description..."
+                    <Box
+                      sx={{
+                        mt: 1,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'}`,
+                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <RichTextEditor
                         value={editDesc}
-                        onChange={(e) => setEditDesc(e.target.value)}
-                        sx={{
-                          mb: 1.5,
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '12px',
-                            bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
-                          }
-                        }}
+                        onChange={setEditDesc}
+                        submitOnEnter={false}
+                        alwaysShowToolbar={true}
+                        minHeight="100px"
+                        maxHeight="300px"
+                        placeholder="Add a detailed description..."
+                        mentionableUsers={allUsers}
                       />
                     </Box>
                   ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: task.description ? 'text.secondary' : 'text.disabled',
-                        lineHeight: 1.7,
-                        whiteSpace: 'pre-wrap',
-                        minHeight: 24,
-                        fontStyle: task.description ? 'normal' : 'italic',
-                      }}
-                    >
-                      {task.description || 'No description provided.'}
-                    </Typography>
+                    <RichTextContent
+                      content={task.description}
+                      mentionableUsers={allUsers}
+                      sx={{ mt: 0.5 }}
+                    />
                   )}
               </Box>
 
@@ -3754,19 +3763,29 @@ export const KanbanBoardPage = () => {
           />
 
           {/* Description */}
-          <TextField
-            fullWidth
-            label="Description"
-            placeholder="Add more details about this task..."
-            variant="outlined"
-            multiline
-            rows={3}
-            value={newCardDescription}
-            onChange={(e) => setNewCardDescription(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': { borderRadius: '14px' }
-            }}
-          />
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+              Description
+            </Typography>
+            <Box
+              sx={{
+                borderRadius: '14px',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                overflow: 'hidden',
+              }}
+            >
+              <RichTextEditor
+                value={newCardDescription}
+                onChange={setNewCardDescription}
+                submitOnEnter={false}
+                alwaysShowToolbar={true}
+                minHeight="90px"
+                maxHeight="250px"
+                placeholder="Add more details about this task..."
+              />
+            </Box>
+          </Box>
 
           {/* Priority + Due Date row */}
           <Box sx={{ display: 'flex', gap: 2 }}>
