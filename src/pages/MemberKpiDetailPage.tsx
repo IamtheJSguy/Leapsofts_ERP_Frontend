@@ -24,7 +24,6 @@ import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import api from '@/lib/axios';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
 import { MemberKpiWeekTable } from '@/components/kpi/MemberKpiWeekTable';
-import { RichTextContent } from '@/components/common/RichTextContent';
 import {
   buildMemberKpiDetailSearch,
   formatPeriodLabel,
@@ -447,12 +446,7 @@ export default function MemberKpiDetailPage() {
               <KpiDetailCard
                 isDarkMode={isDarkMode}
                 kind={kind}
-                name={entry.kpiName || (typeof entry.kpiId === 'object' ? entry.kpiId?.name : undefined) || 'KPI'}
-                description={
-                  (typeof entry.kanbanCardId === 'object' ? (entry.kanbanCardId as any)?.description : undefined) ??
-                  entry.description ??
-                  (typeof entry.kpiId === 'object' ? entry.kpiId?.description : undefined)
-                }
+                name={entry.kpiName || entry.kpiId?.name || 'KPI'}
                 statusLabel={display.statusLabel}
                 isCompleted={display.isCompleted}
                 isOverdue={display.isOverdue}
@@ -502,10 +496,6 @@ export default function MemberKpiDetailPage() {
                 isDarkMode={isDarkMode}
                 kind="sales"
                 name={entry.kpiName}
-                description={
-                  (typeof (entry as any).kanbanCardId === 'object' ? (entry as any).kanbanCardId?.description : undefined) ??
-                  entry.description
-                }
                 statusLabel={display.statusLabel}
                 isCompleted={display.isCompleted}
                 isOverdue={display.isOverdue}
@@ -575,11 +565,6 @@ export default function MemberKpiDetailPage() {
                           isDarkMode={isDarkMode}
                           kind="kanban"
                           name={entry.kpiName || (typeof entry.kpiId === 'object' ? entry.kpiId?.name : undefined) || 'KPI'}
-                          description={
-                            (typeof entry.kanbanCardId === 'object' ? (entry.kanbanCardId as any)?.description : undefined) ??
-                            entry.description ??
-                            (typeof entry.kpiId === 'object' ? entry.kpiId?.description : undefined)
-                          }
                           statusLabel={display.statusLabel}
                           isCompleted={display.isCompleted}
                           isOverdue={display.isOverdue}
@@ -622,7 +607,6 @@ function KpiDetailCard({
   isDarkMode,
   kind,
   name,
-  description,
   statusLabel,
   isCompleted,
   isOverdue,
@@ -637,7 +621,6 @@ function KpiDetailCard({
   isDarkMode: boolean;
   kind: 'daily' | 'sales' | 'kanban';
   name: string;
-  description?: string;
   statusLabel: string;
   isCompleted: boolean;
   isOverdue: boolean;
@@ -710,18 +693,6 @@ function KpiDetailCard({
           >
             {name}
           </Typography>
-          {Boolean(description?.trim()) && (
-            <RichTextContent
-              content={description}
-              sx={{
-                fontSize: '0.8rem',
-                lineHeight: 1.4,
-                color: 'text.secondary',
-                mt: 0.25,
-                '& p': { m: 0 },
-              }}
-            />
-          )}
           {hasTarget && (
             <Tooltip
               title={kind === 'sales' && (extra ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}

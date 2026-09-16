@@ -20,7 +20,6 @@ import { SALES_KPI_METRIC_LABELS, SALES_KPI_STATUS_LABELS } from '@/lib/constant
 import { tokens } from '@/styles/tokens';
 import { formatKpiDueDate } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus } from '@/types';
-import { RichTextContent } from '@/components/common/RichTextContent';
 
 const STATUS_COLORS: Record<SalesKpiStatus, string> = {
   pending: tokens.semantic.neutral,
@@ -68,8 +67,7 @@ export const SalesKpiEntryCard = ({
   const completed = isDone(entry.status);
   const commentable = isCommentable(entry.status);
   const board = variant === 'board';
-  const cardDesc = typeof (entry as any).kanbanCardId === 'object' ? (entry as any).kanbanCardId?.description : undefined;
-  const rawDescription = cardDesc !== undefined ? cardDesc : entry.description;
+  const description = toPlainText(entry.description);
 
   const openCommentDialog = (e?: MouseEvent) => {
     e?.stopPropagation();
@@ -179,21 +177,20 @@ export const SalesKpiEntryCard = ({
             '& .MuiLinearProgress-bar': { borderRadius: 999, backgroundColor: statusColor },
           }}
         />
-        {Boolean(rawDescription?.trim()) && (
-          <RichTextContent
-            content={rawDescription}
+        {description.length >= 8 && (
+          <Typography
+            variant="caption"
             sx={{
               color: tokens.text.muted,
               fontWeight: 500,
-              fontSize: '0.78rem',
-              lineHeight: 1.4,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              '& p': { m: 0 },
             }}
-          />
+          >
+            {description}
+          </Typography>
         )}
         {entry.comment && (
           <Typography variant="caption" sx={{ color: tokens.semantic.warning, fontWeight: 600 }}>
