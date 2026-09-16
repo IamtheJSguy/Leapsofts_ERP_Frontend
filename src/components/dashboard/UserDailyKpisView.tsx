@@ -35,7 +35,6 @@ import { KPIChangeRequestModal, type ChangeRequestModalMode } from '@/components
 import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { KPI_PRIORITY_OPTIONS, PRIORITY_CONFIG } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
-import { RichTextContent } from '@/components/common/RichTextContent';
 import api from '@/lib/axios';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import type { GroupedKpiCounts, GroupedSalesKpis, PriorityBucket, SalesKpiEntry, SectionCounts } from '@/types';
@@ -502,9 +501,9 @@ export const UserDailyKpisView = () => {
                 ? kpi.kanbanCardId.assignedAt
                 : undefined;
             const assignedAt = subtaskAssignedAt ?? cardAssignedAt;
-            const cardDesc = typeof kpi.kanbanCardId === 'object' ? (kpi.kanbanCardId as any)?.description : undefined;
-            const rawDescription = cardDesc !== undefined ? cardDesc : (kpi.description || kpi.kpiId?.description);
-            const description = toPlainText(rawDescription);
+            const description = toPlainText(
+              kpi.description || kpi.kpiId?.description || kpi.kanbanCardId?.description,
+            );
             const title = kpi.kpiName || kpi.name || kpi.kpiId?.name || 'Unnamed Task';
             const parentCardTitle =
               kpi.kanbanCardId && typeof kpi.kanbanCardId === 'object'
@@ -710,16 +709,16 @@ export const UserDailyKpisView = () => {
                   )}
                 </Box>
 
-                {(Boolean(rawDescription?.trim()) || hasTarget || assignedAt) && (
+                {(description.length >= 8 || hasTarget || assignedAt) && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, pt: 0.5 }}>
-                    {Boolean(rawDescription?.trim()) && (
-                      <RichTextContent
-                        content={rawDescription}
+                    {description.length >= 8 && (
+                      <Typography
+                        variant="caption"
+                        title={description}
                         sx={{
                           color: tokens.text.secondary,
                           fontWeight: 500,
                           lineHeight: 1.45,
-                          fontSize: '0.78rem',
                           minWidth: 0,
                           overflowWrap: 'anywhere',
                           wordBreak: 'break-word',
@@ -727,9 +726,10 @@ export const UserDailyKpisView = () => {
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
-                          '& p': { m: 0, mb: 0.25 },
                         }}
-                      />
+                      >
+                        {description}
+                      </Typography>
                     )}
                     {hasTarget && (
                       <Typography

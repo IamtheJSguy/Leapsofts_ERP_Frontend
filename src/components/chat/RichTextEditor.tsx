@@ -28,34 +28,24 @@ import { createMentionSuggestion } from './MentionSuggestionList';
 export interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
-  onSubmit?: () => void;
-  submitOnEnter?: boolean;
+  onSubmit: () => void;
   placeholder?: string;
   autoFocus?: boolean;
   mentionableUsers?: User[];
-  minHeight?: string | number;
-  maxHeight?: string | number;
-  defaultShowToolbar?: boolean;
-  alwaysShowToolbar?: boolean;
 }
 
 export const RichTextEditor = ({
   value,
   onChange,
   onSubmit,
-  submitOnEnter = true,
   placeholder = 'Type a message...',
   autoFocus,
   mentionableUsers = [],
-  minHeight = '24px',
-  maxHeight = '200px',
-  defaultShowToolbar = false,
-  alwaysShowToolbar = false,
 }: RichTextEditorProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const [isToolbarVisible, setIsToolbarVisible] = useState(defaultShowToolbar || alwaysShowToolbar);
+  const [isToolbarVisible, setIsToolbarVisible] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLButtonElement | null>(null);
 
@@ -64,9 +54,6 @@ export const RichTextEditor = ({
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const mentionMenuOpenRef = useRef(false);
-
-  const minH = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
-  const maxH = typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight;
 
   const editor = useEditor({
     extensions: [
@@ -112,10 +99,10 @@ export const RichTextEditor = ({
     editorProps: {
       attributes: {
         class: 'prose focus:outline-none max-w-none w-full tiptap-editor-content',
-        style: `min-height: ${minH}; max-height: ${maxH}; overflow-y: auto; padding: 12px 14px; font-family: inherit; font-size: 0.95rem; line-height: 1.5; color: ${isDarkMode ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)'};`,
+        style: `min-height: 24px; max-height: 200px; overflow-y: auto; padding: 12px 14px; font-family: inherit; font-size: 0.95rem; line-height: 1.5; color: ${isDarkMode ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)'};`,
       },
       handleKeyDown: (view, event) => {
-        if (submitOnEnter && event.key === 'Enter' && !event.shiftKey) {
+        if (event.key === 'Enter' && !event.shiftKey) {
           if (mentionMenuOpenRef.current) {
             return false;
           }
@@ -134,9 +121,7 @@ export const RichTextEditor = ({
           }
 
           event.preventDefault();
-          if (onSubmitRef.current) {
-            onSubmitRef.current();
-          }
+          onSubmitRef.current();
           return true;
         }
         return false;
@@ -145,11 +130,8 @@ export const RichTextEditor = ({
   });
 
   useEffect(() => {
-    if (editor) {
-      const currentHtml = editor.getHTML();
-      if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
-        editor.commands.setContent(value || '');
-      }
+    if (editor && value === '' && !editor.isEmpty) {
+      editor.commands.setContent('');
     }
   }, [value, editor]);
 
@@ -236,7 +218,7 @@ export const RichTextEditor = ({
   return (
     <Box id="rich-text-editor-wrapper" sx={{ width: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Unified toolbar: shows when A button is toggled ON OR when text is selected */}
+      {/* Unified toolbar: shows when A is clicked OR when text is selected */}
       <Collapse in={isToolbarVisible || hasSelection}>
         <Box
           sx={{
@@ -259,7 +241,7 @@ export const RichTextEditor = ({
             flex: 1,
             minWidth: 0,
             '.tiptap-editor-content .ProseMirror': {
-              maxHeight: maxH,
+              maxHeight: '160px',
               overflowY: 'auto',
               outline: 'none',
               paddingRight: '4px',
