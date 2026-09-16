@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Avatar,
   Box,
@@ -67,12 +67,57 @@ const TimingRow = ({ label, value }: { label: string; value?: string | null }) =
   </Box>
 );
 
+const isValidInternalPath = (path: string | null | undefined): boolean => {
+  if (!path || typeof path !== 'string') return false;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return false;
+  try {
+    const dummyOrigin = 'http://localhost';
+    const url = new URL(trimmed, dummyOrigin);
+    return url.origin === dummyOrigin;
+  } catch {
+    return false;
+  }
+};
+
 export default function MemberKpiDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  const queryFrom = searchParams.get('from');
+  const stateFrom = (location.state as { from?: string } | null)?.from;
+  const rawTargetFrom = queryFrom || stateFrom;
+  const validTargetFrom = useMemo(
+    () => (isValidInternalPath(rawTargetFrom) ? rawTargetFrom : null),
+    [rawTargetFrom],
+  );
+
+  const handleBack = () => {
+    if (validTargetFrom) {
+      navigate(validTargetFrom);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/tasks?tab=team');
+    }
+  };
+
+  const backButtonLabel = useMemo(() => {
+    if (validTargetFrom) {
+      if (validTargetFrom.startsWith('/dashboard') || validTargetFrom === '/') {
+        return 'Back to Dashboard';
+      }
+      if (validTargetFrom.includes('tab=team') || validTargetFrom.includes('tab=daily_progress')) {
+        return 'Back to Team Progress';
+      }
+      return 'Back';
+    }
+    return 'Back to Team Progress';
+  }, [validTargetFrom]);
 
   const today = new Date().toLocaleDateString('en-CA');
   const mode: PeriodMode = isPeriodMode(searchParams.get('mode'))
@@ -87,7 +132,15 @@ export default function MemberKpiDetailPage() {
   const [showSimpleKpis, setShowSimpleKpis] = useState(true);
 
   const writePeriod = (nextMode: PeriodMode, nextDate: string, nextRangeEnd: string) => {
-    setSearchParams(buildMemberKpiDetailSearch({ mode: nextMode, date: nextDate, rangeEnd: nextRangeEnd }));
+    const currentFrom = searchParams.get('from');
+    setSearchParams(
+      buildMemberKpiDetailSearch({
+        mode: nextMode,
+        date: nextDate,
+        rangeEnd: nextRangeEnd,
+        from: currentFrom || undefined,
+      }),
+    );
   };
 
   const queryParams = useMemo(
@@ -214,7 +267,7 @@ export default function MemberKpiDetailPage() {
     <Box sx={{ p: { xs: 2.5, md: 4.5 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Button
-          onClick={() => navigate('/tasks')}
+          onClick={handleBack}
           startIcon={<ArrowBackIcon />}
           sx={{
             py: 1,
@@ -226,7 +279,7 @@ export default function MemberKpiDetailPage() {
             mb: 2,
           }}
         >
-          Back to Team Progress
+          {backButtonLabel}
         </Button>
 
         <Card sx={{ ...cardSx, p: 3 }}>

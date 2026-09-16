@@ -25,7 +25,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
@@ -74,14 +74,24 @@ interface UserProgressCardProps {
 
 const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgressCardProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [expanded, setExpanded] = useState(false);
 
+  const currentOrigin = useMemo(() => {
+    if (location.search.includes('tab=')) {
+      return location.pathname + location.search;
+    }
+    return `${location.pathname}?tab=team`;
+  }, [location.pathname, location.search]);
+
   const detailPath = group.user?._id
-    ? `/tasks/member/${group.user._id}?${buildMemberKpiDetailSearch({ mode, date, rangeEnd })}`
+    ? `/tasks/member/${group.user._id}?${buildMemberKpiDetailSearch({ mode, date, rangeEnd, from: currentOrigin })}`
     : null;
 
   const openDetail = () => {
-    if (detailPath) navigate(detailPath);
+    if (detailPath) {
+      navigate(detailPath, { state: { from: currentOrigin } });
+    }
   };
 
   const name = group.user

@@ -344,11 +344,17 @@ const TasksPage = () => {
   const dashboardTab: DashboardTab = useMemo(() => {
     const raw = searchParams.get('tab');
     if (raw) {
-      if (raw === 'sales' || raw === 'sales_kpis') return 'sales';
-      if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
-      if (raw === 'team' || raw === 'daily_progress') return 'team';
-      if (['templates', 'assignments', 'change_requests', 'my_tasks'].includes(raw)) {
-        return raw as DashboardTab;
+      if (isElevated) {
+        if (raw === 'sales' || raw === 'sales_kpis') return 'sales';
+        if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
+        if (raw === 'team' || raw === 'daily_progress') return 'team';
+        if (['templates', 'change_requests', 'my_tasks', 'assignments'].includes(raw)) {
+          return raw as DashboardTab;
+        }
+      } else {
+        if (['assignments', 'change_requests'].includes(raw)) {
+          return raw as DashboardTab;
+        }
       }
     }
     return isElevated ? 'my_tasks' : 'assignments';
