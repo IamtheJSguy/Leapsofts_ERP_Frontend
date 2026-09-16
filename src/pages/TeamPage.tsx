@@ -89,6 +89,8 @@ import {
   DEFAULT_SHIFT_START,
   DEFAULT_SHIFT_END,
   resolvePermissions,
+  coercePermissions,
+  emptyPermissions,
   isPermissionLocked,
   permissionLockHelperText,
 } from '@/lib/permissions';
@@ -457,20 +459,17 @@ const ShiftTimePicker = ({ label, value, onChange, isDarkMode }: ShiftTimePicker
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 const AccessPermissionsFields = ({
-  role,
-  department,
   permissions,
   onChange,
   isDarkMode,
 }: {
-  role: Role;
+  role?: Role;
   department?: string;
   permissions?: UserPermissions | Partial<UserPermissions> | null;
   onChange: (next: UserPermissions) => void;
   isDarkMode: boolean;
 }) => {
-  if (role === ROLES.ADMIN) return null;
-  const resolved = resolvePermissions(role, department, permissions);
+  const current = coercePermissions(permissions);
 
   return (
     <Box sx={{ width: '100%', mb: 2.5 }}>
@@ -487,23 +486,18 @@ const AccessPermissionsFields = ({
       </Typography>
       <FormGroup>
         {PERMISSION_KEYS.map((key) => {
-          const locked = isPermissionLocked(role, department, key);
-          const helper = permissionLockHelperText(role, department, key);
           return (
             <Box key={key} sx={{ mb: 0.25 }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     size="small"
-                    checked={resolved[key]}
-                    disabled={locked}
+                    checked={Boolean(current[key])}
                     onChange={(e) =>
-                      onChange(
-                        resolvePermissions(role, department, {
-                          ...resolved,
-                          [key]: e.target.checked,
-                        }),
-                      )
+                      onChange({
+                        ...current,
+                        [key]: e.target.checked,
+                      })
                     }
                   />
                 }
@@ -513,9 +507,6 @@ const AccessPermissionsFields = ({
                   </Typography>
                 }
               />
-              {locked && helper && (
-                <FormHelperText sx={{ mt: -0.75, ml: 4, mb: 0.5 }}>{helper}</FormHelperText>
-              )}
             </Box>
           );
         })}
@@ -650,7 +641,7 @@ const TeamPage = () => {
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
   const [addPermissions, setAddPermissions] = useState<UserPermissions>(() =>
-    resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING),
+    emptyPermissions(),
   );
   const [shiftStart, setShiftStart] = useState(DEFAULT_SHIFT_START);
   const [shiftEnd, setShiftEnd] = useState(DEFAULT_SHIFT_END);
@@ -688,7 +679,7 @@ const TeamPage = () => {
     setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
-    setAddPermissions(resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING));
+    setAddPermissions(emptyPermissions());
     setShiftStart(DEFAULT_SHIFT_START);
     setShiftEnd(DEFAULT_SHIFT_END);
   };
@@ -784,11 +775,7 @@ const TeamPage = () => {
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
         monitorScreenshots: selectedUser.monitorScreenshots !== false,
         monitorAppUsage: selectedUser.monitorAppUsage !== false,
-        permissions: resolvePermissions(
-          selectedUser.role,
-          selectedUser.department,
-          selectedUser.permissions,
-        ),
+        permissions: coercePermissions(selectedUser.permissions),
       } as any
     }, {
       onSuccess: () => {
@@ -1333,11 +1320,6 @@ const TeamPage = () => {
                           setSelectedUser({
                             ...selectedUser,
                             department: nextDept,
-                            permissions: resolvePermissions(
-                              selectedUser.role,
-                              nextDept,
-                              selectedUser.permissions,
-                            ),
                           });
                         }}
                         displayEmpty
@@ -1396,11 +1378,6 @@ const TeamPage = () => {
                               setSelectedUser({
                                 ...selectedUser,
                                 role: value,
-                                permissions: resolvePermissions(
-                                  value,
-                                  selectedUser.department,
-                                  selectedUser.permissions,
-                                ),
                               })
                             }
                             sx={{
@@ -2614,7 +2591,6 @@ const TeamPage = () => {
                         onChange={(e) => {
                           const nextDept = e.target.value;
                           setDepartment(nextDept);
-                          setAddPermissions((prev) => resolvePermissions(createRole, nextDept, prev));
                         }}
                         input={
                           <OutlinedInput
@@ -2665,7 +2641,6 @@ const TeamPage = () => {
                             key={value}
                             onClick={() => {
                               setRoleSelection(value);
-                              setAddPermissions((prev) => resolvePermissions(value, department, prev));
                             }}
                             sx={{
                               flex: 1,
