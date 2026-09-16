@@ -21,8 +21,8 @@ export const useLogin = () => {
       if (data.requires2FA || data.requires2FASetup) return;
       if (data.accessToken && data.user) {
         localStorage.setItem('accessToken', data.accessToken);
+        queryClient.clear();
         setAuth(data.user);
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
       }
     },
   });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export type CreateMeetingOnCardPayload = {
   title: string;
@@ -197,11 +198,13 @@ const optimisticReorderColumns = (oldData: any, columnIds: string[]): any => {
 };
 
 
-export const useKanbanBoards = () =>
-  useQuery({
-    queryKey: ['kanbanBoards'],
+export const useKanbanBoards = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanBoards', organizationId],
     queryFn: () => kanbanApi.getBoards().then((r) => r.data.data),
   });
+};
 
 export const useKanbanBoard = (id: string | undefined) =>
   useQuery({
