@@ -79,7 +79,12 @@ const TwoFactorSetupPage = () => {
     localStorage.setItem('accessToken', pendingSession.accessToken);
     setAuth(pendingSession.user);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    navigate('/', { replace: true });
+    const fromObj = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+    let from = '/';
+    if (fromObj?.pathname) {
+      from = `${fromObj.pathname}${fromObj.search || ''}${fromObj.hash || ''}`;
+    }
+    navigate(from, { replace: true });
   };
 
   const copySecret = async () => {

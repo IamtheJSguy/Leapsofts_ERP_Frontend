@@ -61,7 +61,9 @@ export const useCurrentUser = () => {
       setAuth(res.data.data);
       return res.data.data;
     },
-    staleTime: Infinity,
+    staleTime: 1000 * 30, // 30 seconds
+    refetchOnWindowFocus: true,
+    refetchInterval: 1000 * 60, // 60 seconds
     retry: false,
   });
 };

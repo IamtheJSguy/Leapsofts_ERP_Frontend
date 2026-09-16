@@ -23,7 +23,7 @@ const recentlyProcessedMessages = new Set<string>();
 // Dual-emit dedupe for message:reaction (conversation room + user room).
 const recentlyProcessedReactions = new Set<string>();
 
-const notificationSound = new Audio('/notfication.mp3');
+const notificationSound = new Audio('/chat.mp3');
 notificationSound.preload = 'auto';
 
 const getSenderId = (message: Message): string => {
@@ -110,7 +110,7 @@ const applyUserPresence = (
   });
 };
 
-const systemNotificationSound = new Audio('/amor.mp3');
+const systemNotificationSound = new Audio('/universfield.mp3');
 systemNotificationSound.preload = 'auto';
 
 export const setupSocketEventHandlers = (
