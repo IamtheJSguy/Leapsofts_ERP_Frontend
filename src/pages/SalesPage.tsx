@@ -44,6 +44,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
@@ -64,6 +65,7 @@ import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
+import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
@@ -95,6 +97,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -218,31 +221,6 @@ export const SalesPage = () => {
     };
   }, []);
 
-  const getLinkedinMsgStyle = (msg?: string) => {
-    if (!msg) return { color: 'text.secondary', bg: 'transparent', border: 'none' };
-    const m = msg.toLowerCase();
-    if (m.includes('sent') && !m.includes('not')) {
-      return {
-        color: isDarkMode ? '#34D399' : tokens.semantic.success,
-        bg: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : 'rgba(45, 138, 94, 0.08)',
-        border: isDarkMode ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(45, 138, 94, 0.15)',
-      };
-    }
-    if (m.includes('pending') || m.includes('not')) {
-      return {
-        color: isDarkMode ? '#FBBF24' : tokens.semantic.warning,
-        bg: isDarkMode ? 'rgba(251, 191, 36, 0.1)' : 'rgba(184, 134, 11, 0.08)',
-        border: isDarkMode ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(184, 134, 11, 0.15)',
-      };
-    }
-    // Default fallback
-    return {
-      color: isDarkMode ? '#A8A2B2' : tokens.text.secondary,
-      bg: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-      border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-    };
-  };
-
   const getAssignedName = (assigned: any) => {
     if (!assigned) return 'Unassigned';
     if (typeof assigned === 'object') {
@@ -289,7 +267,7 @@ export const SalesPage = () => {
   const { data: usersData } = useUsers();
   const usersList = useMemo(() => {
     return (usersData || []).filter((u: any) => {
-      if (u.role === 'admin') return false;
+      if (u.role === 'admin') return true;
       const perms = resolvePermissions(u.role, u.department, u.permissions);
       return perms.viewSalesPage === true;
     });
@@ -637,6 +615,15 @@ export const SalesPage = () => {
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+  const filterToolbarRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToTopRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLeadsFetching && leadsResponse && shouldScrollToTopRef.current) {
+      shouldScrollToTopRef.current = false;
+      filterToolbarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isLeadsFetching, leadsResponse]);
 
   useEffect(() => {
     const map: Record<string, any> = {};
@@ -795,6 +782,23 @@ export const SalesPage = () => {
   const [leadModalId, setLeadModalId] = useState<string>('');
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
   const [disqualifyLeadId, setDisqualifyLeadId] = useState<string>('');
+
+  // Activity timeline popover — only one lead's timeline is open at a time
+  const [timelineAnchorEl, setTimelineAnchorEl] = useState<HTMLElement | null>(null);
+  const [timelineLeadId, setTimelineLeadId] = useState<string | null>(null);
+
+  const handleOpenTimeline = useCallback(
+    (event: React.MouseEvent<HTMLElement>, leadId: string) => {
+      setTimelineAnchorEl(event.currentTarget);
+      setTimelineLeadId(leadId);
+    },
+    [],
+  );
+
+  const handleCloseTimeline = useCallback(() => {
+    setTimelineAnchorEl(null);
+    setTimelineLeadId(null);
+  }, []);
 
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink) {
@@ -1337,6 +1341,7 @@ export const SalesPage = () => {
         <Box className="animate-fade-in-up">
           {/* Filters Command Toolbar */}
           <Box
+            ref={filterToolbarRef}
             sx={{
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
@@ -1793,6 +1798,7 @@ export const SalesPage = () => {
           ) : (
             /* Connected Prospects View - Show Table */
             <TableContainer
+              ref={tableContainerRef}
               component={Paper}
               sx={{
                 borderRadius: '24px',
@@ -1806,11 +1812,11 @@ export const SalesPage = () => {
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>PROSPECT</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>CAMPAIGN (ICP)</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>OUTREACH STATUS</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>LINKEDIN ACTION</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>ASSIGNED AGENT</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, px: 1, width: 60, minWidth: 60, whiteSpace: 'nowrap' }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 2, whiteSpace: 'nowrap' }}>PROSPECT</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>CAMPAIGN (ICP)</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>OUTREACH STATUS</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>ASSIGNED AGENT</TableCell>
                     <TableCell sx={{ borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }} />
                   </TableRow>
                 </TableHead>
@@ -1828,7 +1834,9 @@ export const SalesPage = () => {
                       onCancel={handleInlineAddCancel}
                     />
                   )}
-                  {prospects.map((prospect) => {
+                  {prospects.map((prospect, idx) => {
+                    const responsePage = leadsResponse?.meta?.page ?? page;
+                    const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
@@ -1837,6 +1845,7 @@ export const SalesPage = () => {
                           key={`edit-${prospect._id}`}
                           leadId={prospect._id}
                           editData={editData}
+                          indexNumber={globalRowIndex}
                           isDarkMode={isDarkMode}
                           icpsList={icpsList}
                           profileUsersList={profileUsersList}
@@ -1855,7 +1864,6 @@ export const SalesPage = () => {
                         />
                       );
                     }
-
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1868,9 +1876,6 @@ export const SalesPage = () => {
                     const canMarkMsgSent =
                       prospect.connectionStatus === 'accepted' &&
                       (prospect.messageStatus || 'not_sent') === 'not_sent';
-
-                    const lkMsgStyle = getLinkedinMsgStyle(prospect.linkedinMsg);
-
                     return (
                       <TableRow
                         key={prospect._id}
@@ -1883,8 +1888,37 @@ export const SalesPage = () => {
                           },
                         }}
                       >
+                        {/* Continuous Index / Counter */}
+                        <TableCell align="center" sx={{ py: 2, borderBottom: 0, px: 1, width: 60, minWidth: 60 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: 32,
+                              height: 24,
+                              px: 0.8,
+                              borderRadius: '8px',
+                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                              color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.muted,
+                              fontSize: '0.74rem',
+                              fontWeight: 750,
+                              fontVariantNumeric: 'tabular-nums',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '.MuiTableRow-root:hover &': {
+                                bgcolor: isDarkMode ? 'rgba(255,127,17,0.15)' : 'rgba(255,127,17,0.08)',
+                                color: tokens.brand.accent,
+                                borderColor: 'rgba(255,127,17,0.25)',
+                              },
+                            }}
+                          >
+                            {String(globalRowIndex).padStart(2, '0')}
+                          </Box>
+                        </TableCell>
+
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
                               role="button"
@@ -2163,27 +2197,6 @@ export const SalesPage = () => {
                           </Box>
                         </TableCell>
 
-                        {/* LinkedIn message/action status */}
-                        <TableCell sx={{ py: 2, borderBottom: 0 }}>
-                          {prospect.linkedinMsg ? (
-                            <Chip
-                              label={prospect.linkedinMsg}
-                              size="small"
-                              sx={{
-                                bgcolor: lkMsgStyle.bg,
-                                color: lkMsgStyle.color,
-                                fontWeight: 750,
-                                fontSize: '0.66rem',
-                                height: 22,
-                                borderRadius: '8px',
-                                border: lkMsgStyle.border,
-                              }}
-                            />
-                          ) : (
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
-                          )}
-                        </TableCell>
-
                         {/* Assigned Representative */}
                         <TableCell sx={{ py: 2, borderBottom: 0 }}>
                           <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : tokens.text.primary, fontWeight: 700, fontSize: '0.86rem' }}>
@@ -2224,6 +2237,22 @@ export const SalesPage = () => {
                                 }}
                               >
                                 <EditIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Track lead activity" arrow>
+                              <IconButton
+                                size="small"
+                                aria-label="Track lead activity"
+                                onClick={(e) => handleOpenTimeline(e, String(prospect._id))}
+                                sx={{
+                                  color: timelineLeadId === prospect._id ? tokens.brand.primary : 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                    color: tokens.brand.primary,
+                                  }
+                                }}
+                              >
+                                <TimelineOutlinedIcon sx={{ fontSize: 18 }} />
                               </IconButton>
                             </Tooltip>
                             {prospect.isQualified ? (
@@ -2313,7 +2342,10 @@ export const SalesPage = () => {
               component="div"
               count={totalProspects}
               page={page - 1}
-              onPageChange={(_, newPage) => setPage(newPage + 1)}
+              onPageChange={(_, newPage) => {
+                setPage(newPage + 1);
+                shouldScrollToTopRef.current = true;
+              }}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={(event) => {
                 setRowsPerPage(parseInt(event.target.value, 10));
@@ -2337,6 +2369,12 @@ export const SalesPage = () => {
           )}
         </Box>
       )}
+
+      <LeadTimelinePopover
+        leadId={timelineLeadId}
+        anchorEl={timelineAnchorEl}
+        onClose={handleCloseTimeline}
+      />
 
       {/* Qualify a Lead Modal */}
       <Dialog

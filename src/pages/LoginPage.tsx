@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -25,7 +25,6 @@ import { loginSchema, type LoginFormData } from '@/utils/validators';
 import { useLogin } from '@/hooks/api/useAuth';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
-import { getSanitizedRedirectUrl } from '@/utils/redirect';
 
 const shakeAnimation = keyframes`
   0%, 100% { transform: translateX(0); }
@@ -35,14 +34,10 @@ const shakeAnimation = keyframes`
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const login = useLogin();
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const isDarkMode = theme.palette.mode === 'dark';
-
-  const rawRedirect = searchParams.get('redirect') || searchParams.get('returnUrl');
-  const targetUrl = getSanitizedRedirectUrl(rawRedirect);
 
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
@@ -58,21 +53,17 @@ const LoginPage = () => {
     login.mutate(data, {
       onSuccess: (res) => {
         const payload = res.data.data;
-        if (targetUrl && targetUrl !== '/') {
-          sessionStorage.setItem('postLoginRedirect', targetUrl);
-        }
         if (payload.requires2FA && payload.tempToken) {
           sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa', { state: { tempToken: payload.tempToken, redirect: targetUrl } });
+          navigate('/login/2fa', { state: { tempToken: payload.tempToken } });
           return;
         }
         if (payload.requires2FASetup && payload.tempToken) {
           sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken, redirect: targetUrl } });
+          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken } });
           return;
         }
-        sessionStorage.removeItem('postLoginRedirect');
-        navigate(targetUrl, { replace: true });
+        navigate('/');
       },
       onError: () => {
         setShake(true);

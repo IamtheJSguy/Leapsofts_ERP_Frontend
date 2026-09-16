@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { resolvePermissions, type PermissionKey } from '@/lib/permissions';
 import type { Role } from '@/types';
@@ -15,12 +15,9 @@ export const ProtectedRoute = ({
   children,
 }: ProtectedRouteProps) => {
   const { user, isAuthenticated } = useAuthStore();
-  const location = useLocation();
 
   if (!isAuthenticated && !localStorage.getItem('accessToken')) {
-    const targetUrl = location.pathname + location.search + location.hash;
-    const loginUrl = targetUrl && targetUrl !== '/' ? `/login?redirect=${encodeURIComponent(targetUrl)}` : '/login';
-    return <Navigate to={loginUrl} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (user && !allowedRoles.includes(user.role)) {
