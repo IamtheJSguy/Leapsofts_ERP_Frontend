@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { filterStartedSalesKpis } from '@/lib/salesKpi';
+import { useAuthStore } from '@/store/useAuthStore';
 import type {
   GroupedSalesKpis,
   SalesKpiAssignment,
@@ -141,12 +142,14 @@ export const useMySalesKpiAssignments = (options?: { enabled?: boolean }) =>
 
 // ─── Templates (elevated) ─────────────────────────────────────────
 
-export const useSalesKpiTemplates = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['salesKpiTemplates'],
+export const useSalesKpiTemplates = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpiTemplates', organizationId],
     queryFn: () => salesKpiApi.getTemplates().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 /** Template plus the assignments derived from it. */
 export const useSalesKpiTemplateDetail = (id: string | undefined) =>

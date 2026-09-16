@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { KPITemplate, KpiPriority, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export type ItemOverride = {
   itemIndex: number;
@@ -48,12 +49,14 @@ const kpiTemplateApi = {
     }),
 };
 
-export const useKPITemplates = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['kpiTemplates'],
+export const useKPITemplates = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpiTemplates', organizationId],
     queryFn: () => kpiTemplateApi.getKPITemplates().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 export const useCreateKPITemplate = () => {
   const queryClient = useQueryClient();
