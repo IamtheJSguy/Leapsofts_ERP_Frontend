@@ -324,7 +324,7 @@ export const UserDashboard = () => {
                           }}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.accent, flexShrink: 0 }} />
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.success, flexShrink: 0 }} />
                             <Box sx={{ minWidth: 0 }}>
                               <Typography noWrap sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
                                 {task.title}
@@ -346,7 +346,7 @@ export const UserDashboard = () => {
                             </Box>
                           </Box>
                           <Box sx={{ textAlign: 'right', flexShrink: 0, ml: 1 }}>
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.brand.accent }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.success }}>
                               <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
                               {formatTaskDate(task.dueDate, userTimeZone)}
                             </Typography>
