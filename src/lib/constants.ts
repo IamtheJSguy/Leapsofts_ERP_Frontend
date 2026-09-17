@@ -116,6 +116,7 @@ export const SOCKET_EVENTS = {
   CHAT_JOIN: 'chat:join',
   CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
+  ORG_ENTITLEMENTS_UPDATED: 'org:entitlements_updated',
 } as const;
 
 /** Quick-bar emojis shown on message hover (full picker via +). */

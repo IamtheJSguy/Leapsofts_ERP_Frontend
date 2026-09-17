@@ -43,6 +43,7 @@ import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -142,6 +143,8 @@ interface ActiveAssignment {
 const TasksPage = () => {
   const { user } = useAuth();
   const { isElevated } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -343,7 +346,7 @@ const TasksPage = () => {
     const raw = searchParams.get('tab');
     if (raw) {
       if (isElevated) {
-        if (raw === 'sales' || raw === 'sales_kpis') return 'sales';
+        if (raw === 'sales' || raw === 'sales_kpis') return salesModuleOn ? 'sales' : 'my_tasks';
         if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
         if (raw === 'team' || raw === 'daily_progress') return 'team';
         if (['templates', 'change_requests', 'my_tasks', 'assignments'].includes(raw)) {
@@ -356,7 +359,7 @@ const TasksPage = () => {
       }
     }
     return isElevated ? 'my_tasks' : 'assignments';
-  }, [searchParams, isElevated]);
+  }, [searchParams, isElevated, salesModuleOn]);
 
   const setDashboardTab = (newTab: DashboardTab) => {
     setSearchParams(
@@ -2201,7 +2204,9 @@ const TasksPage = () => {
         {isElevated && viewMode === 'list' && (
           <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
             <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+            {salesModuleOn && (
             <Button onClick={() => setDashboardTab('sales')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
+            )}
             <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
             <Button onClick={() => setDashboardTab('standalone')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
             <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
@@ -2223,7 +2228,7 @@ const TasksPage = () => {
           <ChangeRequestQueue />
         )}
 
-        {(dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
+        {salesModuleOn && (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
           <SalesKpiPanel />
         )}
 

@@ -198,11 +198,12 @@ const optimisticReorderColumns = (oldData: any, columnIds: string[]): any => {
 };
 
 
-export const useKanbanBoards = () => {
+export const useKanbanBoards = (options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
     queryKey: ['kanbanBoards', organizationId],
     queryFn: () => kanbanApi.getBoards().then((r) => r.data.data),
+    enabled: options?.enabled ?? true,
   });
 };
 

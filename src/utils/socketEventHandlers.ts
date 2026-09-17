@@ -137,6 +137,10 @@ export const setupSocketEventHandlers = (
     queryClient.invalidateQueries({ queryKey: ['users'] });
   });
 
+  socket.on(SOCKET_EVENTS.ORG_ENTITLEMENTS_UPDATED, () => {
+    queryClient.invalidateQueries({ queryKey: ['org-entitlements'] });
+  });
+
   socket.on(SOCKET_EVENTS.USER_ONLINE, (data: unknown) => {
     const payload = data as { userId: string; online: boolean };
     const status: PresenceStatus = payload.online ? 'online' : 'offline';

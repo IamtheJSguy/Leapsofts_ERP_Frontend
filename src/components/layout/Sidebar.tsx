@@ -28,6 +28,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
 import { useConversations } from '@/hooks/api/useChat';
@@ -46,6 +47,7 @@ interface NavItem {
     | 'canViewAdminReports'
     | 'canViewSystemSettings'
     | 'canViewSalesPage';
+  requiresEntitlement?: OrgModuleKey;
 }
 
 interface NavGroup {
@@ -59,10 +61,10 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage' },
+      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage', requiresEntitlement: 'salesModule' },
       { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
       // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'projectsAndBoards' },
       { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewTeamDashboard' },
     ],
   },
@@ -70,14 +72,14 @@ const navGroups: NavGroup[] = [
     title: 'Analytics',
     items: [
       // { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports' },
+      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports', requiresEntitlement: 'scheduledReports' },
     ],
   },
   {
     title: 'Collaboration',
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'chat' },
     ],
   },
   {
@@ -109,13 +111,14 @@ const BrandMark = () => (
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const permissions = usePermissions();
+  const entitlements = useEntitlements();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const { data: conversations = [] } = useConversations();
+  const { data: conversations = [] } = useConversations({ enabled: entitlements.chat });
   const unreadCounts = useChatStore((s) => s.unreadCounts);
   const unreadChatsCount = countConversationsWithUnread(conversations, unreadCounts);
 
@@ -216,7 +219,9 @@ export const Sidebar = () => {
         {navGroups.map((group, groupIdx) => {
           // Filter items based on permissions
           const filteredItems = group.items.filter(
-            (item) => !item.requiresPermission || permissions[item.requiresPermission]
+            (item) =>
+              (!item.requiresPermission || permissions[item.requiresPermission]) &&
+              (!item.requiresEntitlement || entitlements[item.requiresEntitlement] !== false),
           );
 
           if (filteredItems.length === 0) return null;

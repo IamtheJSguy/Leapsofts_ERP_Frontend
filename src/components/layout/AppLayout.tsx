@@ -16,6 +16,7 @@ import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
 import api from '@/lib/axios';
 import { useLogout } from '@/hooks/api/useAuth';
+import { useEntitlements } from '@/hooks/useEntitlements';
 
 export const AppLayout = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -24,10 +25,11 @@ export const AppLayout = () => {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const [monitoringOpen, setMonitoringOpen] = useState(false);
+  const entitlements = useEntitlements();
   useMe();
   useSocket();
 
-  const { data: conversations = [] } = useConversations();
+  const { data: conversations = [] } = useConversations({ enabled: entitlements.chat });
   const unreadCounts = useChatStore((s) => s.unreadCounts);
   const syncUnreadFromConversations = useChatStore((s) => s.syncUnreadFromConversations);
 

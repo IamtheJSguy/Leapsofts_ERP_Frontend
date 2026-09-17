@@ -139,7 +139,7 @@ const patchMessageReactions = (
   );
 };
 
-export const useConversations = () =>
+export const useConversations = (options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ['conversations'],
     queryFn: () =>
@@ -150,6 +150,7 @@ export const useConversations = () =>
     // Sockets deliver live updates, but this is the fallback if a message
     // was missed while the socket was disconnected (e.g. tab was backgrounded).
     refetchOnWindowFocus: true,
+    enabled: options?.enabled ?? true,
   });
 
 export const useMessages = (conversationId: string | null) => {
