@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -29,11 +29,11 @@ export const DEFAULT_ORG_MODULE_FLAGS: OrgModuleFlags = {
 
 export const ORG_ENTITLEMENTS_QUERY_KEY = ['org-entitlements'] as const;
 
-export const useOrgEntitlements = () => {
+export const useOrgEntitlements = (): UseQueryResult<OrgModuleFlags, Error> => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const organizationId = useAuthStore((s) => s.user?.organizationId);
 
-  return useQuery({
+  return useQuery<OrgModuleFlags, Error>({
     queryKey: [...ORG_ENTITLEMENTS_QUERY_KEY, organizationId],
     queryFn: () =>
       api.get<{ data: OrgModuleFlags }>('/organizations/me/entitlements').then((r) => r.data.data),
