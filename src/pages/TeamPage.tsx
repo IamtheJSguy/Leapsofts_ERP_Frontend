@@ -459,6 +459,8 @@ const ShiftTimePicker = ({ label, value, onChange, isDarkMode }: ShiftTimePicker
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 const AccessPermissionsFields = ({
+  role,
+  department,
   permissions,
   onChange,
   isDarkMode,
@@ -469,6 +471,8 @@ const AccessPermissionsFields = ({
   onChange: (next: UserPermissions) => void;
   isDarkMode: boolean;
 }) => {
+  if (role === ROLES.ADMIN) return null;
+
   const current = coercePermissions(permissions);
 
   return (
