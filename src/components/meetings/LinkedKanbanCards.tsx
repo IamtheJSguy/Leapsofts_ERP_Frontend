@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 
 import type { MeetingLinkedCard, User } from '@/types';
 import { tokens } from '@/styles/tokens';
-import { RichTextContent } from '@/components/common/RichTextContent';
 
 const PRIORITY_STYLES: Record<string, { label: string; bgcolor: string; color: string }> = {
   low: { label: 'Low', bgcolor: 'rgba(96,165,250,0.12)', color: '#3b82f6' },
@@ -107,20 +106,19 @@ export const LinkedKanbanCards: React.FC<LinkedKanbanCardsProps> = ({ cards, isD
                   </Typography>
                 )}
                 {card.description && (
-                  <RichTextContent
-                    content={card.description}
+                  <Typography
+                    variant="caption"
                     sx={{
+                      color: 'text.secondary',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden',
                       mt: 0.5,
-                      fontSize: '0.78rem',
-                      lineHeight: 1.4,
-                      color: 'text.secondary',
-                      '& p': { m: 0 },
                     }}
-                  />
+                  >
+                    {card.description}
+                  </Typography>
                 )}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75, mt: 1 }}>
                   <Chip

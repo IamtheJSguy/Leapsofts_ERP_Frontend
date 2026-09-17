@@ -52,6 +52,7 @@ export const buildMemberKpiDetailSearch = (opts: {
   mode: PeriodMode;
   date: string;
   rangeEnd: string;
+  from?: string;
 }) => {
   const period = resolvePeriod(opts.mode, opts.date, opts.rangeEnd);
   const params = new URLSearchParams({
@@ -61,6 +62,9 @@ export const buildMemberKpiDetailSearch = (opts: {
   });
   if (opts.mode === 'range') {
     params.set('rangeEnd', opts.rangeEnd || period.endDate);
+  }
+  if (opts.from) {
+    params.set('from', opts.from);
   }
   return params.toString();
 };
