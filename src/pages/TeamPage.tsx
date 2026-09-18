@@ -91,6 +91,8 @@ import {
   resolvePermissions,
   isPermissionLocked,
   permissionLockHelperText,
+  coercePermissions,
+  emptyPermissions,
 } from '@/lib/permissions';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
@@ -498,12 +500,10 @@ const AccessPermissionsFields = ({
                     checked={resolved[key]}
                     disabled={locked}
                     onChange={(e) =>
-                      onChange(
-                        resolvePermissions(role, department, {
-                          ...resolved,
-                          [key]: e.target.checked,
-                        }),
-                      )
+                      onChange({
+                        ...coercePermissions(permissions),
+                        [key]: e.target.checked,
+                      })
                     }
                   />
                 }
@@ -650,7 +650,7 @@ const TeamPage = () => {
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
   const [addPermissions, setAddPermissions] = useState<UserPermissions>(() =>
-    resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING),
+    emptyPermissions(),
   );
   const [shiftStart, setShiftStart] = useState(DEFAULT_SHIFT_START);
   const [shiftEnd, setShiftEnd] = useState(DEFAULT_SHIFT_END);
@@ -688,7 +688,7 @@ const TeamPage = () => {
     setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
-    setAddPermissions(resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING));
+    setAddPermissions(emptyPermissions());
     setShiftStart(DEFAULT_SHIFT_START);
     setShiftEnd(DEFAULT_SHIFT_END);
   };
@@ -784,11 +784,7 @@ const TeamPage = () => {
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
         monitorScreenshots: selectedUser.monitorScreenshots !== false,
         monitorAppUsage: selectedUser.monitorAppUsage !== false,
-        permissions: resolvePermissions(
-          selectedUser.role,
-          selectedUser.department,
-          selectedUser.permissions,
-        ),
+        permissions: coercePermissions(selectedUser.permissions),
       } as any
     }, {
       onSuccess: () => {
@@ -1333,11 +1329,6 @@ const TeamPage = () => {
                           setSelectedUser({
                             ...selectedUser,
                             department: nextDept,
-                            permissions: resolvePermissions(
-                              selectedUser.role,
-                              nextDept,
-                              selectedUser.permissions,
-                            ),
                           });
                         }}
                         displayEmpty
@@ -1396,11 +1387,6 @@ const TeamPage = () => {
                               setSelectedUser({
                                 ...selectedUser,
                                 role: value,
-                                permissions: resolvePermissions(
-                                  value,
-                                  selectedUser.department,
-                                  selectedUser.permissions,
-                                ),
                               })
                             }
                             sx={{
@@ -2612,9 +2598,7 @@ const TeamPage = () => {
                       <Select
                         value={department}
                         onChange={(e) => {
-                          const nextDept = e.target.value;
-                          setDepartment(nextDept);
-                          setAddPermissions((prev) => resolvePermissions(createRole, nextDept, prev));
+                          setDepartment(e.target.value);
                         }}
                         input={
                           <OutlinedInput
@@ -2665,7 +2649,6 @@ const TeamPage = () => {
                             key={value}
                             onClick={() => {
                               setRoleSelection(value);
-                              setAddPermissions((prev) => resolvePermissions(value, department, prev));
                             }}
                             sx={{
                               flex: 1,
