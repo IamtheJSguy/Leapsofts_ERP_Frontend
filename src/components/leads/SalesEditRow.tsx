@@ -156,9 +156,9 @@ export const SalesEditRow = memo(function SalesEditRow({
             style={field}
           >
             <option value="pending">Conn: Pending</option>
+            <option value="sent">Conn: Sent</option>
             <option value="accepted">Conn: Accepted</option>
             <option value="declined">Conn: Declined</option>
-            <option value="no_response">Conn: No Response</option>
           </select>
           <select
             value={editData.messageStatus}
@@ -392,9 +392,9 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
             style={nativeFieldStyle(isDarkMode)}
           >
             <option value="pending">Conn: Pending</option>
+            <option value="sent">Conn: Sent</option>
             <option value="accepted">Conn: Accepted</option>
             <option value="declined">Conn: Declined</option>
-            <option value="no_response">Conn: No Response</option>
           </select>
           <select
             value={data.messageStatus || 'not_sent'}

@@ -108,7 +108,7 @@ export const LeadDetailDrawer = ({
           </IconButton>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, my: 2 }}>
-          <StatusBadge status={lead.connectionStatus || 'not_sent'} />
+          <StatusBadge status={lead.connectionStatus || 'pending'} />
           <StatusBadge status={lead.messageStatus || 'not_sent'} type="message" />
         </Box>
         <Typography variant="body2" color="text.secondary" gutterBottom>
