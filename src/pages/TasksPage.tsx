@@ -44,6 +44,8 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements } from '@/hooks/useEntitlements';
+import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { RichTextContent } from '@/components/common/RichTextContent';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -1094,23 +1096,29 @@ const TasksPage = () => {
                       }}
                     />
 
-                    <TextField
-                      label="Description"
-                      placeholder="Describe the purpose of this KPI collection..."
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={newTemplateDesc}
-                      onChange={(e) => setNewTemplateDesc(e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
+                    <Box>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+                        Description
+                      </Typography>
+                      <Box
+                        sx={{
                           borderRadius: '16px',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
                           bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                        },
-                      }}
-                    />
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <RichTextEditor
+                          value={newTemplateDesc}
+                          onChange={setNewTemplateDesc}
+                          submitOnEnter={false}
+                          alwaysShowToolbar={true}
+                          minHeight="90px"
+                          maxHeight="200px"
+                          placeholder="Describe the purpose of this KPI collection..."
+                        />
+                      </Box>
+                    </Box>
                   </Box>
                 </Box>
               )}
@@ -1352,9 +1360,7 @@ const TasksPage = () => {
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, display: 'block', fontSize: '0.62rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         DESCRIPTION
                       </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, fontWeight: 500 }}>
-                        {newTemplateDesc || 'No description provided.'}
-                      </Typography>
+                      <RichTextContent content={newTemplateDesc} fallbackText="No description provided." sx={{ mt: 0.5 }} />
                     </Box>
 
                     <Divider sx={{ opacity: 0.3 }} />
@@ -1386,9 +1392,7 @@ const TasksPage = () => {
                                   ? ` · ${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' (this week)' : ' (weekly)'}`
                                   : ''}
                               </Typography>
-                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem', mt: 0.25 }}>
-                                {kpi.description || '(Empty Description)'}
-                              </Typography>
+                              <RichTextContent content={kpi.description} fallbackText="(Empty Description)" sx={{ mt: 0.25, fontSize: '0.8rem' }} />
                             </Box>
                           </Box>
                         ))}
@@ -1630,9 +1634,7 @@ const TasksPage = () => {
                     {selectedTemplate.name}
                   </Typography>
 
-                  <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.94rem' }}>
-                    {selectedTemplate.description || 'No description provided.'}
-                  </Typography>
+                  <RichTextContent content={selectedTemplate.description} fallbackText="No description provided." sx={{ fontSize: '0.94rem' }} />
                 </Card>
 
                 {/* Grouped KPIs List */}
@@ -1673,9 +1675,7 @@ const TasksPage = () => {
                               : ''}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.84rem', pl: 0.5 }}>
-                          {kpi.description}
-                        </Typography>
+                        <RichTextContent content={kpi.description} sx={{ pl: 0.5, fontSize: '0.84rem' }} />
                       </Box>
                     ))}
                   </Box>
@@ -2014,9 +2014,10 @@ const TasksPage = () => {
                               ) : null}
                               {isPending && <Chip label="Pending review" size="small" color="warning" />}
                             </Box>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}>
-                              {kpi.description}
-                            </Typography>
+                            <RichTextContent
+                              content={kpi.description}
+                              sx={{ fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}
+                            />
                           </Box>
                           {!isElevated && (kpi.itemId || kpi._id) && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
@@ -2496,17 +2497,21 @@ const TasksPage = () => {
                           />
                         </Box>
 
-                        <Typography
-                          variant="body2"
+                        <RichTextContent
+                          content={tpl.description}
+                          fallbackText="No description provided."
                           sx={{
-                            color: 'text.secondary',
-                            lineHeight: 1.5,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
                             mb: 3,
-                            fontWeight: 500,
+                            fontSize: '0.84rem',
+                            lineHeight: 1.5,
+                            color: 'text.secondary',
+                            '& p': { m: 0, mb: 0.25 },
                           }}
-                        >
-                          {tpl.description || 'No description provided.'}
-                        </Typography>
+                        />
 
                         <Box
                           sx={{
@@ -2609,9 +2614,21 @@ const TasksPage = () => {
                             {tpl.name}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.78rem', mt: 0.5 }} noWrap>
-                          {tpl.description || 'No description.'}
-                        </Typography>
+                        <RichTextContent
+                          content={tpl.description}
+                          fallbackText="No description."
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            mt: 0.5,
+                            fontSize: '0.78rem',
+                            lineHeight: 1.4,
+                            color: 'text.secondary',
+                            '& p': { m: 0, display: 'inline' },
+                          }}
+                        />
                       </Grid>
                       <Grid item xs={12} md={5} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
                         <Button
@@ -3238,9 +3255,10 @@ const TasksPage = () => {
               {assigningTemplate?.name}
             </Typography>
             {assigningTemplate?.description && (
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.85rem' }}>
-                {assigningTemplate.description}
-              </Typography>
+              <RichTextContent
+                content={assigningTemplate.description}
+                sx={{ mb: 2, fontSize: '0.85rem' }}
+              />
             )}
 
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', mb: 1 }}>

@@ -39,11 +39,13 @@ import { tokens } from '@/styles/tokens';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { SalesKpiEntry, SalesKpiStatus } from '@/types';
+import { RichTextContent } from '@/components/common/RichTextContent';
 
 type ProgressTask = {
   id: string;
   kind: 'daily' | 'sales';
   name: string;
+  description?: string;
   isCompleted: boolean;
   targetValue?: number | null;
   actualValue?: number | null;
@@ -378,6 +380,18 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                 >
                   {task.name}
                 </Typography>
+                {Boolean(task.description?.trim()) && (
+                  <RichTextContent
+                    content={task.description}
+                    sx={{
+                      fontSize: '0.78rem',
+                      lineHeight: 1.4,
+                      color: 'text.secondary',
+                      opacity: task.isCompleted ? 0.7 : 1,
+                      '& p': { m: 0 },
+                    }}
+                  />
+                )}
                 {(task.targetValue != null && task.targetValue > 0) && (
                   <Tooltip
                     title={task.kind === 'sales' && (task.extraValue ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
@@ -475,10 +489,12 @@ export const DailyTeamProgress = () => {
     dailyEntries.forEach((entry: any) => {
       const group = ensureGroup(entry.userId);
       if (!group) return;
+      const cardDesc = typeof entry.kanbanCardId === 'object' ? entry.kanbanCardId?.description : undefined;
       const task: ProgressTask = {
         id: `daily-${entry._id}`,
         kind: 'daily',
         name: entry.kpiName || entry.kpiId?.name || 'KPI',
+        description: cardDesc !== undefined ? cardDesc : (entry.description || entry.kpiId?.description),
         isCompleted: !!entry.isCompleted,
         targetValue: entry.targetValue,
         actualValue: entry.actualValue,
@@ -495,10 +511,12 @@ export const DailyTeamProgress = () => {
     (salesEntries as SalesKpiEntry[]).forEach((entry) => {
       const group = ensureGroup(entry.userId);
       if (!group) return;
+      const cardDesc = typeof (entry as any).kanbanCardId === 'object' ? (entry as any).kanbanCardId?.description : undefined;
       const task: ProgressTask = {
         id: `sales-${entry._id}`,
         kind: 'sales',
         name: entry.kpiName,
+        description: cardDesc !== undefined ? cardDesc : entry.description,
         isCompleted: isSalesDone(entry.status),
         targetValue: entry.targetValue,
         actualValue: entry.currentValue,

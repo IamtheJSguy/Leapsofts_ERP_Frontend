@@ -362,6 +362,9 @@ export const useCreateCard = (boardId?: string) => {
     mutationFn: kanbanApi.createCard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['teamSalesKpis'] });
     },
   });
 };
@@ -374,6 +377,8 @@ export const useAssignCard = (boardId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
       queryClient.invalidateQueries({ queryKey: ['dailyKpiSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['teamSalesKpis'] });
     },
   });
 };
@@ -424,6 +429,11 @@ export const useUpdateCard = (boardId?: string) => {
         queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       }
       queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['teamSalesKpis'] });
     },
   });
 };
@@ -434,6 +444,9 @@ export const useDeleteCard = (boardId?: string) => {
     mutationFn: kanbanApi.deleteCard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['teamSalesKpis'] });
     },
   });
 };
