@@ -2,9 +2,9 @@ export type Role = 'admin' | 'manager' | 'user';
 
 export type ConnectionStatus =
   | 'pending'
+  | 'sent'
   | 'accepted'
-  | 'declined'
-  | 'no_response';
+  | 'declined';
 
 export type MessageStatus =
   | 'not_sent'
@@ -1203,6 +1203,8 @@ export interface LeadFilters {
   messageStatus?: string;
   /** When true, messageStatus is any of the messaged funnel statuses (not not_sent) */
   messaged?: boolean;
+  /** When true, connectionStatus is sent, accepted, or declined */
+  connectionSent?: boolean;
   futureLeadWindow?: 'upcoming' | 'due' | 'overdue' | 'due_soon';
   status?: string;
   location?: string;

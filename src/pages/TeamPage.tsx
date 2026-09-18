@@ -91,6 +91,8 @@ import {
   resolvePermissions,
   isPermissionLocked,
   permissionLockHelperText,
+  coercePermissions,
+  emptyPermissions,
 } from '@/lib/permissions';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
@@ -498,12 +500,10 @@ const AccessPermissionsFields = ({
                     checked={resolved[key]}
                     disabled={locked}
                     onChange={(e) =>
-                      onChange(
-                        resolvePermissions(role, department, {
-                          ...resolved,
-                          [key]: e.target.checked,
-                        }),
-                      )
+                      onChange({
+                        ...coercePermissions(permissions),
+                        [key]: e.target.checked,
+                      })
                     }
                   />
                 }
@@ -625,7 +625,16 @@ const TeamPage = () => {
     if (userIdFromUrl && teamList.length > 0) {
       const matched = teamList.find((u: any) => u._id === userIdFromUrl);
       if (matched && (!selectedUser || selectedUser._id !== userIdFromUrl)) {
-        setSelectedUser(matched);
+        const initPerms = coercePermissions(matched.permissions);
+        setSelectedUser({
+          ...matched,
+          permissions: initPerms,
+          rolePermissions: {
+            [ROLES.USER]: { ...initPerms },
+            [ROLES.MANAGER]: { ...initPerms },
+            [ROLES.ADMIN]: { ...initPerms },
+          },
+        });
       }
     } else if (!userIdFromUrl && selectedUser) {
       setSelectedUser(null);
@@ -649,9 +658,11 @@ const TeamPage = () => {
   const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
-  const [addPermissions, setAddPermissions] = useState<UserPermissions>(() =>
-    resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING),
-  );
+  const [addRolePermissions, setAddRolePermissions] = useState<Record<Role, UserPermissions>>(() => ({
+    [ROLES.USER]: emptyPermissions(),
+    [ROLES.MANAGER]: emptyPermissions(),
+    [ROLES.ADMIN]: emptyPermissions(),
+  }));
   const [shiftStart, setShiftStart] = useState(DEFAULT_SHIFT_START);
   const [shiftEnd, setShiftEnd] = useState(DEFAULT_SHIFT_END);
 
@@ -688,7 +699,11 @@ const TeamPage = () => {
     setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
-    setAddPermissions(resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING));
+    setAddRolePermissions({
+      [ROLES.USER]: emptyPermissions(),
+      [ROLES.MANAGER]: emptyPermissions(),
+      [ROLES.ADMIN]: emptyPermissions(),
+    });
     setShiftStart(DEFAULT_SHIFT_START);
     setShiftEnd(DEFAULT_SHIFT_END);
   };
@@ -715,7 +730,7 @@ const TeamPage = () => {
       phone,
       department,
       bio,
-      permissions: addPermissions,
+      permissions: addRolePermissions[createRole],
       ...(createRole !== ROLES.ADMIN
         ? { shiftStart: shiftStart || DEFAULT_SHIFT_START, shiftEnd: shiftEnd || DEFAULT_SHIFT_END }
         : {}),
@@ -784,11 +799,7 @@ const TeamPage = () => {
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
         monitorScreenshots: selectedUser.monitorScreenshots !== false,
         monitorAppUsage: selectedUser.monitorAppUsage !== false,
-        permissions: resolvePermissions(
-          selectedUser.role,
-          selectedUser.department,
-          selectedUser.permissions,
-        ),
+        permissions: coercePermissions(selectedUser.rolePermissions?.[selectedUser.role] || selectedUser.permissions),
       } as any
     }, {
       onSuccess: () => {
@@ -1333,11 +1344,6 @@ const TeamPage = () => {
                           setSelectedUser({
                             ...selectedUser,
                             department: nextDept,
-                            permissions: resolvePermissions(
-                              selectedUser.role,
-                              nextDept,
-                              selectedUser.permissions,
-                            ),
                           });
                         }}
                         displayEmpty
@@ -1392,17 +1398,14 @@ const TeamPage = () => {
                         ] as const).map(({ value, label }) => (
                           <Box
                             key={value}
-                            onClick={() =>
+                            onClick={() => {
+                              const nextRolePerms = selectedUser.rolePermissions?.[value] || coercePermissions(selectedUser.permissions);
                               setSelectedUser({
                                 ...selectedUser,
                                 role: value,
-                                permissions: resolvePermissions(
-                                  value,
-                                  selectedUser.department,
-                                  selectedUser.permissions,
-                                ),
-                              })
-                            }
+                                permissions: nextRolePerms,
+                              });
+                            }}
                             sx={{
                               flex: 1,
                               display: 'flex',
@@ -1459,7 +1462,21 @@ const TeamPage = () => {
                   role={selectedUser.role}
                   department={selectedUser.department}
                   permissions={selectedUser.permissions}
-                  onChange={(next) => setSelectedUser({ ...selectedUser, permissions: next })}
+                  onChange={(next) => {
+                    const currentRole = selectedUser.role;
+                    setSelectedUser({
+                      ...selectedUser,
+                      permissions: next,
+                      rolePermissions: {
+                        ...(selectedUser.rolePermissions || {
+                          [ROLES.USER]: coercePermissions(selectedUser.permissions),
+                          [ROLES.MANAGER]: coercePermissions(selectedUser.permissions),
+                          [ROLES.ADMIN]: coercePermissions(selectedUser.permissions),
+                        }),
+                        [currentRole]: next,
+                      },
+                    });
+                  }}
                   isDarkMode={isDarkMode}
                 />
 
@@ -2088,7 +2105,16 @@ const TeamPage = () => {
               <Grid item xs={12} sm={6} md={4} key={member._id}>
                 <Card
                   onClick={() => {
-                    setSelectedUser(member);
+                    const initPerms = coercePermissions(member.permissions);
+                    setSelectedUser({
+                      ...member,
+                      permissions: initPerms,
+                      rolePermissions: {
+                        [ROLES.USER]: { ...initPerms },
+                        [ROLES.MANAGER]: { ...initPerms },
+                        [ROLES.ADMIN]: { ...initPerms },
+                      },
+                    });
                     setSearchParams({ userId: member._id });
                   }}
                   sx={{
@@ -2262,7 +2288,16 @@ const TeamPage = () => {
               <Box
                 key={member._id}
                 onClick={() => {
-                  setSelectedUser(member);
+                  const initPerms = coercePermissions(member.permissions);
+                  setSelectedUser({
+                    ...member,
+                    permissions: initPerms,
+                    rolePermissions: {
+                      [ROLES.USER]: { ...initPerms },
+                      [ROLES.MANAGER]: { ...initPerms },
+                      [ROLES.ADMIN]: { ...initPerms },
+                    },
+                  });
                   setSearchParams({ userId: member._id });
                 }}
                 sx={{
@@ -2612,9 +2647,7 @@ const TeamPage = () => {
                       <Select
                         value={department}
                         onChange={(e) => {
-                          const nextDept = e.target.value;
-                          setDepartment(nextDept);
-                          setAddPermissions((prev) => resolvePermissions(createRole, nextDept, prev));
+                          setDepartment(e.target.value);
                         }}
                         input={
                           <OutlinedInput
@@ -2665,7 +2698,6 @@ const TeamPage = () => {
                             key={value}
                             onClick={() => {
                               setRoleSelection(value);
-                              setAddPermissions((prev) => resolvePermissions(value, department, prev));
                             }}
                             sx={{
                               flex: 1,
@@ -2696,8 +2728,13 @@ const TeamPage = () => {
                 <AccessPermissionsFields
                   role={createRole}
                   department={department}
-                  permissions={addPermissions}
-                  onChange={setAddPermissions}
+                  permissions={addRolePermissions[createRole]}
+                  onChange={(next) =>
+                    setAddRolePermissions((prev) => ({
+                      ...prev,
+                      [createRole]: next,
+                    }))
+                  }
                   isDarkMode={isDarkMode}
                 />
 
