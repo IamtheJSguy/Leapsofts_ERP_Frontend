@@ -72,6 +72,14 @@ export interface UserPermissions {
   createProjectsAndBoards: boolean;
 }
 
+export interface OrgMembership {
+  organizationId: string;
+  name: string;
+  slug: string;
+  role: Role;
+  isActive: boolean;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -105,6 +113,9 @@ export interface User {
   impersonationReadOnly?: boolean;
   monitoringPolicyAcknowledgedAt?: string;
   organizationId?: string;
+  organizationName?: string;
+  baseOrganizationId?: string;
+  memberships?: OrgMembership[];
   createdAt?: string;
 }
 

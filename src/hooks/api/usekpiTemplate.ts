@@ -102,19 +102,23 @@ export const useAssignKPITemplate = () => {
   });
 };
 
-export const useMyAssignments = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['myAssignments'],
+export const useMyAssignments = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['myAssignments', organizationId],
     queryFn: () => kpiTemplateApi.getMyAssignments().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
-export const useKPITemplateAssignments = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['kpiTemplateAssignments'],
+export const useKPITemplateAssignments = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpiTemplateAssignments', organizationId],
     queryFn: () => kpiTemplateApi.getKPITemplateAssignments().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 export const useUnassignKPITemplate = () => {
   const queryClient = useQueryClient();

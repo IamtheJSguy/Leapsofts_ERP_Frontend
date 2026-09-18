@@ -700,9 +700,12 @@ const TeamPage = () => {
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || !password.trim() || !jobTitle.trim()) {
+    if (!fullName.trim() || !email.trim() || !jobTitle.trim()) {
       addToast({ message: 'Please fill in all required fields.', severity: 'error' });
       return;
+    }
+    if (!password.trim()) {
+      // Existing accounts can be added without a new password; new accounts still need one.
     }
 
     // Split Full Name into firstName and lastName for database schema
@@ -712,7 +715,7 @@ const TeamPage = () => {
 
     const payload = {
       email,
-      password,
+      ...(password.trim() ? { password: password.trim() } : {}),
       firstName,
       lastName,
       role: createRole,
@@ -2560,11 +2563,10 @@ const TeamPage = () => {
                 {/* Row 2: Password */}
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Password *
+                    Password
                   </Typography>
                   <TextField
-                    placeholder="Minimum 8 characters"
-                    required
+                    placeholder="Required for new accounts; leave blank to add an existing email"
                     type={showPassword ? 'text' : 'password'}
                     fullWidth
                     value={password}

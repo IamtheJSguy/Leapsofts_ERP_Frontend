@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useChatStore } from '@/store/useChatStore';
 import type { User } from '@/types';
 
 const authApi = {
@@ -48,6 +49,28 @@ export const useLogout = () => {
       localStorage.removeItem('accessToken');
       clearAuth();
       queryClient.clear();
+    },
+  });
+};
+
+export const useSwitchOrganization = () => {
+  const queryClient = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      api.post('/auth/switch-organization', { organizationId }),
+    onSuccess: async (res) => {
+      const data = res.data.data;
+      if (data.accessToken && data.user) {
+        localStorage.setItem('accessToken', data.accessToken);
+        await queryClient.cancelQueries();
+        queryClient.clear();
+        setAuth(data.user);
+        useChatStore.getState().resetChatSession();
+        import('@/lib/socket').then(({ reconnectSocketWithToken }) => {
+          reconnectSocketWithToken(data.accessToken);
+        });
+      }
     },
   });
 };

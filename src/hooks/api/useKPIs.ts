@@ -27,12 +27,14 @@ export type DailyKpiEntriesParams = {
   userId?: string;
 };
 
-export const useDailyKpiEntries = (params: DailyKpiEntriesParams) =>
-  useQuery({
-    queryKey: ['dailyKpiEntries', params],
+export const useDailyKpiEntries = (params: DailyKpiEntriesParams) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['dailyKpiEntries', organizationId, params],
     queryFn: () => kpiApi.getDailyEntries(params).then((r) => r.data.data),
     enabled: !!(params.date || (params.startDate && params.endDate)),
   });
+};
 
 export const useKPIs = (options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
@@ -43,12 +45,14 @@ export const useKPIs = (options?: { enabled?: boolean }) => {
   });
 };
 
-export const useMyKPIs = () =>
-  useQuery({
-    queryKey: ['myKpis'],
+export const useMyKPIs = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['myKpis', organizationId],
     queryFn: () => kpiApi.getMyKPIs().then((r) => r.data.data),
     staleTime: 1000 * 60 * 2,
   });
+};
 
 export const useKPIRecords = (params: Record<string, string> = {}) =>
   useQuery({
