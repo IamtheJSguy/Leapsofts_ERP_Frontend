@@ -486,8 +486,23 @@ export const appendNotification = (
   queryClient: QueryClient,
   notification: Notification,
 ): void => {
-  queryClient.setQueryData<Notification[]>(['notifications', {}], (old) =>
-    old ? [notification, ...old] : [notification],
-  );
+  queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
+    if (!old) return old;
+    if (Array.isArray(old)) {
+      return [notification, ...old.filter((n: Notification) => n._id !== notification._id)];
+    }
+    if (old.pages && old.pages.length > 0) {
+      const firstPage = old.pages[0];
+      const updatedFirstPage = {
+        ...firstPage,
+        data: [notification, ...(firstPage.data || []).filter((n: Notification) => n._id !== notification._id)],
+      };
+      return {
+        ...old,
+        pages: [updatedFirstPage, ...old.pages.slice(1)],
+      };
+    }
+    return old;
+  });
   queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
 };
