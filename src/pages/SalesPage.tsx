@@ -152,8 +152,9 @@ export const SalesPage = () => {
     if (label === 'TOTAL' || label === 'TOTAL LEADS') {
       if (totalView === 'pending') return 'PENDING';
       if (totalView === 'sent') return 'SENT';
-      return 'TOTAL';
+      return 'TOTAL LEADS';
     }
+    if (label === 'ACCEPTED') return 'ACCEPTED';
     if (label === 'FOLLOW UP') {
       if (followUpView === '1') return 'FOLLOW UP 1';
       if (followUpView === '2') return 'FOLLOW UP 2';
@@ -1014,7 +1015,7 @@ export const SalesPage = () => {
             '@media (min-width: 1024px)': {
               gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
             },
-            gap: { xs: 1, md: 1, xl: 1.25 },
+            gap: { xs: 1, md: 0.85, xl: 1.25 },
             mb: 1.5,
           }}
         >
@@ -1049,8 +1050,8 @@ export const SalesPage = () => {
                   border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
                   borderRadius: '20px',
                   overflow: 'visible',
-                  px: { xs: 1, md: 1, xl: 1.15 },
-                  py: { xs: 1.5, md: 1.75, xl: 2 },
+                  px: { xs: 1, md: 0.85, xl: 1.15 },
+                  py: { xs: 1.5, md: 1.5, xl: 2 },
                   minWidth: 0,
                   display: 'flex',
                   flexDirection: 'column',
@@ -1072,8 +1073,9 @@ export const SalesPage = () => {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     width: '100%',
-                    gap: 0.5,
+                    gap: 0.4,
                     minWidth: 0,
+                    flexWrap: 'nowrap',
                   }}
                 >
                   <Typography
@@ -1082,8 +1084,8 @@ export const SalesPage = () => {
                     sx={{
                       color: 'text.secondary',
                       fontWeight: 750,
-                      fontSize: { xs: '0.58rem', md: '0.52rem', lg: '0.5rem', xl: '0.6rem' },
-                      letterSpacing: '0.01em',
+                      fontSize: 'clamp(0.4rem, 0.72vw, 0.62rem)',
+                      letterSpacing: 0,
                       lineHeight: 1.2,
                       flex: '1 1 auto',
                       minWidth: 0,
@@ -1097,7 +1099,7 @@ export const SalesPage = () => {
                       component="span"
                       sx={{
                         color: 'text.secondary',
-                        fontSize: { xs: '0.55rem', md: '0.5rem', xl: '0.58rem' },
+                        fontSize: 'clamp(0.4rem, 0.6vw, 0.58rem)',
                         fontWeight: 800,
                         lineHeight: 1,
                         whiteSpace: 'nowrap',
@@ -1107,6 +1109,36 @@ export const SalesPage = () => {
                       {item.percent}
                     </Typography>
                   )}
+                </Box>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 0.5,
+                    mt: 'auto',
+                    width: '100%',
+                    minWidth: 0,
+                  }}
+                >
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 800,
+                      color: theme.color,
+                      fontSize: 'clamp(0.95rem, 1.35vw, 1.35rem)',
+                      lineHeight: 1.1,
+                      letterSpacing: '-0.02em',
+                      whiteSpace: 'nowrap',
+                      textAlign: isTotalCard || item.label === 'FOLLOW UP' ? 'left' : 'center',
+                      flex: '1 1 auto',
+                      minWidth: 0,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {item.value}
+                  </Typography>
                   {isTotalCard && (
                     <Select
                       size="small"
@@ -1148,23 +1180,6 @@ export const SalesPage = () => {
                     </Select>
                   )}
                 </Box>
-
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 800,
-                    color: theme.color,
-                    fontSize: { xs: '1.15rem', md: '1.1rem', lg: '1.15rem', xl: '1.35rem' },
-                    lineHeight: 1.1,
-                    letterSpacing: '-0.02em',
-                    mt: 'auto',
-                    whiteSpace: 'nowrap',
-                    textAlign: isTotalCard ? 'left' : 'center',
-                    width: '100%',
-                  }}
-                >
-                  {item.value}
-                </Typography>
               </Card>
             );
           })}
