@@ -31,6 +31,7 @@ import type { ProjectFormData } from '@/components/projects/ProjectFormDialog';
 import { useProjects, useCreateProject, useDeleteProject } from '@/hooks/api/useProjects';
 import { useUsers } from '@/hooks/api/useUsers';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUIStore } from '@/store/useUIStore';
 import type { Project, User } from '@/types';
 
 const statusFilters = ['All', 'Active', 'In Development', 'On Hold'];
@@ -57,6 +58,7 @@ const ProjectsPage = () => {
   const isDarkMode = theme.palette.mode === 'dark';
   const navigate = useNavigate();
   const { canCreateProjectsAndBoards } = usePermissions();
+  const addToast = useUIStore((s) => s.addToast);
 
   const { data: projects = [], isLoading } = useProjects();
   const createProjectMutation = useCreateProject();
@@ -99,6 +101,14 @@ const ProjectsPage = () => {
       {
         onSuccess: () => {
           setIsFormOpen(false);
+          addToast({ message: 'Project created successfully', severity: 'success' });
+        },
+        onError: (err: any) => {
+          const message =
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to create project';
+          addToast({ message, severity: 'error' });
         },
       }
     );

@@ -215,6 +215,14 @@ export const ProjectDetailsPage = () => {
           onSuccess: () => {
             setNewBoardName('');
             setIsCreateBoardOpen(false);
+            addToast({ message: 'Board created successfully', severity: 'success' });
+          },
+          onError: (err: any) => {
+            const message =
+              err?.response?.data?.error?.message ||
+              err?.response?.data?.message ||
+              'Failed to create board';
+            addToast({ message, severity: 'error' });
           },
         }
       );
