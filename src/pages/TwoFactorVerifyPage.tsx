@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTwoFactorVerifyLogin } from '@/hooks/api/useTwoFactor';
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
+import { markMonitoringPromptPendingForLogin } from '@/utils/monitoringPromptSession';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
@@ -48,6 +49,7 @@ const TwoFactorVerifyPage = () => {
         onSuccess: (data) => {
           sessionStorage.removeItem(TEMP_TOKEN_KEY);
           localStorage.setItem('accessToken', data.accessToken);
+          markMonitoringPromptPendingForLogin();
           setAuth(data.user as Parameters<typeof setAuth>[0]);
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
           const fromObj = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;

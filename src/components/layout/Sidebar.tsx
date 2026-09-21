@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Drawer,
   List,
@@ -9,9 +10,11 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-  alpha,
   IconButton,
   Avatar,
+  Menu,
+  MenuItem,
+  CircularProgress,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -23,8 +26,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TimelineIcon from '@mui/icons-material/Timeline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -32,6 +35,7 @@ import { useEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
 import { useConversations } from '@/hooks/api/useChat';
+import { useSwitchOrganization } from '@/hooks/api/useAuth';
 import { countConversationsWithUnread } from '@/utils/chatUnreadUtils';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
@@ -112,17 +116,25 @@ export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const permissions = usePermissions();
   const entitlements = useEntitlements();
+  const switchOrganization = useSwitchOrganization();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDarkMode = theme.palette.mode === 'dark';
+  const [orgMenuAnchor, setOrgMenuAnchor] = useState<null | HTMLElement>(null);
 
   const { data: conversations = [] } = useConversations({ enabled: entitlements.chat });
   const unreadCounts = useChatStore((s) => s.unreadCounts);
   const unreadChatsCount = countConversationsWithUnread(conversations, unreadCounts);
 
   const user = useAuthStore((s) => s.user);
+  const memberships = (user?.memberships ?? []).filter((m) => m.isActive);
+  const currentOrgName =
+    memberships.find((m) => m.organizationId === user?.organizationId)?.name ||
+    user?.organizationName ||
+    APP_NAME;
+  const canSwitchOrg = memberships.length > 1;
   const userInitial = user?.firstName
     ? user.firstName.charAt(0).toUpperCase()
     : user?.email
@@ -132,6 +144,17 @@ export const Sidebar = () => {
     ? `${user.firstName} ${user.lastName}`
     : user?.firstName || 'Leapsofts User';
   const userEmail = user?.email || 'user@leapsofts.com';
+
+  const handleOrgHeaderClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (canSwitchOrg) {
+      setOrgMenuAnchor(event.currentTarget);
+      return;
+    }
+    navigate('/');
+    if (isMobile && sidebarOpen) {
+      toggleSidebar();
+    }
+  };
 
   const drawerContent = (
     <Box
@@ -146,18 +169,18 @@ export const Sidebar = () => {
         borderRadius: 0,
       }}
     >
-      {/* Workspace Selector Dropdown Header */}
+      {/* Organization switcher */}
       <Box sx={{ px: 2, pt: 3, pb: 2 }}>
         <Box
-          onClick={() => {
-            navigate('/');
-            if (isMobile && sidebarOpen) {
-              toggleSidebar();
-            }
-          }}
+          onClick={handleOrgHeaderClick}
+          role={canSwitchOrg ? 'button' : undefined}
+          aria-haspopup={canSwitchOrg ? 'menu' : undefined}
+          aria-expanded={canSwitchOrg ? Boolean(orgMenuAnchor) : undefined}
           sx={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
             p: 1.25,
             borderRadius: '12px',
             bgcolor: 'rgba(255, 255, 255, 0.02)',
@@ -184,7 +207,7 @@ export const Sidebar = () => {
                 }}
                 noWrap
               >
-                {APP_NAME}
+                {currentOrgName}
               </Typography>
               <Typography
                 variant="caption"
@@ -195,11 +218,76 @@ export const Sidebar = () => {
                 }}
                 noWrap
               >
-                Enterprise Workspace
+                {canSwitchOrg ? 'Switch organization' : 'Enterprise Workspace'}
               </Typography>
             </Box>
           </Box>
+          {canSwitchOrg && (
+            switchOrganization.isPending ? (
+              <CircularProgress size={14} sx={{ color: 'rgba(255,255,255,0.55)', flexShrink: 0 }} />
+            ) : (
+              <KeyboardArrowDownIcon
+                sx={{
+                  fontSize: 18,
+                  color: 'rgba(255, 255, 255, 0.45)',
+                  flexShrink: 0,
+                  transform: orgMenuAnchor ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease',
+                }}
+              />
+            )
+          )}
         </Box>
+        <Menu
+          anchorEl={orgMenuAnchor}
+          open={Boolean(orgMenuAnchor)}
+          onClose={() => setOrgMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          PaperProps={{
+            sx: {
+              mt: 1,
+              minWidth: 220,
+              bgcolor: '#1a1721',
+              color: '#E8E4EF',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '12px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+            },
+          }}
+        >
+          {memberships.map((membership) => {
+            const selected = membership.organizationId === user?.organizationId;
+            return (
+              <MenuItem
+                key={membership.organizationId}
+                selected={selected}
+                disabled={switchOrganization.isPending}
+                onClick={() => {
+                  setOrgMenuAnchor(null);
+                  if (!selected) {
+                    switchOrganization.mutate(membership.organizationId);
+                  }
+                }}
+                sx={{
+                  fontSize: '0.84rem',
+                  fontWeight: selected ? 700 : 500,
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(93, 26, 137, 0.22)',
+                  },
+                  '&.Mui-selected:hover': {
+                    bgcolor: 'rgba(93, 26, 137, 0.3)',
+                  },
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.06)',
+                  },
+                }}
+              >
+                {membership.name}
+              </MenuItem>
+            );
+          })}
+        </Menu>
       </Box>
 
       {/* Grouped Navigation Lists */}

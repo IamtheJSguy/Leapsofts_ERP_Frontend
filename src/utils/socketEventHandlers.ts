@@ -133,10 +133,13 @@ export const setupSocketEventHandlers = (
   },
   queryClient: QueryClient,
 ): void => {
-  socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, () => {
+  socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, (data: unknown) => {
+    const notification = data as Notification & { organizationId?: unknown };
+    if (!belongsToActiveOrg(notification?.organizationId)) return;
+
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
-    
+
     try {
       systemNotificationSound.currentTime = 0;
       systemNotificationSound.play().catch(e => console.error("Audio playback failed:", e));

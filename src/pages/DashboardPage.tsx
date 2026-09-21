@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, useTheme, Menu, MenuItem } from '@mui/material';
+import { Box, Typography, Button, useTheme } from '@mui/material';
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import LocalCafeOutlinedIcon from '@mui/icons-material/LocalCafeOutlined';
 import AddTaskIcon from '@mui/icons-material/AddTask';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetings } from '@/hooks/api/useMeetings';
-import { useSwitchOrganization } from '@/hooks/api/useAuth';
 import { UserDashboard } from '@/components/dashboard/UserDashboard';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
@@ -16,11 +14,9 @@ import type { Meeting } from '@/types';
 
 const DashboardPage = () => {
   const { isElevated, user } = useAuth();
-  const switchOrganization = useSwitchOrganization();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
-  const [orgMenuAnchor, setOrgMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Fetch scheduled meetings
   const { data: meetings } = useMeetings({ status: 'scheduled' });
@@ -81,7 +77,6 @@ const DashboardPage = () => {
     memberships.find((m) => m.organizationId === user?.organizationId)?.name ||
     user?.organizationName ||
     'Leapsofts';
-  const canSwitchOrg = memberships.length > 1;
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -110,68 +105,16 @@ const DashboardPage = () => {
           </Typography>
           <Typography
             variant="body1"
-            component="div"
-            sx={{ 
+            sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
               fontWeight: 500,
               fontSize: '0.92rem',
-              display: 'flex',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 0.5,
             }}
           >
             Here&apos;s what&apos;s happening at{' '}
-            {canSwitchOrg ? (
-              <>
-                <Box
-                  component="button"
-                  onClick={(event) => setOrgMenuAnchor(event.currentTarget)}
-                  sx={{
-                    border: 0,
-                    background: 'transparent',
-                    padding: 0,
-                    margin: 0,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.25,
-                    color: 'inherit',
-                    font: 'inherit',
-                    fontWeight: 700,
-                    textDecoration: 'underline',
-                    textDecorationStyle: 'dotted',
-                    textUnderlineOffset: '3px',
-                  }}
-                >
-                  {currentOrgName}
-                  <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
-                </Box>
-                <Menu
-                  anchorEl={orgMenuAnchor}
-                  open={Boolean(orgMenuAnchor)}
-                  onClose={() => setOrgMenuAnchor(null)}
-                >
-                  {memberships.map((membership) => (
-                    <MenuItem
-                      key={membership.organizationId}
-                      selected={membership.organizationId === user?.organizationId}
-                      disabled={switchOrganization.isPending}
-                      onClick={() => {
-                        setOrgMenuAnchor(null);
-                        if (membership.organizationId !== user?.organizationId) {
-                          switchOrganization.mutate(membership.organizationId);
-                        }
-                      }}
-                    >
-                      {membership.name}
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </>
-            ) : (
-              currentOrgName
-            )}{' '}
+            <Box component="span" sx={{ fontWeight: 700, color: 'inherit' }}>
+              {currentOrgName}
+            </Box>{' '}
             today.
           </Typography>
         </Box>
