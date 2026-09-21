@@ -24,6 +24,7 @@ import { useTwoFactorSetup, useTwoFactorVerifySetup } from '@/hooks/api/useTwoFa
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
+import { markMonitoringPromptPendingForLogin } from '@/utils/monitoringPromptSession';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
@@ -77,6 +78,7 @@ const TwoFactorSetupPage = () => {
     if (!pendingSession) return;
     sessionStorage.removeItem(TEMP_TOKEN_KEY);
     localStorage.setItem('accessToken', pendingSession.accessToken);
+    markMonitoringPromptPendingForLogin();
     setAuth(pendingSession.user);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     const fromObj = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;

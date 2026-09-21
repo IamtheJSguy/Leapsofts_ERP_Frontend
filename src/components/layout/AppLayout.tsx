@@ -17,6 +17,11 @@ import { tokens } from '@/styles/tokens';
 import api from '@/lib/axios';
 import { useLogout } from '@/hooks/api/useAuth';
 import { useEntitlements, type OrgModuleFlags } from '@/hooks/useEntitlements';
+import {
+  hasCompletedMonitoringPromptThisSession,
+  isMonitoringPromptPending,
+  markMonitoringPromptCompleted,
+} from '@/utils/monitoringPromptSession';
 
 export const AppLayout = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -72,17 +77,37 @@ export const AppLayout = () => {
 
     if (totalUnread > 0) {
       document.title = `(${totalUnread}) Leapsofts ERP`;
-    } else {  
+    } else {
       document.title = 'Leapsofts ERP';
     }
   }, [conversations, unreadCounts, unreadNotificationsCount]);
 
   useEffect(() => {
-    if (!user || user.monitoringPolicyAcknowledgedAt) return;
+    if (!user?._id) return;
+    // Already handled for this browser session (covers refresh + org switch).
+    if (hasCompletedMonitoringPromptThisSession(user._id)) return;
+    // Already acknowledged in the past — don't prompt again this session.
+    if (user.monitoringPolicyAcknowledgedAt) {
+      markMonitoringPromptCompleted(user._id);
+      return;
+    }
+    // Only arm this dialog from a fresh login/register, not refresh or org switch.
+    if (!isMonitoringPromptPending()) return;
+
+    let cancelled = false;
     api.get('/admin/monitoring-config').then((res) => {
+      if (cancelled) return;
       const cfg = res.data.data as { screenshotsEnabled?: boolean; appUsageEnabled?: boolean };
+      // Consume the pending flag whether or not monitoring is enabled, so refresh won't re-open.
+      markMonitoringPromptCompleted(user._id);
       if (cfg.screenshotsEnabled || cfg.appUsageEnabled) setMonitoringOpen(true);
-    }).catch(() => undefined);
+    }).catch(() => {
+      if (!cancelled) markMonitoringPromptCompleted(user._id);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return (
@@ -145,6 +170,7 @@ export const AppLayout = () => {
             onClick={async () => {
               await api.post('/users/me/acknowledge-monitoring');
               useAuthStore.getState().updateUser({ monitoringPolicyAcknowledgedAt: new Date().toISOString() });
+              if (user?._id) markMonitoringPromptCompleted(user._id);
               setMonitoringOpen(false);
             }}
           >
@@ -155,4 +181,3 @@ export const AppLayout = () => {
     </Box>
   );
 };
-

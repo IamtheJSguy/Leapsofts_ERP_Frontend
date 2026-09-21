@@ -3,6 +3,10 @@ import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
 import type { User } from '@/types';
+import {
+  clearMonitoringPromptSession,
+  markMonitoringPromptPendingForLogin,
+} from '@/utils/monitoringPromptSession';
 
 const authApi = {
   login: (credentials: { email: string; password: string }) =>
@@ -23,6 +27,7 @@ export const useLogin = () => {
       if (data.accessToken && data.user) {
         localStorage.setItem('accessToken', data.accessToken);
         queryClient.clear();
+        markMonitoringPromptPendingForLogin();
         setAuth(data.user);
       }
     },
@@ -35,6 +40,7 @@ export const useRegister = () => {
     mutationFn: authApi.register,
     onSuccess: (res) => {
       localStorage.setItem('accessToken', res.data.data.accessToken);
+      markMonitoringPromptPendingForLogin();
       setAuth(res.data.data.user);
     },
   });
@@ -47,6 +53,7 @@ export const useLogout = () => {
     mutationFn: authApi.logout,
     onSuccess: () => {
       localStorage.removeItem('accessToken');
+      clearMonitoringPromptSession();
       clearAuth();
       queryClient.clear();
     },
@@ -65,6 +72,7 @@ export const useSwitchOrganization = () => {
         localStorage.setItem('accessToken', data.accessToken);
         await queryClient.cancelQueries();
         queryClient.clear();
+        // Org switch must not re-arm the workplace monitoring prompt.
         setAuth(data.user);
         useChatStore.getState().resetChatSession();
         import('@/lib/socket').then(({ reconnectSocketWithToken }) => {
