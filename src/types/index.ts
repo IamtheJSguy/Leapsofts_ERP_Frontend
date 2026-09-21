@@ -390,10 +390,14 @@ export interface SalesKpiTemplateDetail {
 
 /**
  * Payload for editing a single assignment item (PUT /sales-kpi-templates/assignments/:id).
- * Items are keyed by assignment item `_id`, not `templateItemId`.
+ * Items with `_id` patch an existing row; items without `_id` append a new KPI
+ * on this assignment only (no template change).
  */
 export interface SalesKpiAssignmentItemUpdate {
-  _id: string;
+  _id?: string;
+  name?: string;
+  description?: string;
+  metric?: SalesKpiMetric;
   daysOfWeek?: number[];
   scheduleMode?: SalesKpiScheduleMode;
   targetMode?: SalesKpiTargetMode;
