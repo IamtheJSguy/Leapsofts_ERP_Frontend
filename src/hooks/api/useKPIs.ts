@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { KPI, KPIRecord } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const kpiApi = {
   getKPIs: () => api.get<{ data: KPI[] }>('/kpis'),
@@ -26,26 +27,32 @@ export type DailyKpiEntriesParams = {
   userId?: string;
 };
 
-export const useDailyKpiEntries = (params: DailyKpiEntriesParams) =>
-  useQuery({
-    queryKey: ['dailyKpiEntries', params],
+export const useDailyKpiEntries = (params: DailyKpiEntriesParams) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['dailyKpiEntries', organizationId, params],
     queryFn: () => kpiApi.getDailyEntries(params).then((r) => r.data.data),
     enabled: !!(params.date || (params.startDate && params.endDate)),
   });
+};
 
-export const useKPIs = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['kpis'],
+export const useKPIs = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpis', organizationId],
     queryFn: () => kpiApi.getKPIs().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
-export const useMyKPIs = () =>
-  useQuery({
-    queryKey: ['myKpis'],
+export const useMyKPIs = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['myKpis', organizationId],
     queryFn: () => kpiApi.getMyKPIs().then((r) => r.data.data),
     staleTime: 1000 * 60 * 2,
   });
+};
 
 export const useKPIRecords = (params: Record<string, string> = {}) =>
   useQuery({

@@ -19,6 +19,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAuth } from '@/hooks/useAuth';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useDashboard, useMyDashboardTasks } from '@/hooks/api/useDashboard';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useMeetings } from '@/hooks/api/useMeetings';
@@ -100,10 +101,11 @@ const formatTaskDate = (dateInput?: string | Date, timeZone?: string): string =>
 export const UserDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const entitlements = useEntitlements();
   const { data: stats, isLoading, refetch } = useDashboard();
-  const { data: boards } = useKanbanBoards();
+  const { data: boards } = useKanbanBoards({ enabled: entitlements.projectsAndBoards });
   const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
-  const { data: salesGrouped } = useMySalesKpis({ days: 7 });
+  const { data: salesGrouped } = useMySalesKpis({ days: 7 }, { enabled: entitlements.salesModule });
   const { data: allMeetings = [] } = useMeetings();
 
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -129,8 +131,10 @@ export const UserDashboard = () => {
     return all.filter((entry) => overlapsLocalDay(entry));
   }, [salesGrouped]);
 
-  const salesCompletedCount = salesGrouped?.counts.done.total ?? 0;
-  const dashboardTasks = dashboardTasksData?.tasks ?? [];
+  const salesCompletedCount = entitlements.salesModule ? (salesGrouped?.counts.done.total ?? 0) : 0;
+  const dashboardTasks = (dashboardTasksData?.tasks ?? []).filter(
+    (task) => entitlements.salesModule || task.kind !== 'sales',
+  );
 
   const userTimeZone = useMemo(() => getUserTimeZone(user), [user]);
 
@@ -173,14 +177,14 @@ export const UserDashboard = () => {
   // Keyboard shortcut listener for ⌘L / Ctrl+L
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
+      if (entitlements.salesModule && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         setQuickLogOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [entitlements.salesModule]);
 
   if (isLoading) {
     return (
@@ -760,6 +764,7 @@ export const UserDashboard = () => {
 
 
       {/* Quick Log Interactive Modal Dialog */}
+      {entitlements.salesModule && (
       <Dialog
         open={quickLogOpen}
         onClose={() => setQuickLogOpen(false)}
@@ -848,6 +853,7 @@ export const UserDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      )}
 
       <MeetingDetailModal
         meeting={selectedMeetingModal}

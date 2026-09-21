@@ -62,6 +62,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
 import { useAdminResetTwoFactor } from '@/hooks/api/useTwoFactor';
@@ -527,6 +528,10 @@ const AccessPermissionsFields = ({
 const TeamPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isManager, canAccessTeam, canPromoteRoles } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
+  const screenshotsOn = entitlements.screenshotsEnabled;
+  const appUsageOn = entitlements.appUsageTelemetry;
   const currentUser = useAuthStore((s) => s.user);
   const teamQuery = useMyTeam({ enabled: !isAdmin && canAccessTeam });
   const showCreateTeam = isManager && teamQuery.isError;
@@ -580,7 +585,7 @@ const TeamPage = () => {
     [salesKpiDate],
   );
   const { data: teamSalesKpis = [] } = useTeamSalesKpis(salesKpiQueryParams, {
-    enabled: canAccessTeam || isManager || isAdmin,
+    enabled: salesModuleOn && (canAccessTeam || isManager || isAdmin),
   });
   const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
 
@@ -601,7 +606,7 @@ const TeamPage = () => {
   );
 
   // Fetch kanban boards to resolve actual projects/boards for this user
-  const { data: boards = [] } = useKanbanBoards();
+  const { data: boards = [] } = useKanbanBoards({ enabled: entitlements.projectsAndBoards });
 
   const userProjects = useMemo(() => {
     if (!selectedUser) return [];
@@ -710,9 +715,12 @@ const TeamPage = () => {
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || !password.trim() || !jobTitle.trim()) {
+    if (!fullName.trim() || !email.trim() || !jobTitle.trim()) {
       addToast({ message: 'Please fill in all required fields.', severity: 'error' });
       return;
+    }
+    if (!password.trim()) {
+      // Existing accounts can be added without a new password; new accounts still need one.
     }
 
     // Split Full Name into firstName and lastName for database schema
@@ -722,7 +730,7 @@ const TeamPage = () => {
 
     const payload = {
       email,
-      password,
+      ...(password.trim() ? { password: password.trim() } : {}),
       firstName,
       lastName,
       role: createRole,
@@ -744,7 +752,10 @@ const TeamPage = () => {
       },
       onError: (err: any) => {
         addToast({
-          message: err?.response?.data?.message || 'Failed to add team member.',
+          message:
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to add team member.',
           severity: 'error'
         });
       },
@@ -1057,7 +1068,7 @@ const TeamPage = () => {
 
 
           {/* Sales KPI stats for selected date — sales/marketing members only */}
-          {isSalesOrMarketingDepartment(selectedUser.department) && (
+          {salesModuleOn && isSalesOrMarketingDepartment(selectedUser.department) && (
             <Box
               sx={{
                 display: 'flex',
@@ -1526,10 +1537,12 @@ const TeamPage = () => {
                       sx={inputSx}
                     />
                   </Grid>
+                  {(screenshotsOn || appUsageOn) && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
                       Desktop monitoring
                     </Typography>
+                    {screenshotsOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1542,6 +1555,8 @@ const TeamPage = () => {
                       label="Screenshots"
                       sx={{ display: 'flex', mb: 0.5 }}
                     />
+                    )}
+                    {appUsageOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1554,7 +1569,9 @@ const TeamPage = () => {
                       label="App and URL tracking"
                       sx={{ display: 'flex', mb: 1 }}
                     />
+                    )}
                   </Grid>
+                  )}
                 </Grid>
 
                 <Box sx={{ width: '100%' }}>
@@ -2211,7 +2228,7 @@ const TeamPage = () => {
                     <Box
                       sx={{
                         display: 'grid',
-                        gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                        gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                           ? 'repeat(3, 1fr)'
                           : 'repeat(4, 1fr)',
                         gap: 1,
@@ -2221,7 +2238,7 @@ const TeamPage = () => {
                         borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                       }}
                     >
-                      {(isSalesOrMarketingDepartment(member.department)
+                      {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                             key: stat.metric,
                             label: stat.label,
@@ -2385,14 +2402,14 @@ const TeamPage = () => {
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                      gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? 'repeat(3, minmax(52px, auto))'
                         : 'repeat(4, minmax(52px, auto))',
                       gap: 1.5,
                       mr: { xs: 0, sm: 1 },
                     }}
                   >
-                    {(isSalesOrMarketingDepartment(member.department)
+                    {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                       ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                           key: stat.metric,
                           label: stat.label,
@@ -2581,11 +2598,10 @@ const TeamPage = () => {
                 {/* Row 2: Password */}
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Password *
+                    Password
                   </Typography>
                   <TextField
-                    placeholder="Minimum 8 characters"
-                    required
+                    placeholder="Required for new accounts; leave blank to add an existing email"
                     type={showPassword ? 'text' : 'password'}
                     fullWidth
                     value={password}

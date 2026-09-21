@@ -72,6 +72,14 @@ export interface UserPermissions {
   createProjectsAndBoards: boolean;
 }
 
+export interface OrgMembership {
+  organizationId: string;
+  name: string;
+  slug: string;
+  role: Role;
+  isActive: boolean;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -101,6 +109,13 @@ export interface User {
   monitorScreenshots?: boolean;
   monitorAppUsage?: boolean;
   twoFactorEnabled?: boolean;
+  impersonatedBy?: string;
+  impersonationReadOnly?: boolean;
+  monitoringPolicyAcknowledgedAt?: string;
+  organizationId?: string;
+  organizationName?: string;
+  baseOrganizationId?: string;
+  memberships?: OrgMembership[];
   createdAt?: string;
 }
 
@@ -1183,6 +1198,12 @@ export interface SystemSettings {
   referenceSheetUrl?: string;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
+  notificationPreferences?: {
+    email: boolean;
+    portal: boolean;
+    kpiAlerts: boolean;
+    meetingReminders: boolean;
+  };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
 }

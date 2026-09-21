@@ -36,6 +36,7 @@ import {
   type PeriodMode,
 } from '@/lib/kpiPeriod';
 import { tokens } from '@/styles/tokens';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { SalesKpiEntry, SalesKpiStatus } from '@/types';
 import { RichTextContent } from '@/components/common/RichTextContent';
@@ -75,6 +76,7 @@ interface UserProgressCardProps {
 const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgressCardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const entitlements = useEntitlements();
   const [expanded, setExpanded] = useState(false);
 
   const currentOrigin = useMemo(() => {
@@ -311,7 +313,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
         <Box sx={{ px: 3, py: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
           {group.tasks.map((task) => {
             let kanbanLink = null;
-            if (task.kanbanCardId) {
+            if (entitlements.projectsAndBoards && task.kanbanCardId) {
               const kId = task.kanbanCardId;
               const isObj = typeof kId === 'object';
               const cardId = isObj ? kId._id : kId;
@@ -321,7 +323,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                 kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
               }
             }
-            const hasKanbanLink = Boolean(task.kanbanCardId);
+            const hasKanbanLink = entitlements.projectsAndBoards && Boolean(task.kanbanCardId);
 
             return (
             <Box
@@ -434,6 +436,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
 export const DailyTeamProgress = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const entitlements = useEntitlements();
 
   const today = new Date().toLocaleDateString('en-CA');
   const [mode, setMode] = useState<PeriodMode>('day');
@@ -449,7 +452,9 @@ export const DailyTeamProgress = () => {
   );
 
   const { data: dailyEntries = [], isLoading: dailyLoading } = useDailyKpiEntries(queryParams);
-  const { data: salesEntries = [], isLoading: salesLoading } = useTeamSalesKpis(queryParams);
+  const { data: salesEntries = [], isLoading: salesLoading } = useTeamSalesKpis(queryParams, {
+    enabled: entitlements.salesModule,
+  });
 
   const isLoading = dailyLoading || salesLoading;
 
@@ -502,6 +507,7 @@ export const DailyTeamProgress = () => {
       if (task.isCompleted) group.completedCount++;
     });
 
+    if (entitlements.salesModule) {
     (salesEntries as SalesKpiEntry[]).forEach((entry) => {
       const group = ensureGroup(entry.userId);
       if (!group) return;
@@ -525,13 +531,14 @@ export const DailyTeamProgress = () => {
       group.totalCount++;
       if (task.isCompleted) group.completedCount++;
     });
+    }
 
     return Object.values(groups).sort((a, b) => {
       const an = `${a.user?.firstName || ''} ${a.user?.lastName || ''}`.trim();
       const bn = `${b.user?.firstName || ''} ${b.user?.lastName || ''}`.trim();
       return an.localeCompare(bn);
     });
-  }, [dailyEntries, salesEntries]);
+  }, [dailyEntries, salesEntries, entitlements.salesModule]);
 
   const filteredGroupedEntries = useMemo(() => {
     if (!searchQuery) return groupedEntries;

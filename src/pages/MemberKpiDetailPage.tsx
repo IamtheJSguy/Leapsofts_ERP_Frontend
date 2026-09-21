@@ -44,6 +44,7 @@ import {
   type MemberDailyKpiEntry,
 } from '@/lib/memberKpiWeekTable';
 import { tokens } from '@/styles/tokens';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
@@ -87,6 +88,9 @@ export default function MemberKpiDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
+  const projectsOn = entitlements.projectsAndBoards;
 
   const queryFrom = searchParams.get('from');
   const stateFrom = (location.state as { from?: string } | null)?.from;
@@ -159,6 +163,7 @@ export default function MemberKpiDetailPage() {
   });
   const { data: salesEntries = [], isLoading: salesLoading } = useTeamSalesKpis(
     userId ? queryParams : null,
+    { enabled: salesModuleOn },
   );
 
   const isLoading = dailyLoading || salesLoading;
@@ -182,14 +187,14 @@ export default function MemberKpiDetailPage() {
     () =>
       (dailyEntries as any[]).filter((entry) => {
         const kanban = isKanbanDailyEntry(entry);
-        if (kanban) return showKanbanKpis;
+        if (kanban) return showKanbanKpis && projectsOn;
         return showSimpleKpis;
       }),
-    [dailyEntries, showKanbanKpis, showSimpleKpis],
+    [dailyEntries, showKanbanKpis, showSimpleKpis, projectsOn],
   );
   const visibleSalesEntries = useMemo(
-    () => (showSalesKpis ? salesEntries : []),
-    [salesEntries, showSalesKpis],
+    () => (showSalesKpis && salesModuleOn ? salesEntries : []),
+    [salesEntries, showSalesKpis, salesModuleOn],
   );
 
   const dailyCompleted = visibleDailyEntries.filter((e) => e.isCompleted).length;
@@ -406,6 +411,7 @@ export default function MemberKpiDetailPage() {
             ml: { md: 'auto' },
           }}
         >
+          {salesModuleOn && (
           <FormControlLabel
             control={
               <Checkbox
@@ -421,6 +427,8 @@ export default function MemberKpiDetailPage() {
               '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
             }}
           />
+          )}
+          {projectsOn && (
           <FormControlLabel
             control={
               <Checkbox
@@ -436,6 +444,7 @@ export default function MemberKpiDetailPage() {
               '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
             }}
           />
+          )}
           <FormControlLabel
             control={
               <Checkbox
@@ -490,7 +499,7 @@ export default function MemberKpiDetailPage() {
               const cardId = isObj ? kId._id : kId;
               const boardId = isObj ? kId.boardId : (entry as any).boardId;
               const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-              if (boardId && cardId) {
+              if (projectsOn && boardId && cardId) {
                 kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
               }
             }
@@ -544,7 +553,7 @@ export default function MemberKpiDetailPage() {
               const cardId = isObj ? kId._id : kId;
               const boardId = isObj ? kId.boardId : (entry as any).boardId;
               const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-              if (boardId && cardId) {
+              if (projectsOn && boardId && cardId) {
                 kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
               }
             }
@@ -617,7 +626,7 @@ export default function MemberKpiDetailPage() {
                       const cardId = isObj ? kId._id : kId;
                       const boardId = isObj ? kId.boardId : (entry as any).boardId;
                       const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-                      if (boardId && cardId) {
+                      if (projectsOn && boardId && cardId) {
                         kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
                       }
                     }

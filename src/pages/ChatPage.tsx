@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Card, useTheme } from '@mui/material';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatWindow } from '@/components/chat/ChatWindow';
@@ -6,6 +6,7 @@ import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
 import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/useChatStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const ChatPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -15,7 +16,17 @@ const ChatPage = () => {
 
   const { conversationId } = useParams();
   const navigate = useNavigate();
-  const { activeConversationId, setActiveConversation } = useChatStore();
+  const { activeConversationId, setActiveConversation, resetChatSession } = useChatStore();
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const previousOrganizationId = useRef(organizationId);
+
+  useEffect(() => {
+    if (previousOrganizationId.current && previousOrganizationId.current !== organizationId) {
+      resetChatSession();
+      navigate('/chat', { replace: true });
+    }
+    previousOrganizationId.current = organizationId;
+  }, [organizationId, navigate, resetChatSession]);
 
   useEffect(() => {
     if (conversationId) {

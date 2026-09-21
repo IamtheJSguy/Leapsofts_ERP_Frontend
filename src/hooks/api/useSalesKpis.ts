@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { filterStartedSalesKpis } from '@/lib/salesKpi';
+import { useAuthStore } from '@/store/useAuthStore';
 import type {
   GroupedSalesKpis,
   SalesKpiAssignment,
@@ -85,31 +86,37 @@ const salesKpiApi = {
 
 // ─── User-facing (read-only) ──────────────────────────────────────
 
-export const useMySalesKpis = (params?: SalesKpiWindowParams, options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['salesKpis', 'my', params?.days ?? null],
+export const useMySalesKpis = (params?: SalesKpiWindowParams, options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpis', 'my', organizationId, params?.days ?? null],
     queryFn: () =>
       salesKpiApi.getMySalesKpis(params).then((r) => filterStartedSalesKpis(r.data.data)),
     enabled: options?.enabled,
   });
+};
 
-export const useSalesKpiSummary = (params?: SalesKpiWindowParams, options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['salesKpiSummary', params?.days ?? null],
+export const useSalesKpiSummary = (params?: SalesKpiWindowParams, options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpiSummary', organizationId, params?.days ?? null],
     queryFn: () => salesKpiApi.getSalesKpiSummary(params).then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 /** Elevated team progress: sales KPIs overlapping / completed in a date range. */
 export const useTeamSalesKpis = (
   params: TeamSalesKpisParams | null,
   options?: { enabled?: boolean },
-) =>
-  useQuery({
-    queryKey: ['salesKpis', 'team', params],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpis', 'team', organizationId, params],
     queryFn: () => salesKpiApi.getTeamSalesKpis(params!).then((r) => r.data.data),
     enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
   });
+};
 
 export const useSalesKpiProgressEvents = (
   params: TeamSalesKpisParams | null,
@@ -132,21 +139,25 @@ export const useAddSalesKpiComment = () => {
   });
 };
 
-export const useMySalesKpiAssignments = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['mySalesKpiAssignments'],
+export const useMySalesKpiAssignments = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['mySalesKpiAssignments', organizationId],
     queryFn: () => salesKpiApi.getMyAssignments().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 // ─── Templates (elevated) ─────────────────────────────────────────
 
-export const useSalesKpiTemplates = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['salesKpiTemplates'],
+export const useSalesKpiTemplates = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpiTemplates', organizationId],
     queryFn: () => salesKpiApi.getTemplates().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 /** Template plus the assignments derived from it. */
 export const useSalesKpiTemplateDetail = (id: string | undefined) =>
@@ -205,12 +216,14 @@ export const useAssignSalesKpiTemplate = () => {
 
 // ─── Assignments (elevated) ───────────────────────────────────────
 
-export const useSalesKpiAssignments = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['salesKpiAssignments'],
+export const useSalesKpiAssignments = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpiAssignments', organizationId],
     queryFn: () => salesKpiApi.getAssignments().then((r) => r.data.data),
     enabled: options?.enabled,
   });
+};
 
 export const useUpdateSalesKpiAssignment = () => {
   const queryClient = useQueryClient();

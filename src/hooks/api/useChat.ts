@@ -139,9 +139,10 @@ const patchMessageReactions = (
   );
 };
 
-export const useConversations = () =>
-  useQuery({
-    queryKey: ['conversations'],
+export const useConversations = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['conversations', organizationId],
     queryFn: () =>
       chatApi.getConversations().then((r) => {
         const data = r.data.data || [];
@@ -150,11 +151,14 @@ export const useConversations = () =>
     // Sockets deliver live updates, but this is the fallback if a message
     // was missed while the socket was disconnected (e.g. tab was backgrounded).
     refetchOnWindowFocus: true,
+    enabled: options?.enabled ?? true,
   });
+};
 
 export const useMessages = (conversationId: string | null) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
   const query = useInfiniteQuery({
-    queryKey: ['messages', conversationId],
+    queryKey: ['messages', conversationId, organizationId],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }): Promise<MessagesPage> => {
       const params: Record<string, string> = { limit: String(CHAT_MESSAGE_PAGE_SIZE) };
       if (pageParam) params.before = pageParam;
@@ -199,7 +203,7 @@ const applySentMessageToCache = (
       { queryKey: ['messages', conversationId] },
       (old) => appendMessageToCache(old, message),
     );
-    queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+    queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return old;
       const updated = old.map((conv) =>
         conv._id === conversationId
@@ -271,7 +275,7 @@ export const useSendMessage = () => {
             });
           }
         );
-        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) return old;
           const updated = old.map((conv) =>
             conv._id === variables.conversationId
@@ -354,7 +358,7 @@ export const useSendChatImage = () => {
             });
           }
         );
-        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) return old;
           const updated = old.map((conv) =>
             conv._id === variables.conversationId
@@ -385,7 +389,7 @@ export const useMarkConversationRead = () => {
   return useMutation({
     mutationFn: (conversationId: string) => chatApi.markRead(conversationId),
     onSuccess: (_res, conversationId) => {
-      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+      queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
         if (!old) return old;
         return old.map((conv) =>
           conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
@@ -462,7 +466,7 @@ export const useCreateConversation = () => {
       if (newConversation?._id) {
         // Inject directly into the cache so the creator sees it instantly
         // without waiting for a round-trip refetch.
-        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) {
             // Cache not populated yet — let the socket / next render fetch it
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
@@ -492,7 +496,7 @@ export const useCreateBoardConversation = () => {
       const newConversation: Conversation | undefined =
         (res.data as { data?: Conversation })?.data ?? (res.data as unknown as Conversation);
       if (newConversation?._id) {
-        queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) {
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
             return old;
@@ -511,12 +515,14 @@ export const useCreateBoardConversation = () => {
   });
 };
 
-export const useSearchMessages = (query: string) =>
-  useQuery({
-    queryKey: ['messageSearch', query],
+export const useSearchMessages = (query: string) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['messageSearch', query, organizationId],
     queryFn: () => chatApi.searchMessages(query).then((r) => r.data.data),
     enabled: query.length > 2,
   });
+};
 
 export const useAddGroupMember = () => {
   const queryClient = useQueryClient();
