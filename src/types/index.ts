@@ -715,6 +715,7 @@ export interface TeamOverviewMetrics {
 
 export interface Notification {
   _id: string;
+  organizationId?: string;
   type: NotificationType;
   title: string;
   message: string;

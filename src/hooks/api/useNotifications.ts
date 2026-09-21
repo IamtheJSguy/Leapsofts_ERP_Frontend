@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { Notification } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export interface NotificationMeta {
   page?: number;
@@ -26,9 +27,10 @@ const notificationApi = {
   getUnreadCount: () => api.get<{ data: { count: number } }>('/notifications/unread-count'),
 };
 
-export const useInfiniteNotifications = (limit = 30) =>
-  useInfiniteQuery({
-    queryKey: ['notifications', { limit }],
+export const useInfiniteNotifications = (limit = 30) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useInfiniteQuery({
+    queryKey: ['notifications', organizationId, { limit }],
     queryFn: ({ pageParam = 1 }) =>
       notificationApi.getNotifications({ page: pageParam, limit }).then((r) => r.data),
     initialPageParam: 1,
@@ -40,20 +42,25 @@ export const useInfiniteNotifications = (limit = 30) =>
     },
     refetchInterval: 30000,
   });
+};
 
-export const useNotifications = (params: Record<string, string | number> = {}) =>
-  useQuery({
-    queryKey: ['notifications', params],
+export const useNotifications = (params: Record<string, string | number> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['notifications', organizationId, params],
     queryFn: () => notificationApi.getNotifications(params).then((r) => r.data.data),
     refetchInterval: 30000,
   });
+};
 
-export const useUnreadCount = () =>
-  useQuery({
-    queryKey: ['unreadCount'],
+export const useUnreadCount = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['unreadCount', organizationId],
     queryFn: () => notificationApi.getUnreadCount().then((r) => r.data.data.count),
     refetchInterval: 30000,
   });
+};
 
 export const useMarkAsRead = () => {
   const queryClient = useQueryClient();
@@ -81,7 +88,7 @@ export const useMarkAsRead = () => {
       });
 
       // Update unread count
-      queryClient.setQueryData<number>(['unreadCount'], (old) => {
+      queryClient.setQueriesData<number>({ queryKey: ['unreadCount'] }, (old) => {
         if (typeof old !== 'number') return old;
         return Math.max(0, old - 1);
       });
