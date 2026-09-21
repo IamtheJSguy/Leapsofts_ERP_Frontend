@@ -265,9 +265,9 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         >
           <option value="">Connection</option>
           <option value="pending">Pending</option>
+          <option value="sent">Sent</option>
           <option value="accepted">Accepted</option>
           <option value="declined">Declined</option>
-          <option value="no_response">No Response</option>
         </select>
       </td>
       <td

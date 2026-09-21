@@ -1,9 +1,8 @@
 export const CONNECTION_STATUS = {
-  NOT_SENT: 'not_sent',
+  PENDING: 'pending',
   SENT: 'sent',
   ACCEPTED: 'accepted',
   DECLINED: 'declined',
-  NO_RESPONSE: 'no_response',
 } as const;
 
 export const MESSAGE_STATUS = {

@@ -5,6 +5,8 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 export interface SalesPipelineStats {
   totalProspects: number;
+  pendingConnections?: number;
+  connectionsSent: number;
   acceptedConnections: number;
   messageSent: number;
   responded: number;
@@ -18,6 +20,8 @@ export interface SalesPipelineStats {
   inConversation?: number;
   qualified?: number;
   conversionRates: {
+    sentRate?: number;
+    pendingRate?: number;
     acceptRate: number;
     messageSentRate: number;
     respondedRate: number;
