@@ -13,6 +13,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -22,7 +23,7 @@ import {
   useSalesKpiAssignments,
   useUpdateSalesKpiAssignment,
 } from '@/hooks/api/useSalesKpis';
-import { SALES_KPI_METRIC_LABELS } from '@/lib/constants';
+import { SALES_KPI_METRIC_LABELS, SALES_KPI_METRIC_OPTIONS } from '@/lib/constants';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { defaultTargetModeForMetric, isManualTarget } from '@/lib/salesKpi';
 import { useUIStore } from '@/store/useUIStore';
@@ -32,13 +33,16 @@ import type {
   SalesKpiAssignment,
   SalesKpiAssignmentItem,
   SalesKpiAssignmentItemUpdate,
+  SalesKpiMetric,
   SalesKpiTargetMode,
   User,
 } from '@/types';
 
 interface DraftItem {
-  /** Assignment item subdocument `_id` — the key the PUT payload is matched on. */
-  _id: string;
+  /** Stable UI key. Persisted rows use the assignment item `_id`. */
+  key: string;
+  /** Assignment item subdocument `_id` — omitted for unsaved rows. */
+  _id?: string;
   name: string;
   metric: SalesKpiAssignmentItem['metric'];
   scheduleMode: SalesKpiAssignmentItem['scheduleMode'];
@@ -50,6 +54,9 @@ interface DraftItem {
   endTime: string;
   isActive: boolean;
 }
+
+let draftKeySeq = 0;
+const nextDraftKey = () => `new-${draftKeySeq++}`;
 
 const formatUser = (u: string | User | undefined) => {
   if (!u || typeof u === 'string') return 'Unknown user';
@@ -63,6 +70,7 @@ const templateName = (assignment: SalesKpiAssignment) =>
 
 const toDrafts = (assignment: SalesKpiAssignment): DraftItem[] =>
   (assignment.items ?? []).map((item) => ({
+    key: item._id,
     _id: item._id,
     name: item.name,
     metric: item.metric,
@@ -76,6 +84,20 @@ const toDrafts = (assignment: SalesKpiAssignment): DraftItem[] =>
     isActive: item.isActive ?? true,
   }));
 
+const makeNewDraft = (): DraftItem => ({
+  key: nextDraftKey(),
+  name: '',
+  metric: 'new_prospects',
+  scheduleMode: 'per_day',
+  targetMode: defaultTargetModeForMetric('new_prospects'),
+  daysOfWeek: [1, 2, 3, 4, 5],
+  targetValue: '',
+  priority: 'medium',
+  startTime: '',
+  endTime: '',
+  isActive: true,
+});
+
 /** Same-day windows require start before end when both times are set. */
 const invalidTimeWindow = (d: DraftItem) => {
   if (!d.startTime || !d.endTime) return false;
@@ -86,6 +108,7 @@ const invalidTimeWindow = (d: DraftItem) => {
 /** The backend rejects an empty daysOfWeek on any item it receives, paused or not. */
 const invalidDraft = (d: DraftItem) =>
   d.daysOfWeek.length === 0
+  || (!d._id && d.name.trim() === '')
   || invalidTimeWindow(d)
   || (isManualTarget(d.targetMode)
     && (d.targetValue.trim() === '' || Number.isNaN(Number(d.targetValue)) || Number(d.targetValue) < 0));
@@ -100,25 +123,50 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
   const [drafts, setDrafts] = useState<DraftItem[]>(() => toDrafts(assignment));
   const [dirty, setDirty] = useState(false);
 
-  const patch = (id: string, next: Partial<DraftItem>) => {
-    setDrafts((prev) => prev.map((d) => (d._id === id ? { ...d, ...next } : d)));
+  const patch = (key: string, next: Partial<DraftItem>) => {
+    setDrafts((prev) => prev.map((d) => (d.key === key ? { ...d, ...next } : d)));
     setDirty(true);
+  };
+
+  const changeMetric = (key: string, metric: SalesKpiMetric) => {
+    const targetMode = defaultTargetModeForMetric(metric);
+    patch(key, {
+      metric,
+      targetMode,
+      targetValue: isManualTarget(targetMode) ? drafts.find((d) => d.key === key)?.targetValue ?? '' : '',
+    });
   };
 
   const invalid = drafts.some(invalidDraft);
 
   const handleSave = async () => {
-    const items: SalesKpiAssignmentItemUpdate[] = drafts.map((d) => ({
-      _id: d._id,
-      daysOfWeek: [...d.daysOfWeek].sort((a, b) => a - b),
-      scheduleMode: d.scheduleMode,
-      priority: d.priority,
-      isActive: d.isActive,
-      startTime: d.startTime || null,
-      endTime: d.endTime || null,
-      // Only manual items carry a target; auto_snapshot items take theirs from the pipeline.
-      ...(isManualTarget(d.targetMode) ? { targetValue: Number(d.targetValue) } : {}),
-    }));
+    const items: SalesKpiAssignmentItemUpdate[] = drafts.map((d) => {
+      if (d._id) {
+        return {
+          _id: d._id,
+          daysOfWeek: [...d.daysOfWeek].sort((a, b) => a - b),
+          scheduleMode: d.scheduleMode,
+          priority: d.priority,
+          isActive: d.isActive,
+          startTime: d.startTime || null,
+          endTime: d.endTime || null,
+          ...(isManualTarget(d.targetMode) ? { targetValue: Number(d.targetValue) } : {}),
+        };
+      }
+
+      return {
+        name: d.name.trim(),
+        metric: d.metric,
+        daysOfWeek: [...d.daysOfWeek].sort((a, b) => a - b),
+        scheduleMode: d.scheduleMode,
+        targetMode: d.targetMode,
+        priority: d.priority,
+        isActive: d.isActive,
+        startTime: d.startTime || null,
+        endTime: d.endTime || null,
+        ...(isManualTarget(d.targetMode) ? { targetValue: Number(d.targetValue) } : {}),
+      };
+    });
 
     try {
       await updateMutation.mutateAsync({ id: assignment._id, items });
@@ -183,9 +231,10 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {drafts.map((d) => {
           const manual = isManualTarget(d.targetMode);
+          const isNew = !d._id;
           return (
             <Box
-              key={d._id}
+              key={d.key}
               sx={{
                 p: 2,
                 borderRadius: '18px',
@@ -199,26 +248,65 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                 flexWrap: 'wrap',
               }}
             >
-              <Box sx={{ minWidth: 180, flex: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 800 }}>{d.name}</Typography>
-                <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
-                  <Chip
-                    label={SALES_KPI_METRIC_LABELS[d.metric] ?? d.metric}
+              {isNew ? (
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', minWidth: 280, flex: 1.4 }}>
+                  <TextField
+                    label="Task name"
                     size="small"
-                    sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                    required
+                    value={d.name}
+                    onChange={(e) => patch(d.key, { name: e.target.value })}
+                    sx={{ flex: 2, minWidth: 160, ...textFieldStyle }}
                   />
-                  <Chip
-                    label={d.scheduleMode === 'span' ? 'Single task' : 'Per day'}
+                  <TextField
+                    select
+                    label="Metric"
                     size="small"
-                    sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
-                  />
+                    value={d.metric}
+                    onChange={(e) => changeMetric(d.key, e.target.value as SalesKpiMetric)}
+                    sx={{ flex: 1, minWidth: 150, ...textFieldStyle }}
+                  >
+                    {SALES_KPI_METRIC_OPTIONS.map((m) => (
+                      <MenuItem key={m} value={m}>{SALES_KPI_METRIC_LABELS[m]}</MenuItem>
+                    ))}
+                  </TextField>
                 </Box>
-              </Box>
+              ) : (
+                <Box sx={{ minWidth: 180, flex: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{d.name}</Typography>
+                  <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Chip
+                      label={SALES_KPI_METRIC_LABELS[d.metric] ?? d.metric}
+                      size="small"
+                      sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                    />
+                    <Chip
+                      label={d.scheduleMode === 'span' ? 'Single task' : 'Per day'}
+                      size="small"
+                      sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
+                    />
+                  </Box>
+                </Box>
+              )}
+
+              {isNew && (
+                <TextField
+                  select
+                  label="Schedule"
+                  size="small"
+                  value={d.scheduleMode}
+                  onChange={(e) => patch(d.key, { scheduleMode: e.target.value as DraftItem['scheduleMode'] })}
+                  sx={{ width: 140, ...textFieldStyle }}
+                >
+                  <MenuItem value="per_day">Per day</MenuItem>
+                  <MenuItem value="span">Single task</MenuItem>
+                </TextField>
+              )}
 
               <WeekdayPicker
                 size="small"
                 value={d.daysOfWeek}
-                onChange={(daysOfWeek) => patch(d._id, { daysOfWeek })}
+                onChange={(daysOfWeek) => patch(d.key, { daysOfWeek })}
                 disabled={!d.isActive}
               />
 
@@ -228,7 +316,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                   type="number"
                   size="small"
                   value={d.targetValue}
-                  onChange={(e) => patch(d._id, { targetValue: e.target.value })}
+                  onChange={(e) => patch(d.key, { targetValue: e.target.value })}
                   disabled={!d.isActive}
                   inputProps={{ min: 1 }}
                   sx={{ width: 110, ...textFieldStyle }}
@@ -240,7 +328,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                 label="Priority"
                 size="small"
                 value={d.priority}
-                onChange={(e) => patch(d._id, { priority: e.target.value as KpiPriority })}
+                onChange={(e) => patch(d.key, { priority: e.target.value as KpiPriority })}
                 disabled={!d.isActive}
                 sx={{ width: 130, ...textFieldStyle }}
               >
@@ -254,7 +342,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                 type="time"
                 size="small"
                 value={d.startTime}
-                onChange={(e) => patch(d._id, { startTime: e.target.value })}
+                onChange={(e) => patch(d.key, { startTime: e.target.value })}
                 disabled={!d.isActive}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ step: 60 }}
@@ -265,7 +353,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                 type="time"
                 size="small"
                 value={d.endTime}
-                onChange={(e) => patch(d._id, { endTime: e.target.value })}
+                onChange={(e) => patch(d.key, { endTime: e.target.value })}
                 disabled={!d.isActive}
                 error={invalidTimeWindow(d)}
                 InputLabelProps={{ shrink: true }}
@@ -276,11 +364,24 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
               <Button
                 size="small"
                 startIcon={d.isActive ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
-                onClick={() => patch(d._id, { isActive: !d.isActive })}
+                onClick={() => patch(d.key, { isActive: !d.isActive })}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px', color: d.isActive ? tokens.text.secondary : tokens.brand.primary }}
               >
                 {d.isActive ? 'Pause' : 'Resume'}
               </Button>
+
+              {isNew && (
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setDrafts((prev) => prev.filter((item) => item.key !== d.key));
+                    setDirty(true);
+                  }}
+                  sx={{ color: tokens.semantic.error, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              )}
             </Box>
           );
         })}
@@ -291,30 +392,42 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
         )}
       </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
         <Button
-          onClick={() => { setDrafts(toDrafts(assignment)); setDirty(false); }}
-          disabled={!dirty || updateMutation.isPending}
-          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary }}
-        >
-          Reset
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={!dirty || invalid || updateMutation.isPending}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 700,
-            borderRadius: '12px',
-            px: 3,
-            boxShadow: 'none',
-            bgcolor: tokens.brand.primary,
-            '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+          startIcon={<AddCircleOutlineIcon />}
+          onClick={() => {
+            setDrafts((prev) => [...prev, makeNewDraft()]);
+            setDirty(true);
           }}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.brand.primary }}
         >
-          {updateMutation.isPending ? 'Saving...' : 'Save changes'}
+          Add new KPI
         </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, ml: 'auto' }}>
+          <Button
+            onClick={() => { setDrafts(toDrafts(assignment)); setDirty(false); }}
+            disabled={!dirty || updateMutation.isPending}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary }}
+          >
+            Reset
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={!dirty || invalid || updateMutation.isPending || drafts.length === 0}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '12px',
+              px: 3,
+              boxShadow: 'none',
+              bgcolor: tokens.brand.primary,
+              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+            }}
+          >
+            {updateMutation.isPending ? 'Saving...' : 'Save changes'}
+          </Button>
+        </Box>
       </Box>
     </Card>
   );
