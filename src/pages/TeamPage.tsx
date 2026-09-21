@@ -26,7 +26,6 @@ import {
   Badge,
   Tabs,
   Tab,
-  Alert,
   Tooltip,
   Popover,
   FormControlLabel,
@@ -933,15 +932,6 @@ const TeamPage = () => {
             </Box>
           )}
         </Box>
-
-        {canAccessTeam &&
-          selectedUser.role !== ROLES.ADMIN &&
-          selectedUser._id !== currentUser?._id &&
-          (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
-          <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
-            Shift timings are not defined for this user. Please edit their profile to add their shift details.
-          </Alert>
-        )}
 
         {/* User Summary Card */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
