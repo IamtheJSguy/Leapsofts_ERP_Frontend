@@ -829,6 +829,8 @@ export interface KanbanCard {
   lastMovedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
   lastMovedAt?: string;
   subtasks?: KanbanSubtask[];
+  /** Optional Cloudinary cover image */
+  imageUrl?: string;
 }
 
 export interface KanbanComment {
