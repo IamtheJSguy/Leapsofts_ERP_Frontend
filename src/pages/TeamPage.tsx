@@ -63,7 +63,7 @@ import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs, useAdminResetPassword } from '@/hooks/api/useUsers';
 import { useAdminResetTwoFactor } from '@/hooks/api/useTwoFactor';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
@@ -650,6 +650,7 @@ const TeamPage = () => {
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isReset2faOpen, setIsReset2faOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields matching Reference mockup exactly
@@ -764,6 +765,7 @@ const TeamPage = () => {
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const resetTwoFactorMutation = useAdminResetTwoFactor();
+  const resetPasswordMutation = useAdminResetPassword();
 
   const handleDeleteUser = () => {
     if (!selectedUser?._id) return;
@@ -906,13 +908,22 @@ const TeamPage = () => {
               </Button>
 
               {isAdmin && (
-                <Button
-                  startIcon={<LockIcon sx={{ fontSize: 15 }} />}
-                  sx={actionButtonSx}
-                  onClick={() => setIsReset2faOpen(true)}
-                >
-                  Reset 2FA
-                </Button>
+                <>
+                  <Button
+                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                    sx={actionButtonSx}
+                    onClick={() => setIsReset2faOpen(true)}
+                  >
+                    Reset 2FA
+                  </Button>
+                  <Button
+                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                    sx={actionButtonSx}
+                    onClick={() => setIsResetPasswordOpen(true)}
+                  >
+                    Reset Password
+                  </Button>
+                </>
               )}
 
               <Button
@@ -1731,6 +1742,63 @@ const TeamPage = () => {
               }}
             >
               {resetTwoFactorMutation.isPending ? 'Resetting...' : 'Reset 2FA'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isResetPasswordOpen}
+          onClose={() => setIsResetPasswordOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              maxWidth: 420,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Reset user password</Typography>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3 }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? '#e0e0e0' : tokens.text.primary }}>
+              This will overwrite the current password for {userFullName}. A new securely generated password will be sent to their registered email.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 2 }}>
+            <Button onClick={() => setIsResetPasswordOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedUser?._id) return;
+                resetPasswordMutation.mutate(selectedUser._id, {
+                  onSuccess: () => {
+                    addToast({ message: 'Password reset successfully. The user will receive an email with their new password.', severity: 'success' });
+                    setIsResetPasswordOpen(false);
+                  },
+                  onError: (err: any) => {
+                    addToast({
+                      message: err?.response?.data?.error?.message || 'Failed to reset password.',
+                      severity: 'error',
+                    });
+                  },
+                });
+              }}
+              variant="contained"
+              disabled={resetPasswordMutation.isPending}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 3,
+                boxShadow: 'none',
+              }}
+            >
+              {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
             </Button>
           </DialogActions>
         </Dialog>
