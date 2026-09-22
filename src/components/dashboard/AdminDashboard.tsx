@@ -188,7 +188,7 @@ export const AdminDashboard = () => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             gap: 2,
-            mb: 2
+            mb: 1.5
           }}
         >
           {/* Badge & Title */}
@@ -246,24 +246,8 @@ export const AdminDashboard = () => {
           </Box>
         </Box>
 
-        {/* Subtitle text */}
-        <Typography
-          sx={{
-            color: tokens.text.secondary,
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            mb: 4,
-            maxWidth: '750px',
-            lineHeight: 1.5
-          }}
-        >
-          {pipelineOverview?.totalLeads
-            ? `${pipelineOverview.totalLeads} lead${pipelineOverview.totalLeads === 1 ? '' : 's'} in pipeline · ${pipelineOverview.followUps} follow-up${pipelineOverview.followUps === 1 ? '' : 's'} · ${pipelineOverview.qualified} qualified · ${pipelineOverview.notSent} not contacted yet.`
-            : 'No leads in the pipeline yet — open Sales to add prospects or import from your sheet.'}
-        </Typography>
-
         {/* Inline statistics counters (Admin stats) - Soft UI card style */}
-        <Grid container spacing={2.5} sx={{ borderTop: `1px solid ${tokens.surface.borderLight}`, pt: 3.5 }}>
+        <Grid container spacing={2.5}>
           {pipelineStats.map((stat) => (
             <Grid item xs={6} sm={4} md={2} key={stat.label}>
               <Box

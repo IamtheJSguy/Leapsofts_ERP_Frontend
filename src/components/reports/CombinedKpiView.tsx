@@ -28,7 +28,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import { tokens } from '@/styles/tokens';
-import type { CombinedKpiMetrics, CombinedKpiSection, KpiPerformanceMetrics } from '@/types';
+import type { CombinedKpiMetrics, CombinedKpiRow, CombinedKpiSection, KpiPerformanceMetrics } from '@/types';
 
 interface CombinedKpiViewProps {
   metrics: CombinedKpiMetrics;
@@ -46,6 +46,14 @@ const emptySection = (): CombinedKpiSection => ({
   byName: [],
   dailyTrend: [],
 });
+
+/** Rate is actual/target when a target exists; otherwise assigned completion. */
+const rowRatePercent = (row: CombinedKpiRow): number => {
+  if (typeof row.target === 'number' && row.target > 0) {
+    return Math.round(((row.actual ?? 0) / row.target) * 100);
+  }
+  return row.completionRate;
+};
 
 export const fromLegacyKpiPerformance = (legacy: KpiPerformanceMetrics): CombinedKpiMetrics => ({
   headlines: {
@@ -121,9 +129,32 @@ const SectionTable = ({ section }: { section: CombinedKpiSection }) => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E4EF" />
                 <XAxis dataKey="date" tick={{ fill: tokens.text.muted, fontSize: 11 }} />
                 <YAxis tick={{ fill: tokens.text.muted, fontSize: 12 }} />
-                <ChartTooltip />
-                <Area type="monotone" dataKey="total" stroke={tokens.brand.primary100} fill={tokens.brand.primary50} />
-                <Area type="monotone" dataKey="completed" stroke={tokens.brand.primary} fill={tokens.brand.primary100} />
+                <ChartTooltip
+                  contentStyle={{
+                    backgroundColor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.96)',
+                    borderRadius: '12px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : tokens.surface.border}`,
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+                    color: isDarkMode ? '#fff' : tokens.brand.primaryDark,
+                  }}
+                  labelStyle={{ color: isDarkMode ? '#fff' : tokens.brand.primaryDark, fontWeight: 700 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  name="Total"
+                  stroke={tokens.brand.primaryMuted}
+                  fill={tokens.brand.primary200}
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="completed"
+                  name="Completed"
+                  stroke={tokens.brand.primary}
+                  fill={tokens.brand.primary100}
+                  strokeWidth={2}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </Box>
@@ -153,7 +184,7 @@ const SectionTable = ({ section }: { section: CombinedKpiSection }) => {
                 <TableCell>{row.assigned}</TableCell>
                 <TableCell>{row.completed}</TableCell>
                 <TableCell>{row.overdue}</TableCell>
-                <TableCell>{row.completionRate}%</TableCell>
+                <TableCell>{rowRatePercent(row)}%</TableCell>
                 <TableCell>{row.target ?? '—'}</TableCell>
                 <TableCell>{row.actual ?? '—'}</TableCell>
               </TableRow>
