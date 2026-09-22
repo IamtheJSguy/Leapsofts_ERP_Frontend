@@ -591,6 +591,9 @@ export interface KpiDailyTrend {
   date: string;
   total: number;
   completed: number;
+  newProspects?: number;
+  messagesSent?: number;
+  followUps?: number;
 }
 
 export interface KpiTargetActualRow {

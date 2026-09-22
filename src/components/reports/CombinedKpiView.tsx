@@ -17,11 +17,14 @@ import {
 import {
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as ChartTooltip,
   ResponsiveContainer,
+  Legend,
 } from 'recharts';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -97,15 +100,33 @@ export const fromLegacyKpiPerformance = (legacy: KpiPerformanceMetrics): Combine
   sales: emptySection(),
 });
 
-const SectionTable = ({ section }: { section: CombinedKpiSection }) => {
+const SectionTable = ({
+  section,
+  variant = 'default',
+}: {
+  section: CombinedKpiSection;
+  variant?: 'default' | 'sales';
+}) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const rows = section.byName.length ? section.byName : section.rows;
+  const isSalesTrend = variant === 'sales';
   const trendData = section.dailyTrend.map((d) => ({
     date: d.date.slice(5),
     completed: d.completed,
     total: d.total,
+    newProspects: d.newProspects ?? 0,
+    messagesSent: d.messagesSent ?? 0,
+    followUps: d.followUps ?? 0,
   }));
+
+  const tooltipSx = {
+    backgroundColor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.96)',
+    borderRadius: '12px',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : tokens.surface.border}`,
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+    color: isDarkMode ? '#fff' : tokens.brand.primaryDark,
+  } as const;
 
   return (
     <Box>
@@ -125,37 +146,71 @@ const SectionTable = ({ section }: { section: CombinedKpiSection }) => {
           </Typography>
           <Box sx={{ width: '100%', height: 240 }}>
             <ResponsiveContainer>
-              <AreaChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E4EF" />
-                <XAxis dataKey="date" tick={{ fill: tokens.text.muted, fontSize: 11 }} />
-                <YAxis tick={{ fill: tokens.text.muted, fontSize: 12 }} />
-                <ChartTooltip
-                  contentStyle={{
-                    backgroundColor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.96)',
-                    borderRadius: '12px',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : tokens.surface.border}`,
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
-                    color: isDarkMode ? '#fff' : tokens.brand.primaryDark,
-                  }}
-                  labelStyle={{ color: isDarkMode ? '#fff' : tokens.brand.primaryDark, fontWeight: 700 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  name="Total"
-                  stroke={tokens.brand.primaryMuted}
-                  fill={tokens.brand.primary200}
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="completed"
-                  name="Completed"
-                  stroke={tokens.brand.primary}
-                  fill={tokens.brand.primary100}
-                  strokeWidth={2}
-                />
-              </AreaChart>
+              {isSalesTrend ? (
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E4EF" />
+                  <XAxis dataKey="date" tick={{ fill: tokens.text.muted, fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: tokens.text.muted, fontSize: 12 }} />
+                  <ChartTooltip
+                    contentStyle={tooltipSx}
+                    labelStyle={{ color: isDarkMode ? '#fff' : tokens.brand.primaryDark, fontWeight: 700 }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="newProspects"
+                    name="New prospects"
+                    stroke={tokens.brand.primary}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="messagesSent"
+                    name="Messages sent"
+                    stroke={tokens.brand.accent}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="followUps"
+                    name="Follow-ups"
+                    stroke={tokens.brand.primaryLight}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              ) : (
+                <AreaChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E4EF" />
+                  <XAxis dataKey="date" tick={{ fill: tokens.text.muted, fontSize: 11 }} />
+                  <YAxis tick={{ fill: tokens.text.muted, fontSize: 12 }} />
+                  <ChartTooltip
+                    contentStyle={tooltipSx}
+                    labelStyle={{ color: isDarkMode ? '#fff' : tokens.brand.primaryDark, fontWeight: 700 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    name="Total"
+                    stroke={tokens.brand.primaryMuted}
+                    fill={tokens.brand.primary200}
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="completed"
+                    name="Completed"
+                    stroke={tokens.brand.primary}
+                    fill={tokens.brand.primary100}
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              )}
             </ResponsiveContainer>
           </Box>
         </Paper>
@@ -252,7 +307,7 @@ export const CombinedKpiView = ({ metrics, comparison, userName, compact }: Comb
       </Tabs>
       {tab === 'simple' && <SectionTable section={metrics.simple} />}
       {tab === 'kanban' && <SectionTable section={metrics.kanban} />}
-      {tab === 'sales' && <SectionTable section={metrics.sales} />}
+      {tab === 'sales' && <SectionTable section={metrics.sales} variant="sales" />}
     </Box>
   );
 };
