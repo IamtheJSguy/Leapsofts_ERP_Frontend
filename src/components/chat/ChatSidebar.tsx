@@ -47,12 +47,13 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
-import { useUsers } from '@/hooks/api/useUsers';
+import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useSocket } from '@/hooks/useSocket';
 import type { PresenceStatus } from '@/types';
 
 export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
+  useMe();
   const { data: conversations = [] } = useConversations();
   const { data: boards = [] } = useKanbanBoards();
   const { data: dbUsers = [] } = useUsers();
@@ -104,6 +105,16 @@ export const ChatSidebar = () => {
     return map;
   }, [boards]);
 
+  const avatarByUserId = useMemo(() => {
+    const map: Record<string, string> = {};
+    dbUsers.forEach((u) => {
+      if (u._id && u.avatarUrl) map[u._id] = u.avatarUrl;
+    });
+    return map;
+  }, [dbUsers]);
+
+  const ownAvatarUrl = currentUser?.avatarUrl || (currentUser?._id ? avatarByUserId[currentUser._id] : undefined);
+
   const getChatDetails = (conv: any) => {
     if (conv.isGroup) {
       const boardId = conversationBoardId(conv);
@@ -138,11 +149,15 @@ export const ChatSidebar = () => {
       mainParticipant?.presenceStatus ||
       (mainParticipant?.isOnline ? 'online' : 'offline');
     const lastSeenAt = fromStore?.lastSeenAt || mainParticipant?.lastSeenAt;
+    const avatarUrl =
+      (typeof mainParticipant === 'object' && mainParticipant?.avatarUrl) ||
+      (mainId ? avatarByUserId[mainId] : undefined);
 
     return {
       name,
       email,
       initial,
+      avatarUrl,
       status,
       presenceLabel: getPresenceLabel(status, lastSeenAt),
       isGroup: false,
@@ -161,7 +176,7 @@ export const ChatSidebar = () => {
       return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (conv.lastMessage?.content && stripHtml(conv.lastMessage.content).toLowerCase().includes(searchQuery.toLowerCase()));
     }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
-  }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById]);
+  }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById, avatarByUserId]);
 
   const handleSetPresence = (status: 'away' | 'offline' | null) => {
     updatePresence.mutate(status);
@@ -257,15 +272,26 @@ export const ChatSidebar = () => {
             sx={{
               width: 38,
               height: 38,
+              p: 0,
               position: 'relative',
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-              color: tokens.brand.primary,
-              fontWeight: 800,
-              fontSize: '0.8rem',
             }}
             aria-label="Set chat status"
           >
-            {(currentUser ? getDisplayName(currentUser) : 'Me').charAt(0).toUpperCase()}
+            <Avatar
+              src={ownAvatarUrl || undefined}
+              alt={currentUser ? getDisplayName(currentUser) : 'Me'}
+              imgProps={{ sx: { objectFit: 'cover' } }}
+              sx={{
+                width: 38,
+                height: 38,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.08)',
+                color: tokens.brand.primary,
+                fontWeight: 800,
+                fontSize: '0.8rem',
+              }}
+            >
+              {(currentUser ? getDisplayName(currentUser) : 'Me').charAt(0).toUpperCase()}
+            </Avatar>
             <Box
               sx={{
                 position: 'absolute',
@@ -408,6 +434,9 @@ export const ChatSidebar = () => {
                   {/* Left Avatar with Pulsing Status Indicator */}
                   <Box sx={{ mr: 2, position: 'relative' }}>
                     <Avatar
+                      src={!details.isGroup ? details.avatarUrl : undefined}
+                      alt={details.name}
+                      imgProps={{ sx: { objectFit: 'cover' } }}
                       sx={{
                         width: 42,
                         height: 42,
@@ -765,6 +794,9 @@ export const ChatSidebar = () => {
                     </Box>
                   )}
                   <Avatar
+                    src={user.avatarUrl || undefined}
+                    alt={name}
+                    imgProps={{ sx: { objectFit: 'cover' } }}
                     sx={{
                       width: 34,
                       height: 34,
@@ -851,6 +883,9 @@ export const ChatSidebar = () => {
       >
         <Box sx={{ p: 3, textAlign: 'center' }}>
           <Avatar
+            src={selectedUserToChat?.avatarUrl || undefined}
+            alt={selectedUserToChat ? getDisplayName(selectedUserToChat) : ''}
+            imgProps={{ sx: { objectFit: 'cover' } }}
             sx={{
               width: 64,
               height: 64,

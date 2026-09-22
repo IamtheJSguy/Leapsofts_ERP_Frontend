@@ -112,9 +112,14 @@ export const MessageBubble = React.memo(({
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
   const setReaction = useSetMessageReaction();
 
-  // Resolve participant initial and details
-  const senderName = getDisplayName(typeof message.sender === 'object' ? message.sender : undefined);
+  const senderRef = message.sender || message.senderId;
+  const senderUser: User | undefined =
+    typeof senderRef === 'object' && senderRef
+      ? senderRef
+      : mentionableUsers.find((u) => u._id === senderRef);
+  const senderName = getDisplayName(senderUser);
   const senderInitial = senderName.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U';
+  const senderAvatarUrl = senderUser?.avatarUrl;
 
   // Format message time cleanly (e.g. 10:45 AM)
   const formatTimeOnly = (dateStr: string) => {
@@ -243,6 +248,7 @@ export const MessageBubble = React.memo(({
       {/* Received message avatar */}
       {!isOwn && (
         <Avatar
+          src={senderAvatarUrl || undefined}
           sx={{
             width: 32,
             height: 32,
