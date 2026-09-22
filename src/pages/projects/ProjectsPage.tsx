@@ -474,7 +474,7 @@ const ProjectsPage = () => {
                           }
                           arrow
                         >
-                          <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                          <Avatar src={m.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
                         </Tooltip>
                       );
                     })}
@@ -570,7 +570,7 @@ const ProjectsPage = () => {
                       const initial = (m.firstName?.charAt(0) || m.email?.charAt(0) || 'U').toUpperCase();
                       return (
                         <Tooltip key={idx} title={`${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email} arrow>
-                          <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                          <Avatar src={m.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
                         </Tooltip>
                       );
                     })}

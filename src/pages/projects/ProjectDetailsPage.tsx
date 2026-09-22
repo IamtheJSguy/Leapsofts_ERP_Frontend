@@ -804,7 +804,7 @@ export const ProjectDetailsPage = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                      <Avatar src={user.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                           {name}

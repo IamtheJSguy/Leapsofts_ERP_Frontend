@@ -209,7 +209,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar sx={{ bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 800, width: 44, height: 44 }}>
+        <Avatar src={typeof assignment.userId === 'object' ? assignment.userId.avatarUrl || undefined : undefined} sx={{ bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 800, width: 44, height: 44 }}>
           {userName.charAt(0).toUpperCase()}
         </Avatar>
         <Box sx={{ flexGrow: 1 }}>
