@@ -76,7 +76,7 @@ export const ReportBuilder = ({
   const { isElevated } = usePermissions();
 
   const { data: users = [] } = useUsers(
-    { scoped: 'true' },
+    {},
     { enabled: isElevated },
   );
 

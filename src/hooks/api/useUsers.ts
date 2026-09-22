@@ -23,7 +23,6 @@ const userApi = {
   },
   changePassword: (data: { oldPassword: string; newPassword: string }) =>
     api.put('/users/me/change-password', data),
-  adminResetPassword: (id: string) => api.post(`/users/${id}/reset-password`),
   getMe: () => api.get<{ data: User }>('/users/me'),
 };
 
@@ -163,11 +162,6 @@ export const useUploadAvatar = () => {
 export const useChangePassword = () =>
   useMutation({
     mutationFn: userApi.changePassword,
-  });
-
-export const useAdminResetPassword = () =>
-  useMutation({
-    mutationFn: userApi.adminResetPassword,
   });
 
 export const useMe = () => {
