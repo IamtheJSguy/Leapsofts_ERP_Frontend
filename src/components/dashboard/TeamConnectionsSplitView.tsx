@@ -399,6 +399,7 @@ export const TeamConnectionsSplitView = () => {
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Avatar 
+                          src={user.avatarUrl || undefined}
                           sx={{ 
                             width: 42, 
                             height: 42, 

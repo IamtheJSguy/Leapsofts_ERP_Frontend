@@ -25,6 +25,12 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const addToast = useUIStore((s) => s.addToast);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(false);
   const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
+  const [notifPrefs, setNotifPrefs] = useState({
+    email: true,
+    portal: true,
+    kpiAlerts: true,
+    meetingReminders: true,
+  });
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -33,6 +39,14 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
     if (settings) {
       setDailyReportEnabled(settings.automatedUserReportSchedule?.daily ?? false);
       setWeeklyReportEnabled(settings.automatedUserReportSchedule?.weekly ?? true);
+      if (settings.notificationPreferences) {
+        setNotifPrefs({
+          email: settings.notificationPreferences.email ?? true,
+          portal: settings.notificationPreferences.portal ?? true,
+          kpiAlerts: settings.notificationPreferences.kpiAlerts ?? true,
+          meetingReminders: settings.notificationPreferences.meetingReminders ?? true,
+        });
+      }
     }
   }, [settings]);
 
@@ -51,6 +65,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           daily: dailyReportEnabled,
           weekly: weeklyReportEnabled,
         },
+        notificationPreferences: notifPrefs,
       },
       {
         onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
@@ -174,6 +189,29 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
             </Box>
           </Grid>
         </Grid>
+
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+            Organization notification categories
+          </Typography>
+          {(
+            [
+              ['email', 'Email'],
+              ['portal', 'In-app portal'],
+              ['kpiAlerts', 'KPI alerts'],
+              ['meetingReminders', 'Meeting reminders'],
+            ] as const
+          ).map(([key, label]) => (
+            <Box key={key} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1 }}>
+              <Typography variant="body2">{label}</Typography>
+              <Switch
+                checked={notifPrefs[key]}
+                disabled={readOnly}
+                onChange={(e) => setNotifPrefs((prev) => ({ ...prev, [key]: e.target.checked }))}
+              />
+            </Box>
+          ))}
+        </Box>
 
         {!readOnly && (
         <Box sx={{ mt: 5, display: 'flex', justifyContent: 'flex-start' }}>

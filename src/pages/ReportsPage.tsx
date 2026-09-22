@@ -45,7 +45,7 @@ const ReportsPage = () => {
   const [reportType, setReportType] = useState<string>('combined_kpi');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
 
-  const { data: users = [] } = useUsers({}, { enabled: isElevated });
+  const { data: users = [] } = useUsers({ scoped: 'true' }, { enabled: isElevated });
 
   const selectedAgent = useMemo(() => {
     return users.find((u) => u._id === selectedAgentId) || null;

@@ -43,8 +43,9 @@ import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { RichTextEditor } from '@/components/chat/RichTextEditor';
-import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
+import { RichTextContent } from '@/components/common/RichTextContent';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -144,6 +145,8 @@ interface ActiveAssignment {
 const TasksPage = () => {
   const { user } = useAuth();
   const { isElevated } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -345,7 +348,7 @@ const TasksPage = () => {
     const raw = searchParams.get('tab');
     if (raw) {
       if (isElevated) {
-        if (raw === 'sales' || raw === 'sales_kpis') return 'sales';
+        if (raw === 'sales' || raw === 'sales_kpis') return salesModuleOn ? 'sales' : 'my_tasks';
         if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
         if (raw === 'team' || raw === 'daily_progress') return 'team';
         if (['templates', 'change_requests', 'my_tasks', 'assignments'].includes(raw)) {
@@ -358,7 +361,7 @@ const TasksPage = () => {
       }
     }
     return isElevated ? 'my_tasks' : 'assignments';
-  }, [searchParams, isElevated]);
+  }, [searchParams, isElevated, salesModuleOn]);
 
   const setDashboardTab = (newTab: DashboardTab) => {
     setSearchParams(
@@ -830,6 +833,7 @@ const TasksPage = () => {
         email: id.email || 'N/A',
         jobTitle: id.jobTitle || (id.role === 'admin' ? 'Administrator' : 'Agent'),
         initial: name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A',
+        avatarUrl: id.avatarUrl,
       };
     }
 
@@ -841,6 +845,7 @@ const TasksPage = () => {
         email: user.email,
         jobTitle: user.role === 'admin' ? 'Administrator' : (user.jobTitle || 'Agent'),
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: user.avatarUrl,
       };
     }
 
@@ -863,6 +868,7 @@ const TasksPage = () => {
         email: matched.email,
         jobTitle: matched.jobTitle || 'Agent',
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: matched.avatarUrl,
       };
     }
 
@@ -1755,6 +1761,7 @@ const TasksPage = () => {
                               >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                   <Avatar
+                                    src={userObj?.avatarUrl || undefined}
                                     sx={{
                                       width: 32,
                                       height: 32,
@@ -2114,7 +2121,7 @@ const TasksPage = () => {
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
                           }}
                         >
-                          <Avatar sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
+                          <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
                             {details.initial}
                           </Avatar>
                           <Box sx={{ minWidth: 0 }}>
@@ -2202,7 +2209,9 @@ const TasksPage = () => {
         {isElevated && viewMode === 'list' && (
           <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
             <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+            {salesModuleOn && (
             <Button onClick={() => setDashboardTab('sales')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
+            )}
             <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
             <Button onClick={() => setDashboardTab('standalone')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
             <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
@@ -2224,7 +2233,7 @@ const TasksPage = () => {
           <ChangeRequestQueue />
         )}
 
-        {(dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
+        {salesModuleOn && (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
           <SalesKpiPanel />
         )}
 
@@ -2946,7 +2955,7 @@ const TasksPage = () => {
                                   const details = getUserDetails(id);
                                   return (
                                     <Tooltip title={details.name} key={id} arrow>
-                                      <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                      <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                         {details.initial}
                                       </Avatar>
                                     </Tooltip>
@@ -3137,7 +3146,7 @@ const TasksPage = () => {
                           <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.65rem' } }}>
                             {assign.assignedTo.map((id) => (
                               <Tooltip title={getUserDetails(id).name} key={id} arrow>
-                                <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                <Avatar src={getUserDetails(id).avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                   {getUserDetails(id).initial}
                                 </Avatar>
                               </Tooltip>
@@ -3393,6 +3402,7 @@ const TasksPage = () => {
                     }}
                   >
                     <Avatar
+                      src={option.avatarUrl || undefined}
                       sx={{
                         width: 32,
                         height: 32,

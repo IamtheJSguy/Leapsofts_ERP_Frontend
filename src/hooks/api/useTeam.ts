@@ -8,6 +8,7 @@ export interface TeamMember {
   firstName?: string;
   lastName?: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   jobTitle?: string;
   department?: string;

@@ -25,7 +25,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
 import { useSearchParams } from 'react-router-dom';
 import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
-import { useUsers } from '@/hooks/api/useUsers';
+import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
@@ -57,6 +57,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const replyingTo = useChatStore((s) => s.replyingTo);
   const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const { user } = useAuth();
+  useMe();
   const { data: conversations = [] } = useConversations();
   const { data: boards = [] } = useKanbanBoards();
   const { data: dbUsers = [] } = useUsers();
@@ -150,7 +151,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     return activeConversation.participants
       .map((participant) => {
         if (typeof participant === 'object' && participant && '_id' in participant) {
-          return participant;
+          const fromDb = dbUsers.find((u) => u._id === participant._id);
+          return {
+            ...participant,
+            avatarUrl: participant.avatarUrl || fromDb?.avatarUrl,
+          } as User;
         }
         const id = typeof participant === 'string' ? participant : '';
         return dbUsers.find((u) => u._id === id);
@@ -301,7 +306,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const enhancedMessages = useMemo(() => {
     return displayMessages.map((msg: any) => {
       const senderRef = msg.sender || msg.senderId;
-      const senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
+      let senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
+      if (typeof senderObj === 'object' && senderObj?._id && !senderObj.avatarUrl) {
+        const fromDb = userMap.get(senderObj._id);
+        if (fromDb) senderObj = { ...senderObj, avatarUrl: fromDb.avatarUrl };
+      }
       const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
 
       let replyTo = msg.replyTo;
@@ -470,11 +479,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       const name = `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.email || 'Agent';
       const initial = name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U';
       const presence = resolvePresence(targetUserId, targetUser);
-      return { name, initial, isGroup: false, ...presence };
+      return { name, initial, avatarUrl: targetUser.avatarUrl, isGroup: false, ...presence };
     }
 
     if (activeConversationId === 'dummy-chat-1') {
-      return { name: 'Emily Chen', initial: 'EC', isGroup: false, status: 'online' as PresenceStatus, lastSeenAt: undefined, presenceLabel: 'Active now' };
+      return { name: 'Emily Chen', initial: 'EC', avatarUrl: undefined, isGroup: false, status: 'online' as PresenceStatus, lastSeenAt: undefined, presenceLabel: 'Active now' };
     }
 
     const activeConversation = conversations.find((c) => c._id === activeConversationId);
@@ -492,6 +501,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return {
         name,
         initial,
+        avatarUrl: undefined,
         isGroup: true,
         status: (onlineCount > 0 ? 'online' : 'offline') as PresenceStatus,
         lastSeenAt: undefined,
@@ -502,13 +512,29 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const otherParticipants = activeConversation.participants.filter((p: any) => p._id !== user?._id);
     const mainParticipant = otherParticipants[0] || activeConversation.participants[0] || user;
     if (otherParticipants.length === 0) {
-      return { name: 'Me', initial: 'M', isGroup: false, status: 'online' as PresenceStatus, lastSeenAt: undefined, presenceLabel: 'Active now' };
+      return {
+        name: 'Me',
+        initial: 'M',
+        avatarUrl: user?.avatarUrl || dbUsers.find((u) => u._id === user?._id)?.avatarUrl,
+        isGroup: false,
+        status: 'online' as PresenceStatus,
+        lastSeenAt: undefined,
+        presenceLabel: 'Active now',
+      };
     }
     const name = otherParticipants.map((p: any) => getDisplayName(p)).join(', ') || getDisplayName(mainParticipant);
     const initial = name.split(' ').map((n: any) => n[0]).join('').toUpperCase().substring(0, 2) || 'U';
     const mainId = typeof mainParticipant === 'object' ? mainParticipant?._id : mainParticipant;
+    const fromDb = mainId ? dbUsers.find((u) => u._id === mainId) : undefined;
     const presence = resolvePresence(mainId, mainParticipant);
-    return { name, initial, isGroup: false, ...presence };
+    return {
+      name,
+      initial,
+      avatarUrl:
+        (typeof mainParticipant === 'object' && mainParticipant?.avatarUrl) || fromDb?.avatarUrl,
+      isGroup: false,
+      ...presence,
+    };
   }, [activeConversationId, conversations, dbUsers, user, presenceByUserId, otherParticipantIds, liveHeaderBoardName]);
 
   if (!activeConversationId) {
@@ -624,6 +650,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </IconButton>
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
               <Avatar
+                src={chatHeaderDetails.avatarUrl || undefined}
                 sx={{
                   width: 40,
                   height: 40,

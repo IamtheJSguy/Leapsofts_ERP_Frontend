@@ -314,7 +314,7 @@ const SharingMeetingsColumn = memo(({
             <Chip
               {...getTagProps({ index })}
               key={option._id}
-              avatar={<Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{userLabel(option).charAt(0)}</Avatar>}
+              avatar={<Avatar src={option.avatarUrl || undefined} sx={{ width: 24, height: 24, fontSize: 11 }}>{userLabel(option).charAt(0)}</Avatar>}
               label={userLabel(option)}
               size="small"
             />

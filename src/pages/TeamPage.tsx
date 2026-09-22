@@ -26,7 +26,6 @@ import {
   Badge,
   Tabs,
   Tab,
-  Alert,
   Tooltip,
   Popover,
   FormControlLabel,
@@ -62,8 +61,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs, useAdminResetPassword } from '@/hooks/api/useUsers';
 import { useAdminResetTwoFactor } from '@/hooks/api/useTwoFactor';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
@@ -527,6 +527,10 @@ const AccessPermissionsFields = ({
 const TeamPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isManager, canAccessTeam, canPromoteRoles } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
+  const screenshotsOn = entitlements.screenshotsEnabled;
+  const appUsageOn = entitlements.appUsageTelemetry;
   const currentUser = useAuthStore((s) => s.user);
   const teamQuery = useMyTeam({ enabled: !isAdmin && canAccessTeam });
   const showCreateTeam = isManager && teamQuery.isError;
@@ -580,7 +584,7 @@ const TeamPage = () => {
     [salesKpiDate],
   );
   const { data: teamSalesKpis = [] } = useTeamSalesKpis(salesKpiQueryParams, {
-    enabled: canAccessTeam || isManager || isAdmin,
+    enabled: salesModuleOn && (canAccessTeam || isManager || isAdmin),
   });
   const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
 
@@ -601,7 +605,7 @@ const TeamPage = () => {
   );
 
   // Fetch kanban boards to resolve actual projects/boards for this user
-  const { data: boards = [] } = useKanbanBoards();
+  const { data: boards = [] } = useKanbanBoards({ enabled: entitlements.projectsAndBoards });
 
   const userProjects = useMemo(() => {
     if (!selectedUser) return [];
@@ -646,6 +650,7 @@ const TeamPage = () => {
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isReset2faOpen, setIsReset2faOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields matching Reference mockup exactly
@@ -710,9 +715,12 @@ const TeamPage = () => {
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || !password.trim() || !jobTitle.trim()) {
+    if (!fullName.trim() || !email.trim() || !jobTitle.trim()) {
       addToast({ message: 'Please fill in all required fields.', severity: 'error' });
       return;
+    }
+    if (!password.trim()) {
+      // Existing accounts can be added without a new password; new accounts still need one.
     }
 
     // Split Full Name into firstName and lastName for database schema
@@ -722,7 +730,7 @@ const TeamPage = () => {
 
     const payload = {
       email,
-      password,
+      ...(password.trim() ? { password: password.trim() } : {}),
       firstName,
       lastName,
       role: createRole,
@@ -744,7 +752,10 @@ const TeamPage = () => {
       },
       onError: (err: any) => {
         addToast({
-          message: err?.response?.data?.message || 'Failed to add team member.',
+          message:
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to add team member.',
           severity: 'error'
         });
       },
@@ -754,6 +765,7 @@ const TeamPage = () => {
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const resetTwoFactorMutation = useAdminResetTwoFactor();
+  const resetPasswordMutation = useAdminResetPassword();
 
   const handleDeleteUser = () => {
     if (!selectedUser?._id) return;
@@ -896,13 +908,22 @@ const TeamPage = () => {
               </Button>
 
               {isAdmin && (
-                <Button
-                  startIcon={<LockIcon sx={{ fontSize: 15 }} />}
-                  sx={actionButtonSx}
-                  onClick={() => setIsReset2faOpen(true)}
-                >
-                  Reset 2FA
-                </Button>
+                <>
+                  <Button
+                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                    sx={actionButtonSx}
+                    onClick={() => setIsReset2faOpen(true)}
+                  >
+                    Reset 2FA
+                  </Button>
+                  <Button
+                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                    sx={actionButtonSx}
+                    onClick={() => setIsResetPasswordOpen(true)}
+                  >
+                    Reset Password
+                  </Button>
+                </>
               )}
 
               <Button
@@ -923,18 +944,10 @@ const TeamPage = () => {
           )}
         </Box>
 
-        {canAccessTeam &&
-          selectedUser.role !== ROLES.ADMIN &&
-          selectedUser._id !== currentUser?._id &&
-          (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
-          <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
-            Shift timings are not defined for this user. Please edit their profile to add their shift details.
-          </Alert>
-        )}
-
         {/* User Summary Card */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
           <Avatar
+            src={selectedUser.avatarUrl || undefined}
             sx={{
               width: 80,
               height: 80,
@@ -1057,7 +1070,7 @@ const TeamPage = () => {
 
 
           {/* Sales KPI stats for selected date — sales/marketing members only */}
-          {isSalesOrMarketingDepartment(selectedUser.department) && (
+          {salesModuleOn && isSalesOrMarketingDepartment(selectedUser.department) && (
             <Box
               sx={{
                 display: 'flex',
@@ -1526,10 +1539,12 @@ const TeamPage = () => {
                       sx={inputSx}
                     />
                   </Grid>
+                  {(screenshotsOn || appUsageOn) && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
                       Desktop monitoring
                     </Typography>
+                    {screenshotsOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1542,6 +1557,8 @@ const TeamPage = () => {
                       label="Screenshots"
                       sx={{ display: 'flex', mb: 0.5 }}
                     />
+                    )}
+                    {appUsageOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1554,7 +1571,9 @@ const TeamPage = () => {
                       label="App and URL tracking"
                       sx={{ display: 'flex', mb: 1 }}
                     />
+                    )}
                   </Grid>
+                  )}
                 </Grid>
 
                 <Box sx={{ width: '100%' }}>
@@ -1724,6 +1743,63 @@ const TeamPage = () => {
               }}
             >
               {resetTwoFactorMutation.isPending ? 'Resetting...' : 'Reset 2FA'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isResetPasswordOpen}
+          onClose={() => setIsResetPasswordOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              maxWidth: 420,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Reset user password</Typography>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3 }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? '#e0e0e0' : tokens.text.primary }}>
+              This will overwrite the current password for {userFullName}. A new securely generated password will be sent to their registered email.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 2 }}>
+            <Button onClick={() => setIsResetPasswordOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedUser?._id) return;
+                resetPasswordMutation.mutate(selectedUser._id, {
+                  onSuccess: () => {
+                    addToast({ message: 'Password reset successfully. The user will receive an email with their new password.', severity: 'success' });
+                    setIsResetPasswordOpen(false);
+                  },
+                  onError: (err: any) => {
+                    addToast({
+                      message: err?.response?.data?.error?.message || 'Failed to reset password.',
+                      severity: 'error',
+                    });
+                  },
+                });
+              }}
+              variant="contained"
+              disabled={resetPasswordMutation.isPending}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 3,
+                boxShadow: 'none',
+              }}
+            >
+              {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -2159,6 +2235,7 @@ const TeamPage = () => {
                     >
                       <Avatar
                         className="avatar-glow"
+                        src={member.avatarUrl || undefined}
                         sx={{
                           width: 64,
                           height: 64,
@@ -2211,7 +2288,7 @@ const TeamPage = () => {
                     <Box
                       sx={{
                         display: 'grid',
-                        gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                        gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                           ? 'repeat(3, 1fr)'
                           : 'repeat(4, 1fr)',
                         gap: 1,
@@ -2221,7 +2298,7 @@ const TeamPage = () => {
                         borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                       }}
                     >
-                      {(isSalesOrMarketingDepartment(member.department)
+                      {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                             key: stat.metric,
                             label: stat.label,
@@ -2338,6 +2415,7 @@ const TeamPage = () => {
                     }}
                   >
                     <Avatar
+                      src={member.avatarUrl || undefined}
                       sx={{
                         width: 46,
                         height: 46,
@@ -2385,14 +2463,14 @@ const TeamPage = () => {
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                      gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? 'repeat(3, minmax(52px, auto))'
                         : 'repeat(4, minmax(52px, auto))',
                       gap: 1.5,
                       mr: { xs: 0, sm: 1 },
                     }}
                   >
-                    {(isSalesOrMarketingDepartment(member.department)
+                    {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                       ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                           key: stat.metric,
                           label: stat.label,
@@ -2581,11 +2659,10 @@ const TeamPage = () => {
                 {/* Row 2: Password */}
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Password *
+                    Password
                   </Typography>
                   <TextField
-                    placeholder="Minimum 8 characters"
-                    required
+                    placeholder="Required for new accounts; leave blank to add an existing email"
                     type={showPassword ? 'text' : 'password'}
                     fullWidth
                     value={password}

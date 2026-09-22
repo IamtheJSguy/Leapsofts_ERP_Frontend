@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
 import type {
   ApiResponse,
   BulkCreateResponse,
@@ -40,9 +41,10 @@ const leadApi = {
     api.get<ApiResponse<LeadTimelineEvent[]>>(`/leads/${id}/history`),
 };
 
-export const useLeads = (filters: LeadFilters = {}) =>
-  useQuery({
-    queryKey: ['leads', filters],
+export const useLeads = (filters: LeadFilters = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['leads', organizationId, filters],
     queryFn: async (): Promise<LeadsListResponse> => {
       const response = await leadApi.getLeads(filters);
       const body = response.data;
@@ -58,6 +60,7 @@ export const useLeads = (filters: LeadFilters = {}) =>
     staleTime: 1000 * 60,
     placeholderData: (previous) => previous,
   });
+};
 
 export const useLead = (id: string | undefined) =>
   useQuery({

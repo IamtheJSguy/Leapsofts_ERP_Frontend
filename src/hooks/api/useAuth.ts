@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useChatStore } from '@/store/useChatStore';
 import type { User } from '@/types';
+import {
+  clearMonitoringPromptSession,
+  markMonitoringPromptPendingForLogin,
+} from '@/utils/monitoringPromptSession';
 
 const authApi = {
   login: (credentials: { email: string; password: string }) =>
@@ -21,8 +26,9 @@ export const useLogin = () => {
       if (data.requires2FA || data.requires2FASetup) return;
       if (data.accessToken && data.user) {
         localStorage.setItem('accessToken', data.accessToken);
+        queryClient.clear();
+        markMonitoringPromptPendingForLogin();
         setAuth(data.user);
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
       }
     },
   });
@@ -34,6 +40,7 @@ export const useRegister = () => {
     mutationFn: authApi.register,
     onSuccess: (res) => {
       localStorage.setItem('accessToken', res.data.data.accessToken);
+      markMonitoringPromptPendingForLogin();
       setAuth(res.data.data.user);
     },
   });
@@ -46,8 +53,32 @@ export const useLogout = () => {
     mutationFn: authApi.logout,
     onSuccess: () => {
       localStorage.removeItem('accessToken');
+      clearMonitoringPromptSession();
       clearAuth();
       queryClient.clear();
+    },
+  });
+};
+
+export const useSwitchOrganization = () => {
+  const queryClient = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      api.post('/auth/switch-organization', { organizationId }),
+    onSuccess: async (res) => {
+      const data = res.data.data;
+      if (data.accessToken && data.user) {
+        localStorage.setItem('accessToken', data.accessToken);
+        await queryClient.cancelQueries();
+        queryClient.clear();
+        // Org switch must not re-arm the workplace monitoring prompt.
+        setAuth(data.user);
+        useChatStore.getState().resetChatSession();
+        import('@/lib/socket').then(({ reconnectSocketWithToken }) => {
+          reconnectSocketWithToken(data.accessToken);
+        });
+      }
     },
   });
 };

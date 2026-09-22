@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Box } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
@@ -14,16 +14,28 @@ import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
+import api from '@/lib/axios';
+import { useLogout } from '@/hooks/api/useAuth';
+import { useEntitlements, type OrgModuleFlags } from '@/hooks/useEntitlements';
+import {
+  hasCompletedMonitoringPromptThisSession,
+  isMonitoringPromptPending,
+  markMonitoringPromptCompleted,
+} from '@/utils/monitoringPromptSession';
 
 export const AppLayout = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const [monitoringOpen, setMonitoringOpen] = useState(false);
+  const entitlements: OrgModuleFlags = useEntitlements();
+  const chatEnabled = entitlements.chat;
   useMe();
   useSocket();
 
-  const { data: conversations = [] } = useConversations();
+  const { data: conversations = [] } = useConversations({ enabled: chatEnabled });
   const unreadCounts = useChatStore((s) => s.unreadCounts);
   const syncUnreadFromConversations = useChatStore((s) => s.syncUnreadFromConversations);
 
@@ -65,10 +77,38 @@ export const AppLayout = () => {
 
     if (totalUnread > 0) {
       document.title = `(${totalUnread}) Leapsofts ERP`;
-    } else {  
+    } else {
       document.title = 'Leapsofts ERP';
     }
   }, [conversations, unreadCounts, unreadNotificationsCount]);
+
+  useEffect(() => {
+    if (!user?._id) return;
+    // Already handled for this browser session (covers refresh + org switch).
+    if (hasCompletedMonitoringPromptThisSession(user._id)) return;
+    // Already acknowledged in the past — don't prompt again this session.
+    if (user.monitoringPolicyAcknowledgedAt) {
+      markMonitoringPromptCompleted(user._id);
+      return;
+    }
+    // Only arm this dialog from a fresh login/register, not refresh or org switch.
+    if (!isMonitoringPromptPending()) return;
+
+    let cancelled = false;
+    api.get('/admin/monitoring-config').then((res) => {
+      if (cancelled) return;
+      const cfg = res.data.data as { screenshotsEnabled?: boolean; appUsageEnabled?: boolean };
+      // Consume the pending flag whether or not monitoring is enabled, so refresh won't re-open.
+      markMonitoringPromptCompleted(user._id);
+      if (cfg.screenshotsEnabled || cfg.appUsageEnabled) setMonitoringOpen(true);
+    }).catch(() => {
+      if (!cancelled) markMonitoringPromptCompleted(user._id);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.surface.main }}>
@@ -90,6 +130,18 @@ export const AppLayout = () => {
             }),
         }}
       >
+        {user?.impersonatedBy && (
+          <Alert
+            severity="warning"
+            action={
+              <Button color="inherit" size="small" onClick={() => logout.mutate()}>
+                End impersonation
+              </Button>
+            }
+          >
+            Viewing as {user.firstName || user.email} — impersonated by Leapsofts support
+          </Alert>
+        )}
         <Header />
         <Box
           component="section"
@@ -104,7 +156,28 @@ export const AppLayout = () => {
         </Box>
       </Box>
       <NotificationPanel />
+      <Dialog open={monitoringOpen}>
+        <DialogTitle>Workplace monitoring</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            This organization captures activity screenshots and/or application usage during your shift.
+            Continue only if you acknowledge this policy.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              await api.post('/users/me/acknowledge-monitoring');
+              useAuthStore.getState().updateUser({ monitoringPolicyAcknowledgedAt: new Date().toISOString() });
+              if (user?._id) markMonitoringPromptCompleted(user._id);
+              setMonitoringOpen(false);
+            }}
+          >
+            I understand
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
-

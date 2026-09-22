@@ -45,6 +45,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUpdateMe, useMe, useChangePassword, useUploadAvatar } from '@/hooks/api/useUsers';
 import { useRegenerateBackupCodes, useEnrollTwoFactorSetup, useEnrollTwoFactorVerify } from '@/hooks/api/useTwoFactor';
@@ -58,6 +59,8 @@ import { changePasswordSchema } from '@/utils/validators';
 export default function ProfilePage() {
   useMe(); // Fetch and hydrate store with latest profile data on mount
   const { user } = useAuth();
+  const entitlements = useEntitlements();
+  const sheetsOn = entitlements.googleSheetsSync;
   const updateAuthUser = useAuthStore((s) => s.updateUser);
   const hasConnectedSheet = Boolean((user as any)?.googleSheetId);
 
@@ -133,6 +136,10 @@ export default function ProfilePage() {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!sheetsOn && activeTab === 'google-sheet') setActiveTab('profile');
+  }, [sheetsOn, activeTab]);
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -524,7 +531,9 @@ export default function ProfilePage() {
         {[
           { key: 'profile', label: 'User Profile', icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 18 }} /> },
           { key: 'preferences', label: 'Preferences & Schedule', icon: <ScheduleIcon sx={{ fontSize: 18 }} /> },
-          { key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> },
+          ...(sheetsOn
+            ? [{ key: 'google-sheet', label: 'Google Sheet Sync', icon: <CloudQueueIcon sx={{ fontSize: 18 }} /> }]
+            : []),
         ].map((tab) => (
           <Button
             key={tab.key}
@@ -1006,7 +1015,7 @@ export default function ProfilePage() {
         )}
 
         {/* Google Sheet Sync Tab — connect and sync only from settings */}
-        {activeTab === 'google-sheet' && (
+        {sheetsOn && activeTab === 'google-sheet' && (
           <Fade in timeout={500}>
             <Grid container spacing={4}>
               <Grid item xs={12} lg={7}>

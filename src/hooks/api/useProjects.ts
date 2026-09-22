@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { Project, ProjectMember, KanbanBoard, ProjectStatus } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface ProjectResponse {
   project: Project;
@@ -54,12 +55,14 @@ const projectsApi = {
     api.delete(`/projects/${id}/boards/${boardId}/members/${userId}`),
 };
 
-export const useProjects = () =>
-  useQuery({
-    queryKey: ['projects'],
+export const useProjects = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['projects', organizationId],
     queryFn: () => projectsApi.getProjects().then((r) => r.data.data),
     staleTime: 0,
   });
+};
 
 export const useProject = (id: string | undefined) =>
   useQuery({

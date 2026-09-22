@@ -61,3 +61,15 @@ export const refreshSocketAuth = (token: string): void => {
     socket.connect();
   }
 };
+
+/** Force a new handshake after switching organizations so rooms join the new tenant. */
+export const reconnectSocketWithToken = (token: string): void => {
+  if (!socket) {
+    connectSocket();
+    return;
+  }
+  socket.auth = { token };
+  socket.disconnect();
+  socket.connect();
+};
+
