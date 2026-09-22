@@ -174,7 +174,7 @@ export const LinkedKanbanCards: React.FC<LinkedKanbanCardsProps> = ({ cards, isD
                       }}
                     >
                       {assignees.map((person) => (
-                        <Avatar key={person._id} alt={personName(person)}>
+                        <Avatar key={person._id} src={person.avatarUrl || undefined} alt={personName(person)}>
                           {personInitials(person)}
                         </Avatar>
                       ))}

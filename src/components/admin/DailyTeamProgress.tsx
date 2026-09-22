@@ -180,6 +180,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
               }}
             >
               <Avatar
+                src={group.user.avatarUrl || undefined}
                 sx={{
                   width: 44,
                   height: 44,

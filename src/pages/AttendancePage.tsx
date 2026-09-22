@@ -479,7 +479,7 @@ export const AttendancePage = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
-                      <Avatar sx={{ width: 46, height: 46, bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                      <Avatar src={user.avatarUrl || undefined} sx={{ width: 46, height: 46, bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
                       <Chip
                         label={
                           isOnline
@@ -629,7 +629,7 @@ export const AttendancePage = () => {
 
               {/* User Bio Card */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-                <Avatar sx={{ width: 50, height: 50, bgcolor: tokens.brand.primary, fontWeight: 700 }}>
+                <Avatar src={selectedUser.avatarUrl || undefined} sx={{ width: 50, height: 50, bgcolor: tokens.brand.primary, fontWeight: 700 }}>
                   {(selectedUser.firstName?.charAt(0) || 'U').toUpperCase()}
                 </Avatar>
                 <Box>

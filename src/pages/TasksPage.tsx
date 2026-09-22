@@ -833,6 +833,7 @@ const TasksPage = () => {
         email: id.email || 'N/A',
         jobTitle: id.jobTitle || (id.role === 'admin' ? 'Administrator' : 'Agent'),
         initial: name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A',
+        avatarUrl: id.avatarUrl,
       };
     }
 
@@ -844,6 +845,7 @@ const TasksPage = () => {
         email: user.email,
         jobTitle: user.role === 'admin' ? 'Administrator' : (user.jobTitle || 'Agent'),
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: user.avatarUrl,
       };
     }
 
@@ -866,6 +868,7 @@ const TasksPage = () => {
         email: matched.email,
         jobTitle: matched.jobTitle || 'Agent',
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: matched.avatarUrl,
       };
     }
 
@@ -1758,6 +1761,7 @@ const TasksPage = () => {
                               >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                   <Avatar
+                                    src={userObj?.avatarUrl || undefined}
                                     sx={{
                                       width: 32,
                                       height: 32,
@@ -2117,7 +2121,7 @@ const TasksPage = () => {
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
                           }}
                         >
-                          <Avatar sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
+                          <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
                             {details.initial}
                           </Avatar>
                           <Box sx={{ minWidth: 0 }}>
@@ -2951,7 +2955,7 @@ const TasksPage = () => {
                                   const details = getUserDetails(id);
                                   return (
                                     <Tooltip title={details.name} key={id} arrow>
-                                      <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                      <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                         {details.initial}
                                       </Avatar>
                                     </Tooltip>
@@ -3142,7 +3146,7 @@ const TasksPage = () => {
                           <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.65rem' } }}>
                             {assign.assignedTo.map((id) => (
                               <Tooltip title={getUserDetails(id).name} key={id} arrow>
-                                <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                <Avatar src={getUserDetails(id).avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                   {getUserDetails(id).initial}
                                 </Avatar>
                               </Tooltip>
@@ -3398,6 +3402,7 @@ const TasksPage = () => {
                     }}
                   >
                     <Avatar
+                      src={option.avatarUrl || undefined}
                       sx={{
                         width: 32,
                         height: 32,

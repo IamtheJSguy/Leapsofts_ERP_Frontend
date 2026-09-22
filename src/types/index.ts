@@ -639,7 +639,7 @@ export interface MeetingMetrics {
 }
 
 export interface EmployeeFullMetrics {
-  user: { _id: string; name: string; email: string; jobTitle?: string };
+  user: { _id: string; name: string; email: string; avatarUrl?: string; jobTitle?: string };
   attendance: AttendanceMetrics;
   kpiPerformance: KpiPerformanceMetrics;
   sales: SalesMetrics;
@@ -688,7 +688,7 @@ export interface CombinedKpiMetrics {
 }
 
 export interface OverallUserMetrics {
-  user: { _id: string; name: string; email: string; role: string; jobTitle?: string };
+  user: { _id: string; name: string; email: string; avatarUrl?: string; role: string; jobTitle?: string };
   attendance: AttendanceMetrics;
   combinedKpi: CombinedKpiMetrics;
   salesActivity: SalesMetrics;
@@ -699,6 +699,7 @@ export interface TeamOverviewMemberRow {
   userId: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   attendanceRate: number;
   combinedCompletionRate: number;
@@ -1080,6 +1081,7 @@ export interface TeamConnectionRow {
   firstName?: string;
   lastName?: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   doneTasks: number;
   pendingTasks: number;

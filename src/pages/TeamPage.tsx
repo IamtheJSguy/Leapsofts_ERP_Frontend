@@ -947,6 +947,7 @@ const TeamPage = () => {
         {/* User Summary Card */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
           <Avatar
+            src={selectedUser.avatarUrl || undefined}
             sx={{
               width: 80,
               height: 80,
@@ -2234,6 +2235,7 @@ const TeamPage = () => {
                     >
                       <Avatar
                         className="avatar-glow"
+                        src={member.avatarUrl || undefined}
                         sx={{
                           width: 64,
                           height: 64,
@@ -2413,6 +2415,7 @@ const TeamPage = () => {
                     }}
                   >
                     <Avatar
+                      src={member.avatarUrl || undefined}
                       sx={{
                         width: 46,
                         height: 46,

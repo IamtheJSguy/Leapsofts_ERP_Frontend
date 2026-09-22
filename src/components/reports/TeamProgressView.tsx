@@ -176,6 +176,7 @@ export const TeamProgressView = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Avatar
+                        src={agent.avatarUrl || undefined}
                         sx={{
                           bgcolor: tokens.brand.primaryLight,
                           fontSize: '0.9rem',

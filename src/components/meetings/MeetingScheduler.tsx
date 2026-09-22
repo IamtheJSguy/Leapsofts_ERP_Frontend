@@ -523,7 +523,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                     const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
                     return (
                       <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-                        <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                        <Avatar src={option.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                           {initials}
                         </Avatar>
                         <Box>

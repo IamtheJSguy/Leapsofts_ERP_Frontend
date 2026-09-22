@@ -518,6 +518,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
             <Tooltip title={kanbanUserDisplayName(createdByUser)} arrow enterDelay={100}>
               <Box component="span" sx={{ display: 'inline-flex' }}>
                 <Avatar
+                  src={createdByUser.avatarUrl || undefined}
                   sx={{
                     width: 22,
                     height: 22,
@@ -538,6 +539,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
             <Tooltip key={u._id || idx} title={kanbanUserDisplayName(u)} arrow enterDelay={100}>
               <Box component="span" sx={{ display: 'inline-flex' }}>
                 <Avatar
+                  src={u.avatarUrl || undefined}
                   sx={{
                     bgcolor: tokens.brand.primary,
                     ...kanbanActiveMoverRingSx(u._id === lastMovedById),
@@ -2248,6 +2250,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   {task.lastMovedBy && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                       <Avatar
+                        src={task.lastMovedBy.avatarUrl || undefined}
                         sx={{
                           width: 28,
                           height: 28,
@@ -2272,6 +2275,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   {task.createdBy && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                       <Avatar
+                        src={task.createdBy.avatarUrl || undefined}
                         sx={{
                           width: 28,
                           height: 28,
@@ -2889,7 +2893,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
                     return (
                       <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
+                        <Avatar src={matchingUser?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 750 }} noWrap>{name}</Typography>
@@ -3637,7 +3641,7 @@ export const KanbanBoardPage = () => {
               );
               return (
                 <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
-                  <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                  <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
                 </Tooltip>
               );
             })}
@@ -4212,7 +4216,7 @@ export const KanbanBoardPage = () => {
               {boardMembers.map((u: any) => (
                 <MenuItem key={u._id} value={u._id}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
+                    <Avatar src={u.avatarUrl || undefined} sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
                       {(u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase()}
                     </Avatar>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -4341,7 +4345,7 @@ export const KanbanBoardPage = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
+                      <Avatar src={member.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
                         {initial}
                       </Avatar>
                       <Box sx={{ minWidth: 0 }}>
