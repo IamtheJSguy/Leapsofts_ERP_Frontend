@@ -66,10 +66,6 @@ export const getLockedPermissionKeys = (
     locked.add('createProjectsAndBoards');
   }
 
-  if (requiresViewSalesPage(department)) {
-    locked.add('viewSalesPage');
-  }
-
   return locked;
 };
 
@@ -85,11 +81,6 @@ export const permissionLockHelperText = (
   key: PermissionKey,
 ): string | undefined => {
   if (!isPermissionLocked(role, department, key)) return undefined;
-  if (key === 'viewSalesPage' && requiresViewSalesPage(department) && role !== ROLES.ADMIN) {
-    return department === DEPARTMENT.MARKETING
-      ? 'Required for Marketing department'
-      : 'Required for Sales department';
-  }
   if (role === ROLES.ADMIN) return 'Required for Admin';
   if (role === ROLES.MANAGER) return 'Required for Manager';
   return 'Required for this role';
