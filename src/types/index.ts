@@ -85,6 +85,8 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  organizationId?: string;
+  baseOrganizationId?: string;
   role: Role;
   permissions?: UserPermissions;
   isActive?: boolean;
