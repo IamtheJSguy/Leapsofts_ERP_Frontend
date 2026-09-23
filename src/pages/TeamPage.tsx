@@ -897,24 +897,28 @@ const TeamPage = () => {
                 Edit
               </Button>
 
-              {isAdmin && (
-                <>
-                  <Button
-                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
-                    sx={actionButtonSx}
-                    onClick={() => setIsReset2faOpen(true)}
-                  >
-                    Reset 2FA
-                  </Button>
-                  <Button
-                    startIcon={<LockIcon sx={{ fontSize: 15 }} />}
-                    sx={actionButtonSx}
-                    onClick={() => setIsResetPasswordOpen(true)}
-                  >
-                    Reset Password
-                  </Button>
-                </>
-              )}
+              {(() => {
+                const isBaseOrgAdmin =
+                  isAdmin && selectedUser.baseOrganizationId === currentUser?.organizationId;
+                return isBaseOrgAdmin && (
+                  <>
+                    <Button
+                      startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                      sx={actionButtonSx}
+                      onClick={() => setIsReset2faOpen(true)}
+                    >
+                      Reset 2FA
+                    </Button>
+                    <Button
+                      startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                      sx={actionButtonSx}
+                      onClick={() => setIsResetPasswordOpen(true)}
+                    >
+                      Reset Password
+                    </Button>
+                  </>
+                );
+              })()}
 
               <Button
                 startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
