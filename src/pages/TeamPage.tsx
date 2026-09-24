@@ -908,7 +908,8 @@ const TeamPage = () => {
               </Button>
 
               {(() => {
-                const canResetCredentials = isAdmin && selectedUser.organizationId === currentUser?.organizationId;
+                const baseOrgId = selectedUser.baseOrganizationId || selectedUser.organizationId;
+                const canResetCredentials = isAdmin && baseOrgId === currentUser?.organizationId;
                 return canResetCredentials && (
                   <>
                     <Button
