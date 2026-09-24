@@ -904,7 +904,7 @@ const TeamPage = () => {
                     <Button
                       startIcon={<LockIcon sx={{ fontSize: 15 }} />}
                       sx={actionButtonSx}
-                      onClick={() => setIsReseccccdist2faOpen(true)}
+                      onClick={() => setIsReset2faOpen(true)}
                     >
                       Reset 2FA
                     </Button>
