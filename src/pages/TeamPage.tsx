@@ -908,8 +908,8 @@ const TeamPage = () => {
               </Button>
 
               {(() => {
-                const baseOrgId = selectedUser.baseOrganizationId || selectedUser.organizationId;
-                const isBaseOrgAdmin = isAdmin && baseOrgId === currentUser?.organizationId;
+                const isBaseOrgAdmin =
+                  isAdmin && selectedUser.baseOrganizationId === currentUser?.organizationId;
                 return isBaseOrgAdmin && (
                   <>
                     <Button
