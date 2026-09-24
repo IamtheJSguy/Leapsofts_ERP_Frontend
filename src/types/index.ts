@@ -926,7 +926,7 @@ export interface Conversation {
 export interface ShiftBreak {
   startTime: string;
   endTime: string | null;
-  source?: 'manual' | 'idle' | 'sleep';
+  source?: 'manual' | 'idle' | 'sleep' | 'offline';
 }
 
 export interface Shift {
