@@ -114,9 +114,7 @@ export interface User {
   impersonatedBy?: string;
   impersonationReadOnly?: boolean;
   monitoringPolicyAcknowledgedAt?: string;
-  organizationId?: string;
   organizationName?: string;
-  baseOrganizationId?: string;
   memberships?: OrgMembership[];
   createdAt?: string;
 }
