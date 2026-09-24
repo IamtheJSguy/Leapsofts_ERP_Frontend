@@ -898,14 +898,13 @@ const TeamPage = () => {
               </Button>
 
               {(() => {
-                const baseOrgId = selectedUser.baseOrganizationId || selectedUser.organizationId;
-                const isBaseOrgAdmin = isAdmin && baseOrgId === currentUser?.organizationId;
-                return isBaseOrgAdmin && (
+                const canResetCredentials = isAdmin && selectedUser.organizationId === currentUser?.organizationId;
+                return canResetCredentials && (
                   <>
                     <Button
                       startIcon={<LockIcon sx={{ fontSize: 15 }} />}
                       sx={actionButtonSx}
-                      onClick={() => setIsReset2faOpen(true)}
+                      onClick={() => setIsReseccccdist2faOpen(true)}
                     >
                       Reset 2FA
                     </Button>
