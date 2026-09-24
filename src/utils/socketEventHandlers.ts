@@ -4,7 +4,7 @@ import type { Conversation, Message, MessageReaction, Notification, PresenceStat
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
-import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap } from '@/utils/chatMessageUtils';
+import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap, stripHtml } from '@/utils/chatMessageUtils';
 import { getDisplayName } from '@/utils/formatters';
 import {
   appendMessageToCache,
@@ -23,7 +23,7 @@ const recentlyProcessedMessages = new Set<string>();
 // Dual-emit dedupe for message:reaction (conversation room + user room).
 const recentlyProcessedReactions = new Set<string>();
 
-const notificationSound = new Audio('/notfication.mp3');
+const notificationSound = new Audio('/chat.mp3');
 notificationSound.preload = 'auto';
 
 const getSenderId = (message: Message): string => {
@@ -35,6 +35,19 @@ const getSenderId = (message: Message): string => {
   }
   return '';
 };
+
+const belongsToActiveOrg = (organizationId?: unknown): boolean => {
+  const active = useAuthStore.getState().user?.organizationId;
+  if (!active || organizationId == null || organizationId === '') return true;
+  const eventOrg =
+    typeof organizationId === 'object' && organizationId !== null && '_id' in organizationId
+      ? String((organizationId as { _id: unknown })._id)
+      : String(organizationId);
+  return eventOrg === active;
+};
+
+const conversationsCacheKey = () =>
+  ['conversations', useAuthStore.getState().user?.organizationId] as const;
 
 const getConversationId = (message: Message): string => {
   const id = message.conversationId as unknown;
@@ -110,7 +123,7 @@ const applyUserPresence = (
   });
 };
 
-const systemNotificationSound = new Audio('/amor.mp3');
+const systemNotificationSound = new Audio('/universfield.mp3');
 systemNotificationSound.preload = 'auto';
 
 export const setupSocketEventHandlers = (
@@ -120,10 +133,13 @@ export const setupSocketEventHandlers = (
   },
   queryClient: QueryClient,
 ): void => {
-  socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, () => {
+  socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, (data: unknown) => {
+    const notification = data as Notification & { organizationId?: unknown };
+    if (!belongsToActiveOrg(notification?.organizationId)) return;
+
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
-    
+
     try {
       systemNotificationSound.currentTime = 0;
       systemNotificationSound.play().catch(e => console.error("Audio playback failed:", e));
@@ -135,6 +151,10 @@ export const setupSocketEventHandlers = (
   socket.on(SOCKET_EVENTS.SHIFT_UPDATED, () => {
     queryClient.invalidateQueries({ queryKey: ['shifts'] });
     queryClient.invalidateQueries({ queryKey: ['users'] });
+  });
+
+  socket.on(SOCKET_EVENTS.ORG_ENTITLEMENTS_UPDATED, () => {
+    queryClient.invalidateQueries({ queryKey: ['org-entitlements'] });
   });
 
   socket.on(SOCKET_EVENTS.USER_ONLINE, (data: unknown) => {
@@ -166,6 +186,9 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
     const message = normalizeMessageReceipts(data as Message);
+    if (!belongsToActiveOrg((message as Message & { organizationId?: unknown }).organizationId)) {
+      return;
+    }
     const messageId = message._id;
 
     // Guard against double-delivery: the backend emits to both the conversation
@@ -192,7 +215,7 @@ export const setupSocketEventHandlers = (
       (old) => appendMessageToCache(old, message),
     );
 
-    queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+    queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return old;
       const updated = old.map((conv) => {
         if (conv._id !== conversationId) return conv;
@@ -229,23 +252,66 @@ export const setupSocketEventHandlers = (
         console.error("Audio not supported");
       }
 
-      let senderName = 'New Message';
+      let senderName = '';
       let senderAvatar = undefined;
 
+      // 1. If message.sender is populated as an object
       if (typeof message.sender === 'object' && message.sender !== null) {
-        const s = message.sender as any;
-        if (s.firstName || s.lastName) {
-          senderName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
-        } else if (s.name) {
-          senderName = s.name;
-        }
-        senderAvatar = s.avatar;
+        senderName = getDisplayName(message.sender as any);
+        senderAvatar = (message.sender as any).avatar;
       }
 
+      // 2. Fallback: Search conversation participants for senderId
+      if ((!senderName || senderName === 'Unknown') && senderId) {
+        try {
+          const conversations = queryClient.getQueryData<Conversation[]>(conversationsCacheKey());
+          const conv = conversations?.find((c) => c._id === conversationId);
+          const participant = conv?.participants?.find((p: any) => (p._id || p) === senderId);
+          if (participant && typeof participant === 'object') {
+            senderName = getDisplayName(participant as any);
+            senderAvatar = (participant as any).avatar;
+          }
+        } catch (e) {
+          console.error("Failed to look up sender in conversation participants:", e);
+        }
+      }
+
+      // 3. Fallback: Search global users query cache if available
+      if ((!senderName || senderName === 'Unknown') && senderId) {
+        try {
+          const users = queryClient.getQueryData<User[]>(['users']);
+          const u = users?.find((user) => user._id === senderId);
+          if (u) {
+            senderName = getDisplayName(u);
+            senderAvatar = (u as any).avatar;
+          }
+        } catch (e) {
+          console.error("Failed to look up sender in users cache:", e);
+        }
+      }
+
+      if (!senderName || senderName === 'Unknown') {
+        senderName = 'New Message';
+      }
+
+      // Check if conversation is a group chat to format title as "Sender Name (Group Name)"
+      let toastTitle = senderName;
+      try {
+        const conversations = queryClient.getQueryData<Conversation[]>(conversationsCacheKey());
+        const conv = conversations?.find((c) => c._id === conversationId);
+        if (conv?.isGroup && conv?.name) {
+          toastTitle = `${conv.name} (${senderName})`;
+        }
+      } catch (e) {
+        console.error("Failed to extract group name for toast:", e);
+      }
+
+      const cleanContent = stripHtml(message.content || '').trim() || (message.type === 'file' ? 'Sent an attachment' : 'Sent a message');
+
       useUIStore.getState().addToast({
-        message: message.content || 'Sent an attachment',
+        message: cleanContent,
         severity: 'message',
-        title: senderName,
+        title: toastTitle,
         avatar: senderAvatar,
         conversationId
       });
@@ -274,7 +340,7 @@ export const setupSocketEventHandlers = (
 
     if (userId === currentUserId) {
       useChatStore.getState().clearUnread(conversationId);
-      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+      queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
         if (!old) return old;
         return old.map((conv) =>
           conv._id === conversationId ? { ...conv, unreadCount: 0 } : conv,
@@ -291,14 +357,17 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.CONVERSATION_NEW, (data: unknown) => {
     const conversation = data as Conversation;
-    const existing = queryClient.getQueryData<Conversation[]>(['conversations']);
+    if (!belongsToActiveOrg((conversation as Conversation & { organizationId?: unknown }).organizationId)) {
+      return;
+    }
+    const existing = queryClient.getQueryData<Conversation[]>(conversationsCacheKey());
     if (!existing) {
       // Conversations haven't loaded yet — force a fresh fetch that will
       // include the new conversation returned by the server.
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       return;
     }
-    queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+    queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return [conversation];
       if (old.some((c) => c._id === conversation._id)) {
         // Already present — just merge in any updated fields (e.g. populated participants)
@@ -311,6 +380,9 @@ export const setupSocketEventHandlers = (
 
   socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, (data: unknown) => {
     const payload = data as Conversation & { removed?: boolean; participantId?: string };
+    if (!payload.removed && !belongsToActiveOrg((payload as Conversation & { organizationId?: unknown }).organizationId)) {
+      return;
+    }
     const currentUserId = useAuthStore.getState().user?._id;
 
     if (payload.removed && payload.participantId === currentUserId) {
@@ -318,7 +390,7 @@ export const setupSocketEventHandlers = (
       return;
     }
 
-    queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+    queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return old;
       const exists = old.some((c) => c._id === payload._id);
       if (!exists) return [payload, ...old];
@@ -443,8 +515,23 @@ export const appendNotification = (
   queryClient: QueryClient,
   notification: Notification,
 ): void => {
-  queryClient.setQueryData<Notification[]>(['notifications', {}], (old) =>
-    old ? [notification, ...old] : [notification],
-  );
+  queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
+    if (!old) return old;
+    if (Array.isArray(old)) {
+      return [notification, ...old.filter((n: Notification) => n._id !== notification._id)];
+    }
+    if (old.pages && old.pages.length > 0) {
+      const firstPage = old.pages[0];
+      const updatedFirstPage = {
+        ...firstPage,
+        data: [notification, ...(firstPage.data || []).filter((n: Notification) => n._id !== notification._id)],
+      };
+      return {
+        ...old,
+        pages: [updatedFirstPage, ...old.pages.slice(1)],
+      };
+    }
+    return old;
+  });
   queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
 };

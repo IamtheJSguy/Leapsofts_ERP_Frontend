@@ -2,9 +2,9 @@ export type Role = 'admin' | 'manager' | 'user';
 
 export type ConnectionStatus =
   | 'pending'
+  | 'sent'
   | 'accepted'
-  | 'declined'
-  | 'no_response';
+  | 'declined';
 
 export type MessageStatus =
   | 'not_sent'
@@ -72,6 +72,14 @@ export interface UserPermissions {
   createProjectsAndBoards: boolean;
 }
 
+export interface OrgMembership {
+  organizationId: string;
+  name: string;
+  slug: string;
+  role: Role;
+  isActive: boolean;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -103,6 +111,13 @@ export interface User {
   monitorScreenshots?: boolean;
   monitorAppUsage?: boolean;
   twoFactorEnabled?: boolean;
+  impersonatedBy?: string;
+  impersonationReadOnly?: boolean;
+  monitoringPolicyAcknowledgedAt?: string;
+  organizationId?: string;
+  organizationName?: string;
+  baseOrganizationId?: string;
+  memberships?: OrgMembership[];
   createdAt?: string;
 }
 
@@ -165,6 +180,22 @@ export interface VersionHistoryEntry {
   newValue: unknown;
   changedBy: string | User;
   changedAt: string;
+}
+
+export type LeadTimelineEventType =
+  | 'created'
+  | 'connection'
+  | 'message'
+  | 'follow_up'
+  | 'qualified';
+
+export interface LeadTimelineEvent {
+  id: string;
+  type: LeadTimelineEventType;
+  label: string;
+  detail?: string;
+  at: string;
+  byName?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -361,10 +392,14 @@ export interface SalesKpiTemplateDetail {
 
 /**
  * Payload for editing a single assignment item (PUT /sales-kpi-templates/assignments/:id).
- * Items are keyed by assignment item `_id`, not `templateItemId`.
+ * Items with `_id` patch an existing row; items without `_id` append a new KPI
+ * on this assignment only (no template change).
  */
 export interface SalesKpiAssignmentItemUpdate {
-  _id: string;
+  _id?: string;
+  name?: string;
+  description?: string;
+  metric?: SalesKpiMetric;
   daysOfWeek?: number[];
   scheduleMode?: SalesKpiScheduleMode;
   targetMode?: SalesKpiTargetMode;
@@ -558,6 +593,9 @@ export interface KpiDailyTrend {
   date: string;
   total: number;
   completed: number;
+  newProspects?: number;
+  messagesSent?: number;
+  followUps?: number;
 }
 
 export interface KpiTargetActualRow {
@@ -603,7 +641,7 @@ export interface MeetingMetrics {
 }
 
 export interface EmployeeFullMetrics {
-  user: { _id: string; name: string; email: string; jobTitle?: string };
+  user: { _id: string; name: string; email: string; avatarUrl?: string; jobTitle?: string };
   attendance: AttendanceMetrics;
   kpiPerformance: KpiPerformanceMetrics;
   sales: SalesMetrics;
@@ -652,7 +690,7 @@ export interface CombinedKpiMetrics {
 }
 
 export interface OverallUserMetrics {
-  user: { _id: string; name: string; email: string; role: string; jobTitle?: string };
+  user: { _id: string; name: string; email: string; avatarUrl?: string; role: string; jobTitle?: string };
   attendance: AttendanceMetrics;
   combinedKpi: CombinedKpiMetrics;
   salesActivity: SalesMetrics;
@@ -663,6 +701,7 @@ export interface TeamOverviewMemberRow {
   userId: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   attendanceRate: number;
   combinedCompletionRate: number;
@@ -686,6 +725,7 @@ export interface TeamOverviewMetrics {
 
 export interface Notification {
   _id: string;
+  organizationId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -795,6 +835,8 @@ export interface KanbanCard {
   lastMovedBy?: string | { _id: string; firstName?: string; lastName?: string; email: string };
   lastMovedAt?: string;
   subtasks?: KanbanSubtask[];
+  /** Optional Cloudinary cover image */
+  imageUrl?: string;
 }
 
 export interface KanbanComment {
@@ -1041,6 +1083,7 @@ export interface TeamConnectionRow {
   firstName?: string;
   lastName?: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   doneTasks: number;
   pendingTasks: number;
@@ -1169,6 +1212,12 @@ export interface SystemSettings {
   referenceSheetUrl?: string;
   notificationBroadcast?: boolean;
   automatedUserReportSchedule?: { daily: boolean; weekly: boolean };
+  notificationPreferences?: {
+    email: boolean;
+    portal: boolean;
+    kpiAlerts: boolean;
+    meetingReminders: boolean;
+  };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
 }
@@ -1189,6 +1238,8 @@ export interface LeadFilters {
   messageStatus?: string;
   /** When true, messageStatus is any of the messaged funnel statuses (not not_sent) */
   messaged?: boolean;
+  /** When true, connectionStatus is sent, accepted, or declined */
+  connectionSent?: boolean;
   futureLeadWindow?: 'upcoming' | 'due' | 'overdue' | 'due_soon';
   status?: string;
   location?: string;

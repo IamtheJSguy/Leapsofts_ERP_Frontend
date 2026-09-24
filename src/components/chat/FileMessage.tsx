@@ -21,7 +21,7 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
   const alt = message.content || 'Chat image';
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       <Box
         component="button"
         type="button"
@@ -38,6 +38,8 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           cursor: message.isPending ? 'default' : 'zoom-in',
           textAlign: 'left',
           position: 'relative',
+          overflow: 'hidden',
+          borderRadius: message.content?.trim() ? '16px 16px 0 0' : '16px',
         }}
       >
         <Box
@@ -46,9 +48,9 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           alt={alt}
           sx={{
             display: 'block',
-            maxWidth: { xs: 240, sm: 320 },
-            maxHeight: 280,
             width: '100%',
+            maxWidth: '100%',
+            maxHeight: 360,
             objectFit: 'cover',
             filter: message.isPending ? 'blur(3px) brightness(0.85)' : 'none',
             transition: 'filter 0.3s ease',
@@ -79,19 +81,19 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
         <Box
           className="prose tiptap-content"
           sx={{
-            px: 2,
-            pt: 1,
-            pb: 1,
+            px: 1.75,
+            pt: 1.25,
+            pb: 1.25,
             fontSize: '0.85rem',
             fontWeight: 500,
             lineHeight: 1.5,
             wordBreak: 'break-word',
-            color: isOwn ? '#fff' : 'inherit',
+            color: isOwn ? '#000' : 'text.primary',
             '& p': { m: 0 },
             '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
             '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
             '& a': {
-              color: isOwn ? '#fff' : tokens.brand.primary,
+              color: isOwn ? '#000' : tokens.brand.primary,
               textDecoration: 'underline',
             },
             '& mark': {

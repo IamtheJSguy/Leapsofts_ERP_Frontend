@@ -11,6 +11,7 @@ interface ChatState {
   setUnreadCount: (conversationId: string, count: number) => void;
   syncUnreadFromConversations: (conversations: Pick<Conversation, '_id' | 'unreadCount'>[]) => void;
   resetUnreadCounts: () => void;
+  resetChatSession: () => void;
   incrementUnread: (conversationId: string) => void;
   clearUnread: (conversationId: string) => void;
   addTypingUser: (conversationId: string, userId: string) => void;
@@ -42,6 +43,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { unreadCounts: next };
     }),
   resetUnreadCounts: () => set({ unreadCounts: {} }),
+  resetChatSession: () =>
+    set({
+      activeConversationId: null,
+      unreadCounts: {},
+      typingUsers: {},
+      replyingTo: null,
+      presenceByUserId: {},
+    }),
   incrementUnread: (conversationId) =>
     set((s) => ({
       unreadCounts: {

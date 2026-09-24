@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
 import type {
   ApiResponse,
   BulkCreateResponse,
@@ -7,6 +8,7 @@ import type {
   Lead,
   LeadFilters,
   LeadsListResponse,
+  LeadTimelineEvent,
   PaginatedResponse,
   ValidationResult,
 } from '@/types';
@@ -35,12 +37,14 @@ const leadApi = {
       ...(note ? { note } : {}),
       ...(number !== undefined ? { number } : {}),
     }),
-  getLeadHistory: (id: string) => api.get(`/leads/${id}/history`),
+  getLeadHistory: (id: string) =>
+    api.get<ApiResponse<LeadTimelineEvent[]>>(`/leads/${id}/history`),
 };
 
-export const useLeads = (filters: LeadFilters = {}) =>
-  useQuery({
-    queryKey: ['leads', filters],
+export const useLeads = (filters: LeadFilters = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['leads', organizationId, filters],
     queryFn: async (): Promise<LeadsListResponse> => {
       const response = await leadApi.getLeads(filters);
       const body = response.data;
@@ -56,6 +60,7 @@ export const useLeads = (filters: LeadFilters = {}) =>
     staleTime: 1000 * 60,
     placeholderData: (previous) => previous,
   });
+};
 
 export const useLead = (id: string | undefined) =>
   useQuery({
@@ -85,6 +90,7 @@ export const useUpdateLead = () => {
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
       queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
@@ -145,6 +151,7 @@ export const useQualifyLead = () => {
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
       queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -162,6 +169,7 @@ export const useDisqualifyLead = () => {
     onSuccess: (_res, id) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
       queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
@@ -173,7 +181,10 @@ export const useDisqualifyLead = () => {
 export const useLeadHistory = (id: string | undefined) =>
   useQuery({
     queryKey: ['leadHistory', id],
-    queryFn: () => leadApi.getLeadHistory(id!).then((r) => r.data.data),
+    queryFn: async (): Promise<LeadTimelineEvent[]> => {
+      const response = await leadApi.getLeadHistory(id!);
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    },
     enabled: !!id,
   });
 

@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react';
 import {
   Drawer,
   Typography,
@@ -7,6 +8,7 @@ import {
   useTheme,
   alpha,
   Fade,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
@@ -14,7 +16,7 @@ import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import DoneAllOutlinedIcon from '@mui/icons-material/DoneAllOutlined';
 import CircleIcon from '@mui/icons-material/Circle';
 import { useNavigate } from 'react-router-dom';
-import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/api/useNotifications';
+import { useInfiniteNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead } from '@/hooks/api/useNotifications';
 import { useUIStore } from '@/store/useUIStore';
 import { formatDateTime } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
@@ -63,14 +65,46 @@ const getChatMentionMessageId = (notification: Notification): string | undefined
 export const NotificationPanel = () => {
   const navigate = useNavigate();
   const { notificationPanelOpen, setNotificationPanelOpen } = useUIStore();
-  const { data: notifications = [], isLoading } = useNotifications();
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteNotifications(30);
+  const { data: serverUnreadCount } = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
+
+  const notifications = useMemo(() => {
+    if (!data?.pages) return [];
+    const all = data.pages.flatMap((page) => page.data || []);
+    const seen = new Set<string>();
+    return all.filter((n) => {
+      if (!n?._id || seen.has(n._id)) return false;
+      seen.add(n._id);
+      return true;
+    });
+  }, [data?.pages]);
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      if (target.scrollHeight - target.scrollTop - target.clientHeight < 50) {
+        if (hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
   
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = typeof serverUnreadCount === 'number'
+    ? serverUnreadCount
+    : notifications.filter((n) => !n.isRead).length;
 
   const handleMarkAllRead = () => {
     if (unreadCount > 0) {
@@ -197,7 +231,10 @@ export const NotificationPanel = () => {
         </Box>
 
         {/* Content Area */}
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 1.5, sm: 3 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
+        <Box
+          onScroll={handleScroll}
+          sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 1.5, sm: 3 }, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}
+        >
           {isLoading ? (
             // Skeleton Loading State
             Array.from(new Array(4)).map((_, i) => (
@@ -243,164 +280,171 @@ export const NotificationPanel = () => {
             </Box>
           ) : (
             // Notification List
-            notifications.map((n, index) => (
-              <Fade in={true} timeout={300 + (index * 100)} key={n._id}>
-                <Box
-                  onClick={() => {
-                    if (!n.isRead) markAsRead.mutate(n._id);
-                    if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
-                      setNotificationPanelOpen(false);
-                      navigate('/tasks?tab=change_requests');
-                    } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {
-                      setNotificationPanelOpen(false);
-                      navigate(`/meetings?meetingId=${(n as any).metadata.meetingId}`);
-                    } else if (n.type === NOTIFICATION_TYPE.CHAT_MESSAGE_MENTION) {
-                      const conversationId = getChatMentionConversationId(n);
-                      if (conversationId) {
-                        setNotificationPanelOpen(false);
-                        const messageId = getChatMentionMessageId(n);
-                        const search = messageId
-                          ? `?message=${encodeURIComponent(messageId)}`
-                          : '';
-                        navigate(`/chat/${conversationId}${search}`);
-                      }
-                    } else if (n.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION && (n as any).metadata?.boardId) {
-                      setNotificationPanelOpen(false);
-                      const m = (n as any).metadata;
-                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
-                    } else if (n.type === NOTIFICATION_TYPE.KANBAN_UNASSIGNED_CARDS && (n as any).metadata?.boardId) {
-                      setNotificationPanelOpen(false);
-                      const m = (n as any).metadata;
-                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}`);
-                    } else if (
-                      (n.type === NOTIFICATION_TYPE.KANBAN_TASK_ASSIGNED ||
-                        n.type === NOTIFICATION_TYPE.KANBAN_TASK_COMPLETED ||
-                        n.type === NOTIFICATION_TYPE.TASK_DUE_SOON ||
-                        n.type === NOTIFICATION_TYPE.KPI_OVERDUE) &&
-                      (n as any).metadata?.cardId &&
-                      (n as any).metadata?.boardId
-                    ) {
-                      setNotificationPanelOpen(false);
-                      const m = (n as any).metadata;
-                      navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}`);
-                    } else if (n.type === NOTIFICATION_TYPE.KPI_OVERDUE) {
-                      setNotificationPanelOpen(false);
-                      navigate('/tasks');
-                    }
-                  }}
-                  sx={{
-                    position: 'relative',
-                    p: { xs: 2, sm: 2.5 },
-                    borderRadius: '20px',
-                    display: 'flex',
-                    gap: { xs: 1.5, sm: 2.5 },
-                    cursor: 'pointer',
-                    bgcolor: !n.isRead 
-                      ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 6%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 3%, transparent)`) 
-                      : (isDarkMode ? `color-mix(in srgb, #FFF 1.5%, transparent)` : '#FFFFFF'),
-                    border: `1px solid ${
-                      !n.isRead 
-                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`)
-                        : (isDarkMode ? `color-mix(in srgb, #FFF 4%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`)
-                    }`,
-                    boxShadow: !n.isRead && !isDarkMode ? '0 4px 20px rgba(93, 26, 137, 0.03)' : 'none',
-                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      bgcolor: !n.isRead 
-                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`)
-                        : (isDarkMode ? `color-mix(in srgb, #FFF 3%, transparent)` : `color-mix(in srgb, #000 1.5%, transparent)`),
-                      boxShadow: isDarkMode ? '0 8px 30px rgba(0,0,0,0.4)' : '0 8px 30px rgba(0,0,0,0.06)',
-                      borderColor: !n.isRead ? `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)` : (isDarkMode ? `color-mix(in srgb, #FFF 8%, transparent)` : `color-mix(in srgb, #000 8%, transparent)`),
-                    }
-                  }}
-                >
-                  {/* Unread Indicator Dot */}
-                  {!n.isRead && (
-                    <Box 
-                      sx={{ 
-                        position: 'absolute', 
-                        top: '50%', left: 0, 
-                        transform: 'translate(-50%, -50%)', 
-                        width: 8, height: 8, 
-                        borderRadius: '50%', 
-                        bgcolor: tokens.brand.primary,
-                        boxShadow: `0 0 10px ${`color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`}`
-                      }} 
-                    />
-                  )}
-
-                  {/* Icon Container */}
+            <>
+              {notifications.map((n, index) => (
+                <Fade in={true} timeout={300 + (index * 100)} key={n._id}>
                   <Box
+                    onClick={() => {
+                      if (!n.isRead) markAsRead.mutate(n._id);
+                      if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
+                        setNotificationPanelOpen(false);
+                        navigate('/tasks?tab=change_requests');
+                      } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {
+                        setNotificationPanelOpen(false);
+                        navigate(`/meetings?meetingId=${(n as any).metadata.meetingId}`);
+                      } else if (n.type === NOTIFICATION_TYPE.CHAT_MESSAGE_MENTION) {
+                        const conversationId = getChatMentionConversationId(n);
+                        if (conversationId) {
+                          setNotificationPanelOpen(false);
+                          const messageId = getChatMentionMessageId(n);
+                          const search = messageId
+                            ? `?message=${encodeURIComponent(messageId)}`
+                            : '';
+                          navigate(`/chat/${conversationId}${search}`);
+                        }
+                      } else if (n.type === NOTIFICATION_TYPE.KANBAN_COMMENT_MENTION && (n as any).metadata?.boardId) {
+                        setNotificationPanelOpen(false);
+                        const m = (n as any).metadata;
+                        navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}&comment=${m.commentId}`);
+                      } else if (n.type === NOTIFICATION_TYPE.KANBAN_UNASSIGNED_CARDS && (n as any).metadata?.boardId) {
+                        setNotificationPanelOpen(false);
+                        const m = (n as any).metadata;
+                        navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}`);
+                      } else if (
+                        (n.type === NOTIFICATION_TYPE.KANBAN_TASK_ASSIGNED ||
+                          n.type === NOTIFICATION_TYPE.KANBAN_TASK_COMPLETED ||
+                          n.type === NOTIFICATION_TYPE.TASK_DUE_SOON ||
+                          n.type === NOTIFICATION_TYPE.KPI_OVERDUE) &&
+                        (n as any).metadata?.cardId &&
+                        (n as any).metadata?.boardId
+                      ) {
+                        setNotificationPanelOpen(false);
+                        const m = (n as any).metadata;
+                        navigate(`/projects/${m.projectId || m.boardId}/boards/${m.boardId}?card=${m.cardId}`);
+                      } else if (n.type === NOTIFICATION_TYPE.KPI_OVERDUE) {
+                        setNotificationPanelOpen(false);
+                        navigate('/tasks');
+                      }
+                    }}
                     sx={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '14px',
-                      flexShrink: 0,
+                      position: 'relative',
+                      p: { xs: 2, sm: 2.5 },
+                      borderRadius: '20px',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: !n.isRead ? tokens.brand.primary : 'text.secondary',
+                      gap: { xs: 1.5, sm: 2.5 },
+                      cursor: 'pointer',
                       bgcolor: !n.isRead 
-                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)`)
-                        : (isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`),
+                        ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 6%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 3%, transparent)`) 
+                        : (isDarkMode ? `color-mix(in srgb, #FFF 1.5%, transparent)` : '#FFFFFF'),
+                      border: `1px solid ${
+                        !n.isRead 
+                          ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 10%, transparent)`)
+                          : (isDarkMode ? `color-mix(in srgb, #FFF 4%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`)
+                      }`,
+                      boxShadow: !n.isRead && !isDarkMode ? '0 4px 20px rgba(93, 26, 137, 0.03)' : 'none',
+                      transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        bgcolor: !n.isRead 
+                          ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 5%, transparent)`)
+                          : (isDarkMode ? `color-mix(in srgb, #FFF 3%, transparent)` : `color-mix(in srgb, #000 1.5%, transparent)`),
+                        boxShadow: isDarkMode ? '0 8px 30px rgba(0,0,0,0.4)' : '0 8px 30px rgba(0,0,0,0.06)',
+                        borderColor: !n.isRead ? `color-mix(in srgb, ${tokens.brand.primary} 25%, transparent)` : (isDarkMode ? `color-mix(in srgb, #FFF 8%, transparent)` : `color-mix(in srgb, #000 8%, transparent)`),
+                      }
                     }}
                   >
-                    {getNotificationIcon(n)}
-                  </Box>
+                    {/* Unread Indicator Dot */}
+                    {!n.isRead && (
+                      <Box 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: '50%', left: 0, 
+                          transform: 'translate(-50%, -50%)', 
+                          width: 8, height: 8, 
+                          borderRadius: '50%', 
+                          bgcolor: tokens.brand.primary,
+                          boxShadow: `0 0 10px ${`color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`}`
+                        }} 
+                      />
+                    )}
 
-                  {/* Content */}
-                  <Box sx={{ flex: 1, minWidth: 0, pt: 0.2 }}>
-                    <Typography 
-                      variant="subtitle2" 
-                      sx={{ 
-                        fontWeight: !n.isRead ? 800 : 650, 
-                        color: isDarkMode ? '#FFF' : tokens.text.primary,
-                        mb: 0.5,
-                        letterSpacing: '-0.01em',
-                        fontSize: '0.92rem',
+                    {/* Icon Container */}
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '14px',
+                        flexShrink: 0,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 0.75,
+                        justifyContent: 'center',
+                        color: !n.isRead ? tokens.brand.primary : 'text.secondary',
+                        bgcolor: !n.isRead 
+                          ? (isDarkMode ? `color-mix(in srgb, ${tokens.brand.primary} 15%, transparent)` : `color-mix(in srgb, ${tokens.brand.primary} 8%, transparent)`)
+                          : (isDarkMode ? `color-mix(in srgb, #FFF 5%, transparent)` : `color-mix(in srgb, #000 4%, transparent)`),
                       }}
                     >
-                      <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                        {n.title}
-                      </Box>
-                      {TASK_NOTIFICATION_TYPES.has(n.type) &&
-                        typeof (n as { metadata?: { priority?: string } }).metadata?.priority === 'string' && (
-                          <PriorityBadge priority={(n as { metadata?: { priority?: string } }).metadata!.priority} />
-                        )}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: 'text.secondary', 
-                        lineHeight: 1.4,
-                        mb: 1.5,
-                        fontSize: '0.84rem'
-                      }}
-                    >
-                      {n.message}
-                    </Typography>
-                    
-                    {/* Timestamp */}
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: !n.isRead ? tokens.brand.primary : 'text.disabled',
-                        fontWeight: 750,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        fontSize: '0.65rem'
-                      }}
-                    >
-                      {formatDateTime(n.createdAt)}
-                    </Typography>
+                      {getNotificationIcon(n)}
+                    </Box>
+
+                    {/* Content */}
+                    <Box sx={{ flex: 1, minWidth: 0, pt: 0.2 }}>
+                      <Typography 
+                        variant="subtitle2" 
+                        sx={{ 
+                          fontWeight: !n.isRead ? 800 : 650, 
+                          color: isDarkMode ? '#FFF' : tokens.text.primary,
+                          mb: 0.5,
+                          letterSpacing: '-0.01em',
+                          fontSize: '0.92rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                        }}
+                      >
+                        <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                          {n.title}
+                        </Box>
+                        {TASK_NOTIFICATION_TYPES.has(n.type) &&
+                          typeof (n as { metadata?: { priority?: string } }).metadata?.priority === 'string' && (
+                            <PriorityBadge priority={(n as { metadata?: { priority?: string } }).metadata!.priority} />
+                          )}
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: 'text.secondary', 
+                          lineHeight: 1.4,
+                          mb: 1.5,
+                          fontSize: '0.84rem'
+                        }}
+                      >
+                        {n.message}
+                      </Typography>
+                      
+                      {/* Timestamp */}
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: !n.isRead ? tokens.brand.primary : 'text.disabled',
+                          fontWeight: 750,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          fontSize: '0.65rem'
+                        }}
+                      >
+                        {formatDateTime(n.createdAt)}
+                      </Typography>
+                    </Box>
                   </Box>
+                </Fade>
+              ))}
+              {isFetchingNextPage && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={24} sx={{ color: tokens.brand.primary }} />
                 </Box>
-              </Fade>
-            ))
+              )}
+            </>
           )}
         </Box>
       </Box>

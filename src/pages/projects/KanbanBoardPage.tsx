@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Box, Typography, Button, useTheme, IconButton, InputAdornment,
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
-  DialogContent, DialogActions, Drawer, CircularProgress,
+  DialogContent, DialogActions, Drawer, CircularProgress, Modal,
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
   InputLabel, Select, OutlinedInput, Tooltip, Divider,
   Popover, Checkbox, Autocomplete, Collapse,
@@ -34,12 +34,15 @@ import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
 import LinkIcon from '@mui/icons-material/Link';
 import EventIcon from '@mui/icons-material/Event';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { tokens } from '@/styles/tokens';
 import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
+import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
@@ -66,6 +69,7 @@ import {
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
   useUpdateBoard,
 } from '@/hooks/api/useKanban';
+import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -199,6 +203,83 @@ const PRIORITY_CONFIG = {
   urgent: { label: 'Urgent', color: '#f87171', bg: 'rgba(248,113,113,0.08)', dot: '#dc2626', border: 'rgba(248,113,113,0.2)' },
 };
 
+const CARD_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const CARD_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
+const MAX_CARD_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const isAllowedCardImage = (file: File) =>
+  CARD_IMAGE_TYPES.has(file.type) && file.size <= MAX_CARD_IMAGE_BYTES;
+
+const stopCardImageEvent = (e: { stopPropagation: () => void }) => {
+  e.stopPropagation();
+};
+
+const CardImageLightbox = ({
+  src,
+  open,
+  onClose,
+}: {
+  src: string;
+  open: boolean;
+  onClose: () => void;
+}) => (
+  <Modal
+    open={open}
+    onClose={onClose}
+    aria-label="Image preview"
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      p: { xs: 2, sm: 4 },
+    }}
+  >
+    <Box
+      sx={{
+        position: 'relative',
+        outline: 'none',
+        maxWidth: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <IconButton
+        aria-label="Close image preview"
+        onClick={onClose}
+        sx={{
+          position: 'fixed',
+          top: 16,
+          right: 16,
+          zIndex: 1,
+          color: '#fff',
+          bgcolor: 'rgba(0,0,0,0.45)',
+          '&:hover': { bgcolor: 'rgba(0,0,0,0.65)' },
+        }}
+      >
+        <CloseIcon />
+      </IconButton>
+      <Box
+        component="img"
+        src={src}
+        alt=""
+        onClick={stopCardImageEvent}
+        sx={{
+          display: 'block',
+          maxWidth: '96vw',
+          maxHeight: '90vh',
+          width: 'auto',
+          height: 'auto',
+          objectFit: 'contain',
+          borderRadius: 1,
+          boxShadow: '0 12px 48px rgba(0,0,0,0.45)',
+        }}
+      />
+    </Box>
+  </Modal>
+);
+
 const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
   const companyName = task.lead?.company || (task.lead ? 'Lead Prospect' : null);
   const priority = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.medium;
@@ -251,6 +332,21 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
         }
       }}
     >
+      {task.imageUrl && (
+        <Box
+          component="img"
+          src={task.imageUrl}
+          alt=""
+          sx={{
+            width: '100%',
+            height: 140,
+            objectFit: 'cover',
+            borderRadius: '12px',
+            mb: 1.75,
+            display: 'block',
+          }}
+        />
+      )}
       {/* Top row: label chips + priority pill */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.75, gap: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
@@ -362,9 +458,20 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
 
       {/* Description preview */}
       {task.description && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 2, lineHeight: 1.5, fontWeight: 500 }}>
-          {task.description}
-        </Typography>
+        <RichTextContent
+          content={task.description}
+          sx={{
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            mb: 1.5,
+            fontSize: '0.8rem',
+            lineHeight: 1.5,
+            color: 'text.secondary',
+            '& p': { m: 0, mb: 0.25 },
+          }}
+        />
       )}
 
       {/* Bottom row */}
@@ -411,6 +518,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
             <Tooltip title={kanbanUserDisplayName(createdByUser)} arrow enterDelay={100}>
               <Box component="span" sx={{ display: 'inline-flex' }}>
                 <Avatar
+                  src={createdByUser.avatarUrl || undefined}
                   sx={{
                     width: 22,
                     height: 22,
@@ -431,6 +539,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
             <Tooltip key={u._id || idx} title={kanbanUserDisplayName(u)} arrow enterDelay={100}>
               <Box component="span" sx={{ display: 'inline-flex' }}>
                 <Avatar
+                  src={u.avatarUrl || undefined}
                   sx={{
                     bgcolor: tokens.brand.primary,
                     ...kanbanActiveMoverRingSx(u._id === lastMovedById),
@@ -1484,6 +1593,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [pendingKpiEndDate, setPendingKpiEndDate] = useState('');
   const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (task && open) {
@@ -1533,6 +1643,9 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const updateCardMutation = useUpdateCard(boardId);
   const assignCardMutation = useAssignCard(boardId);
   const deleteCardMutation = useDeleteCard(boardId);
+  const uploadCardImageMutation = useUploadCardImage(boardId);
+  const deleteCardImageMutation = useDeleteCardImage(boardId);
+  const cardImageInputRef = useRef<HTMLInputElement>(null);
   const createLabelMutation = useCreateLabel(boardId);
   const deleteLabelMutation = useDeleteLabel(boardId);
   const attachMeetingMutation = useAttachCardMeeting(boardId);
@@ -1965,6 +2078,112 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         <Box sx={{ p: 3, overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
           {activeTab === 'details' && (
             <>
+              <Box sx={{
+                p: 2.5,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                borderRadius: '16px',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, color: 'text.secondary' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ImageOutlinedIcon fontSize="small" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 750, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cover image</Typography>
+                  </Box>
+                </Box>
+                <input
+                  ref={cardImageInputRef}
+                  type="file"
+                  accept={CARD_IMAGE_ACCEPT}
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    if (!isAllowedCardImage(file)) {
+                      addToast({
+                        message: 'Use a JPEG, PNG, or WebP image up to 5MB.',
+                        severity: 'error',
+                      });
+                      return;
+                    }
+                    uploadCardImageMutation.mutate(
+                      { cardId: task.id, file },
+                      {
+                        onError: (err: any) => {
+                          addToast({
+                            message: err?.response?.data?.message || err?.message || 'Failed to upload image',
+                            severity: 'error',
+                          });
+                        },
+                      },
+                    );
+                  }}
+                />
+                {task.imageUrl || rawCard?.imageUrl ? (
+                  <Box>
+                    <Box
+                      component="img"
+                      src={task.imageUrl || rawCard?.imageUrl}
+                      alt=""
+                      onClick={() => setImageLightboxOpen(true)}
+                      sx={{
+                        width: '100%',
+                        maxHeight: 220,
+                        objectFit: 'cover',
+                        borderRadius: '12px',
+                        display: 'block',
+                        mb: 1.5,
+                        cursor: 'zoom-in',
+                      }}
+                    />
+                    <CardImageLightbox
+                      src={task.imageUrl || rawCard.imageUrl}
+                      open={imageLightboxOpen}
+                      onClose={() => setImageLightboxOpen(false)}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => cardImageInputRef.current?.click()}
+                        disabled={uploadCardImageMutation.isPending || deleteCardImageMutation.isPending}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '20px' }}
+                      >
+                        {uploadCardImageMutation.isPending ? 'Uploading...' : 'Change'}
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          deleteCardImageMutation.mutate(task.id, {
+                            onError: (err: any) => {
+                              addToast({
+                                message: err?.response?.data?.message || err?.message || 'Failed to remove image',
+                                severity: 'error',
+                              });
+                            },
+                          });
+                        }}
+                        disabled={uploadCardImageMutation.isPending || deleteCardImageMutation.isPending}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '20px' }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    startIcon={uploadCardImageMutation.isPending ? <CircularProgress size={16} /> : <ImageOutlinedIcon />}
+                    onClick={() => cardImageInputRef.current?.click()}
+                    disabled={uploadCardImageMutation.isPending}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '20px' }}
+                  >
+                    {uploadCardImageMutation.isPending ? 'Uploading...' : 'Add image'}
+                  </Button>
+                )}
+              </Box>
+
               {/* Description Section */}
               <Box sx={{
                 p: 2.5,
@@ -1979,36 +2198,32 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   </Box>
                   </Box>
                   {canEdit ? (
-                    <Box sx={{ mt: 1 }}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        minRows={3}
-                        placeholder="Add a detailed description..."
+                    <Box
+                      sx={{
+                        mt: 1,
+                        borderRadius: '12px',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'}`,
+                        bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <RichTextEditor
                         value={editDesc}
-                        onChange={(e) => setEditDesc(e.target.value)}
-                        sx={{
-                          mb: 1.5,
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '12px',
-                            bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
-                          }
-                        }}
+                        onChange={setEditDesc}
+                        submitOnEnter={false}
+                        alwaysShowToolbar={true}
+                        minHeight="100px"
+                        maxHeight="300px"
+                        placeholder="Add a detailed description..."
+                        mentionableUsers={allUsers}
                       />
                     </Box>
                   ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: task.description ? 'text.secondary' : 'text.disabled',
-                        lineHeight: 1.7,
-                        whiteSpace: 'pre-wrap',
-                        minHeight: 24,
-                        fontStyle: task.description ? 'normal' : 'italic',
-                      }}
-                    >
-                      {task.description || 'No description provided.'}
-                    </Typography>
+                    <RichTextContent
+                      content={task.description}
+                      mentionableUsers={allUsers}
+                      sx={{ mt: 0.5 }}
+                    />
                   )}
               </Box>
 
@@ -2035,6 +2250,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   {task.lastMovedBy && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                       <Avatar
+                        src={task.lastMovedBy.avatarUrl || undefined}
                         sx={{
                           width: 28,
                           height: 28,
@@ -2059,6 +2275,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   {task.createdBy && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                       <Avatar
+                        src={task.createdBy.avatarUrl || undefined}
                         sx={{
                           width: 28,
                           height: 28,
@@ -2676,7 +2893,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
                     return (
                       <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
+                        <Avatar src={matchingUser?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 750 }} noWrap>{name}</Typography>
@@ -2799,6 +3016,7 @@ export const KanbanBoardPage = () => {
   const deleteColumnMutation = useDeleteColumn();
   const reorderColumnsMutation = useReorderColumns();
   const createCardMutation = useCreateCard(activeBoardId);
+  const uploadCardImageMutation = useUploadCardImage(activeBoardId);
   const assignCardMutation = useAssignCard(activeBoardId);
   const updateBoardMutation = useUpdateBoard();
 
@@ -2941,6 +3159,9 @@ export const KanbanBoardPage = () => {
   const [newCardDueDate, setNewCardDueDate] = useState('');
   const [newCardDueTime, setNewCardDueTime] = useState('');
   const [newCardAssignees, setNewCardAssignees] = useState<string[]>([]);
+  const [newCardImageFile, setNewCardImageFile] = useState<File | null>(null);
+  const [newCardImagePreview, setNewCardImagePreview] = useState('');
+  const newCardImageInputRef = useRef<HTMLInputElement>(null);
 
   // Page Confirm Dialog State
   const [columnConfirmOpen, setColumnConfirmOpen] = useState(false);
@@ -3006,7 +3227,7 @@ export const KanbanBoardPage = () => {
         dueDate: card.dueDate,
         isDone: Boolean(card.isDone),
         comments: card.comments?.filter((c: any) => c.isActive !== false).length || 0,
-        attachments: 0,
+        imageUrl: card.imageUrl,
         assignedUsers: cardAssignees,
         labels: resolvedLabels,
         createdBy: resolveKanbanUser(card.createdBy, allUsers),
@@ -3134,8 +3355,24 @@ export const KanbanBoardPage = () => {
     });
   };
 
+  const resetCreateCardForm = () => {
+    setNewCardTitle('');
+    setNewCardDescription('');
+    setNewCardPriority('medium');
+    setNewCardDueDate('');
+    setNewCardDueTime('');
+    setNewCardAssignees([]);
+    setNewCardImageFile(null);
+    setNewCardImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    if (newCardImageInputRef.current) newCardImageInputRef.current.value = '';
+  };
+
   const handleCreateCardSubmit = () => {
     if (newCardTitle.trim() && activeBoardId && cardTargetColumnId) {
+      const imageFile = newCardImageFile;
       createCardMutation.mutate({
         boardId: activeBoardId,
         columnId: cardTargetColumnId,
@@ -3153,13 +3390,30 @@ export const KanbanBoardPage = () => {
               data: { assignedTo: newCardAssignees },
             });
           }
-          setNewCardTitle('');
-          setNewCardDescription('');
-          setNewCardPriority('medium');
-          setNewCardDueDate('');
-          setNewCardDueTime('');
-          setNewCardAssignees([]);
-          setIsCardDialogOpen(false);
+          const finish = () => {
+            resetCreateCardForm();
+            setIsCardDialogOpen(false);
+          };
+          if (cardId && imageFile) {
+            uploadCardImageMutation.mutate(
+              { cardId, file: imageFile },
+              {
+                onSuccess: finish,
+                onError: (err: any) => {
+                  addToast({
+                    message:
+                      err?.response?.data?.message
+                      || err?.message
+                      || 'Card created, but the image failed to upload. You can add it from the card details.',
+                    severity: 'error',
+                  });
+                  finish();
+                },
+              },
+            );
+            return;
+          }
+          finish();
         },
       });
     }
@@ -3387,7 +3641,7 @@ export const KanbanBoardPage = () => {
               );
               return (
                 <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
-                  <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                  <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
                 </Tooltip>
               );
             })}
@@ -3689,26 +3943,61 @@ export const KanbanBoardPage = () => {
       {/* ── Rich Card Creation Dialog ── */}
       <Dialog
         open={isCardDialogOpen}
-        onClose={() => setIsCardDialogOpen(false)}
+        onClose={() => {
+          resetCreateCardForm();
+          setIsCardDialogOpen(false);
+        }}
         maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: '24px',
-            p: 1.5,
             bgcolor: isDarkMode ? '#1E1B24' : '#fff',
             backgroundImage: 'none',
             boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-            overflow: 'visible',
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Create New Card</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>Add a custom task to this column</Typography>
+        <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Create New Card</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mt: 0.25 }}>Add a custom task to this column</Typography>
+          </Box>
+          <IconButton
+            onClick={() => {
+              resetCreateCardForm();
+              setIsCardDialogOpen(false);
+            }}
+            size="small"
+            sx={{ color: 'text.secondary' }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 3.5, pb: 3, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'visible' }}>
+        <DialogContent
+          sx={{
+            px: 3,
+            pt: 3,
+            pb: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2.5,
+            flexGrow: 1,
+            overflowY: 'auto',
+            minHeight: 0,
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+              borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+          }}
+        >
           {/* Title */}
           <TextField
             autoFocus
@@ -3720,6 +4009,7 @@ export const KanbanBoardPage = () => {
             onChange={(e) => setNewCardTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleCreateCardSubmit(); }}
             sx={{
+              mt: 0.75,
               '& .MuiOutlinedInput-root': {
                 borderRadius: '14px',
                 fontWeight: 650,
@@ -3727,20 +4017,109 @@ export const KanbanBoardPage = () => {
             }}
           />
 
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+              Cover image (optional)
+            </Typography>
+            <input
+              ref={newCardImageInputRef}
+              type="file"
+              accept={CARD_IMAGE_ACCEPT}
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                if (!isAllowedCardImage(file)) {
+                  addToast({
+                    message: 'Use a JPEG, PNG, or WebP image up to 5MB.',
+                    severity: 'error',
+                  });
+                  return;
+                }
+                setNewCardImagePreview((prev) => {
+                  if (prev) URL.revokeObjectURL(prev);
+                  return URL.createObjectURL(file);
+                });
+                setNewCardImageFile(file);
+              }}
+            />
+            {newCardImagePreview ? (
+              <Box>
+                <Box
+                  component="img"
+                  src={newCardImagePreview}
+                  alt=""
+                  sx={{
+                    width: '100%',
+                    height: 160,
+                    objectFit: 'cover',
+                    borderRadius: '14px',
+                    display: 'block',
+                    mb: 1,
+                  }}
+                />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => newCardImageInputRef.current?.click()}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '20px' }}
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      setNewCardImageFile(null);
+                      setNewCardImagePreview((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return '';
+                      });
+                    }}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '20px' }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<ImageOutlinedIcon />}
+                onClick={() => newCardImageInputRef.current?.click()}
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '14px' }}
+              >
+                Add image
+              </Button>
+            )}
+          </Box>
+
           {/* Description */}
-          <TextField
-            fullWidth
-            label="Description"
-            placeholder="Add more details about this task..."
-            variant="outlined"
-            multiline
-            rows={3}
-            value={newCardDescription}
-            onChange={(e) => setNewCardDescription(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': { borderRadius: '14px' }
-            }}
-          />
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+              Description
+            </Typography>
+            <Box
+              sx={{
+                borderRadius: '14px',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                overflow: 'hidden',
+              }}
+            >
+              <RichTextEditor
+                value={newCardDescription}
+                onChange={setNewCardDescription}
+                submitOnEnter={false}
+                alwaysShowToolbar={true}
+                minHeight="90px"
+                maxHeight="250px"
+                placeholder="Add more details about this task..."
+              />
+            </Box>
+          </Box>
 
           {/* Priority + Due Date row */}
           <Box sx={{ display: 'flex', gap: 2 }}>
@@ -3837,7 +4216,7 @@ export const KanbanBoardPage = () => {
               {boardMembers.map((u: any) => (
                 <MenuItem key={u._id} value={u._id}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
+                    <Avatar src={u.avatarUrl || undefined} sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}>
                       {(u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase()}
                     </Avatar>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -3850,16 +4229,19 @@ export const KanbanBoardPage = () => {
           </FormControl>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1.5 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            gap: 1.5,
+            flexShrink: 0,
+            borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          }}
+        >
           <Button
             onClick={() => {
+              resetCreateCardForm();
               setIsCardDialogOpen(false);
-              setNewCardTitle('');
-              setNewCardDescription('');
-              setNewCardPriority('medium');
-              setNewCardDueDate('');
-              setNewCardDueTime('');
-              setNewCardAssignees([]);
             }}
             sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 3 }}
           >
@@ -3867,7 +4249,7 @@ export const KanbanBoardPage = () => {
           </Button>
           <Button
             onClick={handleCreateCardSubmit}
-            disabled={!newCardTitle.trim() || createCardMutation.isPending}
+            disabled={!newCardTitle.trim() || createCardMutation.isPending || uploadCardImageMutation.isPending}
             variant="contained"
             sx={{
               bgcolor: tokens.brand.primary,
@@ -3880,7 +4262,7 @@ export const KanbanBoardPage = () => {
               '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' },
             }}
           >
-            {createCardMutation.isPending ? 'Creating...' : 'Create Card'}
+            {createCardMutation.isPending || uploadCardImageMutation.isPending ? 'Creating...' : 'Create Card'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -3963,7 +4345,7 @@ export const KanbanBoardPage = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
+                      <Avatar src={member.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
                         {initial}
                       </Avatar>
                       <Box sx={{ minWidth: 0 }}>

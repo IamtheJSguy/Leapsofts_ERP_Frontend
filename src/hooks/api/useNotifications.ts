@@ -1,10 +1,25 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { Notification } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
+
+export interface NotificationMeta {
+  page?: number;
+  limit?: number;
+  total?: number;
+  hasMore?: boolean;
+  unreadCount?: number;
+}
+
+export interface NotificationsResponse {
+  success?: boolean;
+  data: Notification[];
+  meta?: NotificationMeta;
+}
 
 const notificationApi = {
-  getNotifications: (params: Record<string, string>) =>
-    api.get<{ data: Notification[] }>('/notifications', { params }),
+  getNotifications: (params: Record<string, string | number> = {}) =>
+    api.get<NotificationsResponse>('/notifications', { params }),
   markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllAsRead: () => api.patch('/notifications/read-all'),
   updatePreferences: (data: Record<string, boolean>) =>
@@ -12,19 +27,40 @@ const notificationApi = {
   getUnreadCount: () => api.get<{ data: { count: number } }>('/notifications/unread-count'),
 };
 
-export const useNotifications = (params: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['notifications', params],
+export const useInfiniteNotifications = (limit = 30) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useInfiniteQuery({
+    queryKey: ['notifications', organizationId, { limit }],
+    queryFn: ({ pageParam = 1 }) =>
+      notificationApi.getNotifications({ page: pageParam, limit }).then((r) => r.data),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage?.meta?.hasMore) {
+        return (lastPage.meta.page ?? 1) + 1;
+      }
+      return undefined;
+    },
+    refetchInterval: 30000,
+  });
+};
+
+export const useNotifications = (params: Record<string, string | number> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['notifications', organizationId, params],
     queryFn: () => notificationApi.getNotifications(params).then((r) => r.data.data),
     refetchInterval: 30000,
   });
+};
 
-export const useUnreadCount = () =>
-  useQuery({
-    queryKey: ['unreadCount'],
+export const useUnreadCount = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['unreadCount', organizationId],
     queryFn: () => notificationApi.getUnreadCount().then((r) => r.data.data.count),
     refetchInterval: 30000,
   });
+};
 
 export const useMarkAsRead = () => {
   const queryClient = useQueryClient();
@@ -33,18 +69,30 @@ export const useMarkAsRead = () => {
     onMutate: async (id: string) => {
       await queryClient.cancelQueries({ queryKey: ['notifications'] });
       const previousNotifications = queryClient.getQueryData(['notifications']);
-      
-      queryClient.setQueriesData<Notification[]>({ queryKey: ['notifications'] }, (old) => {
+
+      queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
         if (!old) return old;
-        return old.map(n => n._id === id ? { ...n, isRead: true } : n);
+        if (Array.isArray(old)) {
+          return old.map((n: Notification) => (n._id === id ? { ...n, isRead: true } : n));
+        }
+        if (old.pages) {
+          return {
+            ...old,
+            pages: old.pages.map((page: NotificationsResponse) => ({
+              ...page,
+              data: page.data?.map((n: Notification) => (n._id === id ? { ...n, isRead: true } : n)) || [],
+            })),
+          };
+        }
+        return old;
       });
-      
+
       // Update unread count
-      queryClient.setQueryData<number>(['unreadCount'], (old) => {
+      queryClient.setQueriesData<number>({ queryKey: ['unreadCount'] }, (old) => {
         if (typeof old !== 'number') return old;
         return Math.max(0, old - 1);
       });
-      
+
       return { previousNotifications };
     },
     onError: (_err, _newTodo, context) => {

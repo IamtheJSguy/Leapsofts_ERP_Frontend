@@ -44,6 +44,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
 import type { Lead } from '@/types';
@@ -64,22 +65,18 @@ import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
+import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
   saveSalesEditDraft,
 } from '@/lib/salesEditDraftDb';
-import SendIcon from '@mui/icons-material/Send';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
-import ForumIcon from '@mui/icons-material/Forum';
 import EventIcon from '@mui/icons-material/Event';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
-import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
-import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
+import { resolvePermissions } from '@/lib/permissions';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
@@ -94,6 +91,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
     setLeadModalMode('qualify');
@@ -129,69 +127,42 @@ export const SalesPage = () => {
   const getCardTheme = (label: string) => {
     switch (label) {
       case 'TOTAL':
-        return {
-          icon: <SendIcon sx={{ fontSize: 20 }} />,
-          color: tokens.brand.primary,
-          bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.08)',
-          hoverBorder: tokens.brand.primary,
-        };
+      case 'TOTAL LEADS':
+        return { color: tokens.brand.primary, hoverBorder: tokens.brand.primary };
       case 'ACCEPTED':
-        return {
-          icon: <GroupAddIcon sx={{ fontSize: 20 }} />,
-          color: tokens.brand.accent,
-          bgcolor: isDarkMode ? 'rgba(255, 127, 17, 0.15)' : 'rgba(255, 127, 17, 0.08)',
-          hoverBorder: tokens.brand.accent,
-        };
+        return { color: tokens.brand.accent, hoverBorder: tokens.brand.accent };
       case 'MESSAGE SENT':
-        return {
-          icon: <MarkEmailReadIcon sx={{ fontSize: 20 }} />,
-          color: '#0EA5E9',
-          bgcolor: isDarkMode ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)',
-          hoverBorder: '#0EA5E9',
-        };
+        return { color: '#0EA5E9', hoverBorder: '#0EA5E9' };
       case 'IN CONVERSATION':
-        return {
-          icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />,
-          color: '#8B5CF6',
-          bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
-          hoverBorder: '#8B5CF6',
-        };
+        return { color: '#8B5CF6', hoverBorder: '#8B5CF6' };
       case 'RESPONDED':
-        return {
-          icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />,
-          color: '#8B5CF6',
-          bgcolor: isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
-          hoverBorder: '#8B5CF6',
-        };
+        return { color: '#8B5CF6', hoverBorder: '#8B5CF6' };
       case 'FOLLOW UP':
-        return {
-          icon: <ForumIcon sx={{ fontSize: 20 }} />,
-          color: '#3B82F6',
-          bgcolor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
-          hoverBorder: '#3B82F6',
-        };
+        return { color: '#3B82F6', hoverBorder: '#3B82F6' };
       case 'NEGATIVE':
-        return {
-          icon: <ThumbDownOffAltIcon sx={{ fontSize: 20 }} />,
-          color: tokens.semantic.error,
-          bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
-          hoverBorder: tokens.semantic.error,
-        };
+        return { color: tokens.semantic.error, hoverBorder: tokens.semantic.error };
       case 'POSITIVE':
-        return {
-          icon: <ThumbUpOffAltIcon sx={{ fontSize: 20 }} />,
-          color: tokens.semantic.success,
-          bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
-          hoverBorder: tokens.semantic.success,
-        };
+        return { color: tokens.semantic.success, hoverBorder: tokens.semantic.success };
       default:
-        return {
-          icon: <SendIcon sx={{ fontSize: 20 }} />,
-          color: tokens.brand.primary,
-          bgcolor: 'rgba(0,0,0,0.05)',
-          hoverBorder: tokens.brand.primary,
-        };
+        return { color: tokens.brand.primary, hoverBorder: tokens.brand.primary };
     }
+  };
+
+  const funnelCardHeading = (label: string) => {
+    if (label === 'TOTAL' || label === 'TOTAL LEADS') {
+      if (totalView === 'pending') return 'PENDING';
+      if (totalView === 'sent') return 'SENT';
+      return 'TOTAL LEADS';
+    }
+    if (label === 'ACCEPTED') return 'ACCEPTED';
+    if (label === 'FOLLOW UP') {
+      if (followUpView === '1') return 'FOLLOW UP 1';
+      if (followUpView === '2') return 'FOLLOW UP 2';
+      return 'FOLLOW UP';
+    }
+    if (label === 'MESSAGE SENT') return 'MESSAGE SENT';
+    if (label === 'IN CONVERSATION') return 'IN CONVERSATION';
+    return label;
   };
 
   // Dynamic style injection to hide scrollbars globally while this page is active
@@ -216,31 +187,6 @@ export const SalesPage = () => {
       if (el) el.remove();
     };
   }, []);
-
-  const getLinkedinMsgStyle = (msg?: string) => {
-    if (!msg) return { color: 'text.secondary', bg: 'transparent', border: 'none' };
-    const m = msg.toLowerCase();
-    if (m.includes('sent') && !m.includes('not')) {
-      return {
-        color: isDarkMode ? '#34D399' : tokens.semantic.success,
-        bg: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : 'rgba(45, 138, 94, 0.08)',
-        border: isDarkMode ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(45, 138, 94, 0.15)',
-      };
-    }
-    if (m.includes('pending') || m.includes('not')) {
-      return {
-        color: isDarkMode ? '#FBBF24' : tokens.semantic.warning,
-        bg: isDarkMode ? 'rgba(251, 191, 36, 0.1)' : 'rgba(184, 134, 11, 0.08)',
-        border: isDarkMode ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(184, 134, 11, 0.15)',
-      };
-    }
-    // Default fallback
-    return {
-      color: isDarkMode ? '#A8A2B2' : tokens.text.secondary,
-      bg: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-      border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-    };
-  };
 
   const getAssignedName = (assigned: any) => {
     if (!assigned) return 'Unassigned';
@@ -284,9 +230,16 @@ export const SalesPage = () => {
   const [futureLeadWindow, setFutureLeadWindow] = useState<string>('');
   const [messagedOnly, setMessagedOnly] = useState(false);
   const [followUpView, setFollowUpView] = useState<'all' | '1' | '2'>('all');
+  const [totalView, setTotalView] = useState<'all' | 'pending' | 'sent'>('all');
 
   const { data: usersData } = useUsers();
-  const usersList = (usersData || []).filter((u: any) => u.role !== 'admin');
+  const usersList = useMemo(() => {
+    return (usersData || []).filter((u: any) => {
+      if (u.role === 'admin') return true;
+      const perms = resolvePermissions(u.role, u.department, u.permissions);
+      return perms.viewSalesPage === true;
+    });
+  }, [usersData]);
   const { data: icpsData } = useIcps();
   const icpsList = icpsData || [];
   const { data: profilesData } = useProfiles();
@@ -385,17 +338,25 @@ export const SalesPage = () => {
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
   const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
 
-  const handleMarkConnectionAccepted = useCallback((id: string) => {
+  const handleAdvanceConnectionStatus = useCallback((id: string, currentStatus?: string) => {
     if (markingAcceptedIds[id]) return;
+    const nextStatus = currentStatus === 'sent' ? 'accepted' : currentStatus === 'pending' || !currentStatus
+      ? 'sent'
+      : null;
+    if (!nextStatus) return;
     setMarkingAcceptedIds((prev) => ({ ...prev, [id]: true }));
     updateLead.mutate(
-      { id, data: { connectionStatus: 'accepted' } },
+      { id, data: { connectionStatus: nextStatus } },
       {
         onSuccess: () => {
-          addToast({ message: 'Marked as accepted', severity: 'success' });
+          addToast({
+            message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
+            severity: 'success',
+          });
         },
         onError: (err: any) => {
-          const errorMsg = err?.response?.data?.error?.message || 'Failed to mark as accepted';
+          const errorMsg = err?.response?.data?.error?.message
+            || (nextStatus === 'sent' ? 'Failed to mark as sent' : 'Failed to mark as accepted');
           addToast({ message: errorMsg, severity: 'error' });
         },
         onSettled: () => {
@@ -590,7 +551,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -609,6 +570,14 @@ export const SalesPage = () => {
       ...(futureLeadWindow ? { futureLeadWindow } : {}),
     };
 
+    if ((activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS') && totalView === 'pending') {
+      filters.connectionStatus = 'pending';
+      delete filters.connectionSent;
+    }
+    if ((activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS') && totalView === 'sent') {
+      filters.connectionSent = true;
+      delete filters.connectionStatus;
+    }
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
     if (activeCard === 'IN CONVERSATION') filters.messageStatus = 'in_conversation';
     if (activeCard === 'MESSAGE SENT') {
@@ -625,11 +594,20 @@ export const SalesPage = () => {
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
+  const filterToolbarRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToTopRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLeadsFetching && leadsResponse && shouldScrollToTopRef.current) {
+      shouldScrollToTopRef.current = false;
+      filterToolbarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isLeadsFetching, leadsResponse]);
 
   useEffect(() => {
     const map: Record<string, any> = {};
@@ -789,6 +767,23 @@ export const SalesPage = () => {
   const [leadModalMode, setLeadModalMode] = useState<'update' | 'qualify'>('qualify');
   const [disqualifyLeadId, setDisqualifyLeadId] = useState<string>('');
 
+  // Activity timeline popover — only one lead's timeline is open at a time
+  const [timelineAnchorEl, setTimelineAnchorEl] = useState<HTMLElement | null>(null);
+  const [timelineLeadId, setTimelineLeadId] = useState<string | null>(null);
+
+  const handleOpenTimeline = useCallback(
+    (event: React.MouseEvent<HTMLElement>, leadId: string) => {
+      setTimelineAnchorEl(event.currentTarget);
+      setTimelineLeadId(leadId);
+    },
+    [],
+  );
+
+  const handleCloseTimeline = useCallback(() => {
+    setTimelineAnchorEl(null);
+    setTimelineLeadId(null);
+  }, []);
+
   useEffect(() => {
     if (user && (user as any).googleSheetId && !googleSheetLink) {
       const sheetId = (user as any).googleSheetId;
@@ -826,8 +821,21 @@ export const SalesPage = () => {
           ? pct(conversionRates.followUp2Rate ?? 0)
           : pct(conversionRates.followUpRate ?? 0);
 
+    const totalValue =
+      totalView === 'pending'
+        ? String(pipelineStats.pendingConnections ?? 0)
+        : totalView === 'sent'
+          ? String(pipelineStats.connectionsSent ?? 0)
+          : String(pipelineStats.totalProspects);
+    const totalPercent =
+      totalView === 'pending'
+        ? pct(conversionRates.pendingRate ?? 0)
+        : totalView === 'sent'
+          ? pct(conversionRates.sentRate ?? 0)
+          : null;
+
     return [
-      { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
+      { label: 'TOTAL', value: totalValue, percent: totalPercent },
       { label: 'ACCEPTED', value: String(pipelineStats.acceptedConnections), percent: pct(conversionRates.acceptRate) },
       { label: 'MESSAGE SENT', value: String(pipelineStats.messageSent ?? 0), percent: pct(conversionRates.messageSentRate ?? 0) },
       { label: 'IN CONVERSATION', value: String(pipelineStats.inConversation ?? 0), percent: pct(conversionRates.conversationRate ?? 0) },
@@ -835,7 +843,7 @@ export const SalesPage = () => {
       { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
       { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
     ];
-  }, [pipelineStats, followUpView]);
+  }, [pipelineStats, followUpView, totalView]);
 
   const applyFunnelCard = (label: string) => {
     setActiveCard(label);
@@ -863,6 +871,9 @@ export const SalesPage = () => {
     } else if (label === 'ACCEPTED') {
       setSelectedStatus('All statuses');
       setSelectedConnectionStatus('accepted');
+    } else if (label === 'TOTAL' || label === 'TOTAL LEADS') {
+      setSelectedStatus('All statuses');
+      setSelectedConnectionStatus('');
     } else {
       setSelectedStatus('All statuses');
       setSelectedConnectionStatus('');
@@ -1004,12 +1015,32 @@ export const SalesPage = () => {
             '@media (min-width: 1024px)': {
               gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
             },
-            gap: { xs: 1.25, md: 1.5, lg: 1.25, xl: 1.75 },
+            gap: { xs: 1, md: 0.85, xl: 1.25 },
             mb: 1.5,
           }}
         >
           {stats.map((item, idx) => {
             const theme = getCardTheme(item.label);
+            const isTotalCard = item.label === 'TOTAL' || item.label === 'TOTAL LEADS';
+            const funnelSelectSx = {
+              minWidth: 36,
+              width: 36,
+              height: 18,
+              flex: '0 0 auto',
+              fontSize: '0.5rem',
+              fontWeight: 800,
+              '& .MuiSelect-select': {
+                py: 0,
+                px: '2px !important',
+                pr: '14px !important',
+                overflow: 'visible',
+                textOverflow: 'clip',
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+              },
+              '& .MuiSvgIcon-root': { fontSize: 12, right: 0 },
+            } as const;
             return (
               <Card
                 key={idx}
@@ -1018,12 +1049,14 @@ export const SalesPage = () => {
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `2px solid ${activeCard === item.label ? theme.color : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)')}`,
                   borderRadius: '20px',
-                  p: { xs: 1.25, md: 1.5, xl: 1.75 },
+                  overflow: 'visible',
+                  px: { xs: 1, md: 0.85, xl: 1.15 },
+                  py: { xs: 1.5, md: 1.5, xl: 2 },
                   minWidth: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: 1.25,
+                  justifyContent: 'flex-start',
+                  gap: 0.85,
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
                   cursor: 'pointer',
@@ -1034,142 +1067,118 @@ export const SalesPage = () => {
                   },
                 }}
               >
-                {/* Top Row: Icon on left, Percentage on right */}
                 <Box
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     width: '100%',
-                    gap: 0.5,
+                    gap: 0.4,
+                    minWidth: 0,
+                    flexWrap: 'nowrap',
                   }}
                 >
-                  <Box
+                  <Typography
+                    variant="caption"
+                    title={funnelCardHeading(item.label)}
                     sx={{
-                      width: { xs: 32, md: 34, xl: 36 },
-                      height: { xs: 32, md: 34, xl: 36 },
-                      borderRadius: '10px',
-                      bgcolor: theme.bgcolor,
-                      color: theme.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      '& .MuiSvgIcon-root': {
-                        fontSize: { xs: '1.1rem', xl: '1.25rem' },
-                      },
+                      color: 'text.secondary',
+                      fontWeight: 750,
+                      fontSize: 'clamp(0.4rem, 0.72vw, 0.62rem)',
+                      letterSpacing: 0,
+                      lineHeight: 1.2,
+                      flex: '1 1 auto',
+                      minWidth: 0,
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {theme.icon}
-                  </Box>
-
-                  {item.percent && (
-                    <Chip
-                      label={item.percent}
-                      size="small"
+                    {funnelCardHeading(item.label)}
+                  </Typography>
+                  {(item.percent) && (
+                    <Typography
+                      component="span"
                       sx={{
-                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                         color: 'text.secondary',
-                        fontSize: '0.62rem',
-                        height: 20,
+                        fontSize: 'clamp(0.4rem, 0.6vw, 0.58rem)',
                         fontWeight: 800,
-                        px: 0.2,
-                        '& .MuiChip-label': { px: 0.75 },
+                        lineHeight: 1,
+                        whiteSpace: 'nowrap',
+                        flex: '0 0 auto',
                       }}
-                    />
+                    >
+                      {item.percent}
+                    </Typography>
                   )}
                 </Box>
 
-                {/* Bottom Section: Label & Stat Value */}
-                <Box sx={{ minWidth: 0, width: '100%', mt: 'auto' }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 0.5,
-                      minHeight: 26,
-                      mb: 0.5,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      title={
-                        item.label === 'FOLLOW UP'
-                          ? followUpView === '1'
-                            ? 'FOLLOW UP 1'
-                            : followUpView === '2'
-                              ? 'FOLLOW UP 2'
-                              : 'FOLLOW UP'
-                          : item.label
-                      }
-                      sx={{
-                        color: 'text.secondary',
-                        fontWeight: 750,
-                        fontSize: { xs: '0.6rem', xl: '0.65rem' },
-                        letterSpacing: '0.03em',
-                        lineHeight: 1.2,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {item.label === 'FOLLOW UP'
-                        ? followUpView === '1'
-                          ? 'FOLLOW UP 1'
-                          : followUpView === '2'
-                            ? 'FOLLOW UP 2'
-                            : 'FOLLOW UP'
-                        : item.label}
-                    </Typography>
-
-                    {item.label === 'FOLLOW UP' && (
-                      <Select
-                        size="small"
-                        value={followUpView}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          const next = e.target.value as 'all' | '1' | '2';
-                          setFollowUpView(next);
-                          applyFunnelCard('FOLLOW UP');
-                        }}
-                        sx={{
-                          minWidth: 50,
-                          height: 20,
-                          fontSize: '0.6rem',
-                          fontWeight: 800,
-                          flexShrink: 0,
-                          '& .MuiSelect-select': {
-                            py: 0,
-                            px: 0.6,
-                            pr: '16px !important',
-                          },
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-                          },
-                          '& .MuiSvgIcon-root': { fontSize: 13 },
-                        }}
-                      >
-                        <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
-                        <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>#1</MenuItem>
-                        <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>#2</MenuItem>
-                      </Select>
-                    )}
-                  </Box>
-
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 0.5,
+                    mt: 'auto',
+                    width: '100%',
+                    minWidth: 0,
+                  }}
+                >
                   <Typography
                     variant="h5"
                     sx={{
                       fontWeight: 800,
                       color: theme.color,
-                      fontSize: { xs: '1.25rem', md: '1.35rem', xl: '1.55rem' },
-                      lineHeight: 1,
+                      fontSize: 'clamp(0.95rem, 1.35vw, 1.35rem)',
+                      lineHeight: 1.1,
                       letterSpacing: '-0.02em',
+                      whiteSpace: 'nowrap',
+                      textAlign: isTotalCard || item.label === 'FOLLOW UP' ? 'left' : 'center',
+                      flex: '1 1 auto',
+                      minWidth: 0,
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
                     {item.value}
                   </Typography>
+                  {isTotalCard && (
+                    <Select
+                      size="small"
+                      value={totalView}
+                      renderValue={(value) =>
+                        value === 'pending' ? 'P' : value === 'sent' ? 'S' : 'A'
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const next = e.target.value as 'all' | 'pending' | 'sent';
+                        setTotalView(next);
+                        applyFunnelCard('TOTAL');
+                      }}
+                      sx={funnelSelectSx}
+                    >
+                      <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                      <MenuItem value="pending" sx={{ fontSize: '0.72rem' }}>Pending</MenuItem>
+                      <MenuItem value="sent" sx={{ fontSize: '0.72rem' }}>Sent</MenuItem>
+                    </Select>
+                  )}
+                  {item.label === 'FOLLOW UP' && (
+                    <Select
+                      size="small"
+                      value={followUpView}
+                      renderValue={(value) =>
+                        value === '1' ? '#1' : value === '2' ? '#2' : 'All'
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const next = e.target.value as 'all' | '1' | '2';
+                        setFollowUpView(next);
+                        applyFunnelCard('FOLLOW UP');
+                      }}
+                      sx={{ ...funnelSelectSx, minWidth: 40, width: 40 }}
+                    >
+                      <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                      <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>#1</MenuItem>
+                      <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>#2</MenuItem>
+                    </Select>
+                  )}
                 </Box>
               </Card>
             );
@@ -1330,6 +1339,7 @@ export const SalesPage = () => {
         <Box className="animate-fade-in-up">
           {/* Filters Command Toolbar */}
           <Box
+            ref={filterToolbarRef}
             sx={{
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
@@ -1527,9 +1537,9 @@ export const SalesPage = () => {
               >
                 <MenuItem value="">All Connection Statuses</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="sent">Sent</MenuItem>
                 <MenuItem value="accepted">Accepted</MenuItem>
                 <MenuItem value="declined">Declined</MenuItem>
-                <MenuItem value="no_response">No Response</MenuItem>
               </Select>
             </FormControl>
 
@@ -1786,6 +1796,7 @@ export const SalesPage = () => {
           ) : (
             /* Connected Prospects View - Show Table */
             <TableContainer
+              ref={tableContainerRef}
               component={Paper}
               sx={{
                 borderRadius: '24px',
@@ -1799,11 +1810,11 @@ export const SalesPage = () => {
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>PROSPECT</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>CAMPAIGN (ICP)</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>OUTREACH STATUS</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>LINKEDIN ACTION</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>ASSIGNED AGENT</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, px: 1, width: 60, minWidth: 60, whiteSpace: 'nowrap' }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, pl: 2, whiteSpace: 'nowrap' }}>PROSPECT</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>CAMPAIGN (ICP)</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>OUTREACH STATUS</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, whiteSpace: 'nowrap' }}>ASSIGNED AGENT</TableCell>
                     <TableCell sx={{ borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }} />
                   </TableRow>
                 </TableHead>
@@ -1821,7 +1832,9 @@ export const SalesPage = () => {
                       onCancel={handleInlineAddCancel}
                     />
                   )}
-                  {prospects.map((prospect) => {
+                  {prospects.map((prospect, idx) => {
+                    const responsePage = leadsResponse?.meta?.page ?? page;
+                    const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
                     const isEditing = !!editingLeads[prospect._id];
                     if (isEditing) {
                       const editData = editingLeads[prospect._id];
@@ -1830,6 +1843,7 @@ export const SalesPage = () => {
                           key={`edit-${prospect._id}`}
                           leadId={prospect._id}
                           editData={editData}
+                          indexNumber={globalRowIndex}
                           isDarkMode={isDarkMode}
                           icpsList={icpsList}
                           profileUsersList={profileUsersList}
@@ -1848,7 +1862,6 @@ export const SalesPage = () => {
                         />
                       );
                     }
-
                     const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
                     const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -1856,14 +1869,12 @@ export const SalesPage = () => {
                     const msgToken = (messageStatusTokens as any)[prospect.messageStatus || 'not_sent'] || messageStatusTokens.not_sent;
                     const isMarkingSent = !!markingSentIds[prospect._id];
                     const isMarkingAccepted = !!markingAcceptedIds[prospect._id];
-                    const canMarkConnAccepted =
-                      (prospect.connectionStatus || 'pending') === 'pending';
+                    const canAdvanceConn =
+                      (prospect.connectionStatus || 'pending') === 'pending'
+                      || prospect.connectionStatus === 'sent';
                     const canMarkMsgSent =
                       prospect.connectionStatus === 'accepted' &&
                       (prospect.messageStatus || 'not_sent') === 'not_sent';
-
-                    const lkMsgStyle = getLinkedinMsgStyle(prospect.linkedinMsg);
-
                     return (
                       <TableRow
                         key={prospect._id}
@@ -1876,8 +1887,37 @@ export const SalesPage = () => {
                           },
                         }}
                       >
+                        {/* Continuous Index / Counter */}
+                        <TableCell align="center" sx={{ py: 2, borderBottom: 0, px: 1, width: 60, minWidth: 60 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: 32,
+                              height: 24,
+                              px: 0.8,
+                              borderRadius: '8px',
+                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                              color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.muted,
+                              fontSize: '0.74rem',
+                              fontWeight: 750,
+                              fontVariantNumeric: 'tabular-nums',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              '.MuiTableRow-root:hover &': {
+                                bgcolor: isDarkMode ? 'rgba(255,127,17,0.15)' : 'rgba(255,127,17,0.08)',
+                                color: tokens.brand.accent,
+                                borderColor: 'rgba(255,127,17,0.25)',
+                              },
+                            }}
+                          >
+                            {String(globalRowIndex).padStart(2, '0')}
+                          </Box>
+                        </TableCell>
+
                         {/* Prospect Details */}
-                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 3 }}>
+                        <TableCell sx={{ py: 2, borderBottom: 0, pl: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
                               role="button"
@@ -2005,20 +2045,25 @@ export const SalesPage = () => {
                                   : `Conn: ${prospect.connectionStatus || 'pending'}`
                               }
                               size="small"
-                              clickable={canMarkConnAccepted && !isMarkingAccepted}
+                              clickable={canAdvanceConn && !isMarkingAccepted}
                               disabled={isMarkingAccepted}
                               onClick={
-                                canMarkConnAccepted && !isMarkingAccepted
+                                canAdvanceConn && !isMarkingAccepted
                                   ? (e) => {
                                       e.stopPropagation();
-                                      handleMarkConnectionAccepted(prospect._id);
+                                      handleAdvanceConnectionStatus(
+                                        prospect._id,
+                                        prospect.connectionStatus || 'pending',
+                                      );
                                     }
                                   : undefined
                               }
                               aria-label={
-                                canMarkConnAccepted
-                                  ? 'Mark connection as accepted'
-                                  : `Connection status ${prospect.connectionStatus || 'pending'}`
+                                (prospect.connectionStatus || 'pending') === 'pending'
+                                  ? 'Mark connection as sent'
+                                  : prospect.connectionStatus === 'sent'
+                                    ? 'Mark connection as accepted'
+                                    : `Connection status ${prospect.connectionStatus || 'pending'}`
                               }
                               sx={{
                                 bgcolor: connToken.bg,
@@ -2029,7 +2074,7 @@ export const SalesPage = () => {
                                 textTransform: 'uppercase',
                                 borderRadius: '6px',
                                 border: `1px solid ${`color-mix(in srgb, ${connToken.color} 12%, transparent)`}`,
-                                ...(canMarkConnAccepted
+                                ...(canAdvanceConn
                                   ? {
                                       cursor: isMarkingAccepted ? 'wait' : 'pointer',
                                       boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${connToken.color} 28%, transparent)`,
@@ -2156,27 +2201,6 @@ export const SalesPage = () => {
                           </Box>
                         </TableCell>
 
-                        {/* LinkedIn message/action status */}
-                        <TableCell sx={{ py: 2, borderBottom: 0 }}>
-                          {prospect.linkedinMsg ? (
-                            <Chip
-                              label={prospect.linkedinMsg}
-                              size="small"
-                              sx={{
-                                bgcolor: lkMsgStyle.bg,
-                                color: lkMsgStyle.color,
-                                fontWeight: 750,
-                                fontSize: '0.66rem',
-                                height: 22,
-                                borderRadius: '8px',
-                                border: lkMsgStyle.border,
-                              }}
-                            />
-                          ) : (
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
-                          )}
-                        </TableCell>
-
                         {/* Assigned Representative */}
                         <TableCell sx={{ py: 2, borderBottom: 0 }}>
                           <Typography variant="body2" sx={{ color: isDarkMode ? '#fff' : tokens.text.primary, fontWeight: 700, fontSize: '0.86rem' }}>
@@ -2217,6 +2241,22 @@ export const SalesPage = () => {
                                 }}
                               >
                                 <EditIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Track lead activity" arrow>
+                              <IconButton
+                                size="small"
+                                aria-label="Track lead activity"
+                                onClick={(e) => handleOpenTimeline(e, String(prospect._id))}
+                                sx={{
+                                  color: timelineLeadId === prospect._id ? tokens.brand.primary : 'text.secondary',
+                                  '&:hover': {
+                                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                    color: tokens.brand.primary,
+                                  }
+                                }}
+                              >
+                                <TimelineOutlinedIcon sx={{ fontSize: 18 }} />
                               </IconButton>
                             </Tooltip>
                             {prospect.isQualified ? (
@@ -2306,7 +2346,10 @@ export const SalesPage = () => {
               component="div"
               count={totalProspects}
               page={page - 1}
-              onPageChange={(_, newPage) => setPage(newPage + 1)}
+              onPageChange={(_, newPage) => {
+                setPage(newPage + 1);
+                shouldScrollToTopRef.current = true;
+              }}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={(event) => {
                 setRowsPerPage(parseInt(event.target.value, 10));
@@ -2330,6 +2373,12 @@ export const SalesPage = () => {
           )}
         </Box>
       )}
+
+      <LeadTimelinePopover
+        leadId={timelineLeadId}
+        anchorEl={timelineAnchorEl}
+        onClose={handleCloseTimeline}
+      />
 
       {/* Qualify a Lead Modal */}
       <Dialog

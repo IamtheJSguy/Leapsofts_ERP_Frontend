@@ -154,7 +154,7 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
                 }
                 arrow
               >
-                <Avatar sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+                <Avatar src={m.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
               </Tooltip>
             );
           })}
