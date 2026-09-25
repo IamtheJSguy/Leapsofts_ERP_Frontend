@@ -169,7 +169,7 @@ const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, co
   );
 };
 
-const DEFAULT_DUE_TIME = '17:00';
+const DEFAULT_DUE_TIME = '23:59';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
