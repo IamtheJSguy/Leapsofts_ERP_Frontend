@@ -547,39 +547,51 @@ export const TeamConnectionsSplitView = () => {
               </Select>
             </Box>
 
-            <Box sx={{ flexGrow: 1, minHeight: 300 }}>
+            <Box sx={{ 
+              flexGrow: 1, 
+              minHeight: 300, 
+              width: '100%', 
+              overflowX: 'auto', 
+              overflowY: 'hidden',
+              '&::-webkit-scrollbar': { height: '6px' },
+              '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+              '&::-webkit-scrollbar-thumb': { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', borderRadius: '4px' },
+              '&::-webkit-scrollbar-thumb:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' }
+            }}>
               {progressLoading ? (
                 <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 8, fontWeight: 600 }}>
                   Loading progress...
                 </Typography>
               ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartProgressData}
-                  margin={{ top: 10, right: 20, left: 8, bottom: 8 }}
-                  barCategoryGap={filteredProgressData.length <= 2 ? '28%' : filteredProgressData.length <= 4 ? '25%' : '18%'}
-                  barGap={6}
-                  maxBarSize={28}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-                  <XAxis
-                    dataKey="name"
-                    {...chartAxisProps}
-                    dy={10}
-                    interval={0}
-                    tickFormatter={(value: string) => value?.trim() ? value : ''}
-                  />
-                  <YAxis {...chartAxisProps} width={36} />
-                  <Tooltip
-                    content={<CustomTooltip isDark={isDark} />}
-                    cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                  <Bar dataKey="doneTasks" name="Done" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pendingTasks" name="Pending" fill={tokens.semantic.warning} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="overdueTasks" name="Overdue" fill={tokens.semantic.error} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Box sx={{ minWidth: `${Math.max(100, chartProgressData.length * 18)}%`, height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartProgressData}
+                    margin={{ top: 10, right: 20, left: 8, bottom: 8 }}
+                    barCategoryGap={filteredProgressData.length <= 2 ? '28%' : filteredProgressData.length <= 4 ? '25%' : '18%'}
+                    barGap={6}
+                    maxBarSize={28}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                    <XAxis
+                      dataKey="name"
+                      {...chartAxisProps}
+                      dy={10}
+                      interval={0}
+                      tickFormatter={(value: string) => value?.trim() ? value : ''}
+                    />
+                    <YAxis {...chartAxisProps} width={36} />
+                    <Tooltip
+                      content={<CustomTooltip isDark={isDark} />}
+                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
+                    <Bar dataKey="doneTasks" name="Done" fill={tokens.semantic.success} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pendingTasks" name="Pending" fill={tokens.semantic.warning} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="overdueTasks" name="Overdue" fill={tokens.semantic.error} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
               )}
             </Box>
           </Box>

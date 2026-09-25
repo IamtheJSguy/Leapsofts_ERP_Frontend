@@ -1439,13 +1439,11 @@ export const SalesPage = () => {
             )}
 
             {/* ICP Filter — available to all roles */}
-            <TextField
-              select
-              size="small"
-              placeholder="Filter by Campaign (ICP)"
-              value={selectedIcp}
-              onChange={(e) => setSelectedIcp(e.target.value)}
-              SelectProps={{ displayEmpty: true }}
+            <Autocomplete
+              options={['All ICPs', ...icpsList.map((icp: any) => icp.name)]}
+              value={selectedIcp || 'All ICPs'}
+              onChange={(e, newValue) => setSelectedIcp(newValue === 'All ICPs' || !newValue ? '' : newValue)}
+              disableClearable
               sx={{
                 flexGrow: 1,
                 minWidth: { xs: '100%', sm: 180 },
@@ -1454,6 +1452,7 @@ export const SalesPage = () => {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
                   height: 42,
+                  p: '0 12px',
                   fontSize: '0.84rem',
                   '& fieldset': {
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -1465,24 +1464,37 @@ export const SalesPage = () => {
                     borderColor: tokens.brand.primary,
                   },
                 },
+                '& .MuiAutocomplete-input': {
+                  p: '0 !important',
+                },
+                '& .MuiAutocomplete-endAdornment': {
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }
               }}
-            >
-              <MenuItem value="">All ICPs</MenuItem>
-              {icpsList.map((icp) => (
-                <MenuItem key={icp._id} value={icp.name}>
-                  {icp.name}
-                </MenuItem>
-              ))}
-            </TextField>
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Filter by Campaign (ICP)"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <SearchIcon sx={{ color: 'text.secondary', fontSize: 16, mr: 0.5, ml: 0.5 }} />
+                        {params.InputProps.startAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+            />
 
             {/* Profile Filter — available to all roles */}
-            <TextField
-              select
-              size="small"
-              placeholder="Filter by Profile"
-              value={selectedProfile}
-              onChange={(e) => setSelectedProfile(e.target.value)}
-              SelectProps={{ displayEmpty: true }}
+            <Autocomplete
+              options={['All Profiles', ...profileUsersList.map((p: any) => p.name)]}
+              value={selectedProfile || 'All Profiles'}
+              onChange={(e, newValue) => setSelectedProfile(newValue === 'All Profiles' || !newValue ? '' : newValue)}
+              disableClearable
               sx={{
                 flexGrow: 1,
                 minWidth: { xs: '100%', sm: 180 },
@@ -1491,6 +1503,7 @@ export const SalesPage = () => {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
                   height: 42,
+                  p: '0 12px',
                   fontSize: '0.84rem',
                   '& fieldset': {
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -1502,15 +1515,30 @@ export const SalesPage = () => {
                     borderColor: tokens.brand.primary,
                   },
                 },
+                '& .MuiAutocomplete-input': {
+                  p: '0 !important',
+                },
+                '& .MuiAutocomplete-endAdornment': {
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }
               }}
-            >
-              <MenuItem value="">All Profiles</MenuItem>
-              {profileUsersList.map((p: any) => (
-                <MenuItem key={p._id} value={p.name}>
-                  {p.name}
-                </MenuItem>
-              ))}
-            </TextField>
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Filter by Profile"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <SearchIcon sx={{ color: 'text.secondary', fontSize: 16, mr: 0.5, ml: 0.5 }} />
+                        {params.InputProps.startAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+            />
 
             {/* Connection Status Filter */}
             <FormControl sx={filterSelectSx}>
