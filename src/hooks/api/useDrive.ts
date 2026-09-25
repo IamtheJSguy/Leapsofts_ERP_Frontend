@@ -18,11 +18,12 @@ export const useDriveStatus = () =>
     queryFn: () => driveApi.getStatus().then((r) => r.data.data),
   });
 
-export const useDriveFiles = (query?: string) =>
+export const useDriveFiles = (query?: string, enabled = false) =>
   useQuery({
-    queryKey: ['driveFiles', query],
+    queryKey: ['driveFiles', query ?? ''],
     queryFn: () => driveApi.getFiles({ q: query || undefined }).then((r) => r.data.data),
-    enabled: false,
+    enabled,
+    placeholderData: (previous) => previous,
   });
 
 export const useDriveAuthUrl = () =>

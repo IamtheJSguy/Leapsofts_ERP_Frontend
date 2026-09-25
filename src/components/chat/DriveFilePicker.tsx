@@ -68,7 +68,7 @@ interface DriveFilePickerProps {
 
 export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const { refetch, data, isFetching } = useDriveFiles(searchQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
   const driveAuth = useDriveAuthUrl();
   const disconnectDrive = useDisconnectDrive();
@@ -77,15 +77,14 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const files = (data?.files || []) as DriveFile[];
   const isConnected = driveStatus?.connected ?? false;
+  const { data, isFetching, isError } = useDriveFiles(debouncedQuery, open && isConnected);
+  const files = (data?.files || []) as DriveFile[];
 
-  // Fetch files when dialog opens and drive is connected
   useEffect(() => {
-    if (open && isConnected) {
-      refetch();
-    }
-  }, [open, isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleConnect = () => {
     driveAuth.mutate(undefined, {
@@ -95,10 +94,6 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
 
   const handleDisconnect = () => {
     disconnectDrive.mutate();
-  };
-
-  const handleSearch = () => {
-    if (isConnected) refetch();
   };
 
   const handleSelect = (file: DriveFile) => {
@@ -285,9 +280,6 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
                 placeholder="Search files…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSearch();
-                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -339,11 +331,18 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
                 <CircularProgress size={28} sx={{ color: '#4285F4' }} />
               </Box>
+            ) : isError ? (
+              <Box sx={{ py: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                <CloudOffIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                  Could not load Drive files. Reconnect and try again.
+                </Typography>
+              </Box>
             ) : files.length === 0 ? (
               <Box sx={{ py: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                 <InsertDriveFileIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {searchQuery ? 'No files match your search.' : 'No files found in your Drive.'}
+                  {debouncedQuery ? 'No files match your search.' : 'No files found in your Drive.'}
                 </Typography>
               </Box>
             ) : (
