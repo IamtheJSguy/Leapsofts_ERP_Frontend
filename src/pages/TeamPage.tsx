@@ -1134,7 +1134,7 @@ const TeamPage = () => {
             { label: 'Department', value: selectedUser.department || DEPARTMENT.ENGINEERING, icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
             { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : selectedUser.role === 'manager' ? 'MANAGER' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
             { label: 'Shift', value: `${formatTime12Hour(selectedUser.shiftStart) || '09:00 AM'} - ${formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM'}`, icon: <AccessTimeIcon sx={{ fontSize: 20, color: '#3B82F6' }} /> },
-            { label: 'Start Date', value: 'Jun 3, 2026', icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
+            { label: 'Start Date', value: formatDate(selectedUser.createdAt, 'MMM d, yyyy'), icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
             { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true, icon: <CheckCircleIcon sx={{ fontSize: 20, color: selectedUser.isActive ? '#10B981' : '#EF4444' }} /> },
           ].map((meta, idx) => (
             <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
