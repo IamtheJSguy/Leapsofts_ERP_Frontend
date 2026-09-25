@@ -358,9 +358,9 @@ export const AttendancePage = () => {
     return historyData.shifts.reduce((acc: number, shift: any) => acc + (shift.totalMinutes || 0), 0);
   }, [historyData]);
 
-  const punctualityScore = useMemo(() => {
-    if (!historyData?.shifts || historyData.shifts.length === 0) return 100;
-    return 95;
+  const averageWorkingHours = useMemo(() => {
+    if (!historyData?.shifts || historyData.shifts.length === 0) return 0;
+    return (historyData.shifts.reduce((acc: number, shift: any) => acc + (shift.totalMinutes || 0), 0) / historyData.shifts.length);
   }, [historyData]);
 
   // -------------------------------------------------------------
@@ -869,7 +869,7 @@ export const AttendancePage = () => {
       <Grid container spacing={3.5} sx={{ mb: 4.5 }}>
         {[
           {
-            title: 'Hours This Week',
+            title: 'Total Hours Worked',
             value: formatHours(totalHoursWorked),
             icon: <TimerIcon sx={{ fontSize: 26 }} />,
             color: '#3B82F6',
@@ -878,8 +878,8 @@ export const AttendancePage = () => {
             trend: '+2.5h from last week',
           },
           {
-            title: 'Punctuality Score',
-            value: `${punctualityScore}%`,
+            title: 'Average Working Hours',
+            value: formatHours(Math.round(averageWorkingHours)),
             icon: <CheckCircleOutlineIcon sx={{ fontSize: 26 }} />,
             color: tokens.semantic.success,
             bgcolor: isDarkMode ? 'rgba(45, 138, 94, 0.15)' : 'rgba(45, 138, 94, 0.08)',
