@@ -1059,6 +1059,7 @@ export interface Message {
   driveMimeType?: string;
   driveWebViewLink?: string;
   driveIconLink?: string;
+  driveThumbnailLink?: string;
   readBy?: string[];
   deliveredTo?: string[];
   /** Per-recipient first delivery time (userId → ISO datetime). */

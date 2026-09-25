@@ -59,6 +59,9 @@ const ChatPage = () => {
         flexDirection: 'column',
         height: 'calc(100vh - 120px)',
         minHeight: 0,
+        minWidth: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
       }}
     >
 
@@ -67,7 +70,7 @@ const ChatPage = () => {
         sx={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '340px 1fr' },
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '340px minmax(0, 1fr)' },
           borderRadius: '24px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.6)',
           /* backdropFilter: 'blur(24px)' (removed for performance) */
@@ -81,7 +84,7 @@ const ChatPage = () => {
         <Box sx={{ display: { xs: activeConversationId ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
           <ChatSidebar />
         </Box>
-        <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
+        <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%', minWidth: 0 }}>
           <ChatWindow onSearchOpen={() => setSearchOpen(true)} onDriveOpen={() => setDriveOpen(true)} />
         </Box>
       </Card>

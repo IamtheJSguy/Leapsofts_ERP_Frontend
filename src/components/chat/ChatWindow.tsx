@@ -11,6 +11,11 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SearchIcon from '@mui/icons-material/Search';
@@ -19,10 +24,13 @@ import ForumIcon from '@mui/icons-material/Forum';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddToDriveIcon from '@mui/icons-material/AddToDrive';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
@@ -32,6 +40,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
+import { useDriveAuthUrl, useDriveStatus, useUploadDriveFile } from '@/hooks/api/useDrive';
 import { RichTextEditor } from './RichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
@@ -43,7 +52,15 @@ import {
 } from '@/utils/chatMessageUtils';
 import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoard, useKanbanBoards } from '@/hooks/api/useKanban';
-import type { Message, PresenceStatus, User } from '@/types';
+import type { DriveFile, Message, PresenceStatus, User } from '@/types';
+
+const SMALL_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
+const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
+
+const isSmallChatImage = (file: File) =>
+  SMALL_CHAT_IMAGE_TYPES.has(file.type) && file.size <= SMALL_CHAT_IMAGE_BYTES;
+
+const httpUrl = (value?: string) => (value && value.startsWith('http') ? value : undefined);
 
 interface ChatWindowProps {
   onSearchOpen?: () => void;
@@ -70,6 +87,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
   const sendChatImage = useSendChatImage();
+  const uploadDriveFile = useUploadDriveFile();
+  const { data: driveStatus } = useDriveStatus();
+  const driveAuth = useDriveAuthUrl();
+  const queryClient = useQueryClient();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -79,9 +100,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       setDrafts(prev => ({ ...prev, [activeConversationId]: newText }));
     }
   };
-  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [drivePromptOpen, setDrivePromptOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -193,22 +215,38 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  const clearPendingImage = useCallback(() => {
-    setPendingImage(null);
+  const clearPendingFile = useCallback(() => {
+    setPendingFile(null);
     setPendingPreviewUrl((url) => {
       if (url) URL.revokeObjectURL(url);
       return null;
     });
   }, []);
 
-  const stageImageFile = useCallback((file: File | undefined | null) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    setPendingImage(file);
+  const stageFile = useCallback((file: File | undefined | null) => {
+    if (!file) return;
+    setPendingFile(file);
     setPendingPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
+      return file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
     });
   }, []);
+
+  const connectDrive = useCallback(() => {
+    driveAuth.mutate(undefined, {
+      onSuccess: (url) => {
+        const popup = window.open(url, '_blank', 'width=600,height=700');
+        const timer = window.setInterval(() => {
+          void queryClient.invalidateQueries({ queryKey: ['driveStatus'] });
+          if (!popup || popup.closed) window.clearInterval(timer);
+        }, 2000);
+      },
+    });
+  }, [driveAuth, queryClient]);
+
+  useEffect(() => {
+    if (driveStatus?.connected) setDrivePromptOpen(false);
+  }, [driveStatus?.connected]);
 
   useEffect(() => {
     return () => {
@@ -387,27 +425,55 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
-    const sendImage = (conversationId: string) => {
-      if (!pendingImage) return;
-      
-      const fileToUpload = pendingImage;
-      const contentToUpload = caption;
-      const replyToIdToUpload = replyToId;
-
-      setText('');
-      setReplyingTo(null);
-      clearPendingImage();
-
-      // Send the image and caption together in a single request
-      sendChatImage.mutate({
+    const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string) => {
+      sendMessage.mutate({
         conversationId,
-        file: fileToUpload,
-        content: contentToUpload || undefined,
-        replyTo: replyToIdToUpload,
+        content: content || file.name,
+        type: 'drive_file',
+        driveFileId: file.id,
+        driveFileName: file.name,
+        driveMimeType: file.mimeType,
+        driveWebViewLink: httpUrl(file.webViewLink),
+        driveIconLink: httpUrl(file.iconLink),
+        driveThumbnailLink: httpUrl(file.thumbnailLink),
+        ...(replyTo ? { replyTo } : {}),
       });
     };
 
-    if (pendingImage) {
+    const sendAttachment = (conversationId: string) => {
+      if (!pendingFile) return;
+
+      const fileToUpload = pendingFile;
+      const contentToUpload = caption;
+      const replyToIdToUpload = replyToId;
+
+      if (isSmallChatImage(fileToUpload)) {
+        setText('');
+        setReplyingTo(null);
+        clearPendingFile();
+        sendChatImage.mutate({
+          conversationId,
+          file: fileToUpload,
+          content: contentToUpload || undefined,
+          replyTo: replyToIdToUpload,
+        });
+        return;
+      }
+
+      if (!driveStatus?.connected) {
+        setDrivePromptOpen(true);
+        return;
+      }
+
+      setText('');
+      setReplyingTo(null);
+      clearPendingFile();
+      uploadDriveFile.mutate(fileToUpload, {
+        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload),
+      });
+    };
+
+    if (pendingFile) {
       if (activeConversationId.startsWith('mock-conv-')) {
         const targetUserId = activeConversationId.replace('mock-conv-', '');
         createConversation.mutate(
@@ -417,14 +483,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               const newConvId = response.data?.data?._id || response.data?._id;
               if (newConvId) {
                 setActiveConversation(newConvId);
-                sendImage(newConvId);
+                sendAttachment(newConvId);
               }
             },
           },
         );
         return;
       }
-      sendImage(activeConversationId);
+      sendAttachment(activeConversationId);
       return;
     }
 
@@ -579,7 +645,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   return (
     <Box
-      sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, bgcolor: 'transparent', position: 'relative' }}
+      sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden', bgcolor: 'transparent', position: 'relative' }}
       onDragOver={(e) => {
         if ([...e.dataTransfer.types].includes('Files')) {
           e.preventDefault();
@@ -594,7 +660,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         e.preventDefault();
         setIsDraggingImage(false);
         const file = e.dataTransfer.files?.[0];
-        stageImageFile(file);
+        stageFile(file);
       }}
     >
       {isDraggingImage && (
@@ -611,16 +677,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             pointerEvents: 'none',
           }}
         >
-          <Typography sx={{ fontWeight: 800, color: tokens.brand.primary }}>Drop image to send</Typography>
+          <Typography sx={{ fontWeight: 800, color: tokens.brand.primary }}>Drop a file to send</Typography>
         </Box>
       )}
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/jpg"
+        accept="image/jpeg,image/png,image/webp,image/jpg,image/gif,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
         hidden
         onChange={(e) => {
-          stageImageFile(e.target.files?.[0]);
+          stageFile(e.target.files?.[0]);
           e.target.value = '';
         }}
       />
@@ -752,6 +818,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         onScroll={handleMessagesScroll}
         sx={{
         flex: 1,
+        width: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
         overflowY: 'auto',
         transform: 'translateZ(0)',
         willChange: 'transform',
@@ -893,7 +962,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </IconButton>
           </Box>
         )}
-        {pendingImage && pendingPreviewUrl && (
+        {pendingFile && (
           <Box
             sx={{
               display: 'flex',
@@ -908,21 +977,40 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.08)'}`,
             }}
           >
-            <Box
-              component="img"
-              src={pendingPreviewUrl}
-              alt="Pending upload"
-              sx={{ width: 56, height: 56, borderRadius: '10px', objectFit: 'cover' }}
-            />
+            {pendingPreviewUrl ? (
+              <Box
+                component="img"
+                src={pendingPreviewUrl}
+                alt="Pending upload"
+                sx={{ width: 56, height: 56, borderRadius: '10px', objectFit: 'cover' }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.08)',
+                  color: tokens.brand.primary,
+                }}
+              >
+                <InsertDriveFileIcon />
+              </Box>
+            )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, display: 'block' }}>
-                {pendingImage.name}
+              <Typography variant="caption" noWrap sx={{ fontWeight: 800, display: 'block' }}>
+                {pendingFile.name}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Add an optional caption below, then send
+                {isSmallChatImage(pendingFile)
+                  ? 'Add an optional caption below, then send'
+                  : 'This file will be saved to your Google Drive'}
               </Typography>
             </Box>
-            <IconButton size="small" onClick={clearPendingImage} aria-label="Remove image">
+            <IconButton size="small" onClick={clearPendingFile} aria-label="Remove file">
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
@@ -987,7 +1075,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               <ListItemIcon>
                 <ImageOutlinedIcon fontSize="small" sx={{ color: tokens.brand.primary }} />
               </ListItemIcon>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Upload image</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>Upload file</Typography>
             </MenuItem>
             <MenuItem onClick={() => { setAttachAnchorEl(null); setDrivePickerOpen(true); }} sx={{ py: 1.5, px: 2 }}>
               <ListItemIcon>
@@ -1000,12 +1088,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           <Box
             sx={{ flex: 1, minWidth: 0 }}
             onPaste={(e) => {
-              const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+              const item = [...(e.clipboardData?.items || [])].find((i) => i.kind === 'file');
               if (!item) return;
               const file = item.getAsFile();
               if (file) {
                 e.preventDefault();
-                stageImageFile(file);
+                stageFile(file);
               }
             }}
           >
@@ -1021,7 +1109,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 }
               }}
               onSubmit={handleSend}
-              placeholder={pendingImage ? 'Add a caption (optional)...' : 'Type a message...'}
+              placeholder={pendingFile ? 'Add a caption (optional)...' : 'Type a message...'}
               autoFocus={true}
               mentionableUsers={mentionableUsers}
             />
@@ -1029,7 +1117,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
           <IconButton
             onClick={handleSend}
-            disabled={!text.trim() && !pendingImage}
+            disabled={(!text.trim() && !pendingFile) || uploadDriveFile.isPending}
             sx={{
               width: 44,
               height: 44,
@@ -1060,6 +1148,28 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
       {/* Google Drive File Picker */}
       <DriveFilePicker open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
+      <Dialog open={drivePromptOpen} onClose={() => setDrivePromptOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>Connect Google Drive</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Files larger than 5MB and documents are saved to your Google Drive. Connect Drive before sending this file.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDrivePromptOpen(false)} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<CloudQueueIcon />}
+            disabled={driveAuth.isPending}
+            onClick={connectDrive}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            {driveAuth.isPending ? 'Connecting…' : 'Connect Google Drive'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Group Settings Modal */}
       {conversations.find((c) => c._id === activeConversationId) && (

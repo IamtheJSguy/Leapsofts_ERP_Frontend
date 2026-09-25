@@ -107,6 +107,8 @@ export const MessageBubble = React.memo(({
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [infoOpen, setInfoOpen] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const [docPreviewHeight, setDocPreviewHeight] = useState<number | null>(null);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [quickAnchor, setQuickAnchor] = useState<HTMLElement | null>(null);
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
@@ -238,6 +240,9 @@ export const MessageBubble = React.memo(({
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
         alignItems: 'flex-end',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         mb: reactions.length ? 2.75 : 2,
         gap: 1.25,
         opacity: message.isPending ? 0.7 : 1,
@@ -265,7 +270,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '70%', position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', width: 'fit-content', maxWidth: '70%', minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -331,9 +336,9 @@ export const MessageBubble = React.memo(({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isOwn ? 'row-reverse' : 'row' }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, flexDirection: isOwn ? 'row-reverse' : 'row', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: 'relative', maxWidth: '100%', minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -349,8 +354,9 @@ export const MessageBubble = React.memo(({
                 ? 'none'
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
               boxShadow: 'none',
-              overflow: 'hidden',
-              minWidth: replySnippet ? 180 : undefined,
+              overflow: compactMedia ? 'hidden' : 'visible',
+              maxWidth: '100%',
+              minWidth: 0,
             }}
           >
             {replySnippet && (
@@ -407,10 +413,8 @@ export const MessageBubble = React.memo(({
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  p: '14px 18px',
+                  display: 'block',
+                  maxWidth: 280,
                   textDecoration: 'none',
                   color: 'inherit',
                   cursor: 'pointer',
@@ -420,53 +424,105 @@ export const MessageBubble = React.memo(({
                   },
                 }}
               >
-                {(() => {
-                  const { icon, color, bgColor } = getDriveFileIcon(message.driveMimeType);
-                  return (
+                {message.driveThumbnailLink && !thumbFailed && (
+                  message.driveMimeType?.startsWith('image/') ? (
+                    <Box
+                      component="img"
+                      src={message.driveThumbnailLink}
+                      alt={message.driveFileName || 'Drive image'}
+                      onError={() => setThumbFailed(true)}
+                      sx={{
+                        display: 'block',
+                        width: '100%',
+                        maxHeight: 220,
+                        objectFit: 'contain',
+                        bgcolor: '#fff',
+                      }}
+                    />
+                  ) : (
                     <Box
                       sx={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: '12px',
-                        bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : bgColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        color: isOwn ? '#000' : color,
-                        '& svg': { fontSize: 22 },
+                        overflow: 'hidden',
+                        height: docPreviewHeight ?? 120,
+                        bgcolor: '#fff',
                       }}
                     >
-                      {icon}
+                      <Box
+                        component="img"
+                        src={message.driveThumbnailLink}
+                        alt={message.driveFileName || 'Drive file preview'}
+                        onError={() => setThumbFailed(true)}
+                        onLoad={(event) => {
+                          const img = event.currentTarget;
+                          if (!img.naturalWidth) return;
+                          const fullHeight = img.clientWidth * (img.naturalHeight / img.naturalWidth);
+                          setDocPreviewHeight(Math.min(140, Math.round(fullHeight / 2)));
+                        }}
+                        sx={{
+                          display: 'block',
+                          width: '100%',
+                          height: 'auto',
+                        }}
+                      />
                     </Box>
-                  );
-                })()}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="body2"
-                    noWrap
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      color: isOwn ? '#000' : 'text.primary',
-                    }}
-                  >
-                    {message.driveFileName || message.content}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 500,
-                      color: isOwn ? 'rgba(0,0,0,0.65)' : 'text.secondary',
-                      fontSize: '0.7rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                    }}
-                  >
-                    Google Drive
-                    <OpenInNewIcon sx={{ fontSize: 11 }} />
-                  </Typography>
+                  )
+                )}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: '8px 12px',
+                  }}
+                >
+                  {(() => {
+                    const { icon, color, bgColor } = getDriveFileIcon(message.driveMimeType);
+                    return (
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '8px',
+                          bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : bgColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          color: isOwn ? '#000' : color,
+                          '& svg': { fontSize: 18 },
+                        }}
+                      >
+                        {icon}
+                      </Box>
+                    );
+                  })()}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        color: isOwn ? '#000' : 'text.primary',
+                      }}
+                    >
+                      {message.driveFileName || message.content}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 500,
+                        color: isOwn ? 'rgba(0,0,0,0.65)' : 'text.secondary',
+                        fontSize: '0.7rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                      }}
+                    >
+                      Google Drive
+                      <OpenInNewIcon sx={{ fontSize: 11 }} />
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             ) : isImageFile ? (
@@ -479,8 +535,18 @@ export const MessageBubble = React.memo(({
                   fontSize: '0.85rem',
                   fontWeight: 500,
                   lineHeight: 1.5,
+                  display: 'block',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere',
                   wordBreak: 'break-word',
                   color: isOwn ? '#000' : 'text.primary',
+                  '& p, & a, & span, & li': {
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                  },
                   '& p': { m: 0 },
                   '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
                   '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
