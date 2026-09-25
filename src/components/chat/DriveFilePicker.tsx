@@ -109,6 +109,7 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
         driveMimeType: file.mimeType,
         driveWebViewLink: file.webViewLink,
         driveIconLink: file.iconLink,
+        ...(file.thumbnailLink ? { driveThumbnailLink: file.thumbnailLink } : {}),
         ...(replyingTo?._id ? { replyTo: replyingTo._id } : {}),
       },
       {

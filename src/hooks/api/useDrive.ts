@@ -10,6 +10,13 @@ const driveApi = {
     api.get<{ data: DriveFile }>(`/drive/files/${fileId}`),
   getStatus: () => api.get<{ data: { connected: boolean } }>('/drive/status'),
   disconnect: () => api.delete<{ data: { connected: boolean } }>('/drive/disconnect'),
+  uploadFile: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ data: DriveFile }>('/drive/upload', formData, {
+      headers: { 'Content-Type': undefined as unknown as string },
+    });
+  },
 };
 
 export const useDriveStatus = () =>
@@ -34,6 +41,11 @@ export const useDriveAuthUrl = () =>
 export const useDriveFile = () =>
   useMutation({
     mutationFn: (fileId: string) => driveApi.getFile(fileId).then((r) => r.data.data),
+  });
+
+export const useUploadDriveFile = () =>
+  useMutation({
+    mutationFn: (file: File) => driveApi.uploadFile(file).then((r) => r.data.data),
   });
 
 export const useDisconnectDrive = () => {
