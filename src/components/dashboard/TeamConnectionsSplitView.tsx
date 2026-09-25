@@ -114,6 +114,34 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
   return null;
 };
 
+const CustomXAxisTick = ({ x, y, payload, isDark }: any) => {
+  const words = payload?.value ? payload.value.toString().trim().split(' ') : [];
+  
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={14}
+        textAnchor="middle"
+        fill={isDark ? 'rgba(255,255,255,0.5)' : tokens.text.muted}
+        fontSize={12}
+        fontWeight={600}
+      >
+        {words.map((word: string, index: number) => (
+          <tspan 
+            x={0} 
+            dy={index === 0 ? 0 : 14} 
+            key={index}
+          >
+            {word}
+          </tspan>
+        ))}
+      </text>
+    </g>
+  );
+};
+
 export const TeamConnectionsSplitView = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -551,6 +579,8 @@ export const TeamConnectionsSplitView = () => {
               flexGrow: 1, 
               minHeight: 300, 
               width: '100%', 
+              display: 'flex',
+              flexDirection: 'column',
               overflowX: 'auto', 
               overflowY: 'hidden',
               '&::-webkit-scrollbar': { height: '6px' },
@@ -559,11 +589,13 @@ export const TeamConnectionsSplitView = () => {
               '&::-webkit-scrollbar-thumb:hover': { backgroundColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' }
             }}>
               {progressLoading ? (
-                <Typography sx={{ textAlign: 'center', color: tokens.text.muted, py: 8, fontWeight: 600 }}>
-                  Loading progress...
-                </Typography>
+                <Box sx={{ display: 'flex', flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography sx={{ color: tokens.text.muted, fontWeight: 600 }}>
+                    Loading progress...
+                  </Typography>
+                </Box>
               ) : (
-              <Box sx={{ minWidth: `${Math.max(100, chartProgressData.length * 18)}%`, height: 300 }}>
+              <Box sx={{ minWidth: `max(100%, ${chartProgressData.length * 120}px)`, flexGrow: 1 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={chartProgressData}
@@ -576,9 +608,9 @@ export const TeamConnectionsSplitView = () => {
                     <XAxis
                       dataKey="name"
                       {...chartAxisProps}
-                      dy={10}
                       interval={0}
-                      tickFormatter={(value: string) => value?.trim() ? value : ''}
+                      height={45}
+                      tick={<CustomXAxisTick isDark={isDark} />}
                     />
                     <YAxis {...chartAxisProps} width={36} />
                     <Tooltip
