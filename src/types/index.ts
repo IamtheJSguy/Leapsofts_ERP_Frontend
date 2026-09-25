@@ -85,6 +85,8 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  organizationId?: string;
+  baseOrganizationId?: string;
   role: Role;
   permissions?: UserPermissions;
   isActive?: boolean;
@@ -112,9 +114,7 @@ export interface User {
   impersonatedBy?: string;
   impersonationReadOnly?: boolean;
   monitoringPolicyAcknowledgedAt?: string;
-  organizationId?: string;
   organizationName?: string;
-  baseOrganizationId?: string;
   memberships?: OrgMembership[];
   createdAt?: string;
 }
@@ -924,7 +924,7 @@ export interface Conversation {
 export interface ShiftBreak {
   startTime: string;
   endTime: string | null;
-  source?: 'manual' | 'idle' | 'sleep';
+  source?: 'manual' | 'idle' | 'sleep' | 'offline';
 }
 
 export interface Shift {

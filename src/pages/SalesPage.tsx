@@ -570,13 +570,20 @@ export const SalesPage = () => {
       ...(futureLeadWindow ? { futureLeadWindow } : {}),
     };
 
-    if ((activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS') && totalView === 'pending') {
+    const onTotalCard = activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS';
+    // The card's Pending/Sent view is a bucket. A connection-status dropdown
+    // choice is exact and must win, otherwise Sent keeps accepted + declined.
+    if (onTotalCard && !selectedConnectionStatus && totalView === 'pending') {
       filters.connectionStatus = 'pending';
       delete filters.connectionSent;
     }
-    if ((activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS') && totalView === 'sent') {
+    if (onTotalCard && !selectedConnectionStatus && totalView === 'sent') {
       filters.connectionSent = true;
       delete filters.connectionStatus;
+    }
+    if (selectedConnectionStatus) {
+      filters.connectionStatus = selectedConnectionStatus;
+      delete filters.connectionSent;
     }
     if (activeCard === 'ACCEPTED') filters.connectionStatus = 'accepted';
     if (activeCard === 'IN CONVERSATION') filters.messageStatus = 'in_conversation';
