@@ -59,8 +59,8 @@ export const AttendancePage = () => {
   const [page, setPage] = useState(1);
   const [userFilterType, setUserFilterType] = useState<'last30' | 'month' | 'date'>('last30');
   const [userFilterMonth, setUserFilterMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
-  const [userFilterDate, setUserFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-
+  const [userFilterStartDate, setUserFilterStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [userFilterEndDate, setUserFilterEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const userQueryRange = useMemo(() => {
     const today = new Date();
     if (userFilterType === 'last30') {
@@ -80,11 +80,11 @@ export const AttendancePage = () => {
       };
     } else {
       return {
-        startDate: userFilterDate,
-        endDate: userFilterDate,
+        startDate: userFilterStartDate,
+        endDate: userFilterEndDate,
       };
     }
-  }, [userFilterType, userFilterMonth, userFilterDate]);
+  }, [userFilterType, userFilterMonth, userFilterStartDate, userFilterEndDate]);
 
   const { data: historyData, isLoading } = useShiftHistory({
     startDate: userQueryRange.startDate,
@@ -167,8 +167,8 @@ export const AttendancePage = () => {
   // Filters for dynamic view (by day, month, date)
   const [filterType, setFilterType] = useState<'last30' | 'month' | 'date'>('last30');
   const [filterMonth, setFilterMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
-  const [filterDate, setFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-
+  const [filterStartDate, setFilterStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [filterEndDate, setFilterEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const availableMonths = useMemo(() => {
     const list = [];
     const today = new Date();
@@ -203,11 +203,11 @@ export const AttendancePage = () => {
       };
     } else {
       return {
-        startDate: filterDate,
-        endDate: filterDate,
+        startDate: filterStartDate,
+        endDate: filterEndDate,
       };
     }
-  }, [filterType, filterMonth, filterDate, selectedUser]);
+  }, [filterType, filterMonth, filterStartDate, filterEndDate, selectedUser]);
 
   const { data: allUsers = [], isLoading: isUsersLoading } = useUsers(
     { limit: '500' },
@@ -703,15 +703,16 @@ export const AttendancePage = () => {
                 )}
 
                 {filterType === 'date' && (
+                  <>
                   <TextField
                     type="date"
                     size="small"
                     fullWidth
-                    label="Select Date"
+                    label="Select Start Date"
                     InputLabelProps={{ shrink: true }}
-                    value={filterDate}
+                    value={filterStartDate}
                     onChange={(e) => {
-                      setFilterDate(e.target.value);
+                      setFilterStartDate(e.target.value);
                       setDetailPage(1);
                     }}
                     sx={{
@@ -721,6 +722,25 @@ export const AttendancePage = () => {
                       }
                     }}
                   />
+                  <TextField
+                    type="date"
+                    size="small"
+                    fullWidth
+                    label="Select End Date"
+                    InputLabelProps={{ shrink: true }}
+                    value={filterEndDate}
+                    onChange={(e) => {
+                      setFilterEndDate(e.target.value);
+                      setDetailPage(1);
+                    }}
+                    sx={{
+                      mt: 1,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                      }
+                    }}
+                  />
+                  </>
                 )}
               </Box>
 
@@ -1017,14 +1037,15 @@ export const AttendancePage = () => {
         )}
 
         {userFilterType === 'date' && (
+          <>
           <TextField
             type="date"
             size="small"
-            label="Select Date"
+            label="Select Start Date"
             InputLabelProps={{ shrink: true }}
-            value={userFilterDate}
+            value={userFilterStartDate}
             onChange={(e) => {
-              setUserFilterDate(e.target.value);
+              setUserFilterStartDate(e.target.value);
               setPage(1);
             }}
             sx={{
@@ -1034,7 +1055,26 @@ export const AttendancePage = () => {
               }
             }}
           />
+          <TextField
+            type="date"
+            size="small"
+            label="Select End Date"
+            InputLabelProps={{ shrink: true }}
+            value={userFilterEndDate}
+            onChange={(e) => {
+              setUserFilterEndDate(e.target.value);
+              setPage(1);
+            }}
+            sx={{
+              minWidth: 180,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+              }
+            }}
+          />
+          </>
         )}
+        
       </Paper>
 
       <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.01em' }}>
