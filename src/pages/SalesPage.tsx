@@ -66,12 +66,14 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
 import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
+import { ExportLeadsDialog } from '@/components/leads/ExportLeadsDialog';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
   saveSalesEditDraft,
 } from '@/lib/salesEditDraftDb';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import EventIcon from '@mui/icons-material/Event';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
@@ -216,7 +218,8 @@ export const SalesPage = () => {
   const [googleSheetLink, setGoogleSheetLink] = useState<string | null>(null);
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const [exportOpen, setExportOpen] = useState(false);
 
 
   // Filters state
@@ -1753,6 +1756,29 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setExportOpen(true)}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Export
+                  </Button>
+                )}
               </Box>
             
           </Box>
@@ -2540,6 +2566,13 @@ export const SalesPage = () => {
         onCancel={() => setDisqualifyLeadId('')}
         isPending={disqualifyLead.isPending}
       />
+      {isAdmin && (
+        <ExportLeadsDialog
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          filters={leadFilters}
+        />
+      )}
     </Box>
   );
 };

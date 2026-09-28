@@ -31,6 +31,7 @@ import {
   MemberKpiDetailPage,
   LeadDetailsPage,
   BulkAddLeadsPage,
+  DriveConnectedPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -46,6 +47,10 @@ export const router = createBrowserRouter([
   {
     path: '/impersonate',
     element: wrap(<ImpersonatePage />),
+  },
+  {
+    path: '/drive/connected',
+    element: wrap(<DriveConnectedPage />),
   },
   {
     path: '/login',

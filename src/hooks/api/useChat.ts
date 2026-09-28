@@ -33,6 +33,7 @@ const chatApi = {
     driveMimeType?: string;
     driveWebViewLink?: string;
     driveIconLink?: string;
+    driveThumbnailLink?: string;
     replyTo?: string;
   }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
   sendChatImage: (data: {
@@ -242,6 +243,12 @@ export const useSendMessage = () => {
         senderId: user?._id,
         content: variables.content,
         type: variables.type || 'text',
+        driveFileId: variables.driveFileId,
+        driveFileName: variables.driveFileName,
+        driveMimeType: variables.driveMimeType,
+        driveWebViewLink: variables.driveWebViewLink,
+        driveIconLink: variables.driveIconLink,
+        driveThumbnailLink: variables.driveThumbnailLink,
         createdAt: new Date().toISOString(),
         isPending: true,
         reactions: [],

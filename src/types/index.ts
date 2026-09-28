@@ -1059,6 +1059,7 @@ export interface Message {
   driveMimeType?: string;
   driveWebViewLink?: string;
   driveIconLink?: string;
+  driveThumbnailLink?: string;
   readBy?: string[];
   deliveredTo?: string[];
   /** Per-recipient first delivery time (userId → ISO datetime). */
@@ -1253,6 +1254,23 @@ export interface LeadFilters {
   sortBy?: string;
   order?: 'asc' | 'desc';
   search?: string;
+}
+
+export interface LeadExportColumn {
+  key: string;
+  header: string;
+}
+
+export interface LeadExportPreview {
+  columns: LeadExportColumn[];
+  rows: Record<string, string>[];
+  total: number;
+}
+
+export interface LeadExportRequest {
+  scope: 'filtered' | 'all';
+  fields: string[];
+  filters?: Omit<LeadFilters, 'page' | 'limit' | 'sortBy' | 'order'>;
 }
 
 export interface ValidationResult {
