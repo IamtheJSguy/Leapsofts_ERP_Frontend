@@ -5,8 +5,11 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
 import { SalesSettingsPanel } from '@/components/admin/SalesSettingsPanel';
 import { tokens } from '@/styles/tokens';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/axios';
+import { useUIStore } from '@/store/useUIStore';
 
-type AdminTabId = 'users' | 'system' | 'sales';
+type AdminTabId = 'users' | 'system' | 'sales' | 'usage';
 
 const AdminPage = () => {
   const theme = useTheme();
@@ -18,8 +21,19 @@ const AdminPage = () => {
     if (canManageUsers) list.push({ id: 'users', label: 'Users List' });
     if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings' });
     if (canManageSalesSettings) list.push({ id: 'sales', label: 'Sales Settings' });
+    if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage' });
     return list;
   }, [canManageUsers, canManageSystemSettings, canManageSalesSettings]);
+
+  const addToast = useUIStore((s) => s.addToast);
+  const { data: usage } = useQuery({
+    queryKey: ['admin', 'usage'],
+    enabled: canManageSystemSettings,
+    queryFn: async () => {
+      const res = await api.get('/admin/usage');
+      return res.data.data as { usage: Record<string, number | string | null> };
+    },
+  });
 
   const [tab, setTab] = useState<AdminTabId>(tabs[0]?.id ?? 'users');
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
@@ -95,6 +109,24 @@ const AdminPage = () => {
           <SystemSettingsPanel readOnly={!canManageSystemSettings} />
         ) : activeTab === 'sales' && canManageSalesSettings ? (
           <SalesSettingsPanel readOnly={!canManageSalesSettings} />
+        ) : activeTab === 'usage' && canManageSystemSettings ? (
+          <Box>
+            <Typography sx={{ mb: 2 }}>
+              Leads {String(usage?.usage?.leads ?? 0)} · Projects {String(usage?.usage?.projects ?? 0)} · Boards{' '}
+              {String(usage?.usage?.boards ?? 0)} · Storage {String(usage?.usage?.storageMb ?? 0)} MB · Seats{' '}
+              {String((usage as { seats?: { used: number; purchased: number } } | undefined)?.seats?.used ?? '—')}
+            </Typography>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={async () => {
+                await api.post('/admin/sessions/revoke', {});
+                addToast({ message: 'All organization sessions were signed out', severity: 'success' });
+              }}
+            >
+              Sign out all sessions
+            </Button>
+          </Box>
         ) : null}
       </Box>
     </Box>

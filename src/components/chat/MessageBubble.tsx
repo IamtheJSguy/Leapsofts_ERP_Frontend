@@ -107,14 +107,21 @@ export const MessageBubble = React.memo(({
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [infoOpen, setInfoOpen] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const [docPreviewHeight, setDocPreviewHeight] = useState<number | null>(null);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [quickAnchor, setQuickAnchor] = useState<HTMLElement | null>(null);
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
   const setReaction = useSetMessageReaction();
 
-  // Resolve participant initial and details
-  const senderName = getDisplayName(typeof message.sender === 'object' ? message.sender : undefined);
+  const senderRef = message.sender || message.senderId;
+  const senderUser: User | undefined =
+    typeof senderRef === 'object' && senderRef
+      ? senderRef
+      : mentionableUsers.find((u) => u._id === senderRef);
+  const senderName = getDisplayName(senderUser);
   const senderInitial = senderName.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U';
+  const senderAvatarUrl = senderUser?.avatarUrl;
 
   // Format message time cleanly (e.g. 10:45 AM)
   const formatTimeOnly = (dateStr: string) => {
@@ -233,6 +240,9 @@ export const MessageBubble = React.memo(({
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
         alignItems: 'flex-end',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         mb: reactions.length ? 2.75 : 2,
         gap: 1.25,
         opacity: message.isPending ? 0.7 : 1,
@@ -243,6 +253,7 @@ export const MessageBubble = React.memo(({
       {/* Received message avatar */}
       {!isOwn && (
         <Avatar
+          src={senderAvatarUrl || undefined}
           sx={{
             width: 32,
             height: 32,
@@ -259,7 +270,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '70%', position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '75%', minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -325,9 +336,9 @@ export const MessageBubble = React.memo(({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isOwn ? 'row-reverse' : 'row' }}>
+        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: 'relative', maxWidth: '100%', minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -344,7 +355,11 @@ export const MessageBubble = React.memo(({
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
               boxShadow: 'none',
               overflow: 'hidden',
-              minWidth: replySnippet ? 180 : undefined,
+              ...(isDriveFile ? { width: 280 } : {}),
+              maxWidth: '100%',
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
             }}
           >
             {replySnippet && (
@@ -401,10 +416,10 @@ export const MessageBubble = React.memo(({
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  p: '14px 18px',
+                  display: 'block',
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   textDecoration: 'none',
                   color: 'inherit',
                   cursor: 'pointer',
@@ -414,53 +429,108 @@ export const MessageBubble = React.memo(({
                   },
                 }}
               >
-                {(() => {
-                  const { icon, color, bgColor } = getDriveFileIcon(message.driveMimeType);
-                  return (
+                {message.driveThumbnailLink && !thumbFailed && (
+                  message.driveMimeType?.startsWith('image/') ? (
+                    <Box
+                      component="img"
+                      src={message.driveThumbnailLink}
+                      alt={message.driveFileName || 'Drive image'}
+                      onError={() => setThumbFailed(true)}
+                      sx={{
+                        display: 'block',
+                        width: '100%',
+                        maxHeight: 220,
+                        objectFit: 'contain',
+                        bgcolor: '#fff',
+                      }}
+                    />
+                  ) : (
                     <Box
                       sx={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: '12px',
-                        bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : bgColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        color: isOwn ? '#000' : color,
-                        '& svg': { fontSize: 22 },
+                        overflow: 'hidden',
+                        width: '100%',
+                        height: docPreviewHeight ?? 140,
+                        bgcolor: '#fff',
                       }}
                     >
-                      {icon}
+                      <Box
+                        component="img"
+                        src={message.driveThumbnailLink}
+                        alt={message.driveFileName || 'Drive file preview'}
+                        onError={() => setThumbFailed(true)}
+                        onLoad={(event) => {
+                          const img = event.currentTarget;
+                          if (!img.naturalWidth) return;
+                          const fullHeight = 280 * (img.naturalHeight / img.naturalWidth);
+                          setDocPreviewHeight(Math.min(160, Math.max(96, Math.round(fullHeight / 2))));
+                        }}
+                        sx={{
+                          display: 'block',
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',
+                        }}
+                      />
                     </Box>
-                  );
-                })()}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="body2"
-                    noWrap
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      color: isOwn ? '#000' : 'text.primary',
-                    }}
-                  >
-                    {message.driveFileName || message.content}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 500,
-                      color: isOwn ? 'rgba(0,0,0,0.65)' : 'text.secondary',
-                      fontSize: '0.7rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                    }}
-                  >
-                    Google Drive
-                    <OpenInNewIcon sx={{ fontSize: 11 }} />
-                  </Typography>
+                  )
+                )}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: '8px 12px',
+                  }}
+                >
+                  {(() => {
+                    const { icon, color, bgColor } = getDriveFileIcon(message.driveMimeType);
+                    return (
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '8px',
+                          bgcolor: isOwn ? 'rgba(0,0,0,0.06)' : bgColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          color: isOwn ? '#000' : color,
+                          '& svg': { fontSize: 18 },
+                        }}
+                      >
+                        {icon}
+                      </Box>
+                    );
+                  })()}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        color: isOwn ? '#000' : 'text.primary',
+                      }}
+                    >
+                      {message.driveFileName || message.content}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 500,
+                        color: isOwn ? 'rgba(0,0,0,0.65)' : 'text.secondary',
+                        fontSize: '0.7rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                      }}
+                    >
+                      Google Drive
+                      <OpenInNewIcon sx={{ fontSize: 11 }} />
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             ) : isImageFile ? (
@@ -473,8 +543,20 @@ export const MessageBubble = React.memo(({
                   fontSize: '0.85rem',
                   fontWeight: 500,
                   lineHeight: 1.5,
+                  display: 'block',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere',
                   wordBreak: 'break-word',
                   color: isOwn ? '#000' : 'text.primary',
+                  '& *': {
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                  },
                   '& p': { m: 0 },
                   '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
                   '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
@@ -562,54 +644,66 @@ export const MessageBubble = React.memo(({
           )}
           </Box>
 
-          {canReact && (
-            <Tooltip title="Add reaction" arrow>
-              <IconButton
-                className="msg-hover-action"
-                size="small"
-                onClick={(e) => setQuickAnchor(e.currentTarget)}
-                sx={{
-                  opacity: { xs: 1, md: 0 },
-                  transition: 'opacity 0.15s ease',
-                  color: 'text.secondary',
-                  width: 28,
-                  height: 28,
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    color: tokens.brand.primary,
-                  },
-                }}
-                aria-label="Add reaction"
-              >
-                <AddReactionOutlinedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
-          )}
+          {(canReact || onReply) && (
+            <Box
+              className="msg-hover-action"
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                ...(isOwn
+                  ? { right: '100%', mr: 0.5 }
+                  : { left: '100%', ml: 0.5 }),
+                opacity: { xs: 1, md: 0 },
+                transition: 'opacity 0.15s ease',
+              }}
+            >
+              {canReact && (
+                <Tooltip title="Add reaction" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => setQuickAnchor(e.currentTarget)}
+                    sx={{
+                      color: 'text.secondary',
+                      width: 28,
+                      height: 28,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        color: tokens.brand.primary,
+                      },
+                    }}
+                    aria-label="Add reaction"
+                  >
+                    <AddReactionOutlinedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
 
-          {onReply && (
-            <Tooltip title="Reply" arrow>
-              <IconButton
-                className="msg-hover-action"
-                size="small"
-                onClick={() => onReply(message)}
-                sx={{
-                  opacity: { xs: 1, md: 0 },
-                  transition: 'opacity 0.15s ease',
-                  color: 'text.secondary',
-                  width: 28,
-                  height: 28,
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    color: tokens.brand.primary,
-                  },
-                }}
-                aria-label="Reply to message"
-              >
-                <ReplyIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
+              {onReply && (
+                <Tooltip title="Reply" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={() => onReply(message)}
+                    sx={{
+                      color: 'text.secondary',
+                      width: 28,
+                      height: 28,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        color: tokens.brand.primary,
+                      },
+                    }}
+                    aria-label="Reply to message"
+                  >
+                    <ReplyIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
           )}
         </Box>
       </Box>

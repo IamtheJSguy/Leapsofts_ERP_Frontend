@@ -1,9 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { ConnectionStatus } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export interface SalesPipelineStats {
   totalProspects: number;
+  pendingConnections?: number;
+  connectionsSent: number;
   acceptedConnections: number;
   messageSent: number;
   responded: number;
@@ -17,6 +20,8 @@ export interface SalesPipelineStats {
   inConversation?: number;
   qualified?: number;
   conversionRates: {
+    sentRate?: number;
+    pendingRate?: number;
     acceptRate: number;
     messageSentRate: number;
     respondedRate: number;
@@ -42,25 +47,31 @@ const connectionApi = {
     api.put(`/connections/${leadId}/status`, { status }),
 };
 
-export const useConnectionStats = (filters: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['connectionStats', filters],
+export const useConnectionStats = (filters: Record<string, string> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['connectionStats', organizationId, filters],
     queryFn: () => connectionApi.getStats(filters).then((r) => r.data.data),
     staleTime: 1000 * 60 * 2,
   });
+};
 
-export const useSalesPipelineStats = (params?: Record<string, string>) =>
-  useQuery({
-    queryKey: ['salesPipelineStats', params],
+export const useSalesPipelineStats = (params?: Record<string, string>) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesPipelineStats', organizationId, params],
     queryFn: () => connectionApi.getPipelineStats(params).then((r) => r.data.data),
     staleTime: 1000 * 60,
   });
+};
 
-export const useConnectionRatios = (filters: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['connectionRatios', filters],
+export const useConnectionRatios = (filters: Record<string, string> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['connectionRatios', organizationId, filters],
     queryFn: () => connectionApi.getRatios(filters).then((r) => r.data.data),
   });
+};
 
 export const useUpdateConnectionStatus = () => {
   const queryClient = useQueryClient();

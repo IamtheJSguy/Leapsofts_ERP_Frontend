@@ -314,7 +314,7 @@ const SharingMeetingsColumn = memo(({
             <Chip
               {...getTagProps({ index })}
               key={option._id}
-              avatar={<Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{userLabel(option).charAt(0)}</Avatar>}
+              avatar={<Avatar src={option.avatarUrl || undefined} sx={{ width: 24, height: 24, fontSize: 11 }}>{userLabel(option).charAt(0)}</Avatar>}
               label={userLabel(option)}
               size="small"
             />
@@ -846,20 +846,20 @@ export const QualifyEnrichModal = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {isLeadLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 6 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 6, flex: 1 }}>
             <CircularProgress sx={{ color: tokens.brand.primary }} size={40} thickness={4} />
           </Box>
         ) : !lead ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Box sx={{ p: 4, textAlign: 'center', flex: 1 }}>
             <Typography color="error" sx={{ fontSize: '1rem', fontWeight: 600 }}>Failed to load lead details.</Typography>
           </Box>
         ) : (
           <Box sx={{
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },
-            height: '100%',
+            flex: 1,
             minHeight: 0,
             overflow: { xs: 'auto', md: 'hidden' },
           }}>

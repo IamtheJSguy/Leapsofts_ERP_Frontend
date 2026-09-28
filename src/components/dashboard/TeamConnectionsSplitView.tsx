@@ -16,7 +16,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import { tokens } from '@/styles/tokens';
 import { useTeamConnections, useTeamProgress, usePipelineVelocity } from '@/hooks/api/useAdminTeamDashboard';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ModernDatePicker } from '../common/ModernDatePicker';
 import { buildMemberKpiDetailSearch, formatDateToString, type PeriodMode } from '@/lib/kpiPeriod';
 import {
@@ -52,6 +52,7 @@ const buildMemberDetailSearchForFilter = (
   activeDateFilter: string,
   customStartDate: Date | null,
   customEndDate: Date | null,
+  from?: string,
 ): string => {
   const today = formatDateToString(new Date());
 
@@ -77,7 +78,7 @@ const buildMemberDetailSearchForFilter = (
     rangeEnd = customEndDate ? formatDateToString(customEndDate) : date;
   }
 
-  return buildMemberKpiDetailSearch({ mode, date, rangeEnd });
+  return buildMemberKpiDetailSearch({ mode, date, rangeEnd, from });
 };
 
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
@@ -119,6 +120,7 @@ export const TeamConnectionsSplitView = () => {
   const isDark = theme.palette.mode === 'dark';
   
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Left side state
   const [searchQuery, setSearchQuery] = useState('');
@@ -362,12 +364,19 @@ export const TeamConnectionsSplitView = () => {
                     <Box
                       key={user.userId}
                       onClick={() => {
+                        const currentOrigin =
+                          (location.pathname === '/' || location.pathname === '/dashboard')
+                            ? (location.pathname + location.search) || '/dashboard'
+                            : (location.pathname + location.search);
                         const search = buildMemberDetailSearchForFilter(
                           activeDateFilter,
                           customStartDate,
                           customEndDate,
+                          currentOrigin,
                         );
-                        navigate(`/tasks/member/${user.userId}?${search}`);
+                        navigate(`/tasks/member/${user.userId}?${search}`, {
+                          state: { from: currentOrigin },
+                        });
                       }}
                       sx={{
                         display: 'flex',
@@ -390,6 +399,7 @@ export const TeamConnectionsSplitView = () => {
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Avatar 
+                          src={user.avatarUrl || undefined}
                           sx={{ 
                             width: 42, 
                             height: 42, 

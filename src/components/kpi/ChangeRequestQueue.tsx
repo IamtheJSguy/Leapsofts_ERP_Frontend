@@ -94,7 +94,7 @@ export const ChangeRequestQueue = () => {
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 220 }}>
-                <Avatar sx={{ bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 800, width: 44, height: 44 }}>
+                <Avatar src={typeof r.userId === 'object' ? r.userId.avatarUrl || undefined : undefined} sx={{ bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 800, width: 44, height: 44 }}>
                   {initial}
                 </Avatar>
                 <Box>

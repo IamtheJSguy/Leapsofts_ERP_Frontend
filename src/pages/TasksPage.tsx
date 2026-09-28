@@ -43,6 +43,9 @@ import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { RichTextContent } from '@/components/common/RichTextContent';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -142,6 +145,8 @@ interface ActiveAssignment {
 const TasksPage = () => {
   const { user } = useAuth();
   const { isElevated } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -342,15 +347,21 @@ const TasksPage = () => {
   const dashboardTab: DashboardTab = useMemo(() => {
     const raw = searchParams.get('tab');
     if (raw) {
-      if (raw === 'sales' || raw === 'sales_kpis') return 'sales';
-      if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
-      if (raw === 'team' || raw === 'daily_progress') return 'team';
-      if (['templates', 'assignments', 'change_requests', 'my_tasks'].includes(raw)) {
-        return raw as DashboardTab;
+      if (isElevated) {
+        if (raw === 'sales' || raw === 'sales_kpis') return salesModuleOn ? 'sales' : 'my_tasks';
+        if (raw === 'standalone' || raw === 'standalone_kpis') return 'standalone';
+        if (raw === 'team' || raw === 'daily_progress') return 'team';
+        if (['templates', 'change_requests', 'my_tasks', 'assignments'].includes(raw)) {
+          return raw as DashboardTab;
+        }
+      } else {
+        if (['assignments', 'change_requests'].includes(raw)) {
+          return raw as DashboardTab;
+        }
       }
     }
     return isElevated ? 'my_tasks' : 'assignments';
-  }, [searchParams, isElevated]);
+  }, [searchParams, isElevated, salesModuleOn]);
 
   const setDashboardTab = (newTab: DashboardTab) => {
     setSearchParams(
@@ -822,6 +833,7 @@ const TasksPage = () => {
         email: id.email || 'N/A',
         jobTitle: id.jobTitle || (id.role === 'admin' ? 'Administrator' : 'Agent'),
         initial: name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A',
+        avatarUrl: id.avatarUrl,
       };
     }
 
@@ -833,6 +845,7 @@ const TasksPage = () => {
         email: user.email,
         jobTitle: user.role === 'admin' ? 'Administrator' : (user.jobTitle || 'Agent'),
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: user.avatarUrl,
       };
     }
 
@@ -855,6 +868,7 @@ const TasksPage = () => {
         email: matched.email,
         jobTitle: matched.jobTitle || 'Agent',
         initial: name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U',
+        avatarUrl: matched.avatarUrl,
       };
     }
 
@@ -1085,23 +1099,29 @@ const TasksPage = () => {
                       }}
                     />
 
-                    <TextField
-                      label="Description"
-                      placeholder="Describe the purpose of this KPI collection..."
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={newTemplateDesc}
-                      onChange={(e) => setNewTemplateDesc(e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
+                    <Box>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: 'text.secondary' }}>
+                        Description
+                      </Typography>
+                      <Box
+                        sx={{
                           borderRadius: '16px',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
                           bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-                        },
-                      }}
-                    />
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <RichTextEditor
+                          value={newTemplateDesc}
+                          onChange={setNewTemplateDesc}
+                          submitOnEnter={false}
+                          alwaysShowToolbar={true}
+                          minHeight="90px"
+                          maxHeight="200px"
+                          placeholder="Describe the purpose of this KPI collection..."
+                        />
+                      </Box>
+                    </Box>
                   </Box>
                 </Box>
               )}
@@ -1343,9 +1363,7 @@ const TasksPage = () => {
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, display: 'block', fontSize: '0.62rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         DESCRIPTION
                       </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, fontWeight: 500 }}>
-                        {newTemplateDesc || 'No description provided.'}
-                      </Typography>
+                      <RichTextContent content={newTemplateDesc} fallbackText="No description provided." sx={{ mt: 0.5 }} />
                     </Box>
 
                     <Divider sx={{ opacity: 0.3 }} />
@@ -1377,9 +1395,7 @@ const TasksPage = () => {
                                   ? ` · ${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' (this week)' : ' (weekly)'}`
                                   : ''}
                               </Typography>
-                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem', mt: 0.25 }}>
-                                {kpi.description || '(Empty Description)'}
-                              </Typography>
+                              <RichTextContent content={kpi.description} fallbackText="(Empty Description)" sx={{ mt: 0.25, fontSize: '0.8rem' }} />
                             </Box>
                           </Box>
                         ))}
@@ -1621,9 +1637,7 @@ const TasksPage = () => {
                     {selectedTemplate.name}
                   </Typography>
 
-                  <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.94rem' }}>
-                    {selectedTemplate.description || 'No description provided.'}
-                  </Typography>
+                  <RichTextContent content={selectedTemplate.description} fallbackText="No description provided." sx={{ fontSize: '0.94rem' }} />
                 </Card>
 
                 {/* Grouped KPIs List */}
@@ -1664,9 +1678,7 @@ const TasksPage = () => {
                               : ''}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, fontWeight: 500, fontSize: '0.84rem', pl: 0.5 }}>
-                          {kpi.description}
-                        </Typography>
+                        <RichTextContent content={kpi.description} sx={{ pl: 0.5, fontSize: '0.84rem' }} />
                       </Box>
                     ))}
                   </Box>
@@ -1749,6 +1761,7 @@ const TasksPage = () => {
                               >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                   <Avatar
+                                    src={userObj?.avatarUrl || undefined}
                                     sx={{
                                       width: 32,
                                       height: 32,
@@ -2005,9 +2018,10 @@ const TasksPage = () => {
                               ) : null}
                               {isPending && <Chip label="Pending review" size="small" color="warning" />}
                             </Box>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}>
-                              {kpi.description}
-                            </Typography>
+                            <RichTextContent
+                              content={kpi.description}
+                              sx={{ fontSize: '0.84rem', mt: 0.5, opacity: isChecked ? 0.72 : 1 }}
+                            />
                           </Box>
                           {!isElevated && (kpi.itemId || kpi._id) && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
@@ -2107,7 +2121,7 @@ const TasksPage = () => {
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
                           }}
                         >
-                          <Avatar sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
+                          <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
                             {details.initial}
                           </Avatar>
                           <Box sx={{ minWidth: 0 }}>
@@ -2195,7 +2209,9 @@ const TasksPage = () => {
         {isElevated && viewMode === 'list' && (
           <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
             <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+            {salesModuleOn && (
             <Button onClick={() => setDashboardTab('sales')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
+            )}
             <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
             <Button onClick={() => setDashboardTab('standalone')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
             <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
@@ -2217,7 +2233,7 @@ const TasksPage = () => {
           <ChangeRequestQueue />
         )}
 
-        {(dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
+        {salesModuleOn && (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') && isElevated && viewMode === 'list' && (
           <SalesKpiPanel />
         )}
 
@@ -2485,17 +2501,21 @@ const TasksPage = () => {
                           />
                         </Box>
 
-                        <Typography
-                          variant="body2"
+                        <RichTextContent
+                          content={tpl.description}
+                          fallbackText="No description provided."
                           sx={{
-                            color: 'text.secondary',
-                            lineHeight: 1.5,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
                             mb: 3,
-                            fontWeight: 500,
+                            fontSize: '0.84rem',
+                            lineHeight: 1.5,
+                            color: 'text.secondary',
+                            '& p': { m: 0, mb: 0.25 },
                           }}
-                        >
-                          {tpl.description || 'No description provided.'}
-                        </Typography>
+                        />
 
                         <Box
                           sx={{
@@ -2598,9 +2618,21 @@ const TasksPage = () => {
                             {tpl.name}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.78rem', mt: 0.5 }} noWrap>
-                          {tpl.description || 'No description.'}
-                        </Typography>
+                        <RichTextContent
+                          content={tpl.description}
+                          fallbackText="No description."
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            mt: 0.5,
+                            fontSize: '0.78rem',
+                            lineHeight: 1.4,
+                            color: 'text.secondary',
+                            '& p': { m: 0, display: 'inline' },
+                          }}
+                        />
                       </Grid>
                       <Grid item xs={12} md={5} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
                         <Button
@@ -2923,7 +2955,7 @@ const TasksPage = () => {
                                   const details = getUserDetails(id);
                                   return (
                                     <Tooltip title={details.name} key={id} arrow>
-                                      <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                      <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                         {details.initial}
                                       </Avatar>
                                     </Tooltip>
@@ -3114,7 +3146,7 @@ const TasksPage = () => {
                           <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.65rem' } }}>
                             {assign.assignedTo.map((id) => (
                               <Tooltip title={getUserDetails(id).name} key={id} arrow>
-                                <Avatar sx={{ bgcolor: tokens.brand.primaryLight }}>
+                                <Avatar src={getUserDetails(id).avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight }}>
                                   {getUserDetails(id).initial}
                                 </Avatar>
                               </Tooltip>
@@ -3227,9 +3259,10 @@ const TasksPage = () => {
               {assigningTemplate?.name}
             </Typography>
             {assigningTemplate?.description && (
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.85rem' }}>
-                {assigningTemplate.description}
-              </Typography>
+              <RichTextContent
+                content={assigningTemplate.description}
+                sx={{ mb: 2, fontSize: '0.85rem' }}
+              />
             )}
 
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', mb: 1 }}>
@@ -3369,6 +3402,7 @@ const TasksPage = () => {
                     }}
                   >
                     <Avatar
+                      src={option.avatarUrl || undefined}
                       sx={{
                         width: 32,
                         height: 32,

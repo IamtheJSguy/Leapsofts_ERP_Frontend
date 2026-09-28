@@ -559,7 +559,7 @@ export default function TeamInsightsPage() {
                   {/* Member Profile Header */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ width: 44, height: 44, bgcolor: tokens.brand.primary, fontWeight: 700, fontSize: '0.94rem' }}>
+                      <Avatar src={member.avatarUrl || undefined} sx={{ width: 44, height: 44, bgcolor: tokens.brand.primary, fontWeight: 700, fontSize: '0.94rem' }}>
                         {mInitials}
                       </Avatar>
                       <Box>
@@ -720,6 +720,7 @@ export default function TeamInsightsPage() {
               .join('')
               .slice(0, 2)
               .toUpperCase();
+            const logMember = teamAgents.find((member) => getDisplayName(member) === log.user);
 
             return (
               <Box
@@ -742,7 +743,7 @@ export default function TeamInsightsPage() {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: tokens.brand.primaryLight, fontSize: '0.76rem', fontWeight: 700 }}>
+                  <Avatar src={logMember?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: tokens.brand.primaryLight, fontSize: '0.76rem', fontWeight: 700 }}>
                     {initials}
                   </Avatar>
                   <Box sx={{ minWidth: 0 }}>

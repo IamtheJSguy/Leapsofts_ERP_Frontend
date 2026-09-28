@@ -9,7 +9,7 @@ import type { Conversation } from '@/types';
 export const closeRemovedConversation = (conversationId: string) => {
   if (!conversationId || conversationId.startsWith('mock-')) return;
 
-  queryClient.setQueryData<Conversation[]>(['conversations'], (old) =>
+  queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) =>
     old ? old.filter((c) => c._id !== conversationId) : old,
   );
   queryClient.removeQueries({ queryKey: ['messages', conversationId] });

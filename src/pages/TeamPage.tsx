@@ -26,7 +26,6 @@ import {
   Badge,
   Tabs,
   Tab,
-  Alert,
   Tooltip,
   Popover,
   FormControlLabel,
@@ -62,8 +61,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { tokens } from '@/styles/tokens';
 import { formatTime12Hour } from '@/utils/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs } from '@/hooks/api/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserSummary, useUserAuditLogs, useAdminResetPassword } from '@/hooks/api/useUsers';
 import { useAdminResetTwoFactor } from '@/hooks/api/useTwoFactor';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { useKanbanBoards } from '@/hooks/api/useKanban';
@@ -91,6 +91,8 @@ import {
   resolvePermissions,
   isPermissionLocked,
   permissionLockHelperText,
+  coercePermissions,
+  emptyPermissions,
 } from '@/lib/permissions';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
@@ -498,12 +500,10 @@ const AccessPermissionsFields = ({
                     checked={resolved[key]}
                     disabled={locked}
                     onChange={(e) =>
-                      onChange(
-                        resolvePermissions(role, department, {
-                          ...resolved,
-                          [key]: e.target.checked,
-                        }),
-                      )
+                      onChange({
+                        ...coercePermissions(permissions),
+                        [key]: e.target.checked,
+                      })
                     }
                   />
                 }
@@ -527,6 +527,10 @@ const AccessPermissionsFields = ({
 const TeamPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isManager, canAccessTeam, canPromoteRoles } = usePermissions();
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
+  const screenshotsOn = entitlements.screenshotsEnabled;
+  const appUsageOn = entitlements.appUsageTelemetry;
   const currentUser = useAuthStore((s) => s.user);
   const teamQuery = useMyTeam({ enabled: !isAdmin && canAccessTeam });
   const showCreateTeam = isManager && teamQuery.isError;
@@ -580,7 +584,7 @@ const TeamPage = () => {
     [salesKpiDate],
   );
   const { data: teamSalesKpis = [] } = useTeamSalesKpis(salesKpiQueryParams, {
-    enabled: canAccessTeam || isManager || isAdmin,
+    enabled: salesModuleOn && (canAccessTeam || isManager || isAdmin),
   });
   const salesKpisByUser = useMemo(() => buildSalesKpisByUser(teamSalesKpis), [teamSalesKpis]);
 
@@ -601,7 +605,7 @@ const TeamPage = () => {
   );
 
   // Fetch kanban boards to resolve actual projects/boards for this user
-  const { data: boards = [] } = useKanbanBoards();
+  const { data: boards = [] } = useKanbanBoards({ enabled: entitlements.projectsAndBoards });
 
   const userProjects = useMemo(() => {
     if (!selectedUser) return [];
@@ -625,7 +629,16 @@ const TeamPage = () => {
     if (userIdFromUrl && teamList.length > 0) {
       const matched = teamList.find((u: any) => u._id === userIdFromUrl);
       if (matched && (!selectedUser || selectedUser._id !== userIdFromUrl)) {
-        setSelectedUser(matched);
+        const initPerms = coercePermissions(matched.permissions);
+        setSelectedUser({
+          ...matched,
+          permissions: initPerms,
+          rolePermissions: {
+            [ROLES.USER]: { ...initPerms },
+            [ROLES.MANAGER]: { ...initPerms },
+            [ROLES.ADMIN]: { ...initPerms },
+          },
+        });
       }
     } else if (!userIdFromUrl && selectedUser) {
       setSelectedUser(null);
@@ -637,6 +650,7 @@ const TeamPage = () => {
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isReset2faOpen, setIsReset2faOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields matching Reference mockup exactly
@@ -649,9 +663,11 @@ const TeamPage = () => {
   const [roleSelection, setRoleSelection] = useState<Role>(ROLES.USER);
   const [addMemberTab, setAddMemberTab] = useState<'create' | 'existing'>('create');
   const [bio, setBio] = useState('');
-  const [addPermissions, setAddPermissions] = useState<UserPermissions>(() =>
-    resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING),
-  );
+  const [addRolePermissions, setAddRolePermissions] = useState<Record<Role, UserPermissions>>(() => ({
+    [ROLES.USER]: emptyPermissions(),
+    [ROLES.MANAGER]: emptyPermissions(),
+    [ROLES.ADMIN]: emptyPermissions(),
+  }));
   const [shiftStart, setShiftStart] = useState(DEFAULT_SHIFT_START);
   const [shiftEnd, setShiftEnd] = useState(DEFAULT_SHIFT_END);
 
@@ -688,16 +704,23 @@ const TeamPage = () => {
     setAddMemberTab('create');
     setBio('');
     setShowPassword(false);
-    setAddPermissions(resolvePermissions(ROLES.USER, DEPARTMENT.ENGINEERING));
+    setAddRolePermissions({
+      [ROLES.USER]: emptyPermissions(),
+      [ROLES.MANAGER]: emptyPermissions(),
+      [ROLES.ADMIN]: emptyPermissions(),
+    });
     setShiftStart(DEFAULT_SHIFT_START);
     setShiftEnd(DEFAULT_SHIFT_END);
   };
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || !password.trim() || !jobTitle.trim()) {
+    if (!fullName.trim() || !email.trim() || !jobTitle.trim()) {
       addToast({ message: 'Please fill in all required fields.', severity: 'error' });
       return;
+    }
+    if (!password.trim()) {
+      // Existing accounts can be added without a new password; new accounts still need one.
     }
 
     // Split Full Name into firstName and lastName for database schema
@@ -707,7 +730,7 @@ const TeamPage = () => {
 
     const payload = {
       email,
-      password,
+      ...(password.trim() ? { password: password.trim() } : {}),
       firstName,
       lastName,
       role: createRole,
@@ -715,7 +738,7 @@ const TeamPage = () => {
       phone,
       department,
       bio,
-      permissions: addPermissions,
+      permissions: addRolePermissions[createRole],
       ...(createRole !== ROLES.ADMIN
         ? { shiftStart: shiftStart || DEFAULT_SHIFT_START, shiftEnd: shiftEnd || DEFAULT_SHIFT_END }
         : {}),
@@ -729,7 +752,10 @@ const TeamPage = () => {
       },
       onError: (err: any) => {
         addToast({
-          message: err?.response?.data?.message || 'Failed to add team member.',
+          message:
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to add team member.',
           severity: 'error'
         });
       },
@@ -739,6 +765,7 @@ const TeamPage = () => {
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const resetTwoFactorMutation = useAdminResetTwoFactor();
+  const resetPasswordMutation = useAdminResetPassword();
 
   const handleDeleteUser = () => {
     if (!selectedUser?._id) return;
@@ -784,11 +811,7 @@ const TeamPage = () => {
         idleTimeoutMinutes: selectedUser.idleTimeoutMinutes ?? 5,
         monitorScreenshots: selectedUser.monitorScreenshots !== false,
         monitorAppUsage: selectedUser.monitorAppUsage !== false,
-        permissions: resolvePermissions(
-          selectedUser.role,
-          selectedUser.department,
-          selectedUser.permissions,
-        ),
+        permissions: coercePermissions(selectedUser.rolePermissions?.[selectedUser.role] || selectedUser.permissions),
       } as any
     }, {
       onSuccess: () => {
@@ -884,15 +907,28 @@ const TeamPage = () => {
                 Edit
               </Button>
 
-              {isAdmin && (
-                <Button
-                  startIcon={<LockIcon sx={{ fontSize: 15 }} />}
-                  sx={actionButtonSx}
-                  onClick={() => setIsReset2faOpen(true)}
-                >
-                  Reset 2FA
-                </Button>
-              )}
+              {(() => {
+                const baseOrgId = selectedUser.baseOrganizationId || selectedUser.organizationId;
+                const canResetCredentials = isAdmin && baseOrgId === currentUser?.organizationId;
+                return canResetCredentials && (
+                  <>
+                    <Button
+                      startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                      sx={actionButtonSx}
+                      onClick={() => setIsReset2faOpen(true)}
+                    >
+                      Reset 2FA
+                    </Button>
+                    <Button
+                      startIcon={<LockIcon sx={{ fontSize: 15 }} />}
+                      sx={actionButtonSx}
+                      onClick={() => setIsResetPasswordOpen(true)}
+                    >
+                      Reset Password
+                    </Button>
+                  </>
+                );
+              })()}
 
               <Button
                 startIcon={<DeleteIcon sx={{ fontSize: 15 }} />}
@@ -912,18 +948,10 @@ const TeamPage = () => {
           )}
         </Box>
 
-        {canAccessTeam &&
-          selectedUser.role !== ROLES.ADMIN &&
-          selectedUser._id !== currentUser?._id &&
-          (!selectedUser.shiftStart || !selectedUser.shiftEnd) && (
-          <Alert severity="warning" sx={{ mb: 4, borderRadius: '16px' }}>
-            Shift timings are not defined for this user. Please edit their profile to add their shift details.
-          </Alert>
-        )}
-
         {/* User Summary Card */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4, flexWrap: 'wrap' }}>
           <Avatar
+            src={selectedUser.avatarUrl || undefined}
             sx={{
               width: 80,
               height: 80,
@@ -1046,7 +1074,7 @@ const TeamPage = () => {
 
 
           {/* Sales KPI stats for selected date — sales/marketing members only */}
-          {isSalesOrMarketingDepartment(selectedUser.department) && (
+          {salesModuleOn && isSalesOrMarketingDepartment(selectedUser.department) && (
             <Box
               sx={{
                 display: 'flex',
@@ -1106,7 +1134,7 @@ const TeamPage = () => {
             { label: 'Department', value: selectedUser.department || DEPARTMENT.ENGINEERING, icon: <CorporateFareIcon sx={{ fontSize: 20, color: tokens.brand.primary }} /> },
             { label: 'Role', value: selectedUser.role === 'admin' ? 'ADMIN' : selectedUser.role === 'manager' ? 'MANAGER' : 'EMPLOYEE', icon: <BadgeIcon sx={{ fontSize: 20, color: '#F59E0B' }} /> },
             { label: 'Shift', value: `${formatTime12Hour(selectedUser.shiftStart) || '09:00 AM'} - ${formatTime12Hour(selectedUser.shiftEnd) || '05:00 PM'}`, icon: <AccessTimeIcon sx={{ fontSize: 20, color: '#3B82F6' }} /> },
-            { label: 'Start Date', value: 'Jun 3, 2026', icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
+            { label: 'Start Date', value: formatDate(selectedUser.createdAt, 'MMM d, yyyy'), icon: <EventAvailableIcon sx={{ fontSize: 20, color: '#10B981' }} /> },
             { label: 'Status', value: selectedUser.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true, icon: <CheckCircleIcon sx={{ fontSize: 20, color: selectedUser.isActive ? '#10B981' : '#EF4444' }} /> },
           ].map((meta, idx) => (
             <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1333,11 +1361,6 @@ const TeamPage = () => {
                           setSelectedUser({
                             ...selectedUser,
                             department: nextDept,
-                            permissions: resolvePermissions(
-                              selectedUser.role,
-                              nextDept,
-                              selectedUser.permissions,
-                            ),
                           });
                         }}
                         displayEmpty
@@ -1392,17 +1415,14 @@ const TeamPage = () => {
                         ] as const).map(({ value, label }) => (
                           <Box
                             key={value}
-                            onClick={() =>
+                            onClick={() => {
+                              const nextRolePerms = selectedUser.rolePermissions?.[value] || coercePermissions(selectedUser.permissions);
                               setSelectedUser({
                                 ...selectedUser,
                                 role: value,
-                                permissions: resolvePermissions(
-                                  value,
-                                  selectedUser.department,
-                                  selectedUser.permissions,
-                                ),
-                              })
-                            }
+                                permissions: nextRolePerms,
+                              });
+                            }}
                             sx={{
                               flex: 1,
                               display: 'flex',
@@ -1459,7 +1479,21 @@ const TeamPage = () => {
                   role={selectedUser.role}
                   department={selectedUser.department}
                   permissions={selectedUser.permissions}
-                  onChange={(next) => setSelectedUser({ ...selectedUser, permissions: next })}
+                  onChange={(next) => {
+                    const currentRole = selectedUser.role;
+                    setSelectedUser({
+                      ...selectedUser,
+                      permissions: next,
+                      rolePermissions: {
+                        ...(selectedUser.rolePermissions || {
+                          [ROLES.USER]: coercePermissions(selectedUser.permissions),
+                          [ROLES.MANAGER]: coercePermissions(selectedUser.permissions),
+                          [ROLES.ADMIN]: coercePermissions(selectedUser.permissions),
+                        }),
+                        [currentRole]: next,
+                      },
+                    });
+                  }}
                   isDarkMode={isDarkMode}
                 />
 
@@ -1509,10 +1543,12 @@ const TeamPage = () => {
                       sx={inputSx}
                     />
                   </Grid>
+                  {(screenshotsOn || appUsageOn) && (
                   <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
                       Desktop monitoring
                     </Typography>
+                    {screenshotsOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1525,6 +1561,8 @@ const TeamPage = () => {
                       label="Screenshots"
                       sx={{ display: 'flex', mb: 0.5 }}
                     />
+                    )}
+                    {appUsageOn && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -1537,7 +1575,9 @@ const TeamPage = () => {
                       label="App and URL tracking"
                       sx={{ display: 'flex', mb: 1 }}
                     />
+                    )}
                   </Grid>
+                  )}
                 </Grid>
 
                 <Box sx={{ width: '100%' }}>
@@ -1707,6 +1747,63 @@ const TeamPage = () => {
               }}
             >
               {resetTwoFactorMutation.isPending ? 'Resetting...' : 'Reset 2FA'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isResetPasswordOpen}
+          onClose={() => setIsResetPasswordOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+              backgroundImage: 'none',
+              maxWidth: 420,
+            }
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Reset user password</Typography>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3 }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? '#e0e0e0' : tokens.text.primary }}>
+              This will overwrite the current password for {userFullName}. A new securely generated password will be sent to their registered email.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 2 }}>
+            <Button onClick={() => setIsResetPasswordOpen(false)} sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedUser?._id) return;
+                resetPasswordMutation.mutate(selectedUser._id, {
+                  onSuccess: () => {
+                    addToast({ message: 'Password reset successfully. The user will receive an email with their new password.', severity: 'success' });
+                    setIsResetPasswordOpen(false);
+                  },
+                  onError: (err: any) => {
+                    addToast({
+                      message: err?.response?.data?.error?.message || 'Failed to reset password.',
+                      severity: 'error',
+                    });
+                  },
+                });
+              }}
+              variant="contained"
+              disabled={resetPasswordMutation.isPending}
+              sx={{
+                bgcolor: tokens.brand.primary,
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 3,
+                boxShadow: 'none',
+              }}
+            >
+              {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -2088,7 +2185,16 @@ const TeamPage = () => {
               <Grid item xs={12} sm={6} md={4} key={member._id}>
                 <Card
                   onClick={() => {
-                    setSelectedUser(member);
+                    const initPerms = coercePermissions(member.permissions);
+                    setSelectedUser({
+                      ...member,
+                      permissions: initPerms,
+                      rolePermissions: {
+                        [ROLES.USER]: { ...initPerms },
+                        [ROLES.MANAGER]: { ...initPerms },
+                        [ROLES.ADMIN]: { ...initPerms },
+                      },
+                    });
                     setSearchParams({ userId: member._id });
                   }}
                   sx={{
@@ -2133,6 +2239,7 @@ const TeamPage = () => {
                     >
                       <Avatar
                         className="avatar-glow"
+                        src={member.avatarUrl || undefined}
                         sx={{
                           width: 64,
                           height: 64,
@@ -2185,7 +2292,7 @@ const TeamPage = () => {
                     <Box
                       sx={{
                         display: 'grid',
-                        gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                        gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                           ? 'repeat(3, 1fr)'
                           : 'repeat(4, 1fr)',
                         gap: 1,
@@ -2195,7 +2302,7 @@ const TeamPage = () => {
                         borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                       }}
                     >
-                      {(isSalesOrMarketingDepartment(member.department)
+                      {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                             key: stat.metric,
                             label: stat.label,
@@ -2262,7 +2369,16 @@ const TeamPage = () => {
               <Box
                 key={member._id}
                 onClick={() => {
-                  setSelectedUser(member);
+                  const initPerms = coercePermissions(member.permissions);
+                  setSelectedUser({
+                    ...member,
+                    permissions: initPerms,
+                    rolePermissions: {
+                      [ROLES.USER]: { ...initPerms },
+                      [ROLES.MANAGER]: { ...initPerms },
+                      [ROLES.ADMIN]: { ...initPerms },
+                    },
+                  });
                   setSearchParams({ userId: member._id });
                 }}
                 sx={{
@@ -2303,6 +2419,7 @@ const TeamPage = () => {
                     }}
                   >
                     <Avatar
+                      src={member.avatarUrl || undefined}
                       sx={{
                         width: 46,
                         height: 46,
@@ -2350,14 +2467,14 @@ const TeamPage = () => {
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: isSalesOrMarketingDepartment(member.department)
+                      gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
                         ? 'repeat(3, minmax(52px, auto))'
                         : 'repeat(4, minmax(52px, auto))',
                       gap: 1.5,
                       mr: { xs: 0, sm: 1 },
                     }}
                   >
-                    {(isSalesOrMarketingDepartment(member.department)
+                    {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
                       ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
                           key: stat.metric,
                           label: stat.label,
@@ -2546,11 +2663,10 @@ const TeamPage = () => {
                 {/* Row 2: Password */}
                 <Box sx={{ width: '100%' }}>
                   <Typography variant="subtitle2" sx={{ mb: 0.8, fontWeight: 700, fontSize: '0.86rem', color: isDarkMode ? 'rgba(255,255,255,0.85)' : tokens.text.primary }}>
-                    Password *
+                    Password
                   </Typography>
                   <TextField
-                    placeholder="Minimum 8 characters"
-                    required
+                    placeholder="Required for new accounts; leave blank to add an existing email"
                     type={showPassword ? 'text' : 'password'}
                     fullWidth
                     value={password}
@@ -2612,9 +2728,7 @@ const TeamPage = () => {
                       <Select
                         value={department}
                         onChange={(e) => {
-                          const nextDept = e.target.value;
-                          setDepartment(nextDept);
-                          setAddPermissions((prev) => resolvePermissions(createRole, nextDept, prev));
+                          setDepartment(e.target.value);
                         }}
                         input={
                           <OutlinedInput
@@ -2665,7 +2779,6 @@ const TeamPage = () => {
                             key={value}
                             onClick={() => {
                               setRoleSelection(value);
-                              setAddPermissions((prev) => resolvePermissions(value, department, prev));
                             }}
                             sx={{
                               flex: 1,
@@ -2696,8 +2809,13 @@ const TeamPage = () => {
                 <AccessPermissionsFields
                   role={createRole}
                   department={department}
-                  permissions={addPermissions}
-                  onChange={setAddPermissions}
+                  permissions={addRolePermissions[createRole]}
+                  onChange={(next) =>
+                    setAddRolePermissions((prev) => ({
+                      ...prev,
+                      [createRole]: next,
+                    }))
+                  }
                   isDarkMode={isDarkMode}
                 />
 

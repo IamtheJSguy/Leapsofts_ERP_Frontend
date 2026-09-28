@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -34,6 +34,7 @@ const shakeAnimation = keyframes`
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useLogin();
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
@@ -53,17 +54,23 @@ const LoginPage = () => {
     login.mutate(data, {
       onSuccess: (res) => {
         const payload = res.data.data;
+        const fromObj = location.state?.from as { pathname?: string; search?: string; hash?: string } | undefined;
+        let from = '/';
+        if (fromObj?.pathname) {
+          from = `${fromObj.pathname}${fromObj.search || ''}${fromObj.hash || ''}`;
+        }
+        
         if (payload.requires2FA && payload.tempToken) {
           sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa', { state: { tempToken: payload.tempToken } });
+          navigate('/login/2fa', { state: { tempToken: payload.tempToken, from: fromObj } });
           return;
         }
         if (payload.requires2FASetup && payload.tempToken) {
           sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken } });
+          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken, from: fromObj } });
           return;
         }
-        navigate('/');
+        navigate(from);
       },
       onError: () => {
         setShake(true);

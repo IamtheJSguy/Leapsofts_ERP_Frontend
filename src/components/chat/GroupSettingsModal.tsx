@@ -203,7 +203,10 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
         <List disablePadding>
           {conversation.participants.map((p) => {
             const memberId = typeof p === 'string' ? p : p._id;
-            const memberObj = typeof p === 'string' ? dbUsers.find((u) => u._id === p) : p;
+            const memberObj =
+              typeof p === 'string'
+                ? dbUsers.find((u) => u._id === p)
+                : { ...p, avatarUrl: p.avatarUrl || dbUsers.find((u) => u._id === p._id)?.avatarUrl };
             const isGroupAdmin = adminId === memberId;
             const isMe = memberId === currentUser?._id;
 
@@ -232,7 +235,10 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
                 }
               >
                 <ListItemAvatar sx={{ minWidth: 48 }}>
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6', color: 'text.primary', fontWeight: 600, fontSize: '0.85rem' }}>
+                  <Avatar
+                    src={(memberObj as User | undefined)?.avatarUrl || undefined}
+                    sx={{ width: 36, height: 36, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6', color: 'text.primary', fontWeight: 600, fontSize: '0.85rem' }}
+                  >
                     {getDisplayName(memberObj as User).charAt(0).toUpperCase()}
                   </Avatar>
                 </ListItemAvatar>
@@ -307,7 +313,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
                       disabled={isAdding}
                     >
                       <ListItemAvatar sx={{ minWidth: 40 }}>
-                        <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem' }}>{getDisplayName(u).charAt(0)}</Avatar>
+                        <Avatar src={u.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: '0.75rem' }}>{getDisplayName(u).charAt(0)}</Avatar>
                       </ListItemAvatar>
                       <ListItemText
                         primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{getDisplayName(u)}</Typography>}

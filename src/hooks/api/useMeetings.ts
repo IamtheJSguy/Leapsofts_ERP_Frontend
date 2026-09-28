@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { Meeting } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const meetingApi = {
   getMeetings: (params: Record<string, string>) =>
@@ -15,12 +16,14 @@ const meetingApi = {
 export const useMeetings = (
   filters: Record<string, string> = {},
   options?: { enabled?: boolean },
-) =>
-  useQuery({
-    queryKey: ['meetings', filters],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['meetings', organizationId, filters],
     queryFn: () => meetingApi.getMeetings(filters).then((r) => r.data.data),
     enabled: options?.enabled ?? true,
   });
+};
 
 export const useMeeting = (id: string | undefined) =>
   useQuery({

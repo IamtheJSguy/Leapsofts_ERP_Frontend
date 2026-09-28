@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Card, useTheme } from '@mui/material';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatWindow } from '@/components/chat/ChatWindow';
@@ -6,6 +6,7 @@ import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
 import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/useChatStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const ChatPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -15,24 +16,24 @@ const ChatPage = () => {
 
   const { conversationId } = useParams();
   const navigate = useNavigate();
-  const { activeConversationId, setActiveConversation } = useChatStore();
+  const { activeConversationId, setActiveConversation, resetChatSession } = useChatStore();
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const previousOrganizationId = useRef(organizationId);
 
   useEffect(() => {
-    if (conversationId) {
-      if (conversationId !== activeConversationId) {
-        setActiveConversation(conversationId);
-      }
-      return;
+    if (previousOrganizationId.current && previousOrganizationId.current !== organizationId) {
+      resetChatSession();
+      navigate('/chat', { replace: true });
     }
-    if (activeConversationId) {
-      navigate(`/chat/${activeConversationId}`, { replace: true });
+    previousOrganizationId.current = organizationId;
+  }, [organizationId, navigate, resetChatSession]);
+
+  useEffect(() => {
+    const fromUrl = conversationId ?? null;
+    if (fromUrl !== activeConversationId) {
+      setActiveConversation(fromUrl);
     }
-  }, [
-    conversationId,
-    activeConversationId,
-    setActiveConversation,
-    navigate,
-  ]);
+  }, [conversationId, activeConversationId, setActiveConversation]);
 
   useEffect(() => {
     return () => {
@@ -48,6 +49,9 @@ const ChatPage = () => {
         flexDirection: 'column',
         height: 'calc(100vh - 120px)',
         minHeight: 0,
+        minWidth: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
       }}
     >
 
@@ -56,7 +60,7 @@ const ChatPage = () => {
         sx={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '340px 1fr' },
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '340px minmax(0, 1fr)' },
           borderRadius: '24px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.6)',
           /* backdropFilter: 'blur(24px)' (removed for performance) */
@@ -70,7 +74,7 @@ const ChatPage = () => {
         <Box sx={{ display: { xs: activeConversationId ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
           <ChatSidebar />
         </Box>
-        <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
+        <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', md: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%', minWidth: 0 }}>
           <ChatWindow onSearchOpen={() => setSearchOpen(true)} onDriveOpen={() => setDriveOpen(true)} />
         </Box>
       </Card>

@@ -124,7 +124,7 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ width: 32, height: 32, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: 'text.secondary' }}>
+            <Avatar src={typeof request.userId === 'object' ? request.userId.avatarUrl || undefined : undefined} sx={{ width: 32, height: 32, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: 'text.secondary' }}>
               <PersonIcon fontSize="small" />
             </Avatar>
             <Box>

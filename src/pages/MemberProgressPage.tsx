@@ -214,6 +214,7 @@ export default function MemberProgressPage() {
             }}
           />
           <Avatar
+            src={user.avatarUrl || undefined}
             sx={{
               width: 80,
               height: 80,

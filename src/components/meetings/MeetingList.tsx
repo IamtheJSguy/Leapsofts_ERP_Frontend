@@ -470,25 +470,22 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
 
                             return (
                               <Tooltip key={idx} title={name}>
-                                <Box
+                                <Avatar
+                                  src={details?.avatarUrl || undefined}
                                   sx={{
                                     width: 26,
                                     height: 26,
-                                    borderRadius: '50%',
                                     bgcolor: tokens.brand.primary,
                                     color: '#fff',
                                     border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
                                     fontSize: '0.65rem',
                                     fontWeight: 800,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
                                     marginLeft: idx > 0 ? '-8px' : 0,
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
                                   }}
                                 >
                                   {initials}
-                                </Box>
+                                </Avatar>
                               </Tooltip>
                             );
                           })}
@@ -810,7 +807,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
                 const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
                 return (
                   <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-                    <Avatar sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                    <Avatar src={option.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                       {initials}
                     </Avatar>
                     <Box>

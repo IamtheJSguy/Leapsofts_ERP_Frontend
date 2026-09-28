@@ -28,9 +28,9 @@ export type CsvImportResult = {
 
 const CONNECTION_STATUSES: ConnectionStatus[] = [
   'pending',
+  'sent',
   'accepted',
   'declined',
-  'no_response',
 ];
 
 const MESSAGE_STATUSES: MessageStatus[] = [
@@ -105,7 +105,6 @@ const matchConnectionStatus = (raw: string): ConnectionStatus | '' => {
   for (const status of CONNECTION_STATUSES) {
     if (cleaned === status || compact === status.replace(/_/g, '')) return status;
   }
-  if (cleaned === 'no response' || compact === 'noresponse') return 'no_response';
   return '';
 };
 

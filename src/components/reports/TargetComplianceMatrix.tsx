@@ -293,7 +293,7 @@ export const TargetComplianceMatrix = ({
             >
               {/* Agent Detail */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200 }}>
-                <Avatar sx={{ bgcolor: tokens.brand.primaryLight, width: 32, height: 32, fontSize: '0.8rem' }}>
+                <Avatar src={agent.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight, width: 32, height: 32, fontSize: '0.8rem' }}>
                   {agent.firstName ? agent.firstName[0] : agent.email[0].toUpperCase()}
                 </Avatar>
                 <Box>
