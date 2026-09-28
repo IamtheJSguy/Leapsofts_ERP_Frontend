@@ -1256,6 +1256,23 @@ export interface LeadFilters {
   search?: string;
 }
 
+export interface LeadExportColumn {
+  key: string;
+  header: string;
+}
+
+export interface LeadExportPreview {
+  columns: LeadExportColumn[];
+  rows: Record<string, string>[];
+  total: number;
+}
+
+export interface LeadExportRequest {
+  scope: 'filtered' | 'all';
+  fields: string[];
+  filters?: Omit<LeadFilters, 'page' | 'limit' | 'sortBy' | 'order'>;
+}
+
 export interface ValidationResult {
   newLeads: Lead[];
   modifiedLeads: Lead[];

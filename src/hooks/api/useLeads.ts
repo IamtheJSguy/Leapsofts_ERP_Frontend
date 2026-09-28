@@ -6,6 +6,8 @@ import type {
   BulkCreateResponse,
   BulkUploadResponse,
   Lead,
+  LeadExportPreview,
+  LeadExportRequest,
   LeadFilters,
   LeadsListResponse,
   LeadTimelineEvent,
@@ -39,6 +41,10 @@ const leadApi = {
     }),
   getLeadHistory: (id: string) =>
     api.get<ApiResponse<LeadTimelineEvent[]>>(`/leads/${id}/history`),
+  previewLeadExport: (body: LeadExportRequest) =>
+    api.post<ApiResponse<LeadExportPreview>>('/leads/export', { ...body, format: 'preview' }),
+  downloadLeadExport: (body: LeadExportRequest) =>
+    api.post('/leads/export', { ...body, format: 'xlsx' }, { responseType: 'blob' }),
 };
 
 export const useLeads = (filters: LeadFilters = {}) => {
@@ -177,6 +183,25 @@ export const useDisqualifyLead = () => {
     },
   });
 };
+
+export const usePreviewLeadExport = () =>
+  useMutation({
+    mutationFn: (body: LeadExportRequest) =>
+      leadApi.previewLeadExport(body).then((response) => response.data.data),
+  });
+
+export const useDownloadLeadExport = () =>
+  useMutation({
+    mutationFn: async (body: LeadExportRequest) => {
+      const response = await leadApi.downloadLeadExport(body);
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'leads.xlsx';
+      link.click();
+      window.URL.revokeObjectURL(url);
+    },
+  });
 
 export const useLeadHistory = (id: string | undefined) =>
   useQuery({
