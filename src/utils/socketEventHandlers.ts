@@ -23,7 +23,7 @@ const recentlyProcessedMessages = new Set<string>();
 // Dual-emit dedupe for message:reaction (conversation room + user room).
 const recentlyProcessedReactions = new Set<string>();
 
-const notificationSound = new Audio('/chat.mp3');
+const notificationSound = new Audio('/dingChat.mp3');
 notificationSound.preload = 'auto';
 
 const getSenderId = (message: Message): string => {
