@@ -270,7 +270,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', width: 'fit-content', maxWidth: '70%', minWidth: 0, position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '75%', minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -336,7 +336,7 @@ export const MessageBubble = React.memo(({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, flexDirection: isOwn ? 'row-reverse' : 'row', maxWidth: '100%', minWidth: 0 }}>
+        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
           <Box sx={{ position: 'relative', maxWidth: '100%', minWidth: 0 }}>
           <Paper
@@ -354,9 +354,12 @@ export const MessageBubble = React.memo(({
                 ? 'none'
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
               boxShadow: 'none',
-              overflow: compactMedia ? 'hidden' : 'visible',
+              overflow: 'hidden',
+              ...(isDriveFile ? { width: 280 } : {}),
               maxWidth: '100%',
               minWidth: 0,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
             }}
           >
             {replySnippet && (
@@ -414,7 +417,9 @@ export const MessageBubble = React.memo(({
                 rel="noopener noreferrer"
                 sx={{
                   display: 'block',
-                  maxWidth: 280,
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   textDecoration: 'none',
                   color: 'inherit',
                   cursor: 'pointer',
@@ -443,7 +448,8 @@ export const MessageBubble = React.memo(({
                     <Box
                       sx={{
                         overflow: 'hidden',
-                        height: docPreviewHeight ?? 120,
+                        width: '100%',
+                        height: docPreviewHeight ?? 140,
                         bgcolor: '#fff',
                       }}
                     >
@@ -455,13 +461,15 @@ export const MessageBubble = React.memo(({
                         onLoad={(event) => {
                           const img = event.currentTarget;
                           if (!img.naturalWidth) return;
-                          const fullHeight = img.clientWidth * (img.naturalHeight / img.naturalWidth);
-                          setDocPreviewHeight(Math.min(140, Math.round(fullHeight / 2)));
+                          const fullHeight = 280 * (img.naturalHeight / img.naturalWidth);
+                          setDocPreviewHeight(Math.min(160, Math.max(96, Math.round(fullHeight / 2))));
                         }}
                         sx={{
                           display: 'block',
                           width: '100%',
-                          height: 'auto',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',
                         }}
                       />
                     </Box>
@@ -542,10 +550,12 @@ export const MessageBubble = React.memo(({
                   overflowWrap: 'anywhere',
                   wordBreak: 'break-word',
                   color: isOwn ? '#000' : 'text.primary',
-                  '& p, & a, & span, & li': {
+                  '& *': {
                     whiteSpace: 'pre-wrap',
                     overflowWrap: 'anywhere',
                     wordBreak: 'break-word',
+                    maxWidth: '100%',
+                    minWidth: 0,
                   },
                   '& p': { m: 0 },
                   '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
@@ -634,54 +644,66 @@ export const MessageBubble = React.memo(({
           )}
           </Box>
 
-          {canReact && (
-            <Tooltip title="Add reaction" arrow>
-              <IconButton
-                className="msg-hover-action"
-                size="small"
-                onClick={(e) => setQuickAnchor(e.currentTarget)}
-                sx={{
-                  opacity: { xs: 1, md: 0 },
-                  transition: 'opacity 0.15s ease',
-                  color: 'text.secondary',
-                  width: 28,
-                  height: 28,
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    color: tokens.brand.primary,
-                  },
-                }}
-                aria-label="Add reaction"
-              >
-                <AddReactionOutlinedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
-          )}
+          {(canReact || onReply) && (
+            <Box
+              className="msg-hover-action"
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                ...(isOwn
+                  ? { right: '100%', mr: 0.5 }
+                  : { left: '100%', ml: 0.5 }),
+                opacity: { xs: 1, md: 0 },
+                transition: 'opacity 0.15s ease',
+              }}
+            >
+              {canReact && (
+                <Tooltip title="Add reaction" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => setQuickAnchor(e.currentTarget)}
+                    sx={{
+                      color: 'text.secondary',
+                      width: 28,
+                      height: 28,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        color: tokens.brand.primary,
+                      },
+                    }}
+                    aria-label="Add reaction"
+                  >
+                    <AddReactionOutlinedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
 
-          {onReply && (
-            <Tooltip title="Reply" arrow>
-              <IconButton
-                className="msg-hover-action"
-                size="small"
-                onClick={() => onReply(message)}
-                sx={{
-                  opacity: { xs: 1, md: 0 },
-                  transition: 'opacity 0.15s ease',
-                  color: 'text.secondary',
-                  width: 28,
-                  height: 28,
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    color: tokens.brand.primary,
-                  },
-                }}
-                aria-label="Reply to message"
-              >
-                <ReplyIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
+              {onReply && (
+                <Tooltip title="Reply" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={() => onReply(message)}
+                    sx={{
+                      color: 'text.secondary',
+                      width: 28,
+                      height: 28,
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        color: tokens.brand.primary,
+                      },
+                    }}
+                    aria-label="Reply to message"
+                  >
+                    <ReplyIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
           )}
         </Box>
       </Box>

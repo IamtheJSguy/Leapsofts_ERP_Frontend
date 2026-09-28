@@ -30,7 +30,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
@@ -68,6 +68,7 @@ interface ChatWindowProps {
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const { activeConversationId, setActiveConversation, clearUnread, setReplyingTo } = useChatStore();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightMessageId = searchParams.get('message');
   const replyingTo = useChatStore((s) => s.replyingTo);
@@ -475,6 +476,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               const newConvId = response.data?.data?._id || response.data?._id;
               if (newConvId) {
                 setActiveConversation(newConvId);
+                navigate(`/chat/${newConvId}`, { replace: true });
                 sendAttachment(newConvId);
               }
             },
@@ -501,6 +503,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             const newConvId = response.data?.data?._id || response.data?._id;
             if (newConvId) {
               setActiveConversation(newConvId);
+              navigate(`/chat/${newConvId}`, { replace: true });
               sendMessage.mutate({ conversationId: newConvId, ...payload });
             }
           },
@@ -701,7 +704,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         {chatHeaderDetails && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
             <IconButton
-              onClick={() => setActiveConversation(null)}
+              onClick={() => navigate('/chat', { replace: true })}
               sx={{ display: { xs: 'flex', md: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
             >
               <ArrowBackIcon />
@@ -839,7 +842,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             <CircularProgress size={28} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
-          <Box ref={contentWrapperRef} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box ref={contentWrapperRef} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0 }}>
             {(isFetchingNextPage || hasNextPage) && (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 1, minHeight: 28 }}>
                 {isFetchingNextPage ? (
@@ -854,7 +857,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 (!prevMsg || !isSameMessageDay(prevMsg.createdAt, msg.createdAt));
 
               return (
-                <Box key={msg.clientId || msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box key={msg.clientId || msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0 }}>
                   {showDaySeparator && (
                     <Box
                       sx={{
