@@ -29,21 +29,11 @@ const ChatPage = () => {
   }, [organizationId, navigate, resetChatSession]);
 
   useEffect(() => {
-    if (conversationId) {
-      if (conversationId !== activeConversationId) {
-        setActiveConversation(conversationId);
-      }
-      return;
+    const fromUrl = conversationId ?? null;
+    if (fromUrl !== activeConversationId) {
+      setActiveConversation(fromUrl);
     }
-    if (activeConversationId) {
-      navigate(`/chat/${activeConversationId}`, { replace: true });
-    }
-  }, [
-    conversationId,
-    activeConversationId,
-    setActiveConversation,
-    navigate,
-  ]);
+  }, [conversationId, activeConversationId, setActiveConversation]);
 
   useEffect(() => {
     return () => {
