@@ -48,7 +48,6 @@ interface ExportLeadsDialogProps {
 }
 
 interface ExportFilterDraft {
-  search: string;
   assignedTo: string;
   icp: string;
   profile: string;
@@ -62,7 +61,6 @@ interface ExportFilterDraft {
 }
 
 const emptyDraft = (): ExportFilterDraft => ({
-  search: '',
   assignedTo: '',
   icp: '',
   profile: '',
@@ -76,7 +74,6 @@ const emptyDraft = (): ExportFilterDraft => ({
 });
 
 const draftFromFilters = (filters: LeadFilters): ExportFilterDraft => ({
-  search: filters.search ?? '',
   assignedTo: filters.assignedTo ?? '',
   icp: filters.icp ?? '',
   profile: filters.profile ?? '',
@@ -91,8 +88,6 @@ const draftFromFilters = (filters: LeadFilters): ExportFilterDraft => ({
 
 const filtersFromDraft = (draft: ExportFilterDraft): LeadFilters => {
   const filters: LeadFilters = { dateField: draft.dateField };
-  const search = draft.search.trim();
-  if (search) filters.search = search;
   if (draft.assignedTo) filters.assignedTo = draft.assignedTo;
   if (draft.icp) filters.icp = draft.icp;
   if (draft.profile) filters.profile = draft.profile;
@@ -261,14 +256,6 @@ export const ExportLeadsDialog = ({ open, onClose, filters }: ExportLeadsDialogP
               mb: 2,
             }}
           >
-            <TextField
-              size="small"
-              label="Search"
-              placeholder="Name, company, headline"
-              value={draft.search}
-              onChange={(event) => patchDraft({ search: event.target.value })}
-              sx={{ ...fieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
             <Autocomplete
               options={users}
               getOptionLabel={(user) => userLabel(user)}
