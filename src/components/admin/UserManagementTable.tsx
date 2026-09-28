@@ -198,6 +198,7 @@ export const UserManagementTable = () => {
                     <TableCell sx={{ py: 1.75, borderBottom: 0, pl: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Avatar
+                          src={user.avatarUrl || undefined}
                           sx={{
                             width: 38,
                             height: 38,

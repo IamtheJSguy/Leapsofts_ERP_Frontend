@@ -1,5 +1,6 @@
 import { lazyRetry } from '@/utils/lazyRetry';
 
+export const ImpersonatePage = lazyRetry(() => import('@/pages/ImpersonatePage'));
 export const LoginPage = lazyRetry(() => import('@/pages/LoginPage'));
 export const TwoFactorVerifyPage = lazyRetry(() => import('@/pages/TwoFactorVerifyPage'));
 export const TwoFactorSetupPage = lazyRetry(() => import('@/pages/TwoFactorSetupPage'));
@@ -23,3 +24,4 @@ export const MemberProgressPage = lazyRetry(() => import('@/pages/MemberProgress
 export const MemberKpiDetailPage = lazyRetry(() => import('@/pages/MemberKpiDetailPage'));
 export const LeadDetailsPage = lazyRetry(() => import('@/pages/leads/LeadDetailsPage'));
 export const BulkAddLeadsPage = lazyRetry(() => import('@/pages/BulkAddLeadsPage'));
+export const DriveConnectedPage = lazyRetry(() => import('@/pages/DriveConnectedPage'));

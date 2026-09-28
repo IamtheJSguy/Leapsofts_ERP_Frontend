@@ -72,6 +72,11 @@ const DashboardPage = () => {
   };
 
   const { dayName, dayNum, monthYear } = getStylizedDate();
+  const memberships = (user?.memberships ?? []).filter((m) => m.isActive);
+  const currentOrgName =
+    memberships.find((m) => m.organizationId === user?.organizationId)?.name ||
+    user?.organizationName ||
+    'Leapsofts';
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -100,13 +105,17 @@ const DashboardPage = () => {
           </Typography>
           <Typography
             variant="body1"
-            sx={{ 
+            sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
               fontWeight: 500,
-              fontSize: '0.92rem'
+              fontSize: '0.92rem',
             }}
           >
-            Here&apos;s what&apos;s happening at Leapsofts today.
+            Here&apos;s what&apos;s happening at{' '}
+            <Box component="span" sx={{ fontWeight: 700, color: 'inherit' }}>
+              {currentOrgName}
+            </Box>{' '}
+            today.
           </Typography>
         </Box>
 

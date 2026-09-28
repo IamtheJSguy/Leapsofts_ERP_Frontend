@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { KPIChangeRequest, KpiChangeSource, KpiChangeType, KpiPriority, ChangeEffectiveWhen, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export type SubmitChangeRequestPayload = {
   sourceType: KpiChangeSource;
@@ -60,12 +61,14 @@ export const useMyKPIChangeRequests = () =>
     queryFn: () => changeRequestApi.mine().then((r) => r.data.data),
   });
 
-export const usePendingKPIChangeRequests = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['kpi-change-requests', 'pending'],
+export const usePendingKPIChangeRequests = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpi-change-requests', 'pending', organizationId],
     queryFn: () => changeRequestApi.pending().then((r) => r.data.data),
     enabled: options?.enabled !== false,
   });
+};
 
 export const useSubmitKPIChangeRequest = () => {
   const queryClient = useQueryClient();

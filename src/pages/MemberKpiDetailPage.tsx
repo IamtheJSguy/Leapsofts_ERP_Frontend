@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Avatar,
   Box,
@@ -24,6 +24,7 @@ import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import api from '@/lib/axios';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
 import { MemberKpiWeekTable } from '@/components/kpi/MemberKpiWeekTable';
+import { RichTextContent } from '@/components/common/RichTextContent';
 import {
   buildMemberKpiDetailSearch,
   formatPeriodLabel,
@@ -43,6 +44,7 @@ import {
   type MemberDailyKpiEntry,
 } from '@/lib/memberKpiWeekTable';
 import { tokens } from '@/styles/tokens';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import { formatDateTime, getDisplayName } from '@/utils/formatters';
 import type { SalesKpiEntry, SalesKpiStatus, User } from '@/types';
@@ -66,12 +68,60 @@ const TimingRow = ({ label, value }: { label: string; value?: string | null }) =
   </Box>
 );
 
+const isValidInternalPath = (path: string | null | undefined): boolean => {
+  if (!path || typeof path !== 'string') return false;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return false;
+  try {
+    const dummyOrigin = 'http://localhost';
+    const url = new URL(trimmed, dummyOrigin);
+    return url.origin === dummyOrigin;
+  } catch {
+    return false;
+  }
+};
+
 export default function MemberKpiDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const entitlements = useEntitlements();
+  const salesModuleOn = entitlements.salesModule;
+  const projectsOn = entitlements.projectsAndBoards;
+
+  const queryFrom = searchParams.get('from');
+  const stateFrom = (location.state as { from?: string } | null)?.from;
+  const rawTargetFrom = queryFrom || stateFrom;
+  const validTargetFrom = useMemo(
+    () => (isValidInternalPath(rawTargetFrom) ? rawTargetFrom : null),
+    [rawTargetFrom],
+  );
+
+  const handleBack = () => {
+    if (validTargetFrom) {
+      navigate(validTargetFrom);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/tasks?tab=team');
+    }
+  };
+
+  const backButtonLabel = useMemo(() => {
+    if (validTargetFrom) {
+      if (validTargetFrom.startsWith('/dashboard') || validTargetFrom === '/') {
+        return 'Back to Dashboard';
+      }
+      if (validTargetFrom.includes('tab=team') || validTargetFrom.includes('tab=daily_progress')) {
+        return 'Back to Team Progress';
+      }
+      return 'Back';
+    }
+    return 'Back to Team Progress';
+  }, [validTargetFrom]);
 
   const today = new Date().toLocaleDateString('en-CA');
   const mode: PeriodMode = isPeriodMode(searchParams.get('mode'))
@@ -86,7 +136,15 @@ export default function MemberKpiDetailPage() {
   const [showSimpleKpis, setShowSimpleKpis] = useState(true);
 
   const writePeriod = (nextMode: PeriodMode, nextDate: string, nextRangeEnd: string) => {
-    setSearchParams(buildMemberKpiDetailSearch({ mode: nextMode, date: nextDate, rangeEnd: nextRangeEnd }));
+    const currentFrom = searchParams.get('from');
+    setSearchParams(
+      buildMemberKpiDetailSearch({
+        mode: nextMode,
+        date: nextDate,
+        rangeEnd: nextRangeEnd,
+        from: currentFrom || undefined,
+      }),
+    );
   };
 
   const queryParams = useMemo(
@@ -105,6 +163,7 @@ export default function MemberKpiDetailPage() {
   });
   const { data: salesEntries = [], isLoading: salesLoading } = useTeamSalesKpis(
     userId ? queryParams : null,
+    { enabled: salesModuleOn },
   );
 
   const isLoading = dailyLoading || salesLoading;
@@ -128,14 +187,14 @@ export default function MemberKpiDetailPage() {
     () =>
       (dailyEntries as any[]).filter((entry) => {
         const kanban = isKanbanDailyEntry(entry);
-        if (kanban) return showKanbanKpis;
+        if (kanban) return showKanbanKpis && projectsOn;
         return showSimpleKpis;
       }),
-    [dailyEntries, showKanbanKpis, showSimpleKpis],
+    [dailyEntries, showKanbanKpis, showSimpleKpis, projectsOn],
   );
   const visibleSalesEntries = useMemo(
-    () => (showSalesKpis ? salesEntries : []),
-    [salesEntries, showSalesKpis],
+    () => (showSalesKpis && salesModuleOn ? salesEntries : []),
+    [salesEntries, showSalesKpis, salesModuleOn],
   );
 
   const dailyCompleted = visibleDailyEntries.filter((e) => e.isCompleted).length;
@@ -213,7 +272,7 @@ export default function MemberKpiDetailPage() {
     <Box sx={{ p: { xs: 2.5, md: 4.5 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Button
-          onClick={() => navigate('/tasks')}
+          onClick={handleBack}
           startIcon={<ArrowBackIcon />}
           sx={{
             py: 1,
@@ -225,12 +284,13 @@ export default function MemberKpiDetailPage() {
             mb: 2,
           }}
         >
-          Back to Team Progress
+          {backButtonLabel}
         </Button>
 
         <Card sx={{ ...cardSx, p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
             <Avatar
+              src={member?.avatarUrl || undefined}
               sx={{
                 width: 64,
                 height: 64,
@@ -352,6 +412,7 @@ export default function MemberKpiDetailPage() {
             ml: { md: 'auto' },
           }}
         >
+          {salesModuleOn && (
           <FormControlLabel
             control={
               <Checkbox
@@ -367,6 +428,8 @@ export default function MemberKpiDetailPage() {
               '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
             }}
           />
+          )}
+          {projectsOn && (
           <FormControlLabel
             control={
               <Checkbox
@@ -382,6 +445,7 @@ export default function MemberKpiDetailPage() {
               '& .MuiFormControlLabel-label': { fontSize: '0.82rem', fontWeight: 700, color: 'text.secondary' },
             }}
           />
+          )}
           <FormControlLabel
             control={
               <Checkbox
@@ -436,7 +500,7 @@ export default function MemberKpiDetailPage() {
               const cardId = isObj ? kId._id : kId;
               const boardId = isObj ? kId.boardId : (entry as any).boardId;
               const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-              if (boardId && cardId) {
+              if (projectsOn && boardId && cardId) {
                 kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
               }
             }
@@ -446,7 +510,12 @@ export default function MemberKpiDetailPage() {
               <KpiDetailCard
                 isDarkMode={isDarkMode}
                 kind={kind}
-                name={entry.kpiName || entry.kpiId?.name || 'KPI'}
+                name={entry.kpiName || (typeof entry.kpiId === 'object' ? entry.kpiId?.name : undefined) || 'KPI'}
+                description={
+                  (typeof entry.kanbanCardId === 'object' ? (entry.kanbanCardId as any)?.description : undefined) ??
+                  entry.description ??
+                  (typeof entry.kpiId === 'object' ? entry.kpiId?.description : undefined)
+                }
                 statusLabel={display.statusLabel}
                 isCompleted={display.isCompleted}
                 isOverdue={display.isOverdue}
@@ -485,7 +554,7 @@ export default function MemberKpiDetailPage() {
               const cardId = isObj ? kId._id : kId;
               const boardId = isObj ? kId.boardId : (entry as any).boardId;
               const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-              if (boardId && cardId) {
+              if (projectsOn && boardId && cardId) {
                 kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
               }
             }
@@ -496,6 +565,10 @@ export default function MemberKpiDetailPage() {
                 isDarkMode={isDarkMode}
                 kind="sales"
                 name={entry.kpiName}
+                description={
+                  (typeof (entry as any).kanbanCardId === 'object' ? (entry as any).kanbanCardId?.description : undefined) ??
+                  entry.description
+                }
                 statusLabel={display.statusLabel}
                 isCompleted={display.isCompleted}
                 isOverdue={display.isOverdue}
@@ -554,7 +627,7 @@ export default function MemberKpiDetailPage() {
                       const cardId = isObj ? kId._id : kId;
                       const boardId = isObj ? kId.boardId : (entry as any).boardId;
                       const projectId = isObj ? (kId.projectId || kId.boardId) : ((entry as any).projectId || (entry as any).boardId);
-                      if (boardId && cardId) {
+                      if (projectsOn && boardId && cardId) {
                         kanbanLink = `/projects/${projectId || boardId}/boards/${boardId}?card=${cardId}`;
                       }
                     }
@@ -565,6 +638,11 @@ export default function MemberKpiDetailPage() {
                           isDarkMode={isDarkMode}
                           kind="kanban"
                           name={entry.kpiName || (typeof entry.kpiId === 'object' ? entry.kpiId?.name : undefined) || 'KPI'}
+                          description={
+                            (typeof entry.kanbanCardId === 'object' ? (entry.kanbanCardId as any)?.description : undefined) ??
+                            entry.description ??
+                            (typeof entry.kpiId === 'object' ? entry.kpiId?.description : undefined)
+                          }
                           statusLabel={display.statusLabel}
                           isCompleted={display.isCompleted}
                           isOverdue={display.isOverdue}
@@ -607,6 +685,7 @@ function KpiDetailCard({
   isDarkMode,
   kind,
   name,
+  description,
   statusLabel,
   isCompleted,
   isOverdue,
@@ -621,6 +700,7 @@ function KpiDetailCard({
   isDarkMode: boolean;
   kind: 'daily' | 'sales' | 'kanban';
   name: string;
+  description?: string;
   statusLabel: string;
   isCompleted: boolean;
   isOverdue: boolean;
@@ -693,6 +773,18 @@ function KpiDetailCard({
           >
             {name}
           </Typography>
+          {Boolean(description?.trim()) && (
+            <RichTextContent
+              content={description}
+              sx={{
+                fontSize: '0.8rem',
+                lineHeight: 1.4,
+                color: 'text.secondary',
+                mt: 0.25,
+                '& p': { m: 0 },
+              }}
+            />
+          )}
           {hasTarget && (
             <Tooltip
               title={kind === 'sales' && (extra ?? 0) > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}

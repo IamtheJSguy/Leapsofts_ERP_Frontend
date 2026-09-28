@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PageLoader } from '@/components/common/PageLoader';
 import { ROLES } from '@/lib/constants';
 import {
+  ImpersonatePage,
   LoginPage,
   TwoFactorVerifyPage,
   TwoFactorSetupPage,
@@ -30,6 +31,7 @@ import {
   MemberKpiDetailPage,
   LeadDetailsPage,
   BulkAddLeadsPage,
+  DriveConnectedPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -42,6 +44,14 @@ const wrap = (element: React.ReactNode) => (
 );
 
 export const router = createBrowserRouter([
+  {
+    path: '/impersonate',
+    element: wrap(<ImpersonatePage />),
+  },
+  {
+    path: '/drive/connected',
+    element: wrap(<DriveConnectedPage />),
+  },
   {
     path: '/login',
     element: wrap(
@@ -94,7 +104,7 @@ export const router = createBrowserRouter([
       {
         path: 'projects',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requireEntitlement="projectsAndBoards">
             <ProjectsPage />
           </ProtectedRoute>,
         ),
@@ -102,7 +112,7 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:id',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requireEntitlement="projectsAndBoards">
             <ProjectDetailsPage />
           </ProtectedRoute>,
         ),
@@ -110,7 +120,7 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:id/boards/:boardId',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requireEntitlement="projectsAndBoards">
             <KanbanBoardPage />
           </ProtectedRoute>,
         ),
@@ -118,7 +128,7 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ELEVATED_ROLES]} requireEntitlement="scheduledReports">
             <ReportsPage />
           </ProtectedRoute>,
         ),
@@ -134,7 +144,7 @@ export const router = createBrowserRouter([
       {
         path: 'chat/:conversationId?',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requireEntitlement="chat">
             <ChatPage />
           </ProtectedRoute>,
         ),
@@ -177,7 +187,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage" requireEntitlement="salesModule">
             <SalesPage />
           </ProtectedRoute>,
         ),
@@ -185,7 +195,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales/add-leads',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage" requireEntitlement="salesModule">
             <BulkAddLeadsPage />
           </ProtectedRoute>,
         ),
@@ -193,7 +203,7 @@ export const router = createBrowserRouter([
       {
         path: 'sales/leads/:id',
         element: wrap(
-          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage">
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage" requireEntitlement="salesModule">
             <LeadDetailsPage />
           </ProtectedRoute>,
         ),

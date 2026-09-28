@@ -1,9 +1,8 @@
 export const CONNECTION_STATUS = {
-  NOT_SENT: 'not_sent',
+  PENDING: 'pending',
   SENT: 'sent',
   ACCEPTED: 'accepted',
   DECLINED: 'declined',
-  NO_RESPONSE: 'no_response',
 } as const;
 
 export const MESSAGE_STATUS = {
@@ -116,6 +115,7 @@ export const SOCKET_EVENTS = {
   CHAT_JOIN: 'chat:join',
   CHAT_LEAVE: 'chat:leave',
   CHAT_TYPING: 'chat:typing',
+  ORG_ENTITLEMENTS_UPDATED: 'org:entitlements_updated',
 } as const;
 
 /** Quick-bar emojis shown on message hover (full picker via +). */

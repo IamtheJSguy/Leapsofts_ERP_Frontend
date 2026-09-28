@@ -28,6 +28,7 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { format } from 'date-fns';
 import { tokens } from '@/styles/tokens';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { useUser } from '@/hooks/api/useUsers';
 import {
   useShiftHistory,
@@ -88,11 +89,20 @@ export default function AttendanceActivityPage() {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const currentUser = useAuthStore((s) => s.user);
+  const entitlements = useEntitlements();
+  const screenshotsOn = entitlements.screenshotsEnabled;
+  const appUsageOn = entitlements.appUsageTelemetry;
   const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'manager';
 
   const selectedDate = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
   const shiftIdParam = searchParams.get('shiftId') || '';
-  const tab = (searchParams.get('tab') as TrackingTab) || 'overview';
+  const requestedTab = (searchParams.get('tab') as TrackingTab) || 'overview';
+  const tab: TrackingTab =
+    requestedTab === 'screenshots' && !screenshotsOn
+      ? 'overview'
+      : (requestedTab === 'apps' || requestedTab === 'urls') && !appUsageOn
+        ? 'overview'
+        : requestedTab;
   const screenshotPage = Number(searchParams.get('page') || '1') || 1;
 
   const { data: profileUser, isLoading: isUserLoading } = useUser(
@@ -140,18 +150,20 @@ export default function AttendanceActivityPage() {
   );
 
   const { data: summary, isLoading: isSummaryLoading } = useAppUsageSummary(
-    userId ? summaryParams : undefined
+    userId && appUsageOn ? summaryParams : undefined
   );
   const { data: shiftUsage, isLoading: isShiftUsageLoading } = useShiftAppUsage(
-    tab === 'apps' || tab === 'urls' || tab === 'overview' ? selectedShiftId || undefined : undefined
+    appUsageOn && (tab === 'apps' || tab === 'urls' || tab === 'overview')
+      ? selectedShiftId || undefined
+      : undefined
   );
   const { data: shiftSamples, isLoading: isShiftSamplesLoading } = useShiftActivitySamples(
-    tab === 'screenshots' ? selectedShiftId || undefined : undefined
+    screenshotsOn && tab === 'screenshots' ? selectedShiftId || undefined : undefined
   );
   const { data: rangeSamples, isLoading: isRangeSamplesLoading } = useActivitySamplesRange(
-    userId && tab === 'screenshots' && !selectedShiftId
+    screenshotsOn && userId && tab === 'screenshots' && !selectedShiftId
       ? { ...summaryParams, page: screenshotPage, limit: 50 }
-      : userId && tab === 'overview'
+      : screenshotsOn && userId && tab === 'overview'
         ? { ...summaryParams, page: 1, limit: 1 }
         : undefined
   );
@@ -206,15 +218,17 @@ export default function AttendanceActivityPage() {
             Activity tracking
           </Typography>
           <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary, fontWeight: 500 }}>
-            Screenshots, apps, and URLs for {name}
+            {screenshotsOn || appUsageOn
+              ? `Screenshots, apps, and URLs for ${name}`
+              : `Activity overview for ${name}`}
           </Typography>
         </Box>
 
         <Tabs value={tab} onChange={(_, val) => setParam('tab', val)} variant="scrollable" allowScrollButtonsMobile sx={pillTabSx(isDarkMode)}>
           <Tab value="overview" label="Overview" />
-          <Tab value="screenshots" label="Screenshots" />
-          <Tab value="apps" label="App Tracking" />
-          <Tab value="urls" label="URL Tracking" />
+          {screenshotsOn && <Tab value="screenshots" label="Screenshots" />}
+          {appUsageOn && <Tab value="apps" label="App Tracking" />}
+          {appUsageOn && <Tab value="urls" label="URL Tracking" />}
         </Tabs>
       </Box>
 
@@ -267,32 +281,40 @@ export default function AttendanceActivityPage() {
           ) : (
             <>
               <Grid container spacing={3} sx={{ mb: 3.5 }}>
-                {[
-                  {
-                    title: 'Active time',
-                    value: formatDurationSec(summary?.totals.activeSec ?? 0),
-                    icon: <TimerIcon sx={{ fontSize: 26 }} />,
-                    color: tokens.brand.primary,
-                  },
-                  {
-                    title: 'Duration',
-                    value: formatDurationSec(summary?.totals.durationSec ?? 0),
-                    icon: <InsightsIcon sx={{ fontSize: 26 }} />,
-                    color: '#3B82F6',
-                  },
-                  {
-                    title: 'App segments',
-                    value: summary?.totals.segments ?? 0,
-                    icon: <AppsIcon sx={{ fontSize: 26 }} />,
-                    color: tokens.semantic.success,
-                  },
-                  {
-                    title: 'Screenshots',
-                    value: screenshotLoading ? '…' : screenshotTotal,
-                    icon: <PhotoLibraryIcon sx={{ fontSize: 26 }} />,
-                    color: tokens.semantic.info,
-                  },
-                ].map((kpi) => (
+                {([
+                  appUsageOn
+                    ? {
+                        title: 'Active time',
+                        value: formatDurationSec(summary?.totals.activeSec ?? 0),
+                        icon: <TimerIcon sx={{ fontSize: 26 }} />,
+                        color: tokens.brand.primary,
+                      }
+                    : null,
+                  appUsageOn
+                    ? {
+                        title: 'Duration',
+                        value: formatDurationSec(summary?.totals.durationSec ?? 0),
+                        icon: <InsightsIcon sx={{ fontSize: 26 }} />,
+                        color: '#3B82F6',
+                      }
+                    : null,
+                  appUsageOn
+                    ? {
+                        title: 'App segments',
+                        value: summary?.totals.segments ?? 0,
+                        icon: <AppsIcon sx={{ fontSize: 26 }} />,
+                        color: tokens.semantic.success,
+                      }
+                    : null,
+                  screenshotsOn
+                    ? {
+                        title: 'Screenshots',
+                        value: screenshotLoading ? '…' : screenshotTotal,
+                        icon: <PhotoLibraryIcon sx={{ fontSize: 26 }} />,
+                        color: tokens.semantic.info,
+                      }
+                    : null,
+                ].filter((kpi): kpi is NonNullable<typeof kpi> => kpi !== null)).map((kpi) => (
                   <Grid item xs={12} sm={6} md={3} key={kpi.title}>
                     <Card
                       sx={{
@@ -329,7 +351,7 @@ export default function AttendanceActivityPage() {
                 ))}
               </Grid>
 
-              {selectedShiftId && (
+              {appUsageOn && selectedShiftId && (
                 <Paper elevation={0} sx={{ ...paperSx(isDarkMode), mb: 3.5 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
                     Session timeline
@@ -347,6 +369,7 @@ export default function AttendanceActivityPage() {
                 </Paper>
               )}
 
+              {appUsageOn && (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Paper elevation={0} sx={paperSx(isDarkMode)}>
@@ -395,12 +418,13 @@ export default function AttendanceActivityPage() {
                   </Paper>
                 </Grid>
               </Grid>
+              )}
             </>
           )}
         </>
       )}
 
-      {tab === 'screenshots' && (
+      {screenshotsOn && tab === 'screenshots' && (
         <Paper elevation={0} sx={paperSx(isDarkMode)}>
           <ActivityTimeline
             shiftId={selectedShiftId || undefined}
@@ -423,7 +447,7 @@ export default function AttendanceActivityPage() {
         </Paper>
       )}
 
-      {tab === 'apps' && (
+      {appUsageOn && tab === 'apps' && (
         <Paper elevation={0} sx={paperSx(isDarkMode)}>
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
@@ -463,7 +487,7 @@ export default function AttendanceActivityPage() {
         </Paper>
       )}
 
-      {tab === 'urls' && (
+      {appUsageOn && tab === 'urls' && (
         <Paper elevation={0} sx={paperSx(isDarkMode)}>
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>

@@ -32,6 +32,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ShieldIcon from '@mui/icons-material/Shield';
 import AddIcon from '@mui/icons-material/Add';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import WorkIcon from '@mui/icons-material/Work';
 
 import { tokens } from '@/styles/tokens';
@@ -43,6 +44,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import { BoardCard } from '@/components/projects/BoardCard';
+import { ImportBoardDialog } from '@/components/projects/ImportBoardDialog';
 import {
   useProject,
   useUpdateProject,
@@ -50,6 +52,7 @@ import {
   useAddProjectMember,
   useRemoveProjectMember,
   useCreateProjectBoard,
+  useImportProjectBoard,
 } from '@/hooks/api/useProjects';
 import { useDeleteBoard, useUpdateBoard } from '@/hooks/api/useKanban';
 import type { ProjectStatus, ProjectMember } from '@/types';
@@ -85,6 +88,7 @@ export const ProjectDetailsPage = () => {
   const addProjectMemberMutation = useAddProjectMember(projectId);
   const removeProjectMemberMutation = useRemoveProjectMember(projectId);
   const createProjectBoardMutation = useCreateProjectBoard(projectId);
+  const importProjectBoardMutation = useImportProjectBoard(projectId);
   const deleteBoardMutation = useDeleteBoard();
   const updateBoardMutation = useUpdateBoard();
   const queryClient = useQueryClient();
@@ -99,6 +103,7 @@ export const ProjectDetailsPage = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false);
+  const [isImportBoardOpen, setIsImportBoardOpen] = useState(false);
   
   const [isDeleteBoardConfirmOpen, setIsDeleteBoardConfirmOpen] = useState(false);
   const [boardToDelete, setBoardToDelete] = useState<string | null>(null);
@@ -210,10 +215,55 @@ export const ProjectDetailsPage = () => {
           onSuccess: () => {
             setNewBoardName('');
             setIsCreateBoardOpen(false);
+            addToast({ message: 'Board created successfully', severity: 'success' });
+          },
+          onError: (err: any) => {
+            const message =
+              err?.response?.data?.error?.message ||
+              err?.response?.data?.message ||
+              'Failed to create board';
+            addToast({ message, severity: 'error' });
           },
         }
       );
     }
+  };
+
+  const handleImportBoard = (payload: {
+    name: string;
+    columns: { name: string; order: number }[];
+    cards: {
+      title: string;
+      description?: string;
+      columnName: string;
+      assignedTo: string[];
+      priority: 'low' | 'medium' | 'high' | 'urgent';
+      dueDate?: string;
+      isDone: boolean;
+    }[];
+    memberUserIds: string[];
+  }) => {
+    if (!projectId) return;
+    importProjectBoardMutation.mutate(
+      { id: projectId, data: payload },
+      {
+        onSuccess: (res) => {
+          const boardId = res.data.data._id;
+          setIsImportBoardOpen(false);
+          addToast({ message: 'Board imported', severity: 'success' });
+          if (boardId) {
+            navigate(`/projects/${projectId}/boards/${boardId}`);
+          }
+        },
+        onError: (err: any) => {
+          const backendMessage =
+            err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            'Failed to import board';
+          addToast({ message: backendMessage, severity: 'error' });
+        },
+      },
+    );
   };
 
   const handleDeleteBoardConfirm = () => {
@@ -462,22 +512,37 @@ export const ProjectDetailsPage = () => {
                 {boards.length} boards
               </Typography>
               {canCreateProjectsAndBoards && (
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => setIsCreateBoardOpen(true)}
-                  sx={{
-                    bgcolor: tokens.brand.primary,
-                    color: '#fff',
-                    fontWeight: 700,
-                    borderRadius: '24px',
-                    textTransform: 'none',
-                    boxShadow: 'none',
-                    '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
-                  }}
-                >
-                  New Board
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FileUploadIcon />}
+                    onClick={() => setIsImportBoardOpen(true)}
+                    sx={{
+                      color: 'text.primary',
+                      fontWeight: 700,
+                      borderRadius: '24px',
+                      textTransform: 'none',
+                    }}
+                  >
+                    Import Board
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setIsCreateBoardOpen(true)}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      fontWeight: 700,
+                      borderRadius: '24px',
+                      textTransform: 'none',
+                      boxShadow: 'none',
+                      '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+                    }}
+                  >
+                    New Board
+                  </Button>
+                </Box>
               )}
             </Box>
 
@@ -495,14 +560,24 @@ export const ProjectDetailsPage = () => {
                   This project has no boards yet.
                 </Typography>
                 {canCreateProjectsAndBoards && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => setIsCreateBoardOpen(true)}
-                    sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
-                  >
-                    Create the First Board
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FileUploadIcon />}
+                      onClick={() => setIsImportBoardOpen(true)}
+                      sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
+                    >
+                      Import Board
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<AddIcon />}
+                      onClick={() => setIsCreateBoardOpen(true)}
+                      sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
+                    >
+                      Create the First Board
+                    </Button>
+                  </Box>
                 )}
               </Box>
             ) : (
@@ -729,7 +804,7 @@ export const ProjectDetailsPage = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                      <Avatar src={user.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                           {name}
@@ -934,6 +1009,14 @@ export const ProjectDetailsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ImportBoardDialog
+        open={isImportBoardOpen}
+        projectId={projectId || ''}
+        isPending={importProjectBoardMutation.isPending}
+        onClose={() => setIsImportBoardOpen(false)}
+        onConfirm={handleImportBoard}
+      />
 
       {/* ADD MEMBER DIALOG */}
       <Dialog

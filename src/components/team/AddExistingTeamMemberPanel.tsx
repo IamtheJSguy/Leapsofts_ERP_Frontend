@@ -155,7 +155,7 @@ export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPan
                 }}
               >
                 <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: tokens.brand.primary, width: 36, height: 36, fontSize: '0.85rem' }}>
+                  <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primary, width: 36, height: 36, fontSize: '0.85rem' }}>
                     {initials}
                   </Avatar>
                 </ListItemAvatar>

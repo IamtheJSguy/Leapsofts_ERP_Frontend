@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { DashboardDateMeta, TeamConnectionRow, TeamProgressRow, PipelineVelocityPoint, TeamAnalysisData } from '@/types';
 
 export type DashboardPeriod = 'today' | 'week' | 'month' | 'quarter' | 'all' | 'custom';
@@ -41,9 +42,10 @@ export const useTeamConnections = (
   options: { search?: string; startDate?: string; endDate?: string } = {},
 ) => {
   const period = mapConnectionsPeriod(periodLabel);
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   return useQuery({
-    queryKey: ['admin', 'team-connections', period, options.search, options.startDate, options.endDate],
+    queryKey: ['admin', 'team-connections', organizationId, period, options.search, options.startDate, options.endDate],
     queryFn: () =>
       api
         .get<{ data: TeamConnectionRow[]; meta: DashboardDateMeta }>('/admin/team-connections', {
@@ -65,9 +67,10 @@ export const useTeamProgress = (
   options: { startDate?: string; endDate?: string; enabled?: boolean } = {},
 ) => {
   const period = mapProgressPeriod(periodLabel);
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   return useQuery({
-    queryKey: ['admin', 'team-progress', period, userIds, options.startDate, options.endDate],
+    queryKey: ['admin', 'team-progress', organizationId, period, userIds, options.startDate, options.endDate],
     queryFn: () =>
       api
         .get<{ data: TeamProgressRow[]; meta: DashboardDateMeta }>('/admin/team-progress', {
@@ -84,9 +87,10 @@ export const useTeamProgress = (
   });
 };
 
-export const usePipelineVelocity = (days = 7) =>
-  useQuery({
-    queryKey: ['admin', 'pipeline-velocity', days],
+export const usePipelineVelocity = (days = 7) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['admin', 'pipeline-velocity', organizationId, days],
     queryFn: () =>
       api
         .get<{ data: PipelineVelocityPoint[]; meta: DashboardDateMeta & { days?: number } }>(
@@ -96,10 +100,12 @@ export const usePipelineVelocity = (days = 7) =>
         .then((r) => r.data),
     staleTime: 1000 * 60,
   });
+};
 
-export const useTeamAnalysis = (period: DashboardPeriod = 'week') =>
-  useQuery({
-    queryKey: ['admin', 'team-analysis', period],
+export const useTeamAnalysis = (period: DashboardPeriod = 'week') => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['admin', 'team-analysis', organizationId, period],
     queryFn: () =>
       api
         .get<{ data: TeamAnalysisData; meta: DashboardDateMeta }>('/admin/team-analysis', {
@@ -108,3 +114,4 @@ export const useTeamAnalysis = (period: DashboardPeriod = 'week') =>
         .then((r) => r.data.data),
     staleTime: 1000 * 60,
   });
+};

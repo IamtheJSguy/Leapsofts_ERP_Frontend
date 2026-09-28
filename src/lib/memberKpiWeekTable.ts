@@ -12,9 +12,10 @@ export type TaskDisplay = {
 
 export type MemberDailyKpiEntry = {
   _id: string;
-  kpiId?: string | { _id?: string; name?: string };
+  kpiId?: string | { _id?: string; name?: string; description?: string };
   assignmentItemId?: string;
   kpiName?: string;
+  description?: string;
   date?: string;
   periodStart?: string;
   periodEnd?: string;

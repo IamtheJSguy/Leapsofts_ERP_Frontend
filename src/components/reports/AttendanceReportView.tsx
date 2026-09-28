@@ -273,7 +273,7 @@ export const AttendanceReportView = ({ metrics, comparison, userName }: Attendan
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="scheduled" name="Scheduled" fill={tokens.brand.primary100} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="scheduled" name="Scheduled" fill={tokens.brand.primaryMuted} radius={[4, 4, 0, 0]} />
                   <Bar dataKey="hours" name="Worked" fill={tokens.brand.primary} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

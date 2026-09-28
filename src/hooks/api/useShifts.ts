@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { hasPeriodStarted } from '@/lib/salesKpi';
+import { useAuthStore } from '@/store/useAuthStore';
 import type {
   Shift,
   PipelineMetric,
@@ -264,8 +265,9 @@ const filterStartedDailyKpis = (grouped: GroupedDailyKpis, now = new Date()): Gr
 };
 
 export const useDailyKpis = (date?: string) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
-    queryKey: ['dailyKpis', date],
+    queryKey: ['dailyKpis', organizationId, date],
     queryFn: () =>
       shiftApi
         .getDailyKpis(date ? { date } : undefined)
@@ -274,8 +276,9 @@ export const useDailyKpis = (date?: string) => {
 };
 
 export const useDailyKpiSummary = (date?: string) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
-    queryKey: ['dailyKpiSummary', date],
+    queryKey: ['dailyKpiSummary', organizationId, date],
     queryFn: () => shiftApi.getDailyKpiSummary(date ? { date } : undefined).then((r) => r.data.data),
   });
 };

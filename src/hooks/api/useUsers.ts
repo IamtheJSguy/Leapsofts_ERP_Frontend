@@ -30,13 +30,15 @@ const userApi = {
 export const useUsers = (
   filters: Record<string, string> = {},
   options?: { enabled?: boolean }
-) =>
-  useQuery({
-    queryKey: ['users', filters],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['users', organizationId, filters],
     queryFn: () => userApi.getUsers(filters).then((r) => r.data.data),
     staleTime: 1000 * 600,
     ...options,
   });
+};
 
 export const useUser = (id: string | undefined) =>
   useQuery({
@@ -45,9 +47,10 @@ export const useUser = (id: string | undefined) =>
     enabled: !!id,
   });
 
-export const useUserSummary = (userId: string | undefined, date?: string) =>
-  useQuery({
-    queryKey: ['userSummary', userId, date],
+export const useUserSummary = (userId: string | undefined, date?: string) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['userSummary', organizationId, userId, date],
     queryFn: () =>
       api
         .get<{ data: any }>(`/users/${userId}/summary`, {
@@ -56,6 +59,7 @@ export const useUserSummary = (userId: string | undefined, date?: string) =>
         .then((r) => r.data.data),
     enabled: !!userId,
   });
+};
 
 export const useUserAttendanceSummary = (
   userId: string | undefined,
@@ -109,6 +113,7 @@ export const useUpdateUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
     },
   });
 };
@@ -117,7 +122,11 @@ export const useUpdateRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: userApi.updateRole,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
   });
 };
 
