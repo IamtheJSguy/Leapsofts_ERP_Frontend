@@ -81,6 +81,7 @@ import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
@@ -271,6 +272,16 @@ export const SalesPage = () => {
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
   const { user } = useAuth();
+  const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
+
+  const handleCopyName = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(name);
+    setCopiedLeadId(id);
+    setTimeout(() => {
+      setCopiedLeadId((prev) => (prev === id ? null : prev));
+    }, 1000);
+  };
 
 
   // Filters state
@@ -971,6 +982,7 @@ export const SalesPage = () => {
               <MenuItem value="date">Filter by creation</MenuItem>
               <MenuItem value="updatedAt">Filter by update</MenuItem>
             </Select>
+  
           </FormControl>
           <Box sx={{ flex: 1, minWidth: 220 }}>
             <DateRangePicker
@@ -1944,17 +1956,44 @@ export const SalesPage = () => {
                                 {initials}
                               </Avatar>
                               <Box>
-                                <Typography
-                                  variant="subtitle2"
-                                  sx={{
-                                    fontWeight: 750,
-                                    color: isDarkMode ? '#fff' : tokens.text.primary,
-                                    fontSize: '0.88rem',
-                                    '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
-                                  }}
-                                >
-                                  {nameToUse}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 750,
+                                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                                      fontSize: '0.88rem',
+                                      '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                    }}
+                                  >
+                                    {nameToUse}
+                                  </Typography>
+                                  <Tooltip
+                                    title="Copied!"
+                                    placement="bottom"
+                                    open={copiedLeadId === String(prospect._id)}
+                                    arrow
+                                    disableFocusListener
+                                    disableHoverListener
+                                    disableTouchListener
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyName(e, String(prospect._id), nameToUse)}
+                                      sx={{
+                                        p: 0.5,
+                                        color: copiedLeadId === String(prospect._id) ? tokens.semantic.success : 'text.secondary',
+                                        '&:hover': { color: tokens.brand.primary },
+                                      }}
+                                    >
+                                      {copiedLeadId === String(prospect._id) ? (
+                                        <CheckCircleIcon sx={{ fontSize: 14 }} />
+                                      ) : (
+                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
+                                      )}
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
                                 {prospect.email && (
                                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                                     <EmailIcon sx={{ fontSize: 12 }} />
