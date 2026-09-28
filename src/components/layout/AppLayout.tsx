@@ -15,6 +15,7 @@ import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
 import api from '@/lib/axios';
+import { DRIVE_CONNECTED_EVENT, refreshDriveConnection } from '@/hooks/api/useDrive';
 import { useLogout } from '@/hooks/api/useAuth';
 import { useEntitlements, type OrgModuleFlags } from '@/hooks/useEntitlements';
 import {
@@ -34,6 +35,23 @@ export const AppLayout = () => {
   const chatEnabled = entitlements.chat;
   useMe();
   useSocket();
+
+  useEffect(() => {
+    const onConnected = () => refreshDriveConnection();
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === DRIVE_CONNECTED_EVENT) onConnected();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === DRIVE_CONNECTED_EVENT) onConnected();
+    };
+    window.addEventListener('message', onMessage);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   const { data: conversations = [] } = useConversations({ enabled: chatEnabled });
   const unreadCounts = useChatStore((s) => s.unreadCounts);

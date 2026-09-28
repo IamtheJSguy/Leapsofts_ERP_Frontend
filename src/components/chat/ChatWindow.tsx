@@ -30,7 +30,6 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplyIcon from '@mui/icons-material/Reply';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useMessages, useSendMessage, useSendChatImage, useConversations, useCreateConversation, useMarkConversationRead } from '@/hooks/api/useChat';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
@@ -40,7 +39,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
-import { useDriveAuthUrl, useDriveStatus, useUploadDriveFile } from '@/hooks/api/useDrive';
+import { useDriveAuthUrl, useDriveStatus, useUploadDriveFile, openDriveOAuthPopup } from '@/hooks/api/useDrive';
 import { RichTextEditor } from './RichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
@@ -90,7 +89,6 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const uploadDriveFile = useUploadDriveFile();
   const { data: driveStatus } = useDriveStatus();
   const driveAuth = useDriveAuthUrl();
-  const queryClient = useQueryClient();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -234,15 +232,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const connectDrive = useCallback(() => {
     driveAuth.mutate(undefined, {
-      onSuccess: (url) => {
-        const popup = window.open(url, '_blank', 'width=600,height=700');
-        const timer = window.setInterval(() => {
-          void queryClient.invalidateQueries({ queryKey: ['driveStatus'] });
-          if (!popup || popup.closed) window.clearInterval(timer);
-        }, 2000);
-      },
+      onSuccess: (url) => openDriveOAuthPopup(url),
     });
-  }, [driveAuth, queryClient]);
+  }, [driveAuth]);
 
   useEffect(() => {
     if (driveStatus?.connected) setDrivePromptOpen(false);
