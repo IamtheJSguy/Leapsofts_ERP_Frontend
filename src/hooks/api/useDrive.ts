@@ -1,6 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { queryClient } from '@/lib/queryClient';
 import type { DriveFile } from '@/types';
+
+export const DRIVE_CONNECTED_EVENT = 'leapsofts-drive-connected';
+const DRIVE_RETURN_KEY = 'leapsofts-drive-return';
+
+export const refreshDriveConnection = () => {
+  void queryClient.invalidateQueries({ queryKey: ['driveStatus'] });
+  void queryClient.invalidateQueries({ queryKey: ['driveFiles'] });
+};
+
+/** Open Google consent, then let the original page refresh when the popup finishes. */
+export const openDriveOAuthPopup = (url: string) => {
+  localStorage.setItem(DRIVE_RETURN_KEY, window.location.pathname + window.location.search);
+  const popup = window.open(url, 'leapsofts-drive-oauth', 'width=600,height=700');
+  popup?.focus();
+  return popup;
+};
+
+export const consumeDriveReturnPath = () => {
+  const path = localStorage.getItem(DRIVE_RETURN_KEY) || '/chat';
+  localStorage.removeItem(DRIVE_RETURN_KEY);
+  return path.startsWith('/') ? path : '/chat';
+};
 
 const driveApi = {
   getAuthUrl: () => api.get<{ data: { url: string } }>('/drive/auth'),

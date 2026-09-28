@@ -24,3 +24,4 @@ export const MemberProgressPage = lazyRetry(() => import('@/pages/MemberProgress
 export const MemberKpiDetailPage = lazyRetry(() => import('@/pages/MemberKpiDetailPage'));
 export const LeadDetailsPage = lazyRetry(() => import('@/pages/leads/LeadDetailsPage'));
 export const BulkAddLeadsPage = lazyRetry(() => import('@/pages/BulkAddLeadsPage'));
+export const DriveConnectedPage = lazyRetry(() => import('@/pages/DriveConnectedPage'));

@@ -32,7 +32,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import AudioFileIcon from '@mui/icons-material/AudioFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useDriveFiles, useDriveAuthUrl, useDriveStatus, useDisconnectDrive } from '@/hooks/api/useDrive';
+import { useDriveFiles, useDriveAuthUrl, useDriveStatus, useDisconnectDrive, openDriveOAuthPopup } from '@/hooks/api/useDrive';
 import { useSendMessage } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
 import { tokens } from '@/styles/tokens';
@@ -88,7 +88,7 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
 
   const handleConnect = () => {
     driveAuth.mutate(undefined, {
-      onSuccess: (url) => window.open(url, '_blank', 'width=600,height=700'),
+      onSuccess: (url) => openDriveOAuthPopup(url),
     });
   };
 
