@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -85,6 +85,41 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
+
+const OverflowTooltip = ({ title, children, ...props }: any) => {
+  const textElementRef = useRef<HTMLElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const checkOverflow = useCallback(() => {
+    if (textElementRef.current) {
+      setIsOverflowing(textElementRef.current.scrollWidth > textElementRef.current.clientWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [checkOverflow]);
+
+  const child = React.isValidElement(children)
+    ? React.cloneElement(children as any, {
+        ref: textElementRef,
+        onMouseEnter: (e: any) => {
+          checkOverflow();
+          if ((children as any).props.onMouseEnter) {
+            (children as any).props.onMouseEnter(e);
+          }
+        },
+      })
+    : <span ref={textElementRef} onMouseEnter={checkOverflow} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{children}</span>;
+
+  return (
+    <Tooltip title={title} disableHoverListener={!isOverflowing} {...props}>
+      {child}
+    </Tooltip>
+  );
+};
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -1955,19 +1990,25 @@ export const SalesPage = () => {
                               >
                                 {initials}
                               </Avatar>
-                              <Box>
+                              <Box sx={{ minWidth: 0 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    sx={{
-                                      fontWeight: 750,
-                                      color: isDarkMode ? '#fff' : tokens.text.primary,
-                                      fontSize: '0.88rem',
-                                      '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
-                                    }}
-                                  >
-                                    {nameToUse}
-                                  </Typography>
+                                  <OverflowTooltip title={nameToUse} placement="top" arrow>
+                                    <Typography
+                                      variant="subtitle2"
+                                      sx={{
+                                        fontWeight: 750,
+                                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                                        fontSize: '0.88rem',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        maxWidth: { xs: '100px', sm: '130px', md: '160px', lg: '200px' },
+                                        '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                      }}
+                                    >
+                                      {nameToUse}
+                                    </Typography>
+                                  </OverflowTooltip>
                                   <Tooltip
                                     title="Copied!"
                                     placement="bottom"
