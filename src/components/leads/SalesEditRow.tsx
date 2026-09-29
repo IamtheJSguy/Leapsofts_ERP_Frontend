@@ -88,7 +88,7 @@ export const SalesEditRow = memo(function SalesEditRow({
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
             <input
               placeholder="Prospect Name"
@@ -326,7 +326,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column', flex: 1 }}>
             <input
               placeholder="Prospect Name *"

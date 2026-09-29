@@ -181,7 +181,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         {index + 1}
       </td>
       <td style={{ borderBottom: `1px solid ${borderColor}`, padding: '10px', verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
             <input
               placeholder="Prospect Name *"
