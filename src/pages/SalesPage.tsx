@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -80,9 +80,45 @@ import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import { resolvePermissions } from '@/lib/permissions';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
+
+const OverflowTooltip = ({ title, children, ...props }: any) => {
+  const textElementRef = useRef<HTMLElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  const checkOverflow = useCallback(() => {
+    if (textElementRef.current) {
+      setIsOverflowing(textElementRef.current.scrollWidth > textElementRef.current.clientWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [checkOverflow]);
+
+  const child = React.isValidElement(children)
+    ? React.cloneElement(children as any, {
+        ref: textElementRef,
+        onMouseEnter: (e: any) => {
+          checkOverflow();
+          if ((children as any).props.onMouseEnter) {
+            (children as any).props.onMouseEnter(e);
+          }
+        },
+      })
+    : <span ref={textElementRef} onMouseEnter={checkOverflow} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{children}</span>;
+
+  return (
+    <Tooltip title={title} disableHoverListener={!isOverflowing} {...props}>
+      {child}
+    </Tooltip>
+  );
+};
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -220,6 +256,16 @@ export const SalesPage = () => {
 
   const { user, isAdmin } = useAuth();
   const [exportOpen, setExportOpen] = useState(false);
+  const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
+
+  const handleCopyName = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(name);
+    setCopiedLeadId(id);
+    setTimeout(() => {
+      setCopiedLeadId((prev) => (prev === id ? null : prev));
+    }, 1000);
+  };
 
 
   // Filters state
@@ -992,6 +1038,7 @@ export const SalesPage = () => {
               <MenuItem value="date">Filter by creation</MenuItem>
               <MenuItem value="updatedAt">Filter by update</MenuItem>
             </Select>
+  
           </FormControl>
           <Box sx={{ flex: 1, minWidth: 220 }}>
             <DateRangePicker
@@ -2016,18 +2063,51 @@ export const SalesPage = () => {
                               >
                                 {initials}
                               </Avatar>
-                              <Box>
-                                <Typography
-                                  variant="subtitle2"
-                                  sx={{
-                                    fontWeight: 750,
-                                    color: isDarkMode ? '#fff' : tokens.text.primary,
-                                    fontSize: '0.88rem',
-                                    '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
-                                  }}
-                                >
-                                  {nameToUse}
-                                </Typography>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <OverflowTooltip title={nameToUse} placement="top" arrow>
+                                    <Typography
+                                      variant="subtitle2"
+                                      sx={{
+                                        fontWeight: 750,
+                                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                                        fontSize: '0.88rem',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        maxWidth: { xs: '100px', sm: '130px', md: '160px', lg: '200px' },
+                                        '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                      }}
+                                    >
+                                      {nameToUse}
+                                    </Typography>
+                                  </OverflowTooltip>
+                                  <Tooltip
+                                    title="Copied!"
+                                    placement="bottom"
+                                    open={copiedLeadId === String(prospect._id)}
+                                    arrow
+                                    disableFocusListener
+                                    disableHoverListener
+                                    disableTouchListener
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyName(e, String(prospect._id), nameToUse)}
+                                      sx={{
+                                        p: 0.5,
+                                        color: copiedLeadId === String(prospect._id) ? tokens.brand.primary : 'text.secondary',
+                                        '&:hover': { color: tokens.brand.primary },
+                                      }}
+                                    >
+                                      {copiedLeadId === String(prospect._id) ? (
+                                        <CheckCircleIcon sx={{ fontSize: 14 }} />
+                                      ) : (
+                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
+                                      )}
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
                                 {prospect.email && (
                                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                                     <EmailIcon sx={{ fontSize: 12 }} />

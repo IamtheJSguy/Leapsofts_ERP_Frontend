@@ -86,7 +86,19 @@ export const LeadCommentButton = memo(function LeadCommentButton({
   return (
     <>
       <Tooltip title={open ? '' : tooltipTitle} arrow>
-        <IconButton ref={anchorRef} size={size} onClick={handleOpen} sx={{ color }}>
+        <IconButton
+          ref={anchorRef}
+          size={size}
+          onClick={handleOpen}
+          sx={{
+            color,
+            alignSelf: 'center',
+            flexShrink: 0,
+            width: size === 'small' ? 32 : 40,
+            height: size === 'small' ? 32 : 40,
+            borderRadius: '50%',
+          }}
+        >
           {comment?.text ? (
             <ChatBubbleIcon sx={{ fontSize: size === 'small' ? 18 : 20 }} />
           ) : (
