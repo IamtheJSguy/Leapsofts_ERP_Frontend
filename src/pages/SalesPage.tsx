@@ -2096,7 +2096,7 @@ export const SalesPage = () => {
                                       onClick={(e) => handleCopyName(e, String(prospect._id), nameToUse)}
                                       sx={{
                                         p: 0.5,
-                                        color: copiedLeadId === String(prospect._id) ? tokens.semantic.success : 'text.secondary',
+                                        color: copiedLeadId === String(prospect._id) ? tokens.brand.primary : 'text.secondary',
                                         '&:hover': { color: tokens.brand.primary },
                                       }}
                                     >
