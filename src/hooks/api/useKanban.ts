@@ -198,6 +198,12 @@ const optimisticReorderColumns = (oldData: any, columnIds: string[]): any => {
 };
 
 
+const kanbanBoardKey = (boardId?: string) =>
+  ['kanbanBoard', boardId, useAuthStore.getState().user?.organizationId] as const;
+
+const kanbanCardKey = (cardId?: string) =>
+  ['card', cardId, useAuthStore.getState().user?.organizationId] as const;
+
 export const useKanbanBoards = (options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
@@ -207,14 +213,16 @@ export const useKanbanBoards = (options?: { enabled?: boolean }) => {
   });
 };
 
-export const useKanbanBoard = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['kanbanBoard', id],
+export const useKanbanBoard = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanBoard', id, organizationId],
     queryFn: () => kanbanApi.getBoard(id!).then((r) => r.data.data),
     enabled: !!id,
     staleTime: 0,                  // Always re-fetch when invalidated
     refetchOnWindowFocus: true,    // Catch missed socket updates when tab is refocused
   });
+};
 
 export const useCreateBoard = () => {
   const queryClient = useQueryClient();
@@ -245,12 +253,14 @@ export const useUpdateBoard = () => {
   });
 };
 
-export const useBoardCards = (boardId: string | undefined) =>
-  useQuery({
-    queryKey: ['kanbanBoardCards', boardId],
+export const useBoardCards = (boardId: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanBoardCards', boardId, organizationId],
     queryFn: () => kanbanApi.getBoardCards(boardId!).then((r) => r.data.data),
     enabled: !!boardId,
   });
+};
 
 
 export const useMoveCard = (boardId?: string) => {
@@ -258,7 +268,7 @@ export const useMoveCard = (boardId?: string) => {
   return useMutation({
     mutationFn: kanbanApi.moveCard,
     onMutate: async ({ cardId, data }) => {
-      const key = ['kanbanBoard', boardId];
+      const key = kanbanBoardKey(boardId);
       await queryClient.cancelQueries({ queryKey: key });
       const previousBoard = queryClient.getQueryData(key);
       queryClient.setQueryData(key, (old: any) =>
@@ -333,7 +343,7 @@ export const useReorderColumns = () => {
   return useMutation({
     mutationFn: kanbanApi.reorderColumns,
     onMutate: async (variables) => {
-      const key = ['kanbanBoard', variables.boardId];
+      const key = kanbanBoardKey(variables.boardId);
       await queryClient.cancelQueries({ queryKey: key });
       const previousBoard = queryClient.getQueryData(key);
 
@@ -388,8 +398,8 @@ export const useUpdateCard = (boardId?: string) => {
   return useMutation({
     mutationFn: kanbanApi.updateCard,
     onMutate: async ({ cardId, data }) => {
-      const key = ['kanbanBoard', boardId];
-      const cardKey = ['card', cardId];
+      const key = kanbanBoardKey(boardId);
+      const cardKey = kanbanCardKey(cardId);
       await queryClient.cancelQueries({ queryKey: key });
       await queryClient.cancelQueries({ queryKey: cardKey });
 
@@ -471,12 +481,14 @@ export const useDeleteComment = (boardId?: string) => {
   });
 };
 
-export const useCard = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['card', id],
+export const useCard = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['card', id, organizationId],
     queryFn: () => kanbanApi.getCard(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useShareBoard = () => {
   const queryClient = useQueryClient();

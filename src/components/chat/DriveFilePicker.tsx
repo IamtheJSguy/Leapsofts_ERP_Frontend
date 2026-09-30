@@ -8,6 +8,7 @@ import {
   ListItemIcon,
   ListItemText,
   CircularProgress,
+  LinearProgress,
   Button,
   IconButton,
   Box,
@@ -328,7 +329,8 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
             </Box>
 
             {/* File List */}
-            {isFetching ? (
+            {isFetching && data ? <LinearProgress sx={{ height: 2, mb: 1 }} /> : null}
+            {isFetching && !data ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6 }}>
                 <CircularProgress size={28} sx={{ color: '#4285F4' }} />
               </Box>

@@ -25,12 +25,14 @@ export const useMeetings = (
   });
 };
 
-export const useMeeting = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['meeting', id],
+export const useMeeting = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['meeting', id, organizationId],
     queryFn: () => meetingApi.getMeeting(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useCreateMeeting = () => {
   const queryClient = useQueryClient();

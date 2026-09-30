@@ -127,36 +127,48 @@ export const shiftApi = {
   markDailyKpiIncomplete: (id: string) => api.patch<{ success: boolean; data: DailyKPIEntry }>(`/shifts/daily-kpis/${id}/incomplete`),
 };
 
-export const useTodayShift = () =>
-  useQuery({
-    queryKey: ['shifts', 'today'],
+const todayShiftQueryKey = () =>
+  ['shifts', 'today', useAuthStore.getState().user?.organizationId] as const;
+
+export const useTodayShift = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'today', organizationId],
     queryFn: () => shiftApi.getToday().then((r) => r.data.data),
   });
+};
 
-export const useShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number; userId?: string }) =>
-  useQuery({
-    queryKey: ['shifts', 'history', params],
+export const useShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number; userId?: string }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'history', params, organizationId],
     queryFn: () => shiftApi.getHistory(params).then((r) => r.data.data),
   });
+};
 
-export const useTeamShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) =>
-  useQuery({
-    queryKey: ['shifts', 'teamHistory', params],
+export const useTeamShiftHistory = (params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'teamHistory', params, organizationId],
     queryFn: () => shiftApi.getTeamHistory(params).then((r) => r.data.data),
   });
+};
 
-export const useShiftActivitySamples = (shiftId: string | undefined) =>
-  useQuery({
-    queryKey: ['shifts', 'activitySamples', shiftId],
+export const useShiftActivitySamples = (shiftId: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'activitySamples', shiftId, organizationId],
     queryFn: () => shiftApi.getActivitySamples(shiftId as string).then((r) => r.data.data),
     enabled: Boolean(shiftId),
   });
+};
 
 export const useActivitySamplesRange = (
   params: { userId?: string; from: string; to: string; page?: number; limit?: number } | undefined
-) =>
-  useQuery({
-    queryKey: ['shifts', 'activitySamplesRange', params],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'activitySamplesRange', params, organizationId],
     queryFn: () =>
       shiftApi.getActivitySamplesRange(params!).then((r) => ({
         ...r.data.data,
@@ -164,35 +176,42 @@ export const useActivitySamplesRange = (
       })),
     enabled: Boolean(params?.from && params?.to),
   });
+};
 
-export const useShiftAppUsage = (shiftId: string | undefined) =>
-  useQuery({
-    queryKey: ['shifts', 'appUsage', shiftId],
+export const useShiftAppUsage = (shiftId: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'appUsage', shiftId, organizationId],
     queryFn: () => shiftApi.getShiftAppUsage(shiftId as string).then((r) => r.data.data),
     enabled: Boolean(shiftId),
   });
+};
 
 export const useAppUsageSummary = (
   params: { userId?: string; from: string; to: string } | undefined
-) =>
-  useQuery({
-    queryKey: ['shifts', 'appUsageSummary', params],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'appUsageSummary', params, organizationId],
     queryFn: () => shiftApi.getAppUsageSummary(params!).then((r) => r.data.data),
     enabled: Boolean(params?.from && params?.to),
   });
+};
 
-export const useTeamAttendanceSummary = () =>
-  useQuery({
-    queryKey: ['shifts', 'teamStatus'],
+export const useTeamAttendanceSummary = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['shifts', 'teamStatus', organizationId],
     queryFn: () => shiftApi.getTeamStatus().then((r) => r.data.data),
   });
+};
 
 export const useCheckIn = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: shiftApi.checkIn,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts', 'history'] });
     },
   });
@@ -203,7 +222,7 @@ export const useCheckOut = () => {
   return useMutation({
     mutationFn: shiftApi.checkOut,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts', 'history'] });
     },
   });
@@ -214,7 +233,7 @@ export const useStartBreak = () => {
   return useMutation({
     mutationFn: shiftApi.startBreak,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
   });
@@ -225,7 +244,7 @@ export const useEndBreak = () => {
   return useMutation({
     mutationFn: shiftApi.endBreak,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
   });
@@ -236,7 +255,7 @@ export const useStartMeeting = () => {
   return useMutation({
     mutationFn: shiftApi.startMeeting,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
   });
@@ -247,7 +266,7 @@ export const useEndMeeting = () => {
   return useMutation({
     mutationFn: shiftApi.endMeeting,
     onSuccess: (response) => {
-      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.setQueryData(todayShiftQueryKey(), response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
   });

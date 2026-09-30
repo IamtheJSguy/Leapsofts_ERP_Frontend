@@ -20,6 +20,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/useAuthStore';
+import { discardQueryCacheForSessionChange } from '@/lib/queryPersistence';
 import { useTwoFactorSetup, useTwoFactorVerifySetup } from '@/hooks/api/useTwoFactor';
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
@@ -74,10 +75,13 @@ const TwoFactorSetupPage = () => {
     );
   };
 
-  const finish = () => {
+  const finish = async () => {
     if (!pendingSession) return;
+    const previousUserId = useAuthStore.getState().user?._id;
+    const nextUser = pendingSession.user as { _id?: string };
     sessionStorage.removeItem(TEMP_TOKEN_KEY);
     localStorage.setItem('accessToken', pendingSession.accessToken);
+    await discardQueryCacheForSessionChange([previousUserId, nextUser?._id]);
     markMonitoringPromptPendingForLogin();
     setAuth(pendingSession.user);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });

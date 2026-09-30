@@ -64,12 +64,14 @@ export const useProjects = () => {
   });
 };
 
-export const useProject = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['project', id],
+export const useProject = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['project', id, organizationId],
     queryFn: () => projectsApi.getProject(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useCreateProject = () => {
   const queryClient = useQueryClient();
@@ -105,12 +107,14 @@ export const useDeleteProject = () => {
   });
 };
 
-export const useProjectMembers = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['projectMembers', id],
+export const useProjectMembers = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['projectMembers', id, organizationId],
     queryFn: () => projectsApi.getMembers(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useAddProjectMember = (id?: string) => {
   const queryClient = useQueryClient();
@@ -142,12 +146,14 @@ export const useRemoveProjectMember = (id?: string) => {
   });
 };
 
-export const useProjectBoards = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['projectBoards', id],
+export const useProjectBoards = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['projectBoards', id, organizationId],
     queryFn: () => projectsApi.getBoards(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useCreateProjectBoard = (id?: string) => {
   const queryClient = useQueryClient();
@@ -180,12 +186,14 @@ export const useImportProjectBoard = (id?: string) => {
   });
 };
 
-export const useBoardMembers = (id: string | undefined, boardId: string | undefined) =>
-  useQuery({
-    queryKey: ['boardMembers', id, boardId],
+export const useBoardMembers = (id: string | undefined, boardId: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['boardMembers', id, boardId, organizationId],
     queryFn: () => projectsApi.getBoardMembers({ id: id!, boardId: boardId! }).then((r) => r.data.data),
     enabled: !!id && !!boardId,
   });
+};
 
 export const useAddBoardMember = (id?: string, boardId?: string) => {
   const queryClient = useQueryClient();

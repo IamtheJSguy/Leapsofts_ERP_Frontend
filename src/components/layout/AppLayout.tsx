@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography } from '@mui/material';
 import { Outlet } from 'react-router-dom';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { NotificationPanel } from './NotificationPanel';
@@ -29,6 +30,9 @@ export const AppLayout = () => {
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
+  const organizationId = user?.organizationId;
+  const queryClient = useQueryClient();
+  const previousOrganizationId = useRef(organizationId);
   const logout = useLogout();
   const [monitoringOpen, setMonitoringOpen] = useState(false);
   const entitlements: OrgModuleFlags = useEntitlements();
@@ -52,6 +56,25 @@ export const AppLayout = () => {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  useEffect(() => {
+    if (!organizationId) {
+      previousOrganizationId.current = organizationId;
+      return;
+    }
+    if (previousOrganizationId.current === organizationId) return;
+    const hadPreviousOrganization = Boolean(previousOrganizationId.current);
+    previousOrganizationId.current = organizationId;
+    if (!hadPreviousOrganization) return;
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes(organizationId),
+    });
+    void queryClient.invalidateQueries({ queryKey: ['me'] });
+  }, [organizationId, queryClient]);
+
+  const backgroundRefreshCount = useIsFetching({
+    predicate: (query) => query.state.data !== undefined,
+  });
 
   const { data: conversations = [] } = useConversations({ enabled: chatEnabled });
   const unreadCounts = useChatStore((s) => s.unreadCounts);
@@ -148,6 +171,11 @@ export const AppLayout = () => {
             }),
         }}
       >
+        {backgroundRefreshCount > 0 ? (
+          <LinearProgress sx={{ height: 2 }} />
+        ) : (
+          <Box sx={{ height: 2 }} />
+        )}
         {user?.impersonatedBy && (
           <Alert
             severity="warning"
