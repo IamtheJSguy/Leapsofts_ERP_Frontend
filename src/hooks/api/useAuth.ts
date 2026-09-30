@@ -3,6 +3,7 @@ import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatStore } from '@/store/useChatStore';
 import type { User } from '@/types';
+import { discardQueryCacheForSessionChange } from '@/lib/queryPersistence';
 import {
   clearMonitoringPromptSession,
   markMonitoringPromptPendingForLogin,
@@ -21,12 +22,14 @@ export const useLogin = () => {
   const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: authApi.login,
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       const data = res.data.data;
       if (data.requires2FA || data.requires2FASetup) return;
       if (data.accessToken && data.user) {
+        const previousUserId = useAuthStore.getState().user?._id;
         localStorage.setItem('accessToken', data.accessToken);
-        queryClient.clear();
+        await queryClient.cancelQueries();
+        await discardQueryCacheForSessionChange([previousUserId, data.user._id]);
         markMonitoringPromptPendingForLogin();
         setAuth(data.user);
       }
@@ -38,24 +41,27 @@ export const useRegister = () => {
   const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      const previousUserId = useAuthStore.getState().user?._id;
+      const user = res.data.data.user;
       localStorage.setItem('accessToken', res.data.data.accessToken);
+      await discardQueryCacheForSessionChange([previousUserId, user?._id]);
       markMonitoringPromptPendingForLogin();
-      setAuth(res.data.data.user);
+      setAuth(user);
     },
   });
 };
 
 export const useLogout = () => {
-  const queryClient = useQueryClient();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   return useMutation({
     mutationFn: authApi.logout,
-    onSuccess: () => {
+    onSuccess: async () => {
+      const userId = useAuthStore.getState().user?._id;
       localStorage.removeItem('accessToken');
       clearMonitoringPromptSession();
+      await discardQueryCacheForSessionChange([userId]);
       clearAuth();
-      queryClient.clear();
     },
   });
 };
@@ -71,7 +77,6 @@ export const useSwitchOrganization = () => {
       if (data.accessToken && data.user) {
         localStorage.setItem('accessToken', data.accessToken);
         await queryClient.cancelQueries();
-        queryClient.clear();
         // Org switch must not re-arm the workplace monitoring prompt.
         setAuth(data.user);
         useChatStore.getState().resetChatSession();

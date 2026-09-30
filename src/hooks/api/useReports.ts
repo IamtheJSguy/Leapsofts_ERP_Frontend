@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { Report } from '@/types';
 
 const reportApi = {
@@ -11,12 +12,14 @@ const reportApi = {
     api.get(`/reports/${id}/export?format=${format}`, { responseType: 'blob' }),
 };
 
-export const useReports = (filters: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['reports', filters],
+export const useReports = (filters: Record<string, string> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['reports', filters, organizationId],
     queryFn: () => reportApi.getReports(filters).then((r) => r.data.data),
     staleTime: 1000 * 300,
   });
+};
 
 export const useGenerateReport = () => {
   const queryClient = useQueryClient();
@@ -26,9 +29,10 @@ export const useGenerateReport = () => {
   });
 };
 
-export const useReport = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['report', id],
+export const useReport = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['report', id, organizationId],
     queryFn: () => reportApi.getReport(id!).then((r) => r.data.data),
     enabled: !!id,
     refetchInterval: (query) => {
@@ -38,6 +42,7 @@ export const useReport = (id: string | undefined) =>
       return false;
     },
   });
+};
 
 export const useExportReport = () =>
   useMutation({

@@ -7,6 +7,7 @@ import { tokens } from '@/styles/tokens';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type AdminTabId = 'users' | 'system' | 'usage';
 
@@ -24,8 +25,9 @@ const AdminPage = () => {
   }, [canManageUsers, canManageSystemSettings]);
 
   const addToast = useUIStore((s) => s.addToast);
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
   const { data: usage } = useQuery({
-    queryKey: ['admin', 'usage'],
+    queryKey: ['admin', 'usage', organizationId],
     enabled: canManageSystemSettings,
     queryFn: async () => {
       const res = await api.get('/admin/usage');

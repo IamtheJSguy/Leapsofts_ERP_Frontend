@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/useAuthStore';
+import { discardQueryCacheForSessionChange } from '@/lib/queryPersistence';
 import { useTwoFactorVerifyLogin } from '@/hooks/api/useTwoFactor';
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
@@ -46,9 +47,12 @@ const TwoFactorVerifyPage = () => {
     verifyLogin.mutate(
       { tempToken, code: code.trim() },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
+          const previousUserId = useAuthStore.getState().user?._id;
+          const nextUser = data.user as { _id?: string };
           sessionStorage.removeItem(TEMP_TOKEN_KEY);
           localStorage.setItem('accessToken', data.accessToken);
+          await discardQueryCacheForSessionChange([previousUserId, nextUser?._id]);
           markMonitoringPromptPendingForLogin();
           setAuth(data.user as Parameters<typeof setAuth>[0]);
           queryClient.invalidateQueries({ queryKey: ['notifications'] });

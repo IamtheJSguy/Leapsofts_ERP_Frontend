@@ -55,11 +55,13 @@ const invalidateAll = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries({ queryKey: ['dailyKpiEntries'] });
 };
 
-export const useMyKPIChangeRequests = () =>
-  useQuery({
-    queryKey: ['kpi-change-requests', 'mine'],
+export const useMyKPIChangeRequests = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpi-change-requests', 'mine', organizationId],
     queryFn: () => changeRequestApi.mine().then((r) => r.data.data),
   });
+};
 
 export const usePendingKPIChangeRequests = (options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);

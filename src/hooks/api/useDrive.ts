@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { queryClient } from '@/lib/queryClient';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { DriveFile } from '@/types';
 
 export const DRIVE_CONNECTED_EVENT = 'leapsofts-drive-connected';
@@ -42,19 +43,26 @@ const driveApi = {
   },
 };
 
-export const useDriveStatus = () =>
-  useQuery({
-    queryKey: ['driveStatus'],
+export const useDriveStatus = () => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['driveStatus', organizationId],
     queryFn: () => driveApi.getStatus().then((r) => r.data.data),
   });
+};
 
-export const useDriveFiles = (query?: string, enabled = false) =>
-  useQuery({
-    queryKey: ['driveFiles', query ?? ''],
+export const useDriveFiles = (query?: string, enabled = false) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['driveFiles', query ?? '', organizationId],
     queryFn: () => driveApi.getFiles({ q: query || undefined }).then((r) => r.data.data),
     enabled,
-    placeholderData: (previous) => previous,
+    placeholderData: (previous, previousQuery) => {
+      if (previousQuery?.queryKey.at(-1) !== organizationId) return undefined;
+      return previous;
+    },
   });
+};
 
 export const useDriveAuthUrl = () =>
   useMutation({

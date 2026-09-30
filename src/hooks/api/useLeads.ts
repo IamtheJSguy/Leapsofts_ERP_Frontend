@@ -64,16 +64,21 @@ export const useLeads = (filters: LeadFilters = {}) => {
       };
     },
     staleTime: 1000 * 60,
-    placeholderData: (previous) => previous,
+    placeholderData: (previous, previousQuery) => {
+      if (previousQuery?.queryKey[1] !== organizationId) return undefined;
+      return previous;
+    },
   });
 };
 
-export const useLead = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['lead', id],
+export const useLead = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['lead', id, organizationId],
     queryFn: () => leadApi.getLead(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useCreateLead = () => {
   const queryClient = useQueryClient();
@@ -203,15 +208,17 @@ export const useDownloadLeadExport = () =>
     },
   });
 
-export const useLeadHistory = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['leadHistory', id],
+export const useLeadHistory = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['leadHistory', id, organizationId],
     queryFn: async (): Promise<LeadTimelineEvent[]> => {
       const response = await leadApi.getLeadHistory(id!);
       return Array.isArray(response.data.data) ? response.data.data : [];
     },
     enabled: !!id,
   });
+};
 
 export const useLogFollowUp = () => {
   const queryClient = useQueryClient();
