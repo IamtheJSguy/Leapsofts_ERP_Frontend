@@ -10,6 +10,8 @@ export type EditableLeadData = {
   lastName: string;
   prospectName: string;
   email: string;
+  phone: string;
+  website: string;
   profileUrl: string;
   icp: string;
   profile: string;
@@ -33,6 +35,8 @@ const EDITABLE_FIELDS = [
   'lastName',
   'prospectName',
   'email',
+  'phone',
+  'website',
   'profileUrl',
   'icp',
   'profile',
@@ -82,6 +86,8 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
       prospectName: prospect.prospectName,
     }),
     email: prospect.email || '',
+    phone: prospect.phone || '',
+    website: prospect.website || '',
     profileUrl: prospect.profileUrl || '',
     icp: prospect.icp || '',
     profile: prospect.profile || '',
@@ -400,6 +406,8 @@ export const useLeadAutoSync = ({
               lastName: data.lastName,
             }),
           email: data.email || '',
+          phone: data.phone || '',
+          website: data.website || '',
           profileUrl: data.profileUrl || '',
           icp: data.icp || '',
           profile: data.profile || '',
@@ -423,6 +431,8 @@ export const useLeadAutoSync = ({
               lastName: data.lastName,
             }),
           email: data.email || '',
+          phone: data.phone || '',
+          website: data.website || '',
           profileUrl: data.profileUrl || '',
           icp: data.icp || '',
           profile: data.profile || '',

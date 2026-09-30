@@ -103,9 +103,21 @@ export const SalesEditRow = memo(function SalesEditRow({
               style={field}
             />
             <input
+              placeholder="Phone"
+              value={editData.phone}
+              onChange={(e) => onUpdate(leadId, { phone: e.target.value })}
+              style={field}
+            />
+            <input
               placeholder="Profile URL"
               value={editData.profileUrl}
               onChange={(e) => onUpdate(leadId, { profileUrl: e.target.value })}
+              style={field}
+            />
+            <input
+              placeholder="Website URL"
+              value={editData.website}
+              onChange={(e) => onUpdate(leadId, { website: e.target.value })}
               style={field}
             />
           </Box>
@@ -261,6 +273,8 @@ type SalesInlineAddRowProps = {
     lastName?: string;
     prospectName?: string;
     email?: string;
+    phone?: string;
+    website?: string;
     profileUrl?: string;
     icp?: string;
     profile?: string;
@@ -341,9 +355,21 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
               style={nativeFieldStyle(isDarkMode)}
             />
             <input
+              placeholder="Phone"
+              value={data.phone || ''}
+              onChange={(e) => onUpdate({ phone: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+            <input
               placeholder="Profile URL"
               value={data.profileUrl || ''}
               onChange={(e) => onUpdate({ profileUrl: e.target.value })}
+              style={nativeFieldStyle(isDarkMode)}
+            />
+            <input
+              placeholder="Website URL"
+              value={data.website || ''}
+              onChange={(e) => onUpdate({ website: e.target.value })}
               style={nativeFieldStyle(isDarkMode)}
             />
           </Box>

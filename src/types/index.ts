@@ -133,6 +133,7 @@ export interface Lead {
   companySize?: string;
   location?: string;
   phone?: string;
+  website?: string;
   connectionStatus?: ConnectionStatus;
   messageStatus?: MessageStatus;
   isQualified?: boolean;
@@ -927,21 +928,48 @@ export interface ShiftBreak {
   source?: 'manual' | 'idle' | 'sleep' | 'offline';
 }
 
+/** Why a session was closed: manual user checkout or inactivity auto-checkout. */
+export type CheckoutReason = 'user' | 'inactivity';
+
+/** One check-in / check-out cycle within a calendar day. */
+export interface ShiftSession {
+  checkInTime: string;
+  checkOutTime: string | null;
+  checkoutReason: CheckoutReason | null;
+  breaks: ShiftBreak[];
+  workedMinutes: number;
+  breakMinutes: number;
+}
+
+/** Meeting log nested on the day shift (counts as worked time). */
+export interface ShiftMeeting {
+  startTime: string;
+  endTime: string | null;
+}
+
 export interface Shift {
   _id: string;
   userId: string | User;
   date: string;
+  /** First session check-in of the day (lateness / summary). */
   checkInTime: string | null;
+  /** Latest session check-out, or null while any session is open. */
   checkOutTime: string | null;
   scheduledStart: string;
   scheduledEnd: string;
+  /** Sum of worked minutes across every session for the day. */
   totalMinutes: number;
-  /** Completed + open break segments for the shift. */
+  /** Completed + open break segments for the open session (or last closed). */
   breaks?: ShiftBreak[];
   /** Persisted/live sum of break durations in minutes (excludes worked time). */
   totalBreakMinutes?: number;
   status: 'not_started' | 'checked_in' | 'checked_out';
   isActive: boolean;
+  lastHeartbeatAt?: string | null;
+  /** Every check-in / check-out cycle for the day. */
+  sessions?: ShiftSession[];
+  /** Meeting logs for the day (start / end). */
+  meetings?: ShiftMeeting[];
   createdAt: string;
   updatedAt: string;
 }

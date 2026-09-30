@@ -5,6 +5,8 @@ export type CsvBulkLeadRow = {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
+  website: string;
   profileUrl: string;
   icp: string;
   profile: string;
@@ -49,6 +51,8 @@ const HEADER_ALIASES: Record<string, string[]> = {
   firstName: ['first name', 'firstname', 'first_name'],
   lastName: ['last name', 'lastname', 'last_name'],
   email: ['email', 'e-mail', 'email address'],
+  phone: ['phone', 'phone number', 'phonenumber', 'phone_number', 'mobile'],
+  website: ['website', 'website url', 'websiteurl', 'website_url', 'company website'],
   profileUrl: ['profile url', 'profileurl', 'profile_url', 'linkedin url', 'linkedinurl', 'linkedin'],
   icp: ['icp'],
   profile: ['profile'],
@@ -172,9 +176,9 @@ const rowHasContent = (row: Record<string, unknown>, headerMap: Record<string, s
   Object.values(headerMap).some((header) => cellToString(row[header]).length > 0);
 
 export const SAMPLE_BULK_ADD_CSV =
-  'First Name,Last Name,Email,Profile URL,ICP,Profile,Connection Status,Message Status,Date\n' +
-  'Jane,Doe,jane@example.com,https://linkedin.com/in/janedoe,SaaS Founders,John Smith,pending,not_sent,\n' +
-  'John,Smith,,https://linkedin.com/in/johnsmith,SaaS Founders,John Smith,accepted,future_lead,2026-09-01\n';
+  'First Name,Last Name,Email,Phone,Profile URL,Website URL,ICP,Profile,Connection Status,Message Status,Date\n' +
+  'Jane,Doe,jane@example.com,+1 555 0100,https://linkedin.com/in/janedoe,https://example.com,SaaS Founders,John Smith,pending,not_sent,\n' +
+  'John,Smith,,,https://linkedin.com/in/johnsmith,,SaaS Founders,John Smith,accepted,future_lead,2026-09-01\n';
 
 export const parseBulkAddLeadsFile = async (
   file: File,
@@ -219,6 +223,8 @@ export const parseBulkAddLeadsFile = async (
     const firstName = cellToString(headerMap.firstName ? raw[headerMap.firstName] : '');
     const lastName = cellToString(headerMap.lastName ? raw[headerMap.lastName] : '');
     const email = cellToString(headerMap.email ? raw[headerMap.email] : '');
+    const phone = cellToString(headerMap.phone ? raw[headerMap.phone] : '');
+    const website = cellToString(headerMap.website ? raw[headerMap.website] : '');
     const profileUrl = cellToString(headerMap.profileUrl ? raw[headerMap.profileUrl] : '');
 
     const icpRaw = cellToString(headerMap.icp ? raw[headerMap.icp] : '');
@@ -257,6 +263,8 @@ export const parseBulkAddLeadsFile = async (
       firstName,
       lastName,
       email,
+      phone,
+      website,
       profileUrl,
       icp,
       profile,

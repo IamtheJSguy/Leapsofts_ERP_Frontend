@@ -246,6 +246,24 @@ export const LeadDetailsPage = () => {
                 )}
               </Box>
 
+              {lead.website && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<LaunchIcon sx={{ fontSize: 16 }} />}
+                    href={lead.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    fullWidth
+                    sx={{
+                      borderRadius: '12px', textTransform: 'none', fontWeight: 700,
+                    }}
+                  >
+                    Visit Website
+                  </Button>
+                </Box>
+              )}
+
               {lead.profileUrl && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
                   <Button

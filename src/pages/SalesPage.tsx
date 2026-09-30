@@ -38,6 +38,8 @@ import AddIcon from '@mui/icons-material/Add';
 import SyncIcon from '@mui/icons-material/Sync';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import LanguageIcon from '@mui/icons-material/Language';
 import LinkIcon from '@mui/icons-material/Link';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
@@ -309,6 +311,8 @@ export const SalesPage = () => {
     lastName: '',
     prospectName: '',
     email: '',
+    phone: '',
+    website: '',
     profileUrl: '',
     icp: '',
     profile: '',
@@ -362,7 +366,7 @@ export const SalesPage = () => {
           setIsAddingInline(false);
           setAddLeadErrors({});
           setNewLeadData({
-            firstName: '', lastName: '', prospectName: '', email: '', profileUrl: '', icp: '', profile: '',
+            firstName: '', lastName: '', prospectName: '', email: '', phone: '', website: '', profileUrl: '', icp: '', profile: '',
             connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
             futureLeadDate: undefined,
           });
@@ -531,6 +535,8 @@ export const SalesPage = () => {
         payload.firstName !== (originalProspect.firstName || '') ||
         payload.lastName !== (originalProspect.lastName || '') ||
         payload.email !== (originalProspect.email || '') ||
+        payload.phone !== (originalProspect.phone || '') ||
+        payload.website !== (originalProspect.website || '') ||
         payload.profileUrl !== (originalProspect.profileUrl || '') ||
         payload.icp !== (originalProspect.icp || '') ||
         payload.profile !== (originalProspect.profile || '') ||
@@ -2028,24 +2034,10 @@ export const SalesPage = () => {
                         <TableCell sx={{ py: 2, borderBottom: 0, pl: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => handleOpenUpdateLead(String(prospect._id))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  handleOpenUpdateLead(String(prospect._id));
-                                }
-                              }}
                               sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 1.75,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'opacity 0.15s',
-                                '&:hover': { opacity: 0.85 },
-                                outline: 'none',
                                 flex: 1,
                                 minWidth: 0,
                               }}
@@ -2067,7 +2059,17 @@ export const SalesPage = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <OverflowTooltip title={nameToUse} placement="top" arrow>
                                     <Typography
+                                      component="span"
+                                      role="button"
+                                      tabIndex={0}
                                       variant="subtitle2"
+                                      onClick={() => handleOpenUpdateLead(String(prospect._id))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          handleOpenUpdateLead(String(prospect._id));
+                                        }
+                                      }}
                                       sx={{
                                         fontWeight: 750,
                                         color: isDarkMode ? '#fff' : tokens.text.primary,
@@ -2076,6 +2078,8 @@ export const SalesPage = () => {
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         maxWidth: { xs: '100px', sm: '130px', md: '160px', lg: '200px' },
+                                        cursor: 'pointer',
+                                        outline: 'none',
                                         '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
                                       }}
                                     >
@@ -2114,6 +2118,12 @@ export const SalesPage = () => {
                                     {prospect.email}
                                   </Typography>
                                 )}
+                                {prospect.phone && (
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                                    <PhoneIcon sx={{ fontSize: 12 }} />
+                                    {prospect.phone}
+                                  </Typography>
+                                )}
                                 {prospect.profileUrl && (
                                   <Typography
                                     component="a"
@@ -2138,6 +2148,32 @@ export const SalesPage = () => {
                                   >
                                     <LinkIcon sx={{ fontSize: 12, flexShrink: 0 }} />
                                     {prospect.profileUrl}
+                                  </Typography>
+                                )}
+                                {prospect.website && (
+                                  <Typography
+                                    component="a"
+                                    href={prospect.website}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    variant="caption"
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      color: 'text.secondary',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.5,
+                                      mt: 0.25,
+                                      textDecoration: 'none',
+                                      maxWidth: 220,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                    }}
+                                  >
+                                    <LanguageIcon sx={{ fontSize: 12, flexShrink: 0 }} />
+                                    {prospect.website}
                                   </Typography>
                                 )}
                               </Box>

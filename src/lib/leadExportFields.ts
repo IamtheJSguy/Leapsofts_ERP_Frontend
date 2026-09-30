@@ -12,6 +12,7 @@ export const LEAD_EXPORT_FIELDS = [
   { key: 'prospectName', label: 'Prospect Name', defaultSelected: false },
   { key: 'company', label: 'Company', defaultSelected: false },
   { key: 'phone', label: 'Phone', defaultSelected: false },
+  { key: 'website', label: 'Website URL', defaultSelected: false },
   { key: 'jobTitle', label: 'Job Title', defaultSelected: false },
   { key: 'industry', label: 'Industry', defaultSelected: false },
   { key: 'location', label: 'Location', defaultSelected: false },

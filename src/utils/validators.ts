@@ -44,6 +44,7 @@ export const leadSchema = z.object({
   companySize: z.string().optional(),
   location: z.string().optional(),
   phone: z.string().optional(),
+  website: z.string().optional(),
   connectionStatus: z.enum(CONNECTION_STATUS_OPTIONS as [string, ...string[]]).optional(),
   messageStatus: z.enum(MESSAGE_STATUS_OPTIONS as [string, ...string[]]).optional(),
   prospectName: z.string().optional(),
