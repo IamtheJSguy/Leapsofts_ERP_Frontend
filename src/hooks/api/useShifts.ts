@@ -63,11 +63,26 @@ export interface DailyKpiSummary {
   counts?: GroupedDailyKpis['counts'];
 }
 
+export interface TeamTodayShift {
+  userId: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  totalMinutes: number;
+  totalBreakMinutes: number;
+  status: Shift['status'];
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  sessions?: Shift['sessions'];
+  meetings?: Shift['meetings'];
+}
+
 export const shiftApi = {
   checkIn: () => api.post<{ success: boolean; data: Shift }>('/shifts/check-in'),
   checkOut: () => api.post<{ success: boolean; data: Shift }>('/shifts/check-out'),
   startBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/start'),
   endBreak: () => api.post<{ success: boolean; data: Shift }>('/shifts/break/end'),
+  startMeeting: () => api.post<{ success: boolean; data: Shift }>('/shifts/meeting/start'),
+  endMeeting: () => api.post<{ success: boolean; data: Shift }>('/shifts/meeting/end'),
   getToday: () => api.get<{ success: boolean; data: Shift }>('/shifts/today'),
   getHistory: (params?: { startDate?: string; endDate?: string; page?: number; limit?: number; userId?: string }) =>
     api.get<{ success: boolean; data: { shifts: Shift[]; total: number; page: number; limit: number } }>('/shifts/history', { params }),
@@ -100,16 +115,7 @@ export const shiftApi = {
         onlineMembers: any[];
         punctualityRate: number;
         totalMinutesWorkedToday: number;
-        todayShifts: Array<{
-          userId: string;
-          checkInTime: string | null;
-          checkOutTime: string | null;
-          totalMinutes: number;
-          totalBreakMinutes: number;
-          status: Shift['status'];
-          scheduledStart?: string;
-          scheduledEnd?: string;
-        }>;
+        todayShifts: TeamTodayShift[];
       };
     }>('/shifts/team-status'),
   
@@ -218,6 +224,28 @@ export const useEndBreak = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: shiftApi.endBreak,
+    onSuccess: (response) => {
+      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+};
+
+export const useStartMeeting = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: shiftApi.startMeeting,
+    onSuccess: (response) => {
+      queryClient.setQueryData(['shifts', 'today'], response.data.data);
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+};
+
+export const useEndMeeting = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: shiftApi.endMeeting,
     onSuccess: (response) => {
       queryClient.setQueryData(['shifts', 'today'], response.data.data);
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
