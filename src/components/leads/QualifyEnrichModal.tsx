@@ -153,6 +153,7 @@ const LeadSummaryColumn = memo(({
         {renderField('Company', 'company')}
         {renderField('Email', 'email')}
         {renderField('Phone', 'phone')}
+        {renderField('Website URL', 'website')}
         {renderField('Profile URL', 'profileUrl')}
         {renderField('Industry', 'industry')}
         {renderField('Company Size', 'companySize')}
@@ -567,6 +568,7 @@ export const QualifyEnrichModal = ({
         email: lead.email || '',
         industry: lead.industry || '',
         phone: lead.phone || '',
+        website: lead.website || '',
         companySize: lead.companySize || '',
         profileUrl: lead.profileUrl || '',
         location: lead.location || '',
@@ -644,7 +646,7 @@ export const QualifyEnrichModal = ({
   };
 
   const buildLeadPayload = () => {
-    const { title, email, profileUrl, ...restLeadData } = leadData;
+    const { title, email, profileUrl, website, ...restLeadData } = leadData;
     const nameParts = splitProspectName(
       leadData.prospectName || composeProspectName(leadData),
     );
@@ -655,6 +657,7 @@ export const QualifyEnrichModal = ({
       prospectName: nameParts.prospectName.trim(),
       ...(title ? { jobTitle: title } : {}),
       ...(email?.trim() ? { email: email.trim() } : { email: '' }),
+      ...(website?.trim() ? { website: website.trim() } : { website: '' }),
       ...(profileUrl?.trim() ? { profileUrl: profileUrl.trim() } : { profileUrl: '' }),
       ...(notes?.trim() ? { notes } : { notes: '' }),
       sharedWith: sharedWith.map((u) => u._id),

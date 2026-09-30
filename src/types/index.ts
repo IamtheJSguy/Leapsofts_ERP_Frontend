@@ -133,6 +133,7 @@ export interface Lead {
   companySize?: string;
   location?: string;
   phone?: string;
+  website?: string;
   connectionStatus?: ConnectionStatus;
   messageStatus?: MessageStatus;
   isQualified?: boolean;
