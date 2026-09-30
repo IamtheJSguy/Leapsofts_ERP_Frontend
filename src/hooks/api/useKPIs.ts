@@ -54,11 +54,13 @@ export const useMyKPIs = () => {
   });
 };
 
-export const useKPIRecords = (params: Record<string, string> = {}) =>
-  useQuery({
-    queryKey: ['kpiRecords', params],
+export const useKPIRecords = (params: Record<string, string> = {}) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kpiRecords', params, organizationId],
     queryFn: () => kpiApi.getKPIRecords(params).then((r) => r.data.data),
   });
+};
 
 export const useCreateKPI = () => {
   const queryClient = useQueryClient();

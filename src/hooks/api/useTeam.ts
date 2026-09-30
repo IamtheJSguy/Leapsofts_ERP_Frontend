@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
 
 import type { UserPermissions } from '@/types';
 
@@ -30,21 +31,25 @@ export interface Team {
   isActive: boolean;
 }
 
-export const useMyTeam = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: ['teams', 'mine'],
+export const useMyTeam = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['teams', 'mine', organizationId],
     queryFn: () => api.get<{ data: Team }>('/teams/mine').then((r) => r.data.data),
     retry: false,
     enabled: options?.enabled,
   });
+};
 
-export const useAvailableTeamMembers = (enabled = true) =>
-  useQuery({
-    queryKey: ['teams', 'mine', 'available-members'],
+export const useAvailableTeamMembers = (enabled = true) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['teams', 'mine', 'available-members', organizationId],
     queryFn: () =>
       api.get<{ data: TeamMember[] }>('/teams/mine/available-members').then((r) => r.data.data),
     enabled,
   });
+};
 
 export const useCreateTeam = () => {
   const queryClient = useQueryClient();

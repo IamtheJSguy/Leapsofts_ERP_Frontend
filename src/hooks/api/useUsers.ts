@@ -40,12 +40,14 @@ export const useUsers = (
   });
 };
 
-export const useUser = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['user', id],
+export const useUser = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['user', id, organizationId],
     queryFn: () => userApi.getUser(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useUserSummary = (userId: string | undefined, date?: string) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
@@ -65,9 +67,10 @@ export const useUserAttendanceSummary = (
   userId: string | undefined,
   startDate: string,
   endDate: string
-) =>
-  useQuery({
-    queryKey: ['userAttendanceSummary', userId, startDate, endDate],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['userAttendanceSummary', userId, startDate, endDate, organizationId],
     queryFn: () =>
       api
         .get<{ data: any }>(`/users/${userId}/attendance-summary`, {
@@ -76,15 +79,17 @@ export const useUserAttendanceSummary = (
         .then((r) => r.data.data),
     enabled: !!userId && !!startDate && !!endDate,
   });
+};
 
 export const useUserAuditLogs = (
   userId: string | undefined,
   page = 1,
   limit = 20,
   options?: { enabled?: boolean },
-) =>
-  useQuery({
-    queryKey: ['auditLogs', userId, page, limit],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['auditLogs', userId, page, limit, organizationId],
     queryFn: () =>
       api
         .get<{ data: any[]; meta: { page: number; limit: number; total: number } }>(`/admin/audit-logs/${userId}`, {
@@ -93,6 +98,7 @@ export const useUserAuditLogs = (
         .then((r) => r.data),
     enabled: !!userId && (options?.enabled ?? true),
   });
+};
 
 export const useCreateUser = () => {
   const queryClient = useQueryClient();

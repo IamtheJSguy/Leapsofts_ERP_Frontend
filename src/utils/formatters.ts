@@ -1,7 +1,12 @@
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 
-export const formatDate = (date: string | Date, pattern = 'MMM d, yyyy'): string => {
+export const formatDate = (
+  date: string | Date | null | undefined,
+  pattern = 'MMM d, yyyy',
+): string => {
+  if (date == null || date === '') return '—';
   const d = typeof date === 'string' ? parseISO(date) : date;
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '—';
   return format(d, pattern);
 };
 

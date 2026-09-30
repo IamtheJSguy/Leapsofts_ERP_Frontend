@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import api from '@/lib/axios';
+import { discardQueryCacheForSessionChange } from '@/lib/queryPersistence';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { User } from '@/types';
 
@@ -20,7 +21,9 @@ const ImpersonatePage = () => {
     localStorage.setItem('accessToken', token);
     api
       .get<{ data: User }>('/users/me')
-      .then((res) => {
+      .then(async (res) => {
+        const previousUserId = useAuthStore.getState().user?._id;
+        await discardQueryCacheForSessionChange([previousUserId, res.data.data._id]);
         setAuth(res.data.data);
         navigate('/', { replace: true });
       })

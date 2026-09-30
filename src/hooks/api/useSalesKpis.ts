@@ -121,12 +121,14 @@ export const useTeamSalesKpis = (
 export const useSalesKpiProgressEvents = (
   params: TeamSalesKpisParams | null,
   options?: { enabled?: boolean },
-) =>
-  useQuery({
-    queryKey: ['salesKpis', 'progress-events', params],
+) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpis', 'progress-events', params, organizationId],
     queryFn: () => salesKpiApi.getProgressEvents(params!).then((r) => r.data.data),
     enabled: (options?.enabled ?? true) && !!params?.startDate && !!params?.endDate,
   });
+};
 
 /** Owner-only: attach an explanatory reason/comment to an incomplete or overdue entry. */
 export const useAddSalesKpiComment = () => {
@@ -160,12 +162,14 @@ export const useSalesKpiTemplates = (options?: { enabled?: boolean }) => {
 };
 
 /** Template plus the assignments derived from it. */
-export const useSalesKpiTemplateDetail = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['salesKpiTemplates', id],
+export const useSalesKpiTemplateDetail = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['salesKpiTemplates', id, organizationId],
     queryFn: () => salesKpiApi.getTemplate(id!).then((r) => r.data.data),
     enabled: !!id,
   });
+};
 
 export const useCreateSalesKpiTemplate = () => {
   const queryClient = useQueryClient();
