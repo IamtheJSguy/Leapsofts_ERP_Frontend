@@ -40,6 +40,7 @@ import {
 import { useUserSummary, useUserAttendanceSummary } from '@/hooks/api/useUsers';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { tokens } from '@/styles/tokens';
+import { ShiftDaySessions } from '@/components/attendance/ShiftDaySessions';
 import { formatDate, getDisplayName } from '@/utils/formatters';
 import { SALES_KPI_STATUS_LABELS } from '@/lib/constants';
 
@@ -881,9 +882,8 @@ export default function MemberProgressPage() {
                     Today's Shift Status
                   </Typography>
                   <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}>
-                    {todaysShift 
-                      ? `Check-In: ${new Date(todaysShift.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` + 
-                        (todaysShift.checkOutTime ? ` — Check-Out: ${new Date(todaysShift.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '')
+                    {todaysShift
+                      ? 'Check-in, meetings, and worked time for today.'
                       : 'No shift activity recorded yet for today.'}
                   </Typography>
                 </Box>
@@ -923,6 +923,17 @@ export default function MemberProgressPage() {
               </Box>
             </Box>
 
+            {todaysShift && (
+              <Box sx={{ mt: 2 }}>
+                <ShiftDaySessions
+                  isDarkMode={isDarkMode}
+                  sessions={todaysShift.sessions}
+                  meetings={todaysShift.meetings}
+                  totalMinutes={todaysShift.totalMinutes ?? Math.round((todaysShift.hoursWorked || 0) * 60)}
+                />
+              </Box>
+            )}
+
             {/* Shifts Logs Table List */}
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2, color: isDarkMode ? '#fff' : tokens.text.primary }}>
@@ -941,15 +952,6 @@ export default function MemberProgressPage() {
                       not_started: { bg: 'rgba(239, 68, 68, 0.1)', text: '#EF4444', label: 'Absent/Missed' },
                     };
                     const statusConfig = statusColorMap[shift.status as keyof typeof statusColorMap] || statusColorMap.not_started;
-
-                    const formatShiftTime = (timeStr: string | null) => {
-                      if (!timeStr) return '--:--';
-                      try {
-                        return new Date(timeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      } catch {
-                        return '--:--';
-                      }
-                    };
 
                     return (
                       <Box
@@ -990,9 +992,15 @@ export default function MemberProgressPage() {
                             <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
                               {new Date(shift.date).toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}
                             </Typography>
-                            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', fontWeight: 650, mt: 0.25 }}>
-                              Check-In: {formatShiftTime(shift.checkInTime)} — Check-Out: {formatShiftTime(shift.checkOutTime)}
-                            </Typography>
+                            <Box sx={{ mt: 1 }}>
+                              <ShiftDaySessions
+                                dense
+                                isDarkMode={isDarkMode}
+                                sessions={shift.sessions}
+                                meetings={shift.meetings}
+                                totalMinutes={shift.totalMinutes ?? Math.round((shift.hoursWorked || 0) * 60)}
+                              />
+                            </Box>
                           </Box>
                         </Box>
 

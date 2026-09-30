@@ -12,6 +12,7 @@ export const ChatPage = lazyRetry(() => import('@/pages/ChatPage'));
 export const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 export const TeamPage = lazyRetry(() => import('@/pages/TeamPage'));
 export const SalesPage = lazyRetry(() => import('@/pages/SalesPage'));
+export const SalesSettingsPage = lazyRetry(() => import('@/pages/SalesSettingsPage'));
 export const NotFoundPage = lazyRetry(() => import('@/pages/NotFoundPage'));
 export const ProfilePage = lazyRetry(() => import('@/pages/ProfilePage'));
 export const TeamInsightsPage = lazyRetry(() => import('@/pages/TeamInsightsPage'));

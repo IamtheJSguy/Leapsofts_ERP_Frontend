@@ -19,6 +19,7 @@ import {
   AdminPage,
   TeamPage,
   SalesPage,
+  SalesSettingsPage,
   NotFoundPage,
   ProfilePage,
   TeamInsightsPage,
@@ -189,6 +190,18 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage" requireEntitlement="salesModule">
             <SalesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'sales/settings',
+        element: wrap(
+          <ProtectedRoute
+            allowedRoles={[...ELEVATED_ROLES]}
+            requirePermission="viewSalesPage"
+            requireEntitlement="salesModule"
+          >
+            <SalesSettingsPage />
           </ProtectedRoute>,
         ),
       },
