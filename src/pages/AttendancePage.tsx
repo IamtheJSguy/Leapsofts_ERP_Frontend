@@ -32,6 +32,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import InsightsIcon from '@mui/icons-material/Insights';
 import { tokens } from '@/styles/tokens';
+import { ShiftDaySessions } from '@/components/attendance/ShiftDaySessions';
 import { useShiftHistory, useTeamAttendanceSummary } from '@/hooks/api/useShifts';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useMyTeam } from '@/hooks/api/useTeam';
@@ -128,6 +129,8 @@ export const AttendancePage = () => {
           totalMinutes: shift.totalMinutes,
           breaks: shift.breaks || [],
           totalBreakMinutes: shift.totalBreakMinutes || 0,
+          sessions: shift.sessions || [],
+          meetings: shift.meetings || [],
           status: shift.status,
           exists: true,
           scheduledStart: shift.scheduledStart,
@@ -142,6 +145,8 @@ export const AttendancePage = () => {
           totalMinutes: 0,
           breaks: [],
           totalBreakMinutes: 0,
+          sessions: [],
+          meetings: [],
           status: isWeekend ? 'weekend' : 'absent',
           exists: false,
           scheduledStart: currentUser?.shiftStart || '09:00',
@@ -259,6 +264,8 @@ export const AttendancePage = () => {
           totalMinutes: shift.totalMinutes,
           breaks: shift.breaks || [],
           totalBreakMinutes: shift.totalBreakMinutes || 0,
+          sessions: shift.sessions || [],
+          meetings: shift.meetings || [],
           status: shift.status,
           exists: true,
         };
@@ -271,6 +278,8 @@ export const AttendancePage = () => {
           totalMinutes: 0,
           breaks: [],
           totalBreakMinutes: 0,
+          sessions: [],
+          meetings: [],
           status: isWeekend ? 'weekend' : 'absent',
           exists: false,
         };
@@ -555,25 +564,13 @@ export const AttendancePage = () => {
                         Loading shift…
                       </Typography>
                     ) : todayShift ? (
-                      <>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            In <strong>{formatTime(todayShift.checkInTime)}</strong>
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            Out <strong>{formatTime(todayShift.checkOutTime)}</strong>
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.75 }}>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                            Logged
-                            {todayShift.totalBreakMinutes > 0 ? ` · ${todayShift.totalBreakMinutes}m break` : ''}
-                          </Typography>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary, lineHeight: 1.2 }}>
-                            {formatHours(todayShift.totalMinutes)}
-                          </Typography>
-                        </Box>
-                      </>
+                      <ShiftDaySessions
+                        dense
+                        isDarkMode={isDarkMode}
+                        sessions={todayShift.sessions}
+                        meetings={todayShift.meetings}
+                        totalMinutes={todayShift.totalMinutes}
+                      />
                     ) : (
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: tileStatus === 'absent' ? 600 : 400 }}>
                         {tileStatus === 'weekend' ? 'Non-working day.' : 'No shift logs for today.'}
@@ -758,7 +755,6 @@ export const AttendancePage = () => {
                   paginatedMergedShifts.map((shift: any) => {
                     const shiftDate = new Date(shift.date);
                     const dateStr = format(shiftDate, 'EEEE, MMMM dd, yyyy');
-                    const workedHours = formatHours(shift.totalMinutes);
                     const breakSummary = formatBreakSummary(shift.breaks, shift.totalBreakMinutes);
 
                     return (
@@ -791,22 +787,13 @@ export const AttendancePage = () => {
                         </Box>
                         {shift.exists ? (
                           <>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                Check In: <strong>{formatTime(shift.checkInTime)}</strong>
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                Check Out: <strong>{formatTime(shift.checkOutTime)}</strong>
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-                              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                                Logged Time:
-                              </Typography>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary }}>
-                                {workedHours}
-                              </Typography>
-                            </Box>
+                            <ShiftDaySessions
+                              dense
+                              isDarkMode={isDarkMode}
+                              sessions={shift.sessions}
+                              meetings={shift.meetings}
+                              totalMinutes={shift.totalMinutes}
+                            />
                             {breakSummary && (
                               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, textAlign: 'right' }}>
                                 {breakSummary}
@@ -1189,21 +1176,18 @@ export const AttendancePage = () => {
                     />
                   </Box>
                   {shift.exists ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 }, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
                       <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <AccessTimeIcon sx={{ fontSize: 16 }} />
                         Scheduled: {shift.scheduledStart} - {shift.scheduledEnd}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <CheckCircleOutlineIcon sx={{ fontSize: 16, color: tokens.semantic.success }} />
-                        In: {formatTime(shift.checkInTime)}
-                      </Typography>
-                      {shift.checkOutTime && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <CheckCircleOutlineIcon sx={{ fontSize: 16, color: tokens.semantic.info }} />
-                          Out: {formatTime(shift.checkOutTime)}
-                        </Typography>
-                      )}
+                      <ShiftDaySessions
+                        dense
+                        isDarkMode={isDarkMode}
+                        sessions={shift.sessions}
+                        meetings={shift.meetings}
+                        totalMinutes={shift.totalMinutes}
+                      />
                     </Box>
                   ) : (
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: shift.status === 'absent' ? 600 : 400 }}>
