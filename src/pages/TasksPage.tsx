@@ -360,14 +360,14 @@ const TasksPage = () => {
         }
       }
     }
-    return isElevated ? 'team' : 'assignments';
+    return isElevated ? 'my_tasks' : 'assignments';
   }, [searchParams, isElevated, salesModuleOn]);
 
   const setDashboardTab = (newTab: DashboardTab) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        const defaultTab = isElevated ? 'team' : 'assignments';
+        const defaultTab = isElevated ? 'my_tasks' : 'assignments';
         if (newTab === defaultTab) {
           next.delete('tab');
         } else {
@@ -2208,8 +2208,8 @@ const TasksPage = () => {
         {/* Navigation Sub-Tabs */}
         {isElevated && viewMode === 'list' && (
           <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
-            <Button onClick={() => setDashboardTab('team')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
             <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
+            <Button onClick={() => setDashboardTab('team')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
             {salesModuleOn && (
             <Button onClick={() => setDashboardTab('sales')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
             )}
