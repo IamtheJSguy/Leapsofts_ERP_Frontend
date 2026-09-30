@@ -20,6 +20,16 @@ const formatMinutes = (minutes: number | undefined) => {
   return `${h}h ${m}m`;
 };
 
+export const meetingDurationMinutes = (meeting: ShiftMeeting, untilMs = Date.now()): number => {
+  const start = new Date(meeting.startTime).getTime();
+  const end = meeting.endTime ? new Date(meeting.endTime).getTime() : untilMs;
+  if (Number.isNaN(start) || Number.isNaN(end)) return 0;
+  return Math.max(0, Math.round((end - start) / 60000));
+};
+
+export const totalMeetingMinutes = (meetings: ShiftMeeting[], untilMs = Date.now()): number =>
+  meetings.reduce((sum, meeting) => sum + meetingDurationMinutes(meeting, untilMs), 0);
+
 const checkoutReasonLabel = (reason: CheckoutReason | null | undefined) => {
   if (reason === 'inactivity') return 'Auto (inactivity)';
   if (reason === 'user') return 'Manual';
@@ -74,6 +84,7 @@ export const ShiftDaySessions = ({
   isDarkMode = false,
   dense = false,
 }: ShiftDaySessionsProps) => {
+  const meetingMinutes = totalMeetingMinutes(meetings);
   if (sessions.length === 0 && meetings.length === 0 && totalMinutes == null) {
     return null;
   }
@@ -201,6 +212,8 @@ export const ShiftDaySessions = ({
                     Start <strong>{formatClock(meeting.startTime)}</strong>
                     {' · '}
                     End <strong>{formatClock(meeting.endTime)}</strong>
+                    {' · '}
+                    <strong>{formatMinutes(meetingDurationMinutes(meeting))}</strong>
                   </Typography>
                   {open && (
                     <Chip
@@ -219,13 +232,21 @@ export const ShiftDaySessions = ({
               );
             })}
           </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.75 }}>
+            <Typography variant="caption" sx={{ color: muted, fontWeight: 800 }}>
+              Meeting time
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary }}>
+              {formatMinutes(meetingMinutes)}
+            </Typography>
+          </Box>
         </Box>
       )}
 
       {totalMinutes != null && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', pt: 0.25 }}>
           <Typography variant="caption" sx={{ color: muted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Day total
+            Worked{meetingMinutes > 0 ? ' · includes meetings' : ''}
           </Typography>
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary }}>
             {formatMinutes(totalMinutes)}
