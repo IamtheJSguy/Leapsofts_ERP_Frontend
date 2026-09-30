@@ -3,27 +3,25 @@ import { useMemo, useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
-import { SalesSettingsPanel } from '@/components/admin/SalesSettingsPanel';
 import { tokens } from '@/styles/tokens';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useUIStore } from '@/store/useUIStore';
 
-type AdminTabId = 'users' | 'system' | 'sales' | 'usage';
+type AdminTabId = 'users' | 'system' | 'usage';
 
 const AdminPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const { canManageUsers, canManageSystemSettings, canManageSalesSettings } = usePermissions();
+  const { canManageUsers, canManageSystemSettings } = usePermissions();
 
   const tabs = useMemo(() => {
     const list: { id: AdminTabId; label: string }[] = [];
     if (canManageUsers) list.push({ id: 'users', label: 'Users List' });
     if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings' });
-    if (canManageSalesSettings) list.push({ id: 'sales', label: 'Sales Settings' });
     if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage' });
     return list;
-  }, [canManageUsers, canManageSystemSettings, canManageSalesSettings]);
+  }, [canManageUsers, canManageSystemSettings]);
 
   const addToast = useUIStore((s) => s.addToast);
   const { data: usage } = useQuery({
@@ -107,8 +105,6 @@ const AdminPage = () => {
           <UserManagementTable />
         ) : activeTab === 'system' && canManageSystemSettings ? (
           <SystemSettingsPanel readOnly={!canManageSystemSettings} />
-        ) : activeTab === 'sales' && canManageSalesSettings ? (
-          <SalesSettingsPanel readOnly={!canManageSalesSettings} />
         ) : activeTab === 'usage' && canManageSystemSettings ? (
           <Box>
             <Typography sx={{ mb: 2 }}>
