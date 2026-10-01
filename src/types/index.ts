@@ -70,6 +70,7 @@ export interface UserPermissions {
   manageSystemSettings: boolean;
   manageSalesSettings: boolean;
   createProjectsAndBoards: boolean;
+  accessInvoicing: boolean;
 }
 
 export interface OrgMembership {

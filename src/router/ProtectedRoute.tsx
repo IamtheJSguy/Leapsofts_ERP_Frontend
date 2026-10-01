@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { resolvePermissions, type PermissionKey } from '@/lib/permissions';
-import { useEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
+import { useEntitlements, useOrgEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
 import type { Role } from '@/types';
 
 interface ProtectedRouteProps {
@@ -19,6 +19,7 @@ export const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const { user, isAuthenticated } = useAuthStore();
   const entitlements = useEntitlements();
+  const entitlementsQuery = useOrgEntitlements();
   const location = useLocation();
 
   if (!isAuthenticated && !localStorage.getItem('accessToken')) {
@@ -36,6 +37,10 @@ export const ProtectedRoute = ({
     if (!allowed) {
       return <Navigate to="/" replace />;
     }
+  }
+
+  if (user && requireEntitlement && !entitlementsQuery.isSuccess && entitlementsQuery.isFetching) {
+    return null;
   }
 
   if (user && requireEntitlement && entitlements[requireEntitlement] === false) {
