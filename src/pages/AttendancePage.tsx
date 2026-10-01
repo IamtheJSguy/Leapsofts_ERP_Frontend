@@ -17,6 +17,9 @@ import {
   Divider,
   Drawer,
   IconButton,
+  Badge,
+  Tooltip,
+  Button,
   Select,
   MenuItem,
   FormControl,
@@ -31,8 +34,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import InsightsIcon from '@mui/icons-material/Insights';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { tokens } from '@/styles/tokens';
 import { ShiftDaySessions } from '@/components/attendance/ShiftDaySessions';
+import { AttendanceShiftCard } from '@/components/attendance/AttendanceShiftCard';
 import { useShiftHistory, useTeamAttendanceSummary } from '@/hooks/api/useShifts';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useMyTeam } from '@/hooks/api/useTeam';
@@ -45,6 +51,24 @@ const trackingPath = (userId: string, date: Date | string, shiftId?: string) => 
   const q = new URLSearchParams({ date: dateStr });
   if (shiftId) q.set('shiftId', shiftId);
   return `/attendance/${userId}?${q.toString()}`;
+};
+
+const formatTimeOnly = (dateString: string | null | undefined) => {
+  if (!dateString) return '--:--';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '--:--';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch {
+    return '--:--';
+  }
+};
+
+const formatWorkedMins = (mins: number | undefined | null) => {
+  if (!mins || mins <= 0) return '0h 0m';
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return `${h}h ${m}m`;
 };
 
 export const AttendancePage = () => {
@@ -268,6 +292,8 @@ export const AttendancePage = () => {
           meetings: shift.meetings || [],
           status: shift.status,
           exists: true,
+          scheduledStart: shift.scheduledStart || selectedUser?.shiftStart,
+          scheduledEnd: shift.scheduledEnd || selectedUser?.shiftEnd
         };
       } else {
         return {
@@ -282,10 +308,12 @@ export const AttendancePage = () => {
           meetings: [],
           status: isWeekend ? 'weekend' : 'absent',
           exists: false,
+          scheduledStart: selectedUser?.shiftStart,
+          scheduledEnd: selectedUser?.shiftEnd,
         };
       }
     });
-  }, [queryRange, userHistoryData]);
+  }, [queryRange, userHistoryData, selectedUser]);
 
   const limit = 8;
   const totalDaysCount = mergedShifts.length;
@@ -462,33 +490,136 @@ export const AttendancePage = () => {
                   ? 'weekend'
                   : 'absent';
               const isOnline = todayShift?.status === 'checked_in';
-              const scheduledStart = todayShift?.scheduledStart || user.shiftStart;
-              const scheduledEnd = todayShift?.scheduledEnd || user.shiftEnd;
+              const todayWorkedMinutes = todayShift?.totalMinutes || 0;
 
               return (
-                <Grid item xs={12} sm={6} md={4} key={user._id}>
+                <Grid item xs={12} sm={6} lg={4} key={user._id}>
                   <Card
                     onClick={() => {
                       setSelectedUser(user);
                       setDetailPage(1);
                     }}
                     sx={{
-                      p: 3,
+                      p: 2.5,
                       borderRadius: '20px',
-                      bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                      bgcolor: isDarkMode ? 'rgba(28, 25, 36, 0.65)' : '#ffffff',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                       cursor: 'pointer',
-                      boxShadow: isDarkMode ? 'none' : '0 2px 6px rgba(0,0,0,0.015)',
-                      transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                      boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.03)',
+                      transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      overflow: 'hidden',
                       '&:hover': {
-                        transform: 'translateY(-2px)',
+                        transform: 'translateY(-3px)',
                         borderColor: tokens.brand.primary,
-                        boxShadow: tokens.shadow.cardHover,
+                        boxShadow: isDarkMode
+                          ? '0 12px 30px -4px rgba(93, 26, 137, 0.35)'
+                          : '0 12px 28px -6px rgba(93, 26, 137, 0.15)',
+                        '& .view-logs-cta': {
+                          color: tokens.brand.primary,
+                          transform: 'translateX(3px)',
+                        },
                       }
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
-                      <Avatar src={user.avatarUrl || undefined} sx={{ width: 46, height: 46, bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
+                    {/* Top Row: Avatar with Live Badge & Status Chip */}
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                        <Badge
+                          overlap="circular"
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                          variant="dot"
+                          invisible={!isOnline}
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              backgroundColor: '#10B981',
+                              color: '#10B981',
+                              boxShadow: `0 0 0 2px ${isDarkMode ? '#1e1b24' : '#fff'}`,
+                              '&::after': {
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                borderRadius: '50%',
+                                animation: 'ripple 1.4s infinite ease-in-out',
+                                border: '1px solid currentColor',
+                                content: '""',
+                              },
+                            },
+                            '@keyframes ripple': {
+                              '0%': { transform: 'scale(.8)', opacity: 1 },
+                              '100%': { transform: 'scale(2.2)', opacity: 0 },
+                            },
+                          }}
+                        >
+                          <Avatar
+                            src={user.avatarUrl || undefined}
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              bgcolor: isOnline
+                                ? tokens.brand.primary
+                                : isDarkMode
+                                  ? 'rgba(255,255,255,0.08)'
+                                  : tokens.brand.primaryMuted,
+                              color: isOnline ? '#fff' : tokens.brand.primary,
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                              border: `2px solid ${isOnline ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)')}`,
+                            }}
+                          >
+                            {initial}
+                          </Avatar>
+                        </Badge>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="subtitle2"
+                            noWrap
+                            sx={{
+                              fontWeight: 800,
+                              color: 'text.primary',
+                              letterSpacing: '-0.01em',
+                              fontSize: '0.95rem',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {name}
+                          </Typography>
+                          {user.jobTitle && (
+                            <Typography
+                              variant="caption"
+                              noWrap
+                              sx={{
+                                color: tokens.brand.primary,
+                                fontWeight: 700,
+                                display: 'block',
+                                fontSize: '0.72rem',
+                                mt: 0.2,
+                              }}
+                            >
+                              {user.jobTitle}
+                            </Typography>
+                          )}
+                          <Typography
+                            variant="caption"
+                            noWrap
+                            sx={{
+                              color: 'text.secondary',
+                              fontWeight: 500,
+                              display: 'block',
+                              fontSize: '0.68rem',
+                              mt: user.jobTitle ? 0.1 : 0.25,
+                            }}
+                          >
+                            {user.email}
+                          </Typography>
+                        </Box>
+                      </Box>
+
                       <Chip
                         label={
                           isOnline
@@ -501,81 +632,116 @@ export const AttendancePage = () => {
                         }
                         size="small"
                         sx={{
-                          height: 20,
-                          fontSize: '0.62rem',
+                          height: 22,
+                          px: 0.5,
+                          fontSize: '0.68rem',
                           fontWeight: 800,
-                          bgcolor: `${getStatusColor(isOnline ? 'checked_in' : tileStatus)}12`,
+                          bgcolor: `${getStatusColor(isOnline ? 'checked_in' : tileStatus)}15`,
                           color: getStatusColor(isOnline ? 'checked_in' : tileStatus),
-                          border: `1px solid ${getStatusColor(isOnline ? 'checked_in' : tileStatus)}22`,
+                          border: `1px solid ${getStatusColor(isOnline ? 'checked_in' : tileStatus)}30`,
+                          borderRadius: '8px',
+                          flexShrink: 0,
                         }}
                       />
                     </Box>
 
-                    <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary' }}>
-                      {name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
-                      {user.email}
-                    </Typography>
-                    {user.jobTitle && (
-                      <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 700, mt: 0.5, display: 'block' }}>
-                        {user.jobTitle}
-                      </Typography>
-                    )}
-
-                    <Chip
-                      component={Link}
-                      to={trackingPath(user._id, new Date())}
-                      clickable
-                      size="small"
-                      icon={<InsightsIcon sx={{ fontSize: 14 }} />}
-                      label="Activity tracking"
-                      onClick={(e) => e.stopPropagation()}
-                      sx={{ mt: 1, height: 22, fontSize: '0.62rem', fontWeight: 700, borderRadius: '8px' }}
-                    />
-
-                    <Divider sx={{ my: 1.75, borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    {/* Middle Row: Clean Worked Hours Snapshot */}
+                    <Box
+                      sx={{
+                        p: 1.25,
+                        px: 1.5,
+                        borderRadius: '12px',
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+                        my: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
                       <Typography
                         variant="caption"
                         sx={{
                           color: 'text.secondary',
                           fontWeight: 800,
+                          fontSize: '0.68rem',
                           textTransform: 'uppercase',
                           letterSpacing: '0.04em',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 0.5,
+                          gap: 0.6,
                         }}
                       >
-                        <AccessTimeIcon sx={{ fontSize: 13 }} />
-                        Today
+                        <TimerIcon sx={{ fontSize: 15, color: tokens.brand.primary }} />
+                        Worked
                       </Typography>
-                      {scheduledStart && scheduledEnd && (
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650 }}>
-                          {scheduledStart} – {scheduledEnd}
-                        </Typography>
-                      )}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 850,
+                          fontSize: '0.92rem',
+                          color: todayWorkedMinutes > 0 ? (isDarkMode ? '#fff' : tokens.brand.primary) : 'text.secondary',
+                        }}
+                      >
+                        {todayShift ? formatWorkedMins(todayShift.totalMinutes) : '0h 0m'}
+                      </Typography>
                     </Box>
 
-                    {isTeamSummaryLoading ? (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                        Loading shift…
+                    {/* Bottom Row: Activity Tracking Link + View Logs CTA */}
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        pt: 1.25,
+                        borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        component={Link}
+                        to={trackingPath(user._id, new Date())}
+                        size="small"
+                        startIcon={<InsightsIcon sx={{ fontSize: 13 }} />}
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                          py: 0.35,
+                          px: 1,
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.68rem',
+                          textTransform: 'none',
+                          color: 'text.secondary',
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                          '&:hover': {
+                            color: tokens.brand.primary,
+                            borderColor: tokens.brand.primary,
+                            bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)',
+                          }
+                        }}
+                      >
+                        Activity Tracking
+                      </Button>
+
+                      <Typography
+                        variant="caption"
+                        className="view-logs-cta"
+                        sx={{
+                          color: 'text.secondary',
+                          fontWeight: 750,
+                          fontSize: '0.72rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.25,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        Logs
+                        <ChevronRightIcon sx={{ fontSize: 16 }} />
                       </Typography>
-                    ) : todayShift ? (
-                      <ShiftDaySessions
-                        dense
-                        isDarkMode={isDarkMode}
-                        sessions={todayShift.sessions}
-                        meetings={todayShift.meetings}
-                        totalMinutes={todayShift.totalMinutes}
-                      />
-                    ) : (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: tileStatus === 'absent' ? 600 : 400 }}>
-                        {tileStatus === 'weekend' ? 'Non-working day.' : 'No shift logs for today.'}
-                      </Typography>
-                    )}
+                    </Box>
                   </Card>
                 </Grid>
               );
@@ -592,61 +758,137 @@ export const AttendancePage = () => {
           }}
           PaperProps={{
             sx: {
-              width: { xs: '100%', sm: 460 },
-              p: 3.5,
-              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-              /* backdropFilter: 'blur(16px)' (removed for performance) */
-              borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              width: { xs: '100%', sm: 580, md: 620 },
+              p: { xs: 2.5, sm: 3.5 },
+              bgcolor: isDarkMode ? 'rgba(24, 21, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+              borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              boxShadow: isDarkMode ? '-8px 0 32px rgba(0,0,0,0.6)' : '-8px 0 32px rgba(0,0,0,0.08)',
+              overflowX: 'hidden',
             }
           }}
         >
           {selectedUser && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowX: 'hidden' }}>
               {/* Drawer Header */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
                 <Box>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
-                    Shift Logs
+                    Shift History & Logs
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                    Detailed records for {selectedUser.firstName || selectedUser.email}
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+                    Detailed attendance records and breakdown
                   </Typography>
                 </Box>
                 <IconButton
                   onClick={() => {
                     setSelectedUser(null);
                   }}
-                  sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                  sx={{
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                    borderRadius: '12px',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+                    }
+                  }}
                 >
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </Box>
 
-              <Divider sx={{ mb: 3 }} />
+              <Divider sx={{ mb: 2.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
 
               {/* User Bio Card */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-                <Avatar src={selectedUser.avatarUrl || undefined} sx={{ width: 50, height: 50, bgcolor: tokens.brand.primary, fontWeight: 700 }}>
-                  {(selectedUser.firstName?.charAt(0) || 'U').toUpperCase()}
-                </Avatar>
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                    {selectedUser.email}
-                  </Typography>
-                  {selectedUser.jobTitle && (
-                    <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 750 }}>
-                      {selectedUser.jobTitle}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.25,
+                  borderRadius: '18px',
+                  bgcolor: isDarkMode ? 'rgba(35, 30, 44, 0.6)' : 'rgba(93, 26, 137, 0.03)',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.08)'}`,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Avatar
+                    src={selectedUser.avatarUrl || undefined}
+                    sx={{
+                      width: 52,
+                      height: 52,
+                      bgcolor: tokens.brand.primary,
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: '1.2rem',
+                      boxShadow: '0 4px 14px rgba(93, 26, 137, 0.3)',
+                    }}
+                  >
+                    {(selectedUser.firstName?.charAt(0) || selectedUser.email?.charAt(0) || 'U').toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+                      {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email}
                     </Typography>
-                  )}
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+                      {selectedUser.email}
+                    </Typography>
+                    {selectedUser.jobTitle && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: tokens.brand.primary,
+                          fontWeight: 750,
+                          display: 'inline-block',
+                          mt: 0.5,
+                          fontSize: '0.72rem',
+                        }}
+                      >
+                        {selectedUser.jobTitle}
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
+
+                <Button
+                  component={Link}
+                  to={trackingPath(selectedUser._id, new Date())}
+                  size="small"
+                  variant="outlined"
+                  startIcon={<InsightsIcon sx={{ fontSize: 15 }} />}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: 750,
+                    fontSize: '0.72rem',
+                    textTransform: 'none',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+                    color: 'text.primary',
+                    '&:hover': {
+                      borderColor: tokens.brand.primary,
+                      color: tokens.brand.primary,
+                      bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.05)',
+                    }
+                  }}
+                >
+                  Activity Tracking
+                </Button>
+              </Paper>
 
               {/* Filter Controls */}
-              <Box sx={{ mb: 3.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Box sx={{ mb: 2.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontSize: '0.68rem',
+                  }}
+                >
                   Filter History
                 </Typography>
                 
@@ -655,26 +897,34 @@ export const AttendancePage = () => {
                     { id: 'last30', label: 'Last 30 Days' },
                     { id: 'month', label: 'By Month' },
                     { id: 'date', label: 'By Date' },
-                  ].map((btn) => (
-                    <Chip
-                      key={btn.id}
-                      label={btn.label}
-                      clickable
-                      onClick={() => {
-                        setFilterType(btn.id as any);
-                        setDetailPage(1);
-                      }}
-                      sx={{
-                        fontWeight: 700,
-                        bgcolor: filterType === btn.id ? tokens.brand.primary : 'transparent',
-                        color: filterType === btn.id ? '#fff' : 'text.primary',
-                        border: `1px solid ${filterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.12)'}`,
-                        '&:hover': {
-                          bgcolor: filterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.04)',
-                        }
-                      }}
-                    />
-                  ))}
+                  ].map((btn) => {
+                    const active = filterType === btn.id;
+                    return (
+                      <Chip
+                        key={btn.id}
+                        label={btn.label}
+                        clickable
+                        onClick={() => {
+                          setFilterType(btn.id as any);
+                          setDetailPage(1);
+                        }}
+                        sx={{
+                          fontWeight: 750,
+                          fontSize: '0.75rem',
+                          height: 32,
+                          px: 1,
+                          borderRadius: '10px',
+                          bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                          color: active ? '#ffffff' : 'text.primary',
+                          border: `1px solid ${active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                          }
+                        }}
+                      />
+                    );
+                  })}
                 </Box>
 
                 {filterType === 'month' && (
@@ -700,143 +950,106 @@ export const AttendancePage = () => {
                 )}
 
                 {filterType === 'date' && (
-                  <>
-                  <TextField
-                    type="date"
-                    size="small"
-                    fullWidth
-                    label="Select Start Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={filterStartDate}
-                    onChange={(e) => {
-                      setFilterStartDate(e.target.value);
-                      setDetailPage(1);
-                    }}
-                    sx={{
-                      mt: 1,
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
-                      }
-                    }}
-                  />
-                  <TextField
-                    type="date"
-                    size="small"
-                    fullWidth
-                    label="Select End Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={filterEndDate}
-                    onChange={(e) => {
-                      setFilterEndDate(e.target.value);
-                      setDetailPage(1);
-                    }}
-                    sx={{
-                      mt: 1,
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
-                      }
-                    }}
-                  />
-                  </>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mt: 1 }}>
+                    <TextField
+                      type="date"
+                      size="small"
+                      fullWidth
+                      label="Start Date"
+                      InputLabelProps={{ shrink: true }}
+                      value={filterStartDate}
+                      onChange={(e) => {
+                        setFilterStartDate(e.target.value);
+                        setDetailPage(1);
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                        }
+                      }}
+                    />
+                    <TextField
+                      type="date"
+                      size="small"
+                      fullWidth
+                      label="End Date"
+                      InputLabelProps={{ shrink: true }}
+                      value={filterEndDate}
+                      onChange={(e) => {
+                        setFilterEndDate(e.target.value);
+                        setDetailPage(1);
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                        }
+                      }}
+                    />
+                  </Box>
                 )}
               </Box>
 
               {/* Shift list content */}
-              <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  pr: 0.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  '&::-webkit-scrollbar': { width: '5px' },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    borderRadius: '4px',
+                  }
+                }}
+              >
                 {isUserHistoryLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                    <CircularProgress size={28} sx={{ color: tokens.brand.primary }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
                   </Box>
                 ) : paginatedMergedShifts.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 4, textAlign: 'center' }}>
-                    No records found.
-                  </Typography>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      py: 6,
+                      px: 3,
+                      textAlign: 'center',
+                      borderRadius: '16px',
+                      border: `1.5px dashed ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                      bgcolor: 'transparent',
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      No shift records found for this period.
+                    </Typography>
+                  </Paper>
                 ) : (
-                  paginatedMergedShifts.map((shift: any) => {
-                    const shiftDate = new Date(shift.date);
-                    const dateStr = format(shiftDate, 'EEEE, MMMM dd, yyyy');
-                    const breakSummary = formatBreakSummary(shift.breaks, shift.totalBreakMinutes);
-
-                    return (
-                      <Paper
-                        key={shift.id}
-                        variant="outlined"
-                        sx={{
-                          p: 2.25,
-                          borderRadius: '16px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                          border: shift.status === 'absent' ? `1px solid ${tokens.semantic.error}40` : undefined,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <CalendarTodayIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                            {dateStr}
-                          </Typography>
-                          <Chip
-                            label={shift.status.replace('_', ' ').toUpperCase()}
-                            size="small"
-                            sx={{
-                              height: 18,
-                              fontSize: '0.6rem',
-                              fontWeight: 800,
-                              bgcolor: `${getStatusColor(shift.status)}10`,
-                              color: getStatusColor(shift.status)
-                            }}
-                          />
-                        </Box>
-                        {shift.exists ? (
-                          <>
-                            <ShiftDaySessions
-                              dense
-                              isDarkMode={isDarkMode}
-                              sessions={shift.sessions}
-                              meetings={shift.meetings}
-                              totalMinutes={shift.totalMinutes}
-                            />
-                            {breakSummary && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, textAlign: 'right' }}>
-                                {breakSummary}
-                              </Typography>
-                            )}
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
-                              <Chip
-                                component={Link}
-                                to={trackingPath(selectedUser._id, shift.date, shift.exists ? shift.id : undefined)}
-                                clickable
-                                size="small"
-                                variant="outlined"
-                                icon={<InsightsIcon sx={{ fontSize: 15 }} />}
-                                label="Activity tracking"
-                                sx={{ height: 22, fontSize: '0.62rem', fontWeight: 700, borderRadius: '8px' }}
-                              />
-                            </Box>
-                          </>
-                        ) : (
-                          <Box sx={{ py: 0.5 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: shift.status === 'absent' ? 600 : 400 }}>
-                              {shift.status === 'absent'
-                                ? 'No shift logs found (Absent).'
-                                : 'Weekend - Non-working day.'}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Paper>
-                    );
-                  })
+                  paginatedMergedShifts.map((shift: any) => (
+                    <AttendanceShiftCard
+                      key={shift.id}
+                      shift={shift}
+                      userId={selectedUser._id}
+                      isDarkMode={isDarkMode}
+                      dense
+                    />
+                  ))
                 )}
               </Box>
 
               {/* Drawer Pagination */}
               {userHistoryData && totalDaysCount > limit && (
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ mt: 2.5, pt: 1.5, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, display: 'flex', justifyContent: 'center' }}>
                   <Pagination
                     size="small"
                     count={Math.ceil(totalDaysCount / limit)}
                     page={detailPage}
                     onChange={(_, value) => setDetailPage(value)}
                     color="primary"
-                    sx={{ '& .MuiPaginationItem-root': { fontWeight: 700, borderRadius: '8px' } }}
+                    sx={{ '& .MuiPaginationItem-root': { fontWeight: 750, borderRadius: '8px' } }}
                   />
                 </Box>
               )}
@@ -1090,167 +1303,14 @@ export const AttendancePage = () => {
             </Typography>
           </Paper>
         ) : (
-          userPaginatedMergedShifts.map((shift: any) => {
-            const shiftDate = new Date(shift.date);
-            const monthStr = format(shiftDate, 'MMM').toUpperCase();
-            const dayStr = format(shiftDate, 'dd');
-            
-            const scheduledMins = 480; 
-            const workedMins = shift.totalMinutes || 0;
-            const progressPct = Math.min((workedMins / scheduledMins) * 100, 100);
-            const breakSummary = formatBreakSummary(shift.breaks, shift.totalBreakMinutes);
-            
-            return (
-              <Paper
-                key={shift.id}
-                elevation={0}
-                sx={{
-                  display: 'flex',
-                  alignItems: { xs: 'flex-start', md: 'center' },
-                  flexDirection: { xs: 'column', md: 'row' },
-                  p: { xs: 2, sm: 3 },
-                  gap: { xs: 2, md: 3 },
-                  borderRadius: '24px',
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                  border: `1px solid ${
-                    shift.status === 'absent'
-                      ? `${tokens.semantic.error}40`
-                      : isDarkMode
-                      ? 'rgba(255,255,255,0.04)'
-                      : 'rgba(0,0,0,0.05)'
-                  }`,
-                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  cursor: 'pointer',
-                  flexWrap: 'wrap',
-                  '&:hover': {
-                    transform: 'translateY(-3px)',
-                    boxShadow: tokens.shadow.cardHover,
-                    borderColor: shift.status === 'absent' ? tokens.semantic.error : tokens.brand.primary,
-                  }
-                }}
-              >
-                {/* Visual Calendar Badge */}
-                <Box
-                  sx={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: '18px',
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F9F8F7',
-                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                    {monthStr}
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, lineHeight: 1 }}>
-                    {dayStr}
-                  </Typography>
-                </Box>
-
-                {/* Times & Info */}
-                <Box sx={{ flexGrow: 1, minWidth: { xs: 0, sm: 200 }, width: { xs: '100%', md: 'auto' } }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-                      Daily Shift
-                    </Typography>
-                    <Chip
-                      label={shift.status.replace('_', ' ').toUpperCase()}
-                      size="small"
-                      icon={shift.status === 'checked_in' ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : undefined}
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: '0.65rem',
-                        height: 22,
-                        bgcolor: `${getStatusColor(shift.status)}15`,
-                        color: getStatusColor(shift.status),
-                        borderRadius: '6px',
-                        border: `1px solid ${getStatusColor(shift.status)}30`,
-                        '& .MuiChip-icon': { color: 'inherit', ml: 0.5 }
-                      }}
-                    />
-                  </Box>
-                  {shift.exists ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <AccessTimeIcon sx={{ fontSize: 16 }} />
-                        Scheduled: {shift.scheduledStart} - {shift.scheduledEnd}
-                      </Typography>
-                      <ShiftDaySessions
-                        dense
-                        isDarkMode={isDarkMode}
-                        sessions={shift.sessions}
-                        meetings={shift.meetings}
-                        totalMinutes={shift.totalMinutes}
-                      />
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: shift.status === 'absent' ? 600 : 400 }}>
-                      {shift.status === 'absent' ? 'No shift logs found (Absent).' : 'Weekend - Non-working day.'}
-                    </Typography>
-                  )}
-                </Box>
-
-                {/* Progress Bar & Hours */}
-                {shift.exists && (
-                  <Box sx={{ width: { xs: '100%', md: 240 }, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Logged Hours
-                      </Typography>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary }}>
-                        {formatHours(shift.totalMinutes)}
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={progressPct} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 4,
-                          bgcolor: progressPct >= 100 ? tokens.semantic.success : tokens.brand.primary,
-                        }
-                      }} 
-                    />
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textAlign: 'right' }}>
-                      {progressPct >= 100 ? 'Shift complete!' : `${Math.round(progressPct)}% of 8h shift`}
-                    </Typography>
-                    {breakSummary && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textAlign: 'right' }}>
-                        {breakSummary}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-
-                {shift.exists && (
-                  <Box sx={{ flexBasis: '100%', width: '100%' }}>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <Chip
-                        component={Link}
-                        to={trackingPath(currentUser?._id || '', shift.date, shift.id)}
-                        clickable
-                        size="small"
-                        variant="outlined"
-                        icon={<InsightsIcon sx={{ fontSize: 15 }} />}
-                        label="Activity tracking"
-                        sx={{ height: 22, fontSize: '0.62rem', fontWeight: 700, borderRadius: '8px' }}
-                      />
-                    </Box>
-                  </Box>
-                )}
-              </Paper>
-            );
-          })
+          userPaginatedMergedShifts.map((shift: any) => (
+            <AttendanceShiftCard
+              key={shift.id}
+              shift={shift}
+              userId={currentUser?._id || ''}
+              isDarkMode={isDarkMode}
+            />
+          ))
         )}
       </Box>
 
