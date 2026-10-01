@@ -41,10 +41,14 @@ const checkoutReasonLabel = (reason: CheckoutReason | null | undefined) => {
  * top-level check-in/out for older records that predate multi-session.
  */
 export const resolveShiftSessions = (
-  shift: Pick<
-    Shift,
-    'sessions' | 'checkInTime' | 'checkOutTime' | 'breaks' | 'totalMinutes' | 'totalBreakMinutes'
-  > & { sessions?: ShiftSession[] },
+  shift: {
+    sessions?: ShiftSession[];
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
+    breaks?: ShiftBreak[];
+    totalMinutes?: number;
+    totalBreakMinutes?: number;
+  },
 ): ShiftSession[] => {
   if (shift.sessions && shift.sessions.length > 0) return shift.sessions;
   if (!shift.checkInTime) return [];
@@ -61,7 +65,7 @@ export const resolveShiftSessions = (
 };
 
 export const resolveShiftMeetings = (
-  shift: Pick<Shift, 'meetings'> & { meetings?: ShiftMeeting[] },
+  shift: { meetings?: ShiftMeeting[] },
 ): ShiftMeeting[] => shift.meetings ?? [];
 
 type ShiftDaySessionsProps = {
