@@ -8,6 +8,7 @@ export const PERMISSION_KEYS = [
   'manageSystemSettings',
   'manageSalesSettings',
   'createProjectsAndBoards',
+  'accessInvoicing',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -19,6 +20,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   manageSystemSettings: 'Manage system settings',
   manageSalesSettings: 'Manage sales settings',
   createProjectsAndBoards: 'Create projects and boards',
+  accessInvoicing: 'Use invoicing',
 };
 
 export const DEFAULT_SHIFT_START = '09:00';
@@ -31,6 +33,7 @@ export const emptyPermissions = (): UserPermissions => ({
   manageSystemSettings: false,
   manageSalesSettings: false,
   createProjectsAndBoards: false,
+  accessInvoicing: false,
 });
 
 export const coercePermissions = (stored?: Partial<UserPermissions> | null): UserPermissions => {

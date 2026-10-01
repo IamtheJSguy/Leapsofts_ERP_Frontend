@@ -26,3 +26,7 @@ export const MemberKpiDetailPage = lazyRetry(() => import('@/pages/MemberKpiDeta
 export const LeadDetailsPage = lazyRetry(() => import('@/pages/leads/LeadDetailsPage'));
 export const BulkAddLeadsPage = lazyRetry(() => import('@/pages/BulkAddLeadsPage'));
 export const DriveConnectedPage = lazyRetry(() => import('@/pages/DriveConnectedPage'));
+export const InvoicesPage = lazyRetry(() => import('@/pages/invoices/InvoicesPage'));
+export const InvoiceEditorPage = lazyRetry(() => import('@/pages/invoices/InvoiceEditorPage'));
+export const InvoiceClientDetailPage = lazyRetry(() => import('@/pages/invoices/InvoiceClientDetailPage'));
+export const InvoiceSettingsPage = lazyRetry(() => import('@/pages/invoices/InvoiceSettingsPage'));

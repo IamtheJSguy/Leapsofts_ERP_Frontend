@@ -11,6 +11,7 @@ export type OrgModuleKey =
   | 'scheduledReports'
   | 'googleSheetsSync'
   | 'desktopApp'
+  | 'invoicingModule'
   | 'screenshotsEnabled';
 
 export type OrgModuleFlags = Record<OrgModuleKey, boolean>;
@@ -24,6 +25,7 @@ export const DEFAULT_ORG_MODULE_FLAGS: OrgModuleFlags = {
   scheduledReports: true,
   googleSheetsSync: true,
   desktopApp: true,
+  invoicingModule: false,
   screenshotsEnabled: true,
 };
 

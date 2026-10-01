@@ -27,6 +27,7 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
@@ -50,7 +51,8 @@ interface NavItem {
     | 'canViewTeamDashboard'
     | 'canViewAdminReports'
     | 'canViewSystemSettings'
-    | 'canViewSalesPage';
+    | 'canViewSalesPage'
+    | 'canAccessInvoicing';
   requiresEntitlement?: OrgModuleKey;
 }
 
@@ -66,6 +68,7 @@ const navGroups: NavGroup[] = [
       { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage', requiresEntitlement: 'salesModule' },
+      { label: 'Invoices', path: '/invoices', icon: <ReceiptLongIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canAccessInvoicing', requiresEntitlement: 'invoicingModule' },
       { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
       // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
       { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'projectsAndBoards' },

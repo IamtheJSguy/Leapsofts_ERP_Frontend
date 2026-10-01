@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { GuestRoute } from './GuestRoute';
@@ -33,6 +33,10 @@ import {
   LeadDetailsPage,
   BulkAddLeadsPage,
   DriveConnectedPage,
+  InvoicesPage,
+  InvoiceEditorPage,
+  InvoiceClientDetailPage,
+  InvoiceSettingsPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -218,6 +222,50 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="viewSalesPage" requireEntitlement="salesModule">
             <LeadDetailsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'invoices',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessInvoicing" requireEntitlement="invoicingModule">
+            <InvoicesPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'invoices/new',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessInvoicing" requireEntitlement="invoicingModule">
+            <InvoiceEditorPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'invoices/clients',
+        element: <Navigate to="/invoices" replace />,
+      },
+      {
+        path: 'invoices/clients/:clientId',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessInvoicing" requireEntitlement="invoicingModule">
+            <InvoiceClientDetailPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'invoices/settings',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]} requirePermission="accessInvoicing" requireEntitlement="invoicingModule">
+            <InvoiceSettingsPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'invoices/:id',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]} requirePermission="accessInvoicing" requireEntitlement="invoicingModule">
+            <InvoiceEditorPage />
           </ProtectedRoute>,
         ),
       },
