@@ -4,18 +4,33 @@ import {
   Alert,
   Box,
   Button,
+  Card,
   Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
+  Grid,
+  IconButton,
   Paper,
   TextField,
   Typography,
   useTheme,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import SaveIcon from '@mui/icons-material/Save';
+import SendIcon from '@mui/icons-material/Send';
+import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
@@ -231,7 +246,7 @@ const InvoiceEditorPage = () => {
   ): Promise<boolean> => {
     const body = payload(override);
     if (!body) {
-      setError('Fill the invoice number, client, and every line before saving.');
+      setError('Fill the invoice number, select a client, and enter valid line items before saving.');
       return false;
     }
     setError('');
@@ -247,7 +262,7 @@ const InvoiceEditorPage = () => {
       } else if (id) {
         await mutations.updateInvoice.mutateAsync({ id, body });
         rememberSaved(body);
-        setNotice('Draft saved.');
+        setNotice('Draft saved successfully.');
       }
       return true;
     } catch (err) {
@@ -300,7 +315,7 @@ const InvoiceEditorPage = () => {
     return persist(override, false);
   };
 
-  const { backButton, dialog: leaveDialog, requestLeave, allowNext } = useInvoiceLeave(
+  const { dialog: leaveDialog, requestLeave, allowNext } = useInvoiceLeave(
     Boolean(!locked && (invoiceDirty || clientDirty || bankDirty)),
     saveForLeave,
     mutations.createInvoice.isPending || mutations.updateInvoice.isPending || mutations.createClient.isPending || mutations.addBank.isPending,
@@ -314,7 +329,7 @@ const InvoiceEditorPage = () => {
       setClient({ name: created.name, ntn: created.ntn, address: created.address, email: created.email });
       setNewClient(emptyClientForm());
       setClientOpen(false);
-      setNotice('Client added.');
+      setNotice('Client created.');
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not save the client'));
     }
@@ -363,21 +378,21 @@ const InvoiceEditorPage = () => {
       const body = payload();
       if (body && !locked) await mutations.updateInvoice.mutateAsync({ id, body });
       await mutations.sendInvoice.mutateAsync(id);
-      setNotice('Invoice emailed to the client.');
+      setNotice('Invoice emailed to the client successfully.');
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not send the invoice'));
     }
   };
 
   if (settings.isError) {
-    return <Alert severity="error">{apiErrorMessage(settings.error, 'Could not load invoice settings')}</Alert>;
+    return <Alert severity="error" sx={{ borderRadius: '14px' }}>{apiErrorMessage(settings.error, 'Could not load invoice settings')}</Alert>;
   }
   if (!isNew && invoice.isError) {
-    return <Alert severity="error">{apiErrorMessage(invoice.error, 'Could not load this invoice')}</Alert>;
+    return <Alert severity="error" sx={{ borderRadius: '14px' }}>{apiErrorMessage(invoice.error, 'Could not load this invoice')}</Alert>;
   }
 
   if (settings.isLoading || (!isNew && invoice.isLoading) || !hydrated) {
-    return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress size={28} /></Box>;
+    return <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}><CircularProgress size={36} sx={{ color: tokens.brand.primary }} /></Box>;
   }
 
   const selectedBanks = (settings.data?.bankAccounts || []).filter((bank) => bankAccountIds.includes(bank.id));
@@ -387,206 +402,513 @@ const InvoiceEditorPage = () => {
     unitPrice: Number(line.unitPrice) || 0,
   }));
 
+  const inputStyle = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '14px',
+      bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+      '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' },
+      '&:hover fieldset': { borderColor: tokens.brand.primary },
+      '&.Mui-focused fieldset': { borderColor: tokens.brand.primary },
+    },
+    '& .MuiInputLabel-root': { fontSize: '0.825rem', fontWeight: 600 },
+    '& .MuiInputBase-input': { fontSize: '0.875rem', fontWeight: 550 },
+  };
+
   return (
-    <Box sx={{ pb: 6, maxWidth: 1180 }}>
-      {backButton}
+    <Box className="animate-fade-in-up" sx={{ pb: 8 }}>
       {leaveDialog}
-      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, color: isDarkMode ? '#fff' : tokens.text.primary }}>
-        {isNew ? 'New invoice' : invoiceNumber || 'Invoice'}
-      </Typography>
-      <Typography sx={{ mb: 2, color: isDarkMode ? 'rgba(255,255,255,0.55)' : tokens.text.secondary }}>
-        {locked ? `This invoice is ${invoice.data?.status}.` : 'Save a draft, download the PDF, or email it to the client.'}
-      </Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
-      {(clients.data || []).length === 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>Add a client before you can save an invoice.</Alert>
-      )}
 
-      <Paper sx={{ p: 2.5, display: 'grid', gap: 2 }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
-          <TextField label="Invoice number" value={invoiceNumber} disabled={Boolean(locked)} onChange={(e) => setInvoiceNumber(e.target.value)} />
-          <TextField label="Issued" type="date" value={issueDate} disabled={Boolean(locked)} onChange={(e) => setIssueDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Due" type="date" value={dueDate} disabled={Boolean(locked)} onChange={(e) => setDueDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-        </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr auto' }, gap: 1, alignItems: 'start' }}>
-          <Autocomplete
-            options={clients.data || []}
-            value={(clients.data || []).find((item) => item._id === clientId) || null}
-            disabled={Boolean(locked)}
-            onChange={(_, value) => applyClient(value?._id || '')}
-            getOptionLabel={(option: InvoiceClient) => option.name}
-            isOptionEqualToValue={(option, value) => option._id === value._id}
-            filterOptions={(options, state) => {
-              const query = state.inputValue.trim().toLowerCase();
-              if (!query) return options;
-              return options.filter((option) =>
-                option.name.toLowerCase().includes(query)
-                || option.email.toLowerCase().includes(query)
-                || option.ntn.toLowerCase().includes(query));
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Client" placeholder="Search name, email, or NTN" />
-            )}
-            renderOption={(props, option) => (
-              <li {...props} key={option._id}>
-                <Box>
-                  <Typography sx={{ fontSize: '0.9rem' }}>{option.name}</Typography>
-                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email}</Typography>
-                </Box>
-              </li>
-            )}
-          />
-          {!locked && (
-            <Button onClick={() => { setNewClient(emptyClientForm()); setClientOpen(true); }} sx={{ textTransform: 'none', mt: { sm: 1 } }}>
-              New client
-            </Button>
-          )}
-        </Box>
+      {/* Top Header */}
+      <Box sx={{ mb: 3.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography sx={{ fontWeight: 700, mb: 1 }}>Template</Typography>
-          <InvoiceTemplatePicker value={templateId} disabled={Boolean(locked)} onChange={setTemplateId} />
-          <Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Preview</Typography>
-          <InvoiceTemplatePreview
-            data={{
-              template: templateId,
-              invoiceNumber,
-              issueDate,
-              dueDate,
-              currency,
-              paid: invoice.data?.status === 'paid',
-              logoUrl: settings.data?.logoUrl,
-              issuer: {
-                name: settings.data?.issuerName || '',
-                ntn: settings.data?.ntn || '',
-                address: settings.data?.address || '',
-                email: settings.data?.email || '',
-              },
-              client,
-              lines: previewLines,
-              taxRate: Number(taxRate) || 0,
-              banks: selectedBanks,
-            }}
-          />
-        </Box>
-        <Typography sx={{ fontWeight: 700 }}>Bill to</Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-          <TextField label="Company name" value={client.name} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, name: e.target.value })} />
-          <TextField label="NTN / Reg no." value={client.ntn} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, ntn: e.target.value })} />
-          <TextField label="Address" value={client.address} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, address: e.target.value })} />
-          <TextField label="Email" value={client.email} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, email: e.target.value })} />
-        </Box>
-
-        <Typography sx={{ fontWeight: 700 }}>Lines</Typography>
-        {lines.map((line, index) => (
-          <Box key={index} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 0.6fr 0.8fr auto' }, gap: 1, alignItems: 'center' }}>
-            <TextField label="Description" value={line.description} disabled={Boolean(locked)} onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, description: e.target.value } : item))} />
-            <TextField label="Qty" type="number" value={line.qty} disabled={Boolean(locked)} onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: e.target.value } : item))} />
-            <TextField label="Unit price" type="number" value={line.unitPrice} disabled={Boolean(locked)} onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: e.target.value } : item))} />
-            {!locked && lines.length > 1 && (
-              <Button color="inherit" onClick={() => setLines(lines.filter((_, i) => i !== index))} sx={{ textTransform: 'none' }}>Remove</Button>
-            )}
-          </Box>
-        ))}
-        {!locked && (
-          <Button sx={{ justifySelf: 'start', textTransform: 'none' }} onClick={() => setLines([...lines, { description: '', qty: '1', unitPrice: '0' }])}>
-            Add line
+          <Button
+            onClick={requestLeave}
+            startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+            sx={{ textTransform: 'none', px: 1, py: 0.5, mb: 1, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}
+          >
+            Back to Invoices
           </Button>
-        )}
-        <TextField label="Tax %" type="number" value={taxRate} disabled={Boolean(locked)} onChange={(e) => setTaxRate(e.target.value)} sx={{ maxWidth: 160 }} />
-        <Typography>
-          Total {formatInvoiceMoney(currency, totals.subtotal)} · Tax {formatInvoiceMoney(currency, totals.taxAmount)} · Grand total {formatInvoiceMoney(currency, totals.grandTotal)}
-        </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.025em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+            {isNew ? 'Invoice Studio' : invoiceNumber || 'Edit Invoice'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.55)' : tokens.text.secondary, fontWeight: 500, mt: 0.25 }}>
+            {locked ? `This invoice is currently ${invoice.data?.status?.toUpperCase()}.` : 'Design, build line items, and generate real-time receipts.'}
+          </Typography>
+        </Box>
+      </Box>
 
-        <Typography sx={{ fontWeight: 700 }}>Bank accounts on this invoice</Typography>
-        {(settings.data?.bankAccounts || []).length === 0 && (
-          <Typography sx={{ color: tokens.text.secondary }}>No bank accounts yet. Add one here to print it on this invoice.</Typography>
-        )}
-        {(settings.data?.bankAccounts || []).map((bank) => (
-          <FormControlLabel
-            key={bank.id}
-            control={(
-              <Checkbox
-                checked={bankAccountIds.includes(bank.id)}
-                disabled={Boolean(locked)}
-                onChange={(event) => {
-                  setBankAccountIds(event.target.checked
-                    ? [...bankAccountIds, bank.id]
-                    : bankAccountIds.filter((item) => item !== bank.id));
-                }}
-              />
-            )}
-            label={`${bank.paymentTitle || bank.bankName} · ${bank.bankName} · Account number: ${bank.accountNumber}`}
-          />
-        ))}
-        {!locked && (
-          <Button sx={{ justifySelf: 'start', textTransform: 'none' }} onClick={() => { setNewBank(emptyBankDraft()); setBankOpen(true); }}>
-            Add bank account
-          </Button>
-        )}
+      {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{error}</Alert>}
+      {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
 
-        {invoice.data?.status === 'sent' && (
-          <Alert severity="info">
-            Mark paid sends a payment confirmation to {client.email || 'the client'}
-            {settings.data?.mailbox.email ? ` from ${settings.data.mailbox.email}` : ''}.
-            {!settings.data?.mailbox.configured && ' Set up the invoicing mailbox before marking this paid.'}
-          </Alert>
-        )}
-
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {!locked && (
-            <Button variant="contained" onClick={() => persist(undefined, true)} disabled={mutations.createInvoice.isPending || mutations.updateInvoice.isPending} sx={{ bgcolor: tokens.brand.primary, textTransform: 'none', boxShadow: 'none' }}>
-              Save draft
-            </Button>
-          )}
-          {!isNew && !locked && (
-            <Button variant="contained" color="secondary" onClick={send} disabled={mutations.sendInvoice.isPending} sx={{ textTransform: 'none' }}>
-              Send email
-            </Button>
-          )}
-          {invoice.data?.status === 'sent' && id && (
-            <Button
-              variant="contained"
-              onClick={markPaid}
-              disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
-              sx={{ textTransform: 'none', bgcolor: '#059669', boxShadow: 'none', '&:hover': { bgcolor: '#047857' } }}
+      {/* Split-Screen Studio Grid */}
+      <Grid container spacing={3.5}>
+        {/* Left Column: Form Builder Workstation */}
+        <Grid item xs={12} lg={6.5}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            
+            {/* Card 1: Core Invoice Metadata */}
+            <Card
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 10px rgba(0,0,0,0.02)',
+              }}
             >
-              Mark paid
-            </Button>
-          )}
-          {!isNew && id && (
-            <Button onClick={() => mutations.download(id, `invoice-${invoiceNumber || 'draft'}.pdf`)} sx={{ textTransform: 'none' }}>
-              Download PDF
-            </Button>
-          )}
-          <Button onClick={requestLeave} sx={{ textTransform: 'none' }}>Back</Button>
-        </Box>
-      </Paper>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 0.75, mb: 2 }}>
+                <ReceiptLongIcon sx={{ fontSize: 16 }} />
+                Invoice Metadata & Client
+              </Typography>
 
-      <Dialog open={clientOpen} onClose={() => setClientOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle sx={{ pb: 1 }}>New client</DialogTitle>
-        <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Invoice Number *"
+                    value={invoiceNumber}
+                    disabled={Boolean(locked)}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    sx={inputStyle}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Issue Date"
+                    type="date"
+                    value={issueDate}
+                    disabled={Boolean(locked)}
+                    onChange={(e) => setIssueDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={inputStyle}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Due Date"
+                    type="date"
+                    value={dueDate}
+                    disabled={Boolean(locked)}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={inputStyle}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Autocomplete
+                      fullWidth
+                      size="small"
+                      options={clients.data || []}
+                      value={(clients.data || []).find((item) => item._id === clientId) || null}
+                      disabled={Boolean(locked)}
+                      onChange={(_, value) => applyClient(value?._id || '')}
+                      getOptionLabel={(option: InvoiceClient) => option.name}
+                      isOptionEqualToValue={(option, value) => option._id === value._id}
+                      filterOptions={(options, state) => {
+                        const query = state.inputValue.trim().toLowerCase();
+                        if (!query) return options;
+                        return options.filter((option) =>
+                          option.name.toLowerCase().includes(query)
+                          || option.email.toLowerCase().includes(query)
+                          || option.ntn.toLowerCase().includes(query));
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Billed Client *" placeholder="Search client name, email..." sx={inputStyle} />
+                      )}
+                      renderOption={(props, option) => (
+                        <li {...props} key={option._id}>
+                          <Box>
+                            <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{option.name}</Typography>
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email} · NTN: {option.ntn || '—'}</Typography>
+                          </Box>
+                        </li>
+                      )}
+                    />
+                    {!locked && (
+                      <Button
+                        size="small"
+                        onClick={() => { setNewClient(emptyClientForm()); setClientOpen(true); }}
+                        startIcon={<PersonAddOutlinedIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                          height: 40,
+                          px: 2,
+                          borderRadius: '12px',
+                          textTransform: 'none',
+                          fontWeight: 750,
+                          fontSize: '0.78rem',
+                          flexShrink: 0,
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(93,26,137,0.04)',
+                          color: tokens.brand.primary,
+                        }}
+                      >
+                        New client
+                      </Button>
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Card>
+
+            {/* Card 2: Template Selection */}
+            <Card
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 10px rgba(0,0,0,0.02)',
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem', display: 'block', mb: 1.5 }}>
+                Select Invoice Receipt Layout
+              </Typography>
+              <InvoiceTemplatePicker value={templateId} disabled={Boolean(locked)} onChange={setTemplateId} />
+            </Card>
+
+            {/* Card 3: Bill-To Party Details */}
+            <Card
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 10px rgba(0,0,0,0.02)',
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem', display: 'block', mb: 2 }}>
+                Client Snapshot Billing Info
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth size="small" label="Client Company Name" value={client.name} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, name: e.target.value })} sx={inputStyle} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth size="small" label="NTN / Reg No." value={client.ntn} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, ntn: e.target.value })} sx={inputStyle} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth size="small" label="Client Email" value={client.email} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, email: e.target.value })} sx={inputStyle} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField fullWidth size="small" label="Billing Address" value={client.address} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, address: e.target.value })} sx={inputStyle} />
+                </Grid>
+              </Grid>
+            </Card>
+
+            {/* Card 4: Line Items Table Builder */}
+            <Card
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 10px rgba(0,0,0,0.02)',
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem' }}>
+                  Line Items ({lines.length})
+                </Typography>
+                {!locked && (
+                  <Button
+                    size="small"
+                    onClick={() => setLines([...lines, { description: '', qty: '1', unitPrice: '0' }])}
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                    sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', color: tokens.brand.primary }}
+                  >
+                    Add Line Item
+                  </Button>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {lines.map((line, index) => (
+                  <Box key={index} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 0.6fr 0.8fr auto' }, gap: 1.25, alignItems: 'center' }}>
+                    <TextField
+                      size="small"
+                      label={`Item ${index + 1} Description`}
+                      value={line.description}
+                      disabled={Boolean(locked)}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, description: e.target.value } : item))}
+                      sx={inputStyle}
+                    />
+                    <TextField
+                      size="small"
+                      label="Qty"
+                      type="number"
+                      value={line.qty}
+                      disabled={Boolean(locked)}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: e.target.value } : item))}
+                      sx={inputStyle}
+                    />
+                    <TextField
+                      size="small"
+                      label="Unit Price"
+                      type="number"
+                      value={line.unitPrice}
+                      disabled={Boolean(locked)}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: e.target.value } : item))}
+                      sx={inputStyle}
+                    />
+                    {!locked && lines.length > 1 && (
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => setLines(lines.filter((_, i) => i !== index))}
+                        sx={{ bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.06)' }}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+
+              <Divider sx={{ my: 2.5 }} />
+
+              {/* Totals Breakdown */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    label="Tax Rate (%)"
+                    type="number"
+                    value={taxRate}
+                    disabled={Boolean(locked)}
+                    onChange={(e) => setTaxRate(e.target.value)}
+                    sx={{ ...inputStyle, width: 130 }}
+                  />
+                </Box>
+
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 650, display: 'block' }}>
+                    Subtotal: <strong>{formatInvoiceMoney(currency, totals.subtotal)}</strong> · Tax: <strong>{formatInvoiceMoney(currency, totals.taxAmount)}</strong>
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 900, color: tokens.brand.primary, mt: 0.25 }}>
+                    Grand Total: {formatInvoiceMoney(currency, totals.grandTotal)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+
+            {/* Card 5: Bank Accounts Attachment */}
+            <Card
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#ffffff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 10px rgba(0,0,0,0.02)',
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <AccountBalanceIcon sx={{ fontSize: 16 }} /> Attached Bank Accounts
+                </Typography>
+                {!locked && (
+                  <Button
+                    size="small"
+                    onClick={() => { setNewBank(emptyBankDraft()); setBankOpen(true); }}
+                    sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', color: tokens.brand.primary }}
+                  >
+                    Add Bank Account
+                  </Button>
+                )}
+              </Box>
+
+              {(settings.data?.bankAccounts || []).length === 0 ? (
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 1 }}>
+                  No bank accounts configured yet. Click above to add bank details to print on this receipt.
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                  {(settings.data?.bankAccounts || []).map((bank) => (
+                    <FormControlLabel
+                      key={bank.id}
+                      control={(
+                        <Checkbox
+                          checked={bankAccountIds.includes(bank.id)}
+                          disabled={Boolean(locked)}
+                          onChange={(event) => {
+                            setBankAccountIds(event.target.checked
+                              ? [...bankAccountIds, bank.id]
+                              : bankAccountIds.filter((item) => item !== bank.id));
+                          }}
+                          sx={{ color: tokens.brand.primary, '&.Mui-checked': { color: tokens.brand.primary } }}
+                        />
+                      )}
+                      label={(
+                        <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '0.85rem' }}>
+                          {bank.paymentTitle || bank.bankName} · <strong>{bank.bankName}</strong> ({bank.accountNumber})
+                        </Typography>
+                      )}
+                    />
+                  ))}
+                </Box>
+              )}
+            </Card>
+
+            {/* Bottom Actions Bar */}
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', pt: 1 }}>
+              {!locked && (
+                <Button
+                  variant="contained"
+                  onClick={() => persist(undefined, true)}
+                  disabled={mutations.createInvoice.isPending || mutations.updateInvoice.isPending}
+                  startIcon={<SaveIcon />}
+                  sx={{
+                    borderRadius: '14px',
+                    px: 3,
+                    py: 1.1,
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    bgcolor: tokens.brand.primary,
+                    boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
+                    '&:hover': { bgcolor: tokens.brand.primaryDark },
+                  }}
+                >
+                  {mutations.createInvoice.isPending || mutations.updateInvoice.isPending ? 'Saving...' : 'Save Draft'}
+                </Button>
+              )}
+
+              {!isNew && !locked && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={send}
+                  disabled={mutations.sendInvoice.isPending}
+                  startIcon={<SendIcon />}
+                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
+                >
+                  Send Email
+                </Button>
+              )}
+
+              {invoice.data?.status === 'sent' && id && (
+                <Button
+                  variant="contained"
+                  onClick={markPaid}
+                  disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
+                  startIcon={<CheckCircleOutlineIcon />}
+                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                >
+                  Mark Paid
+                </Button>
+              )}
+
+              {!isNew && id && (
+                <Button
+                  variant="outlined"
+                  onClick={() => mutations.download(id, `invoice-${invoiceNumber || 'draft'}.pdf`)}
+                  startIcon={<DownloadIcon />}
+                  sx={{ borderRadius: '14px', px: 2.5, py: 1.1, textTransform: 'none', fontWeight: 750 }}
+                >
+                  Download PDF
+                </Button>
+              )}
+            </Box>
+
+          </Box>
+        </Grid>
+
+        {/* Right Column: Sticky Live Receipt Preview */}
+        <Grid item xs={12} lg={5.5}>
+          <Box sx={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.72rem' }}>
+              Live Receipt Preview
+            </Typography>
+
+            <InvoiceTemplatePreview
+              data={{
+                template: templateId,
+                invoiceNumber,
+                issueDate,
+                dueDate,
+                currency,
+                paid: invoice.data?.status === 'paid',
+                logoUrl: settings.data?.logoUrl,
+                issuer: {
+                  name: settings.data?.issuerName || '',
+                  ntn: settings.data?.ntn || '',
+                  address: settings.data?.address || '',
+                  email: settings.data?.email || '',
+                },
+                client,
+                lines: previewLines,
+                taxRate: Number(taxRate) || 0,
+                banks: selectedBanks,
+              }}
+            />
+          </Box>
+        </Grid>
+      </Grid>
+
+      {/* New Client Modal */}
+      <Dialog
+        open={clientOpen}
+        onClose={() => setClientOpen(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? 'rgba(24, 21, 30, 0.98)' : '#FFFFFF',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 3, px: 3.5, fontWeight: 800, fontSize: '1.25rem' }}>New client profile</DialogTitle>
+        <DialogContent sx={{ pt: '8px !important', pb: 2, px: 3.5 }}>
           <InvoiceClientFields value={newClient} onChange={setNewClient} />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pt: 0, pb: 2 }}>
-          <Button onClick={() => setClientOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={createClientNow} variant="contained" disabled={mutations.createClient.isPending} sx={{ textTransform: 'none', bgcolor: tokens.brand.primary }}>Save client</Button>
+        <DialogActions sx={{ px: 3.5, pt: 1, pb: 3, gap: 1 }}>
+          <Button onClick={() => setClientOpen(false)} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}>Cancel</Button>
+          <Button onClick={createClientNow} variant="contained" disabled={mutations.createClient.isPending} sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '12px', bgcolor: tokens.brand.primary }}>
+            Save client
+          </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={bankOpen} onClose={() => setBankOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>New bank account</DialogTitle>
-        <DialogContent sx={{ display: 'grid', gap: 2, pt: '8px !important' }}>
-          <TextField label="Payment title" placeholder="SWIFT and international" value={newBank.paymentTitle} onChange={(e) => setNewBank({ ...newBank, paymentTitle: e.target.value })} />
-          <TextField label="Bank" value={newBank.bankName} onChange={(e) => setNewBank({ ...newBank, bankName: e.target.value })} />
-          <TextField label="Account title" value={newBank.accountTitle} onChange={(e) => setNewBank({ ...newBank, accountTitle: e.target.value })} />
-          <TextField label="Account number" value={newBank.accountNumber} onChange={(e) => setNewBank({ ...newBank, accountNumber: e.target.value })} />
-          <TextField label="IBAN" value={newBank.iban} onChange={(e) => setNewBank({ ...newBank, iban: e.target.value })} />
-          <TextField label="Branch" value={newBank.branch} onChange={(e) => setNewBank({ ...newBank, branch: e.target.value })} />
+      {/* New Bank Modal */}
+      <Dialog
+        open={bankOpen}
+        onClose={() => setBankOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDarkMode ? 'rgba(24, 21, 30, 0.98)' : '#FFFFFF',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ pt: 3, px: 3.5, fontWeight: 800 }}>New bank account</DialogTitle>
+        <DialogContent sx={{ display: 'grid', gap: 2, pt: '12px !important', px: 3.5 }}>
+          <TextField fullWidth size="small" label="Payment Title" placeholder="e.g. International Wire" value={newBank.paymentTitle} onChange={(e) => setNewBank({ ...newBank, paymentTitle: e.target.value })} sx={inputStyle} />
+          <TextField fullWidth size="small" label="Bank Name *" value={newBank.bankName} onChange={(e) => setNewBank({ ...newBank, bankName: e.target.value })} sx={inputStyle} />
+          <TextField fullWidth size="small" label="Account Title *" value={newBank.accountTitle} onChange={(e) => setNewBank({ ...newBank, accountTitle: e.target.value })} sx={inputStyle} />
+          <TextField fullWidth size="small" label="Account Number *" value={newBank.accountNumber} onChange={(e) => setNewBank({ ...newBank, accountNumber: e.target.value })} sx={inputStyle} />
+          <TextField fullWidth size="small" label="IBAN" value={newBank.iban} onChange={(e) => setNewBank({ ...newBank, iban: e.target.value })} sx={inputStyle} />
+          <TextField fullWidth size="small" label="Branch" value={newBank.branch} onChange={(e) => setNewBank({ ...newBank, branch: e.target.value })} sx={inputStyle} />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBankOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={addBankNow} variant="contained" disabled={mutations.addBank.isPending} sx={{ textTransform: 'none', bgcolor: tokens.brand.primary }}>Save account</Button>
+        <DialogActions sx={{ px: 3.5, pb: 3, pt: 1 }}>
+          <Button onClick={() => setBankOpen(false)} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}>Cancel</Button>
+          <Button onClick={addBankNow} variant="contained" disabled={mutations.addBank.isPending} sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '12px', bgcolor: tokens.brand.primary }}>
+            Save account
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -594,3 +916,4 @@ const InvoiceEditorPage = () => {
 };
 
 export default InvoiceEditorPage;
+
