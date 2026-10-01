@@ -379,6 +379,20 @@ const InvoiceClientDetailPage = () => {
     }
   };
 
+  const sendInvoice = async (invoiceId: string) => {
+    setSendingId(invoiceId);
+    setError('');
+    setNotice('');
+    try {
+      await mutations.sendInvoice.mutateAsync(invoiceId);
+      setNotice('Invoice sent successfully');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not send invoice'));
+    } finally {
+      setSendingId(null);
+    }
+  };
+
   const invoiceList = invoices.data || [];
 
   const { totalBilled, totalPaid, totalPending, currency } = useMemo(() => {
@@ -388,11 +402,11 @@ const InvoiceClientDetailPage = () => {
     let curr = 'PKR';
     for (const inv of invoiceList) {
       if (inv.currency) curr = inv.currency;
-      billed += inv.totalAmount || 0;
+      billed += inv.grandTotal || 0;
       if (inv.status === 'paid') {
-        paid += inv.totalAmount || 0;
-      } else if (inv.status === 'sent' || inv.status === 'draft' || inv.isOverdue) {
-        pending += inv.totalAmount || 0;
+        paid += inv.grandTotal || 0;
+      } else if (inv.status === 'sent' || inv.status === 'draft' || inv.overdue) {
+        pending += inv.grandTotal || 0;
       }
     }
     return { totalBilled: billed, totalPaid: paid, totalPending: pending, currency: curr };
