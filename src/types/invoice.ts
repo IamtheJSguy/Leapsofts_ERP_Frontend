@@ -1,4 +1,4 @@
-export type InvoiceTemplateId = 'classic' | 'modern' | 'compact';
+export type InvoiceTemplateId = 'classic' | 'modern' | 'compact' | 'minimal' | 'bold';
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
 export type MailboxProvider = 'gmail' | 'outlook' | 'yahoo' | 'zoho' | 'icloud';
 
@@ -137,9 +137,11 @@ export interface SaveInvoicePayload {
 }
 
 export const INVOICE_TEMPLATE_OPTIONS: Array<{ id: InvoiceTemplateId; label: string }> = [
-  { id: 'classic', label: 'Classic' },
-  { id: 'modern', label: 'Modern' },
-  { id: 'compact', label: 'Compact' },
+  { id: 'modern', label: 'Modern Studio' },
+  { id: 'classic', label: 'Classic Corporate' },
+  { id: 'compact', label: 'SaaS Minimalist' },
+  { id: 'minimal', label: 'Aqua Geometric' },
+  { id: 'bold', label: 'Monochrome Studio' },
 ];
 
 export const MAILBOX_PROVIDER_OPTIONS: Array<{ id: MailboxProvider; label: string }> = [
@@ -150,11 +152,13 @@ export const MAILBOX_PROVIDER_OPTIONS: Array<{ id: MailboxProvider; label: strin
   { id: 'icloud', label: 'iCloud' },
 ];
 
-export const formatInvoiceMoney = (currency: string, amount: number): string => {
+export const formatInvoiceMoney = (currency: string = 'PKR', amount: number = 0): string => {
+  const safeAmount = typeof amount === 'number' && !isNaN(amount) ? amount : Number(amount) || 0;
+  const safeCurrency = typeof currency === 'string' && currency.trim() ? currency.trim() : 'PKR';
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: safeCurrency }).format(safeAmount);
   } catch {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${safeCurrency} ${safeAmount.toFixed(2)}`;
   }
 };
 
