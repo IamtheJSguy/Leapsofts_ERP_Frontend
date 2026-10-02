@@ -2,6 +2,8 @@ import { Box, Typography, Chip, Divider } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import EmailIcon from '@mui/icons-material/Email';
 import { tokens } from '@/styles/tokens';
 import { formatInvoiceMoney, INVOICE_TEMPLATE_OPTIONS, roundMoney, type InvoiceParty, type InvoiceTemplateId } from '@/types/invoice';
 
@@ -38,13 +40,17 @@ export interface InvoicePreviewData {
 const show = (value: string, fallback: string) => value.trim() || fallback;
 
 const formatDate = (value: string): string => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || '—';
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${value}T00:00:00.000Z`));
+  if (!value) return '—';
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    return match[1];
+  }
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return trimmed || '—';
 };
 
 const PartyBlock = ({
@@ -113,7 +119,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           boxShadow: '0 20px 40px rgba(93, 26, 137, 0.12)',
           border: '1px solid #E5E7EB',
           width: '100%',
-          maxWidth: 640,
         }}
       >
         {/* Header Ribbon */}
@@ -190,54 +195,68 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Banks Section */}
-          {data.banks.length > 0 && (
-            <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #E5E7EB' }}>
-              <Typography sx={{ fontSize: 10, fontWeight: 800, color: '#5D1A89', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <AccountBalanceIcon sx={{ fontSize: 13 }} /> Payment Bank Accounts
-              </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? '1fr 1fr' : '1fr', gap: 1.25 }}>
+          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #E5E7EB' }}>
+            <Typography sx={{ fontSize: 10, fontWeight: 800, color: '#5D1A89', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <AccountBalanceIcon sx={{ fontSize: 13 }} /> Payment Bank Accounts
+            </Typography>
+            {data.banks.length > 0 ? (
+              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.25 }}>
                 {data.banks.map((bank, index) => (
                   <Box
                     key={index}
                     sx={{
-                      p: 1.25,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      p: 1.5,
+                      pl: 1.75,
                       borderRadius: '10px',
                       bgcolor: '#FAF5FF',
                       border: '1px solid #E9D5FF',
-                      borderLeft: '3.5px solid #5D1A89',
                     }}
                   >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                      <Typography sx={{ fontWeight: 850, fontSize: 11, color: '#5D1A89' }}>
+                    <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', bgcolor: '#5D1A89' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
+                      <Typography sx={{ fontWeight: 850, fontSize: 11, color: '#5D1A89', lineHeight: 1.3 }}>
                         {bank.paymentTitle || bank.bankName}
                       </Typography>
                       {bank.accountTitle && (
-                        <Chip
-                          label={bank.accountTitle}
-                          size="small"
-                          sx={{ height: 16, fontSize: 8.5, fontWeight: 750, bgcolor: 'rgba(93, 26, 137, 0.1)', color: '#5D1A89' }}
-                        />
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '1.5px 5px',
+                            borderRadius: '4px',
+                            fontSize: '8.5px',
+                            fontWeight: 750,
+                            lineHeight: 1,
+                            backgroundColor: 'rgba(93, 26, 137, 0.12)',
+                            color: '#5D1A89',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {bank.accountTitle}
+                        </span>
                       )}
                     </Box>
 
-                    <Box sx={{ display: 'grid', gap: 0.3, fontSize: 9.5 }}>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <span style={{ color: '#6B7280', width: 48, fontWeight: 600 }}>Bank:</span>
+                    <Box sx={{ display: 'grid', gap: 0.35, fontSize: 9.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#6B7280', width: 50, flexShrink: 0, fontWeight: 600 }}>Bank:</span>
                         <strong style={{ color: '#111827' }}>{bank.bankName}</strong>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <span style={{ color: '#6B7280', width: 48, fontWeight: 600 }}>Account:</span>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#6B7280', width: 50, flexShrink: 0, fontWeight: 600 }}>Account:</span>
                         <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{bank.accountNumber}</strong>
                       </Box>
                       {bank.iban && (
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <span style={{ color: '#6B7280', width: 48, fontWeight: 600 }}>IBAN:</span>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#6B7280', width: 50, flexShrink: 0, fontWeight: 600 }}>IBAN:</span>
                           <strong style={{ color: '#111827', fontFamily: 'monospace', wordBreak: 'break-all' }}>{bank.iban}</strong>
                         </Box>
                       )}
                       {bank.branch && (
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <span style={{ color: '#6B7280', width: 48, fontWeight: 600 }}>Branch:</span>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#6B7280', width: 50, flexShrink: 0, fontWeight: 600 }}>Branch:</span>
                           <span style={{ color: '#374151' }}>{bank.branch}</span>
                         </Box>
                       )}
@@ -245,8 +264,25 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                   </Box>
                 ))}
               </Box>
-            </Box>
-          )}
+            ) : (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.25 }}>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: '#FAF5FF', border: '1px solid #E9D5FF', borderLeft: '3.5px solid #5D1A89', fontSize: 9.5 }}>
+                  <Typography sx={{ fontWeight: 850, fontSize: 11, color: '#5D1A89', mb: 0.5 }}>Bank Transfer / Wire</Typography>
+                  <Box sx={{ display: 'grid', gap: 0.25, color: '#4B5563' }}>
+                    <div><strong style={{ color: '#111827' }}>Bank:</strong> Standard Chartered / Commercial Bank</div>
+                    <div><strong style={{ color: '#111827' }}>Account:</strong> Verified Merchant Account</div>
+                  </Box>
+                </Box>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: '#FAF5FF', border: '1px solid #E9D5FF', borderLeft: '3.5px solid #5D1A89', fontSize: 9.5 }}>
+                  <Typography sx={{ fontWeight: 850, fontSize: 11, color: '#5D1A89', mb: 0.5 }}>Online / Digital Pay</Typography>
+                  <Box sx={{ display: 'grid', gap: 0.25, color: '#4B5563' }}>
+                    <div><strong style={{ color: '#111827' }}>Paypal / Swift:</strong> {data.issuer.email || 'payments@leapsofts.com'}</div>
+                    <div><strong style={{ color: '#111827' }}>Cards:</strong> Available online</div>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
     );
@@ -266,12 +302,13 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           boxShadow: '0 16px 36px rgba(15, 23, 42, 0.12)',
           border: '1.5px solid #0F172A',
           width: '100%',
-          maxWidth: 640,
         }}
       >
-        {/* Formal Top Double Bar */}
-        <Box sx={{ height: 6, bgcolor: '#0F172A' }} />
-        <Box sx={{ height: 2, bgcolor: '#E2E8F0', mb: 1.5 }} />
+        <Box sx={{ width: '100%' }}>
+          {/* Formal Top Double Bar */}
+          <Box sx={{ height: 6, bgcolor: '#0F172A' }} />
+          <Box sx={{ height: 2, bgcolor: '#E2E8F0', mb: 1.5 }} />
+        </Box>
 
         <Box sx={{ px: 3, pt: 1, pb: 2 }}>
           {/* Header */}
@@ -341,47 +378,89 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Classic Bank Accounts Section */}
-          {data.banks.length > 0 && (
-            <Box sx={{ mt: 2.5, pt: 1.5, borderTop: '1px solid #0F172A' }}>
-              <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
-                BANK & PAYMENT INSTRUCTIONS
-              </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? '1fr 1fr' : '1fr', gap: 1.25 }}>
+          <Box sx={{ mt: 2.5, pt: 1.5, borderTop: '1px solid #0F172A' }}>
+            <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+              BANK & PAYMENT INSTRUCTIONS
+            </Typography>
+            {data.banks.length > 0 ? (
+              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.25 }}>
                 {data.banks.map((bank, index) => (
                   <Box
                     key={index}
                     sx={{
-                      p: 1.25,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      p: 1.5,
+                      pl: 1.75,
                       bgcolor: '#F8FAFC',
                       border: '1px solid #CBD5E1',
-                      borderLeft: '3.5px solid #0F172A',
                       fontSize: 9.5,
                     }}
                   >
-                    <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#0F172A', mb: 0.5 }}>
-                      {bank.paymentTitle || bank.bankName} {bank.accountTitle ? `(${bank.accountTitle})` : ''}
-                    </Typography>
-                    <Box sx={{ display: 'grid', gap: 0.25 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Bank:</span>
+                    <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', bgcolor: '#0F172A' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
+                      <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#0F172A', lineHeight: 1.3 }}>
+                        {bank.paymentTitle || bank.bankName}
+                      </Typography>
+                      {bank.accountTitle && (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '1.5px 5px',
+                            borderRadius: '4px',
+                            fontSize: '8.5px',
+                            fontWeight: 750,
+                            lineHeight: 1,
+                            backgroundColor: '#E2E8F0',
+                            color: '#0F172A',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {bank.accountTitle}
+                        </span>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'grid', gap: 0.35 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748B', fontWeight: 600 }}>Bank:</span>
                         <strong style={{ color: '#0F172A' }}>{bank.bankName}</strong>
                       </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Account No:</span>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748B', fontWeight: 600 }}>Account No:</span>
                         <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{bank.accountNumber}</strong>
                       </Box>
                       {bank.iban && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#64748B' }}>IBAN:</span>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#64748B', fontWeight: 600 }}>IBAN:</span>
                           <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{bank.iban}</strong>
+                        </Box>
+                      )}
+                      {bank.branch && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#64748B', fontWeight: 600 }}>Branch:</span>
+                          <span style={{ color: '#0F172A' }}>{bank.branch}</span>
                         </Box>
                       )}
                     </Box>
                   </Box>
                 ))}
               </Box>
-            </Box>
-          )}
+            ) : (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.25 }}>
+                <Box sx={{ p: 1.25, bgcolor: '#F8FAFC', border: '1px solid #CBD5E1', borderLeft: '3.5px solid #0F172A', fontSize: 9.5 }}>
+                  <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#0F172A', mb: 0.5 }}>Wire / Bank Transfer</Typography>
+                  <div><strong style={{ color: '#0F172A' }}>Bank:</strong> Standard Chartered / Commercial Bank</div>
+                  <div><strong style={{ color: '#0F172A' }}>Account:</strong> Verified Merchant Corporate Account</div>
+                </Box>
+                <Box sx={{ p: 1.25, bgcolor: '#F8FAFC', border: '1px solid #CBD5E1', borderLeft: '3.5px solid #0F172A', fontSize: 9.5 }}>
+                  <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#0F172A', mb: 0.5 }}>Digital Payment</Typography>
+                  <div><strong style={{ color: '#0F172A' }}>Paypal / Wire:</strong> {data.issuer.email || 'payments@leapsofts.com'}</div>
+                  <div><strong style={{ color: '#0F172A' }}>Terms:</strong> Due per indicated due date</div>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
     );
@@ -401,7 +480,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           boxShadow: '0 20px 45px rgba(10, 54, 99, 0.08)',
           border: '1px solid #E5E7EB',
           width: '100%',
-          maxWidth: 640,
           position: 'relative',
         }}
       >
@@ -473,22 +551,28 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                   width: '100%',
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                  <span>📍</span>
-                  <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                  <LocationOnIcon sx={{ fontSize: 13, color: '#0A3663', flexShrink: 0 }} />
+                  <Typography component="span" sx={{ fontSize: 9.5, color: '#4B5563', lineHeight: 1.3, maxWidth: 260 }}>
                     {show(data.issuer.address, '1 Your Address City, Country')}
-                  </span>
+                  </Typography>
                 </Box>
                 {data.issuer.email && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                    <span>✉️</span>
-                    <span>{data.issuer.email}</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                    <EmailIcon sx={{ fontSize: 13, color: '#0A3663', flexShrink: 0 }} />
+                    <Typography component="span" sx={{ fontSize: 9.5, color: '#4B5563', lineHeight: 1.3 }}>
+                      {data.issuer.email}
+                    </Typography>
                   </Box>
                 )}
                 {data.issuer.ntn && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                    <span>🆔</span>
-                    <span>NTN: {data.issuer.ntn}</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                    <Typography component="span" sx={{ fontSize: 8, fontWeight: 800, color: '#0A3663', bgcolor: 'rgba(10, 54, 99, 0.08)', px: 0.5, py: 0.2, borderRadius: '3px', lineHeight: 1 }}>
+                      NTN
+                    </Typography>
+                    <Typography component="span" sx={{ fontSize: 9.5, color: '#4B5563', lineHeight: 1.3 }}>
+                      {data.issuer.ntn}
+                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -683,27 +767,66 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               Payment Info:
             </Typography>
             {data.banks.length > 0 ? (
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.5 }}>
                 {data.banks.map((bank, index) => (
                   <Box
                     key={index}
                     sx={{
+                      position: 'relative',
+                      overflow: 'hidden',
                       p: 1.5,
+                      pl: 1.75,
                       borderRadius: '12px',
                       bgcolor: '#F8FAFC',
                       border: '1px solid #E2E8F0',
-                      borderLeft: '4px solid #0EA5E9',
                       fontSize: 10,
                     }}
                   >
-                    <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', mb: 0.5 }}>
-                      {bank.paymentTitle || bank.bankName}
-                    </Typography>
-                    <Box sx={{ display: 'grid', gap: 0.25, color: '#475569' }}>
-                      <div><strong style={{ color: '#334155' }}>Bank:</strong> {bank.bankName}</div>
-                      <div><strong style={{ color: '#334155' }}>A/C:</strong> <span style={{ fontFamily: 'monospace', color: '#111827' }}>{bank.accountNumber}</span></div>
-                      {bank.accountTitle && <div><strong style={{ color: '#334155' }}>Title:</strong> {bank.accountTitle}</div>}
-                      {bank.iban && <div><strong style={{ color: '#334155' }}>IBAN:</strong> <span style={{ fontFamily: 'monospace' }}>{bank.iban}</span></div>}
+                    <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', bgcolor: '#0EA5E9' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', lineHeight: 1.3 }}>
+                        {bank.paymentTitle || bank.bankName}
+                      </Typography>
+                      {bank.accountTitle && (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '1.5px 5px',
+                            borderRadius: '4px',
+                            fontSize: '8.5px',
+                            fontWeight: 750,
+                            lineHeight: 1,
+                            backgroundColor: '#E0F2FE',
+                            color: '#0369A1',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {bank.accountTitle}
+                        </span>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'grid', gap: 0.35, color: '#475569' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>Bank:</span>
+                        <strong style={{ color: '#111827' }}>{bank.bankName}</strong>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>A/C:</span>
+                        <strong style={{ fontFamily: 'monospace', color: '#111827' }}>{bank.accountNumber}</strong>
+                      </Box>
+                      {bank.iban && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>IBAN:</span>
+                          <strong style={{ fontFamily: 'monospace', color: '#111827', wordBreak: 'break-all' }}>{bank.iban}</strong>
+                        </Box>
+                      )}
+                      {bank.branch && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>Branch:</span>
+                          <span style={{ color: '#111827' }}>{bank.branch}</span>
+                        </Box>
+                      )}
                     </Box>
                   </Box>
                 ))}
@@ -797,11 +920,10 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           boxShadow: '0 20px 45px rgba(0, 0, 0, 0.06)',
           border: '1px solid #E5E7EB',
           width: '100%',
-          maxWidth: 640,
-          p: { xs: 2.5, sm: 3.5 },
+          p: { xs: 2.5, sm: 3 },
           display: 'flex',
           flexDirection: 'column',
-          gap: 2.5,
+          gap: 1.75,
         }}
       >
         {/* Top Header: Logo & Gray Invoice Pill */}
@@ -841,14 +963,27 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             sx={{
               bgcolor: '#F3F4F6',
               px: { xs: 2.5, sm: 3.5 },
-              py: 1,
+              py: 0.75,
               borderRadius: '8px',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 40,
               gap: 1,
             }}
           >
-            <Typography sx={{ fontSize: 22, fontWeight: 800, color: '#1F2937', letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <Typography
+              sx={{
+                fontSize: 22,
+                fontWeight: 800,
+                color: '#1F2937',
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                transform: 'translateY(-1px)',
+              }}
+            >
               Invoice
             </Typography>
             {data.paid && (
@@ -936,6 +1071,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             sx={{
               display: 'grid',
               gridTemplateColumns: '2.5fr 1fr 0.6fr 1.2fr',
+              alignItems: 'center',
               bgcolor: '#374151',
               color: '#FFFFFF',
               px: 1.75,
@@ -943,12 +1079,13 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               borderRadius: '6px',
               fontSize: 10.5,
               fontWeight: 750,
+              minHeight: 34,
             }}
           >
-            <span>Item Description</span>
-            <span style={{ textAlign: 'right' }}>Price</span>
-            <span style={{ textAlign: 'center' }}>Qnt.</span>
-            <span style={{ textAlign: 'right' }}>Total</span>
+            <span style={{ display: 'flex', alignItems: 'center', transform: 'translateY(-0.5px)' }}>Item Description</span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right', transform: 'translateY(-0.5px)' }}>Price</span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', transform: 'translateY(-0.5px)' }}>Qnt.</span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right', transform: 'translateY(-0.5px)' }}>Total</span>
           </Box>
 
           {/* Table Rows */}
@@ -1002,19 +1139,20 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             <Box
               sx={{
                 bgcolor: '#F3F4F6',
-                p: 1.25,
+                py: 1,
                 px: 1.75,
                 borderRadius: '6px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                minHeight: 40,
                 mt: 0.5,
               }}
             >
-              <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: '#111827' }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: '#111827', display: 'flex', alignItems: 'center', lineHeight: 1, transform: 'translateY(-0.5px)' }}>
                 Total :
               </Typography>
-              <Typography sx={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: '#111827', display: 'flex', alignItems: 'center', lineHeight: 1, transform: 'translateY(-0.5px)' }}>
                 {formatInvoiceMoney(data.currency, grandTotal)}
               </Typography>
             </Box>
@@ -1031,14 +1169,20 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               fontSize: 9,
               fontWeight: 800,
               px: 1.5,
-              py: 0.5,
+              py: 0.6,
               borderRadius: '4px',
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               alignSelf: 'flex-start',
               letterSpacing: '0.04em',
+              lineHeight: 1,
+              minHeight: 24,
             }}
           >
-            THANK YOU FOR YOUR BUSINESS
+            <span style={{ display: 'inline-flex', alignItems: 'center', transform: 'translateY(-0.5px)' }}>
+              THANK YOU FOR YOUR BUSINESS
+            </span>
           </Box>
 
           {/* Payment Info Heading & Cards Grid */}
@@ -1047,27 +1191,66 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               Payment Info:
             </Typography>
             {data.banks.length > 0 ? (
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.5 }}>
                 {data.banks.map((bank, index) => (
                   <Box
                     key={index}
                     sx={{
+                      position: 'relative',
+                      overflow: 'hidden',
                       p: 1.5,
+                      pl: 1.75,
                       borderRadius: '12px',
                       bgcolor: '#F9FAFB',
                       border: '1px solid #E5E7EB',
-                      borderLeft: '4px solid #374151',
                       fontSize: 10,
                     }}
                   >
-                    <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', mb: 0.5 }}>
-                      {bank.paymentTitle || bank.bankName}
-                    </Typography>
-                    <Box sx={{ display: 'grid', gap: 0.25, color: '#475569' }}>
-                      <div><strong style={{ color: '#334155' }}>Bank:</strong> {bank.bankName}</div>
-                      <div><strong style={{ color: '#334155' }}>A/C:</strong> <span style={{ fontFamily: 'monospace', color: '#111827' }}>{bank.accountNumber}</span></div>
-                      {bank.accountTitle && <div><strong style={{ color: '#334155' }}>Title:</strong> {bank.accountTitle}</div>}
-                      {bank.iban && <div><strong style={{ color: '#334155' }}>IBAN:</strong> <span style={{ fontFamily: 'monospace' }}>{bank.iban}</span></div>}
+                    <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', bgcolor: '#374151' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', lineHeight: 1.3 }}>
+                        {bank.paymentTitle || bank.bankName}
+                      </Typography>
+                      {bank.accountTitle && (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '1.5px 5px',
+                            borderRadius: '4px',
+                            fontSize: '8.5px',
+                            fontWeight: 750,
+                            lineHeight: 1,
+                            backgroundColor: '#E5E7EB',
+                            color: '#1F2937',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {bank.accountTitle}
+                        </span>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'grid', gap: 0.35, color: '#475569' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>Bank:</span>
+                        <strong style={{ color: '#111827' }}>{bank.bankName}</strong>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>A/C:</span>
+                        <strong style={{ fontFamily: 'monospace', color: '#111827' }}>{bank.accountNumber}</strong>
+                      </Box>
+                      {bank.iban && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>IBAN:</span>
+                          <strong style={{ fontFamily: 'monospace', color: '#111827', wordBreak: 'break-all' }}>{bank.iban}</strong>
+                        </Box>
+                      )}
+                      {bank.branch && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <span style={{ color: '#334155', width: 50, flexShrink: 0, fontWeight: 700 }}>Branch:</span>
+                          <span style={{ color: '#111827' }}>{bank.branch}</span>
+                        </Box>
+                      )}
                     </Box>
                   </Box>
                 ))}
@@ -1153,10 +1336,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         boxShadow: '0 20px 45px rgba(0, 0, 0, 0.08)',
         border: '1px solid #E5E7EB',
         width: '100%',
-        maxWidth: 640,
         position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
       <Box sx={{ p: 3.5, pb: 2, position: 'relative', zIndex: 2 }}>
@@ -1321,44 +1501,83 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Bank Instructions in Clean Monochrome Cards */}
-        {data.banks.length > 0 && (
-          <Box sx={{ mt: 2, mb: 1 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? '1fr 1fr' : '1fr', gap: 1.25 }}>
+        <Box sx={{ mt: 2, mb: 1 }}>
+          {data.banks.length > 0 ? (
+            <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.25 }}>
               {data.banks.map((bank, index) => (
                 <Box
                   key={index}
                   sx={{
-                    p: 1.25,
+                    p: 1.5,
                     borderRadius: '8px',
                     bgcolor: '#F9FAFB',
                     border: '1px solid #E5E7EB',
                     fontSize: 9.5,
                   }}
                 >
-                  <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#111827', mb: 0.3 }}>
-                    {bank.paymentTitle || bank.bankName} {bank.accountTitle ? `(${bank.accountTitle})` : ''}
-                  </Typography>
-                  <Box sx={{ display: 'grid', gap: 0.2 }}>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <span style={{ color: '#6B7280', width: 44, fontWeight: 600 }}>Bank:</span>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
+                    <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#111827', lineHeight: 1.3 }}>
+                      {bank.paymentTitle || bank.bankName}
+                    </Typography>
+                    {bank.accountTitle && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '1.5px 5px',
+                          borderRadius: '4px',
+                          fontSize: '8.5px',
+                          fontWeight: 750,
+                          lineHeight: 1,
+                          backgroundColor: '#E5E7EB',
+                          color: '#111827',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {bank.accountTitle}
+                      </span>
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'grid', gap: 0.35 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                      <span style={{ color: '#6B7280', width: 48, flexShrink: 0, fontWeight: 600 }}>Bank:</span>
                       <strong style={{ color: '#111827' }}>{bank.bankName}</strong>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <span style={{ color: '#6B7280', width: 44, fontWeight: 600 }}>Account:</span>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                      <span style={{ color: '#6B7280', width: 48, flexShrink: 0, fontWeight: 600 }}>Account:</span>
                       <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{bank.accountNumber}</strong>
                     </Box>
                     {bank.iban && (
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <span style={{ color: '#6B7280', width: 44, fontWeight: 600 }}>IBAN:</span>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#6B7280', width: 48, flexShrink: 0, fontWeight: 600 }}>IBAN:</span>
                         <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{bank.iban}</strong>
+                      </Box>
+                    )}
+                    {bank.branch && (
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                        <span style={{ color: '#6B7280', width: 48, flexShrink: 0, fontWeight: 600 }}>Branch:</span>
+                        <span style={{ color: '#111827' }}>{bank.branch}</span>
                       </Box>
                     )}
                   </Box>
                 </Box>
               ))}
             </Box>
-          </Box>
-        )}
+          ) : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.25 }}>
+              <Box sx={{ p: 1.25, borderRadius: '8px', bgcolor: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 9.5 }}>
+                <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#111827', mb: 0.3 }}>Corporate Bank Transfer</Typography>
+                <div><strong style={{ color: '#111827' }}>Bank:</strong> Commercial Banking Account</div>
+                <div><strong style={{ color: '#111827' }}>Account:</strong> Verified Merchant Account</div>
+              </Box>
+              <Box sx={{ p: 1.25, borderRadius: '8px', bgcolor: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 9.5 }}>
+                <Typography sx={{ fontWeight: 850, fontSize: 10.5, color: '#111827', mb: 0.3 }}>Direct & Digital Wire</Typography>
+                <div><strong style={{ color: '#111827' }}>Paypal / Wire:</strong> {data.issuer.email || 'payments@leapsofts.com'}</div>
+                <div><strong style={{ color: '#111827' }}>Status:</strong> Active</div>
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* Modern Wave Vector Footer Artwork (Exactly Matching Reference Image) */}

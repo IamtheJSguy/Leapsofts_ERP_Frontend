@@ -49,7 +49,8 @@ import { tokens } from '@/styles/tokens';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
-import { apiErrorMessage, useInvoiceClients, useInvoiceMutations, useInvoices } from '@/hooks/api/useInvoices';
+import { apiErrorMessage, useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { exportInvoiceRecordToPdf } from '@/lib/invoicePdfExport';
 import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceStatus } from '@/types/invoice';
 
 const FILTERS: Array<{ id: '' | InvoiceStatus | 'overdue'; label: string }> = [
@@ -329,12 +330,14 @@ const InvoiceClientDetailPage = () => {
   const navigate = useNavigate();
   const { isAdmin } = usePermissions();
   const clients = useInvoiceClients(true);
+  const settings = useInvoiceSettings();
   const mutations = useInvoiceMutations();
   const [filter, setFilter] = useState<'' | InvoiceStatus | 'overdue'>('');
   const invoices = useInvoices(filter || undefined, clientId || undefined);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<InvoiceClientForm>(emptyClientForm());
   const [baseline, setBaseline] = useState('');
@@ -876,9 +879,22 @@ const InvoiceClientDetailPage = () => {
                         
                         <Button
                           size="small"
-                          startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+                          startIcon={downloadingId === invoice._id ? <CircularProgress size={13} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
                           sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
-                          onClick={() => run(() => mutations.download(invoice._id, `invoice-${invoice.invoiceNumber}.pdf`))}
+                          disabled={downloadingId === invoice._id}
+                          onClick={() =>
+                            run(async () => {
+                              setDownloadingId(invoice._id);
+                              try {
+                                await exportInvoiceRecordToPdf(invoice, settings.data?.bankAccounts || []);
+                              } catch (err) {
+                                console.error('High-fidelity PDF export failed, fallback to API:', err);
+                                await mutations.download(invoice._id, `invoice-${invoice.invoiceNumber || 'INV'}.pdf`);
+                              } finally {
+                                setDownloadingId(null);
+                              }
+                            })
+                          }
                         >
                           PDF
                         </Button>
