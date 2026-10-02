@@ -358,19 +358,31 @@ export const AttendancePage = () => {
     }
   };
 
+  const currentOrgId = currentUser?.organizationId;
+  const isBaseOrgMember = (user: { _id?: string; baseOrganizationId?: string; organizationId?: string }) => {
+    if (!currentOrgId) return true;
+    if (user._id && user._id === currentUser?._id) {
+      const ownBase = currentUser?.baseOrganizationId || currentOrgId;
+      return String(ownBase) === String(currentOrgId);
+    }
+    const baseId = user.baseOrganizationId || user.organizationId;
+    return Boolean(baseId) && String(baseId) === String(currentOrgId);
+  };
+
   // Org-wide when viewAllAttendance; otherwise manager team (or self for users).
+  // Attendance is base-organization scoped, so members of this org whose base is elsewhere are omitted.
   const filteredUsers = useMemo(() => {
     let directoryUsers: any[];
     if (showTeamDirectory) {
-      const members = (myTeam?.members ?? []).filter((u) => u.role !== 'admin');
+      const members = (myTeam?.members ?? []).filter((u) => u.role !== 'admin' && isBaseOrgMember(u));
       const manager = myTeam?.managerId || currentUser;
-      if (manager?._id && !members.some((m) => m._id === manager._id)) {
+      if (manager?._id && isBaseOrgMember(manager) && !members.some((m) => m._id === manager._id)) {
         directoryUsers = [manager, ...members];
       } else {
         directoryUsers = members;
       }
     } else {
-      directoryUsers = (allUsers ?? []).filter((u: any) => u.role !== 'admin');
+      directoryUsers = (allUsers ?? []).filter((u: any) => u.role !== 'admin' && isBaseOrgMember(u));
     }
     const query = searchQuery.trim().toLowerCase();
     if (!query) return directoryUsers;
@@ -379,7 +391,7 @@ export const AttendancePage = () => {
       const email = (user.email || '').toLowerCase();
       return fullName.includes(query) || email.includes(query);
     });
-  }, [allUsers, myTeam?.members, myTeam?.managerId, currentUser, showTeamDirectory, searchQuery]);
+  }, [allUsers, myTeam?.members, myTeam?.managerId, currentUser, currentOrgId, showTeamDirectory, searchQuery]);
 
   const todayShiftByUserId = useMemo(() => {
     const map = new Map<string, NonNullable<typeof teamSummary>['todayShifts'][number]>();
