@@ -114,10 +114,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         sx={{
           bgcolor: '#FFFFFF',
           color: '#111827',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 40px rgba(93, 26, 137, 0.12)',
-          border: '1px solid #E5E7EB',
           width: '100%',
         }}
       >
@@ -297,10 +293,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         sx={{
           bgcolor: '#FFFFFF',
           color: '#0F172A',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 16px 36px rgba(15, 23, 42, 0.12)',
-          border: '1.5px solid #0F172A',
           width: '100%',
         }}
       >
@@ -475,10 +467,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         sx={{
           bgcolor: '#FFFFFF',
           color: '#111827',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 45px rgba(10, 54, 99, 0.08)',
-          border: '1px solid #E5E7EB',
           width: '100%',
           position: 'relative',
         }}
@@ -772,17 +760,10 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                   <Box
                     key={index}
                     sx={{
-                      position: 'relative',
-                      overflow: 'hidden',
-                      p: 1.5,
-                      pl: 1.75,
-                      borderRadius: '12px',
-                      bgcolor: '#F8FAFC',
-                      border: '1px solid #E2E8F0',
+                      py: 0.5,
                       fontSize: 10,
                     }}
                   >
-                    <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', bgcolor: '#0EA5E9' }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
                       <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', lineHeight: 1.3 }}>
                         {bank.paymentTitle || bank.bankName}
@@ -833,16 +814,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               </Box>
             ) : (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: '12px',
-                    bgcolor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderLeft: '4px solid #0EA5E9',
-                    fontSize: 10,
-                  }}
-                >
+                <Box sx={{ py: 0.5, fontSize: 10 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', mb: 0.5 }}>
                     Paypal / Digital
                   </Typography>
@@ -851,16 +823,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                     <div><strong style={{ color: '#334155' }}>Account:</strong> Verified Merchant</div>
                   </Box>
                 </Box>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: '12px',
-                    bgcolor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderLeft: '4px solid #0EA5E9',
-                    fontSize: 10,
-                  }}
-                >
+                <Box sx={{ py: 0.5, fontSize: 10 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#111827', mb: 0.5 }}>
                     Cards & Wire Transfer
                   </Typography>
@@ -872,35 +835,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
               </Box>
             )}
           </Box>
-        </Box>
-
-        {/* Bottom Left: Polygonal Crystal Prism Geometric Art SVG */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: { xs: 130, sm: 170 },
-            height: { xs: 100, sm: 135 },
-            pointerEvents: 'none',
-            zIndex: 0,
-            opacity: 0.92,
-          }}
-        >
-          <svg viewBox="0 0 240 200" width="100%" height="100%" style={{ display: 'block' }}>
-            {/* Facet 1: Deep Sapphire Base */}
-            <polygon points="0,200 0,60 90,140" fill="#0A3663" />
-            {/* Facet 2: Cobalt Blue */}
-            <polygon points="0,200 90,140 160,200" fill="#0D47A1" />
-            {/* Facet 3: Electric Royal Blue Middle */}
-            <polygon points="0,60 90,140 110,80" fill="#1E88E5" />
-            {/* Facet 4: Cyan Highlight Shard */}
-            <polygon points="90,140 160,200 190,150" fill="#38B6FF" />
-            {/* Facet 5: Light Sky Blue Tip */}
-            <polygon points="90,140 110,80 190,150" fill="#70D6FF" />
-            {/* Facet 6: Deep Accent Corner Triangle */}
-            <polygon points="0,120 0,200 50,200" fill="#06213F" />
-          </svg>
         </Box>
       </Box>
     );
@@ -915,10 +849,6 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         sx={{
           bgcolor: '#FFFFFF',
           color: '#111827',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.06)',
-          border: '1px solid #E5E7EB',
           width: '100%',
           p: { xs: 2.5, sm: 3 },
           display: 'flex',
@@ -1331,12 +1261,10 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
       sx={{
         bgcolor: '#FFFFFF',
         color: '#111827',
-        borderRadius: '20px',
-        overflow: 'hidden',
-        boxShadow: '0 20px 45px rgba(0, 0, 0, 0.08)',
-        border: '1px solid #E5E7EB',
         width: '100%',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <Box sx={{ p: 3.5, pb: 2, position: 'relative', zIndex: 2 }}>
@@ -1683,9 +1611,6 @@ export const InvoiceTemplatePicker = ({
             </Box>
             {option.id === 'bold' && (
               <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 10, bgcolor: '#1F2937', borderRadius: '8px 0 0 0' }} />
-            )}
-            {option.id === 'compact' && (
-              <Box sx={{ position: 'absolute', bottom: 0, left: 0, width: 16, height: 16, bgcolor: '#0A3663', clipPath: 'polygon(0 0, 0 100%, 100% 100%)' }} />
             )}
           </Box>
           <Typography sx={{ fontSize: '0.78rem', fontWeight: 800, color: selected ? tokens.brand.primary : 'text.primary', lineHeight: 1.2 }}>

@@ -50,8 +50,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import { apiErrorMessage, useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
-import { exportInvoiceRecordToPdf } from '@/lib/invoicePdfExport';
-import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceStatus } from '@/types/invoice';
+import { exportInvoiceRecordToPdf, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
+import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceRecord, type InvoiceStatus } from '@/types/invoice';
 
 const FILTERS: Array<{ id: '' | InvoiceStatus | 'overdue'; label: string }> = [
   { id: '', label: 'All Invoices' },
@@ -382,12 +382,15 @@ const InvoiceClientDetailPage = () => {
     }
   };
 
-  const sendInvoice = async (invoiceId: string) => {
-    setSendingId(invoiceId);
+  const sendInvoice = async (invoice: InvoiceRecord) => {
+    setSendingId(invoice._id);
     setError('');
     setNotice('');
     try {
-      await mutations.sendInvoice.mutateAsync(invoiceId);
+      const pdf = await renderInvoicePreviewToBlob(
+        previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
+      );
+      await mutations.sendInvoice.mutateAsync({ id: invoice._id, pdf });
       setNotice('Invoice sent successfully');
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not send invoice'));
@@ -598,7 +601,7 @@ const InvoiceClientDetailPage = () => {
       </Paper>
 
       {/* Financial Quick Stats Grid (3 Cards) */}
-      <Box
+      {/* <Box
         sx={{
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
@@ -716,7 +719,7 @@ const InvoiceClientDetailPage = () => {
             </Typography>
           </Box>
         </Card>
-      </Box>
+      </Box> */}
 
       {/* Collapsible Profile Drawer */}
       <ClientProfile client={client} isDarkMode={isDarkMode} />
@@ -887,9 +890,6 @@ const InvoiceClientDetailPage = () => {
                               setDownloadingId(invoice._id);
                               try {
                                 await exportInvoiceRecordToPdf(invoice, settings.data?.bankAccounts || []);
-                              } catch (err) {
-                                console.error('High-fidelity PDF export failed, fallback to API:', err);
-                                await mutations.download(invoice._id, `invoice-${invoice.invoiceNumber || 'INV'}.pdf`);
                               } finally {
                                 setDownloadingId(null);
                               }
@@ -906,7 +906,7 @@ const InvoiceClientDetailPage = () => {
                             startIcon={<SendIcon sx={{ fontSize: 14 }} />}
                             sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
                             disabled={sendingId === invoice._id}
-                            onClick={() => sendInvoice(invoice._id)}
+                            onClick={() => sendInvoice(invoice)}
                           >
                             Send
                           </Button>
@@ -918,7 +918,12 @@ const InvoiceClientDetailPage = () => {
                             color="success"
                             startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
                             sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
-                            onClick={() => run(() => mutations.markPaid.mutateAsync(invoice._id))}
+                            onClick={() => run(async () => {
+                              const pdf = await renderInvoicePreviewToBlob(
+                                previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
+                              );
+                              await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
+                            })}
                           >
                             Mark Paid
                           </Button>
