@@ -873,7 +873,7 @@ const InvoiceClientDetailPage = () => {
                       <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <Button
                           size="small"
-                          onClick={() => navigate(`/invoices/${invoice._id}`)}
+                          onClick={() => navigate(`/invoices/${invoice._id}?clientId=${client._id}`)}
                           startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
                           sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
                         >
