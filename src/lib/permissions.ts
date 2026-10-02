@@ -13,6 +13,29 @@ export const PERMISSION_KEYS = [
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
+/** Org modules that gate a permission checkbox. Keys omitted here are always offered. */
+const PERMISSION_ENTITLEMENT: Partial<
+  Record<PermissionKey, 'salesModule' | 'projectsAndBoards' | 'invoicingModule'>
+> = {
+  viewSalesPage: 'salesModule',
+  manageSalesSettings: 'salesModule',
+  createProjectsAndBoards: 'projectsAndBoards',
+  accessInvoicing: 'invoicingModule',
+};
+
+export const isPermissionOffered = (
+  key: PermissionKey,
+  entitlements: {
+    salesModule?: boolean;
+    projectsAndBoards?: boolean;
+    invoicingModule?: boolean;
+  },
+): boolean => {
+  const moduleKey = PERMISSION_ENTITLEMENT[key];
+  if (!moduleKey) return true;
+  return entitlements[moduleKey] !== false;
+};
+
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   viewSalesPage: 'View Sales page',
   accessTeam: 'Access Team page',
