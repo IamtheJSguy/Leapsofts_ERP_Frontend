@@ -33,6 +33,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import type { Project, User } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 const statusFilters = ['All', 'Active', 'In Development', 'On Hold'];
 
@@ -104,11 +105,7 @@ const ProjectsPage = () => {
           addToast({ message: 'Project created successfully', severity: 'success' });
         },
         onError: (err: any) => {
-          const message =
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            'Failed to create project';
-          addToast({ message, severity: 'error' });
+          showApiError(err);
         },
       }
     );

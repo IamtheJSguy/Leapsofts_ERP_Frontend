@@ -66,6 +66,7 @@ import { WEEKDAY_SHORT_LABELS } from '@/lib/constants';
 import type { KpiPriority, KPI, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
 import api from '@/lib/axios';
 import type { User } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 // Interfaces for templates and assignments matching the exact structure
 interface UIKPITemplateItem {
@@ -601,10 +602,7 @@ const TasksPage = () => {
             handleResetWizard();
           },
           onError: (err: any) => {
-            addToast({
-              message: err?.response?.data?.message || 'Failed to update KPI Template.',
-              severity: 'error',
-            });
+            showApiError(err);
           },
         }
       );
@@ -623,10 +621,7 @@ const TasksPage = () => {
             handleResetWizard();
           },
           onError: (err: any) => {
-            addToast({
-              message: err?.response?.data?.message || 'Failed to create KPI Template.',
-              severity: 'error',
-            });
+            showApiError(err);
           },
         }
       );
@@ -649,10 +644,7 @@ const TasksPage = () => {
         setViewMode('list');
       },
       onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || 'Failed to delete KPI Template.',
-          severity: 'error',
-        });
+        showApiError(err);
         setConfirmDeleteOpen(false);
       },
     });
@@ -690,10 +682,7 @@ const TasksPage = () => {
           setPendingUnassign(null);
         },
         onError: (err: any) => {
-          addToast({
-            message: err?.response?.data?.message || 'Failed to unassign target.',
-            severity: 'error',
-          });
+          showApiError(err);
           setConfirmUnassignOpen(false);
           setPendingUnassign(null);
         },
@@ -781,10 +770,7 @@ const TasksPage = () => {
         },
         onError: (err: any) => {
           setConfirmAssignOpen(false);
-          addToast({
-            message: err?.response?.data?.message || 'Failed to assign KPI Template.',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       }
     );
@@ -2081,7 +2067,7 @@ const TasksPage = () => {
                                     } : null);
                                   },
                                   onError: (err: any) => {
-                                    addToast({ message: err?.response?.data?.message || 'Failed to remove KPI.', severity: 'error' });
+                                    showApiError(err);
                                   },
                                 });
                               }}

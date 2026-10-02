@@ -23,6 +23,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useReviewKPIChangeRequest } from '@/hooks/api/useKPIChangeRequests';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { tokens } from '@/styles/tokens';
 import type { KPIChangeRequest, User } from '@/types';
@@ -67,8 +68,8 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
       addToast({ message: approved ? 'Change request approved.' : 'Change request rejected.', severity: 'success' });
       onClose();
       setAdminNote('');
-    } catch {
-      addToast({ message: 'Failed to review change request.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

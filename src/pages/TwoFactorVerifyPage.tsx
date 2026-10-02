@@ -7,7 +7,6 @@ import {
   Button,
   Typography,
   CircularProgress,
-  Alert,
   Link,
   useTheme,
 } from '@mui/material';
@@ -18,6 +17,7 @@ import { useTwoFactorVerifyLogin } from '@/hooks/api/useTwoFactor';
 import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
 import { markMonitoringPromptPendingForLogin } from '@/utils/monitoringPromptSession';
+import { useApiErrorToast } from '@/utils/apiError';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
@@ -67,9 +67,7 @@ const TwoFactorVerifyPage = () => {
     );
   };
 
-  const errorMessage =
-    (verifyLogin.error as { response?: { data?: { error?: { message?: string } } } } | null)?.response
-      ?.data?.error?.message || (verifyLogin.isError ? 'Verification failed' : '');
+  useApiErrorToast(verifyLogin.error, verifyLogin.isError);
 
   return (
     <Box
@@ -109,12 +107,6 @@ const TwoFactorVerifyPage = () => {
             ? 'Enter one of your unused backup codes (letters and numbers).'
             : 'Enter the 6-digit authenticator code, or a backup code if you cannot use the app.'}
         </Typography>
-
-        {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}>
-            {errorMessage}
-          </Alert>
-        )}
 
         <Box component="form" onSubmit={onSubmit}>
           <TextField

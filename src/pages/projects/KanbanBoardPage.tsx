@@ -81,6 +81,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { showApiError } from '@/utils/apiError';
 
 const getLinkHostname = (url: string) => {
   try {
@@ -806,7 +807,7 @@ const CardLabelsSection = ({
       { cardId, data: { labelIds: next } },
       {
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to update labels', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -833,7 +834,7 @@ const CardLabelsSection = ({
           resetCreate();
         },
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to create label', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -956,7 +957,7 @@ const CardLabelsSection = ({
                           {
                             onSuccess: () => addToast({ message: 'Label deleted', severity: 'success' }),
                             onError: (err: any) =>
-                              addToast({ message: err.response?.data?.message || 'Failed to delete label', severity: 'error' }),
+                              showApiError(err),
                           },
                         );
                       }}
@@ -1101,7 +1102,7 @@ const CardLinksSection = ({
           if (successMsg) addToast({ message: successMsg, severity: 'success' });
         },
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to update links', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -1327,7 +1328,7 @@ const CardMeetingsSection = ({
           setPickMeeting(null);
         },
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to link meeting', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -1338,7 +1339,7 @@ const CardMeetingsSection = ({
       {
         onSuccess: () => addToast({ message: 'Meeting unlinked', severity: 'success' }),
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to unlink meeting', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -1381,7 +1382,7 @@ const CardMeetingsSection = ({
           setCreateParticipants([]);
         },
         onError: (err: any) =>
-          addToast({ message: err.response?.data?.message || 'Failed to create meeting', severity: 'error' }),
+          showApiError(err),
       },
     );
   };
@@ -1717,10 +1718,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         {
           onSuccess: () => runFieldUpdates(finishOk),
           onError: (err: any) => {
-            addToast({
-              message: err?.response?.data?.message || err?.message || 'You cannot assign this task to that user',
-              severity: 'error',
-            });
+            showApiError(err);
           },
         },
       );
@@ -1760,10 +1758,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           setCommentText('');
         },
         onError: (err: any) => {
-          addToast({
-            message: err.response?.data?.message || 'Failed to add comment',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       });
     }
@@ -1781,10 +1776,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
           setEditCommentText('');
         },
         onError: (err: any) => {
-          addToast({
-            message: err.response?.data?.message || 'Failed to update comment',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       });
     }
@@ -1848,10 +1840,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             severity: 'success',
           }),
         onError: (err: any) =>
-          addToast({
-            message: err.response?.data?.message || 'Failed to update done status',
-            severity: 'error',
-          }),
+          showApiError(err),
       },
     );
   };
@@ -2110,10 +2099,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                       { cardId: task.id, file },
                       {
                         onError: (err: any) => {
-                          addToast({
-                            message: err?.response?.data?.message || err?.message || 'Failed to upload image',
-                            severity: 'error',
-                          });
+                          showApiError(err);
                         },
                       },
                     );
@@ -2157,10 +2143,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         onClick={() => {
                           deleteCardImageMutation.mutate(task.id, {
                             onError: (err: any) => {
-                              addToast({
-                                message: err?.response?.data?.message || err?.message || 'Failed to remove image',
-                                severity: 'error',
-                              });
+                              showApiError(err);
                             },
                           });
                         }}
@@ -2617,10 +2600,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                                     addToast({ message: 'Sub-task updated', severity: 'success' });
                                   },
                                   onError: (err: any) => {
-                                    addToast({
-                                      message: err?.response?.data?.message || 'Failed to update sub-task',
-                                      severity: 'error',
-                                    });
+                                    showApiError(err);
                                   },
                                 },
                               );
@@ -2844,10 +2824,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                             addToast({ message: 'Sub-task added', severity: 'success' });
                           },
                           onError: (err: any) => {
-                            addToast({
-                              message: err?.response?.data?.message || 'Failed to add sub-task',
-                              severity: 'error',
-                            });
+                            showApiError(err);
                           },
                         },
                       );
@@ -3051,12 +3028,7 @@ export const KanbanBoardPage = () => {
           setIsEditBoardNameOpen(false);
         },
         onError: (err: any) => {
-          const backendMessage =
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            err?.message ||
-            'Failed to update board name';
-          addToast({ message: backendMessage, severity: 'error' });
+          showApiError(err);
         },
       },
     );
@@ -3109,10 +3081,7 @@ export const KanbanBoardPage = () => {
         });
       },
       onError: (err: unknown) => {
-        const message =
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-          'Failed to open board chat';
-        addToast({ message, severity: 'error' });
+        showApiError(err);
       },
     });
   };
@@ -3400,13 +3369,7 @@ export const KanbanBoardPage = () => {
               {
                 onSuccess: finish,
                 onError: (err: any) => {
-                  addToast({
-                    message:
-                      err?.response?.data?.message
-                      || err?.message
-                      || 'Card created, but the image failed to upload. You can add it from the card details.',
-                    severity: 'error',
-                  });
+                  showApiError(err);
                   finish();
                 },
               },
@@ -3451,7 +3414,8 @@ export const KanbanBoardPage = () => {
           setPendingRemoveUserId('');
           setConfirmRemoveOpen(false);
         },
-        onError: () => {
+        onError: (err) => {
+          showApiError(err);
           setPendingRemoveUserId('');
           setConfirmRemoveOpen(false);
         },

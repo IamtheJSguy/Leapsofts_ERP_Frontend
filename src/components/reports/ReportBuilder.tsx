@@ -26,6 +26,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { showApiError } from '@/utils/apiError';
 
 const REPORT_TYPES = [
   { value: 'combined_kpi', label: 'Combined KPIs', icon: <TimelineIcon fontSize="small" /> },
@@ -137,7 +138,7 @@ export const ReportBuilder = ({
         onGenerated?.(res.data.data._id || res.data.data.reportId);
       },
       onError: (err) => {
-        addToast({ message: 'Failed to generate report: ' + err.message, severity: 'error' });
+        showApiError(err);
       },
     });
   };

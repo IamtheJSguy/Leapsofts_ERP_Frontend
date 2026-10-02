@@ -18,6 +18,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useSubmitKPIChangeRequest, type SubmitChangeRequestPayload } from '@/hooks/api/useKPIChangeRequests';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import type { KpiPriority } from '@/types';
 import { tokens } from '@/styles/tokens';
@@ -108,8 +109,8 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
       await submitMutation.mutateAsync(payload);
       addToast({ message: 'Change request submitted for admin review.', severity: 'success' });
       onClose();
-    } catch {
-      addToast({ message: 'Failed to submit change request.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

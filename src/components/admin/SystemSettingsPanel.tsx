@@ -18,6 +18,7 @@ import {
 } from '@/hooks/api/useSettings';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { showApiError } from '@/utils/apiError';
 
 export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }) => {
   const { data: settings, isLoading } = useSystemSettings();
@@ -69,7 +70,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
       },
       {
         onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
-        onError: () => addToast({ message: 'Failed to save settings.', severity: 'error' }),
+        onError: (err) => showApiError(err),
       },
     );
   };

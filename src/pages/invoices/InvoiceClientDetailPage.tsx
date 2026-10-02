@@ -49,7 +49,8 @@ import { tokens } from '@/styles/tokens';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
-import { apiErrorMessage, useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { exportInvoiceRecordToPdf, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceRecord, type InvoiceStatus } from '@/types/invoice';
 
@@ -317,7 +318,8 @@ const InvoiceClientDetailPage = () => {
   const mutations = useInvoiceMutations();
   const [filter, setFilter] = useState<'' | InvoiceStatus | 'overdue'>('');
   const invoices = useInvoices(filter || undefined, clientId || undefined);
-  const [error, setError] = useState('');
+  useApiErrorToast(clients.error, clients.isError);
+  useApiErrorToast(invoices.error, invoices.isError);
   const [notice, setNotice] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -330,21 +332,19 @@ const InvoiceClientDetailPage = () => {
   const startEdit = () => {
     if (!client) return;
     const next = clientToForm(client);
-    setError('');
     setForm(next);
     setBaseline(JSON.stringify(next));
     setOpen(true);
   };
 
   const save = async (): Promise<boolean> => {
-    setError('');
     try {
       await mutations.updateClient.mutateAsync({ id: clientId, body: form });
       setBaseline(JSON.stringify(form));
       setOpen(false);
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the client'));
+      showApiError(err);
       return false;
     }
   };
@@ -356,18 +356,16 @@ const InvoiceClientDetailPage = () => {
   );
 
   const run = async (action: () => Promise<unknown>) => {
-    setError('');
     setNotice('');
     try {
       await action();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Something went wrong'));
+      showApiError(err);
     }
   };
 
   const sendInvoice = async (invoice: InvoiceRecord) => {
     setSendingId(invoice._id);
-    setError('');
     setNotice('');
     try {
       const pdf = await renderInvoicePreviewToBlob(
@@ -376,7 +374,7 @@ const InvoiceClientDetailPage = () => {
       await mutations.sendInvoice.mutateAsync({ id: invoice._id, pdf });
       setNotice('Invoice sent successfully');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not send invoice'));
+      showApiError(err);
     } finally {
       setSendingId(null);
     }
@@ -415,9 +413,11 @@ const InvoiceClientDetailPage = () => {
         <Button onClick={() => navigate('/invoices')} startIcon={<ArrowBackIcon />} sx={{ textTransform: 'none', mb: 2, fontWeight: 700 }}>
           Back to Client Directory
         </Button>
-        <Alert severity="error" sx={{ borderRadius: '14px' }}>
-          {clients.isError ? apiErrorMessage(clients.error, 'Could not load the client') : 'Client profile not found'}
-        </Alert>
+        {!clients.isError && (
+          <Alert severity="error" sx={{ borderRadius: '14px' }}>
+            Client profile not found
+          </Alert>
+        )}
       </Box>
     );
   }
@@ -708,9 +708,6 @@ const InvoiceClientDetailPage = () => {
       <ClientProfile client={client} isDarkMode={isDarkMode} />
 
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
-      {error && !open && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{error}</Alert>}
-      {invoices.isError && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{apiErrorMessage(invoices.error, 'Could not load invoices')}</Alert>}
-
       {/* Invoices Toolbar & History Table */}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.01em' }}>
@@ -940,7 +937,6 @@ const InvoiceClientDetailPage = () => {
           Edit client profile
         </DialogTitle>
         <DialogContent sx={{ pt: '8px !important', pb: 2, px: 3.5 }}>
-          {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>{error}</Alert>}
           <InvoiceClientFields value={form} onChange={setForm} />
         </DialogContent>
         <DialogActions sx={{ px: 3.5, pt: 1, pb: 3, gap: 1 }}>

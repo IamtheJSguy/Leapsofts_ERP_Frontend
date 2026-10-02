@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Report } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 interface ReportTableProps {
   onSelect?: (report: Report) => void;
@@ -35,7 +36,7 @@ export const ReportTable = ({ onSelect }: ReportTableProps) => {
           addToast({ message: `Downloaded ${format.toUpperCase()} successfully`, severity: 'success' });
         },
         onError: (err) => {
-          addToast({ message: `Download failed: ${err.message}`, severity: 'error' });
+          showApiError(err);
         },
       }
     );

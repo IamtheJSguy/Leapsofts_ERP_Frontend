@@ -17,6 +17,7 @@ import { useUploadAvatar } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
+import { showApiError } from '@/utils/apiError';
 
 interface ProfileSettingsModalProps {
   open: boolean;
@@ -51,10 +52,7 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
           onClose();
         },
         onError: (err: any) => {
-          addToast({
-            message: err.response?.data?.message || 'Failed to update profile',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       },
     );
@@ -77,10 +75,7 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
         addToast({ message: 'Profile photo updated.', severity: 'success' });
       },
       onError: (err: any) => {
-        addToast({
-          message: err.response?.data?.message || 'Failed to upload profile photo',
-          severity: 'error',
-        });
+        showApiError(err);
       },
     });
   };
@@ -92,10 +87,7 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
         addToast({ message: 'Google Sheet synchronized successfully!', severity: 'success' });
       },
       onError: (err: any) => {
-        addToast({
-          message: err.response?.data?.message || 'Failed to trigger sync',
-          severity: 'error',
-        });
+        showApiError(err);
       },
     });
   };

@@ -19,6 +19,7 @@ import { useAddTeamMember, useAvailableTeamMembers } from '@/hooks/api/useTeam';
 import { useUIStore } from '@/store/useUIStore';
 import { getDisplayName } from '@/utils/formatters';
 import { tokens } from '@/styles/tokens';
+import { showApiError } from '@/utils/apiError';
 
 interface AddExistingTeamMemberPanelProps {
   onAdded?: () => void;
@@ -51,10 +52,7 @@ export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPan
         onAdded?.();
       },
       onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || 'Failed to add member to team.',
-          severity: 'error',
-        });
+        showApiError(err);
       },
     });
   };

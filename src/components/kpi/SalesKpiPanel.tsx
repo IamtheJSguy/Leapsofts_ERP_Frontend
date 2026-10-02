@@ -24,6 +24,7 @@ import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { SALES_KPI_METRIC_LABELS } from '@/lib/constants';
 import { formatWeekdays } from '@/lib/salesKpi';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import type { SalesKpiTemplate, User } from '@/types';
 
@@ -46,8 +47,8 @@ export const SalesKpiPanel = () => {
     try {
       await deleteMutation.mutateAsync(id);
       addToast({ message: 'Sales KPI template deleted.', severity: 'success' });
-    } catch {
-      addToast({ message: 'Failed to delete the sales KPI template.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 
@@ -58,8 +59,8 @@ export const SalesKpiPanel = () => {
       addToast({ message: 'Sales KPI template assigned.', severity: 'success' });
       setAssignTarget(null);
       setAssignUsers([]);
-    } catch {
-      addToast({ message: 'Failed to assign the sales KPI template.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

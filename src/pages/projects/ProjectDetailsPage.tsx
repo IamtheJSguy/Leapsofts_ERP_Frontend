@@ -56,6 +56,7 @@ import {
 } from '@/hooks/api/useProjects';
 import { useDeleteBoard, useUpdateBoard } from '@/hooks/api/useKanban';
 import type { ProjectStatus, ProjectMember } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 const TABS = ['Board', 'Overview', 'Team'];
 
@@ -198,7 +199,10 @@ export const ProjectDetailsPage = () => {
         { id: projectId, userId: memberToRemove.userId },
         {
           onSuccess: () => setMemberToRemove(null),
-          onError: () => setMemberToRemove(null),
+          onError: (err) => {
+            showApiError(err);
+            setMemberToRemove(null);
+          },
         },
       );
     }
@@ -218,11 +222,7 @@ export const ProjectDetailsPage = () => {
             addToast({ message: 'Board created successfully', severity: 'success' });
           },
           onError: (err: any) => {
-            const message =
-              err?.response?.data?.error?.message ||
-              err?.response?.data?.message ||
-              'Failed to create board';
-            addToast({ message, severity: 'error' });
+            showApiError(err);
           },
         }
       );
@@ -256,11 +256,7 @@ export const ProjectDetailsPage = () => {
           }
         },
         onError: (err: any) => {
-          const backendMessage =
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            'Failed to import board';
-          addToast({ message: backendMessage, severity: 'error' });
+          showApiError(err);
         },
       },
     );
@@ -278,11 +274,7 @@ export const ProjectDetailsPage = () => {
           }
         },
         onError: (err: any) => {
-          const backendMessage =
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            'Failed to delete board';
-          addToast({ message: backendMessage, severity: 'error' });
+          showApiError(err);
         },
       });
     }
@@ -320,12 +312,7 @@ export const ProjectDetailsPage = () => {
           }
         },
         onError: (err: any) => {
-          const backendMessage =
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            err?.message ||
-            'Failed to update board name';
-          addToast({ message: backendMessage, severity: 'error' });
+          showApiError(err);
         },
       },
     );

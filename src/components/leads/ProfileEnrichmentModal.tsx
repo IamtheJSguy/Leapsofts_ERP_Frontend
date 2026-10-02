@@ -18,6 +18,7 @@ import { enrichmentSchema } from '@/utils/validators';
 import { useQualifyLead } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { showApiError } from '@/utils/apiError';
 import { useState } from 'react';
 import type { Lead } from '@/types';
 
@@ -61,9 +62,9 @@ export const ProfileEnrichmentModal = ({ lead, open, onClose }: ProfileEnrichmen
           onClose();
           navigate('/kanban');
         },
-        onError: () => {
+        onError: (err) => {
           setConfirmOpen(false);
-          addToast({ message: 'Qualification failed', severity: 'error' });
+          showApiError(err);
         },
       },
     );

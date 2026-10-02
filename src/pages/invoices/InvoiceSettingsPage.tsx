@@ -23,7 +23,8 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview } from '@/components/invoices/InvoiceTemplatePreview';
-import { apiErrorMessage, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import {
   INVOICE_CURRENCIES,
   MAILBOX_PROVIDER_OPTIONS,
@@ -55,7 +56,7 @@ const InvoiceSettingsPage = () => {
   const isDarkMode = theme.palette.mode === 'dark';
   const settings = useInvoiceSettings();
   const mutations = useInvoiceMutations();
-  const [error, setError] = useState('');
+  useApiErrorToast(settings.error, settings.isError);
   const [notice, setNotice] = useState('');
   const [issuerName, setIssuerName] = useState('');
   const [ntn, setNtn] = useState('');
@@ -76,7 +77,6 @@ const InvoiceSettingsPage = () => {
   });
 
   const save = async (): Promise<boolean> => {
-    setError('');
     setNotice('');
     try {
       const mailbox = mailboxEmail.trim()
@@ -116,7 +116,7 @@ const InvoiceSettingsPage = () => {
       setNotice('Invoice settings saved.');
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save invoice settings'));
+      showApiError(err);
       return false;
     }
   };
@@ -163,25 +163,25 @@ const InvoiceSettingsPage = () => {
 
   const upload = async (file?: File) => {
     if (!file) return;
-    setError('');
     try {
       await mutations.uploadLogo.mutateAsync(file);
       setNotice('Logo updated.');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not upload the logo'));
+      showApiError(err);
     }
   };
 
   const testMailbox = async () => {
-    setError('');
     setNotice('');
     try {
       await mutations.testMailbox.mutateAsync();
       setNotice('Test email sent to the invoicing mailbox.');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not send the test email'));
+      showApiError(err);
     }
   };
+
+  if (settings.isError) return null;
 
   if (settings.isLoading || !hydrated) {
     return <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}><CircularProgress size={36} sx={{ color: tokens.brand.primary }} /></Box>;
@@ -241,7 +241,6 @@ const InvoiceSettingsPage = () => {
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{error}</Alert>}
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
 
       <Grid container spacing={3.5}>
