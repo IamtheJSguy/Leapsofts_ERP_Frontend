@@ -26,6 +26,7 @@ import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
 import { markMonitoringPromptPendingForLogin } from '@/utils/monitoringPromptSession';
+import { useApiErrorToast } from '@/utils/apiError';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
@@ -105,12 +106,8 @@ const TwoFactorSetupPage = () => {
     addToast({ message: 'Backup codes copied', severity: 'success' });
   };
 
-  const errorMessage =
-    (verifySetup.error as { response?: { data?: { error?: { message?: string } } } } | null)?.response
-      ?.data?.error?.message ||
-    (setup.error as { response?: { data?: { error?: { message?: string } } } } | null)?.response?.data
-      ?.error?.message ||
-    '';
+  useApiErrorToast(setup.error, setup.isError);
+  useApiErrorToast(verifySetup.error, verifySetup.isError);
 
   return (
     <Box
@@ -168,12 +165,6 @@ const TwoFactorSetupPage = () => {
             <StepLabel>Backup codes</StepLabel>
           </Step>
         </Stepper>
-
-        {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}>
-            {errorMessage}
-          </Alert>
-        )}
 
         {setup.isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

@@ -29,6 +29,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
 import { splitProspectName } from '@/utils/formatters';
+import { showApiError } from '@/utils/apiError';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
 
 const INITIAL_ROWS = 100;
@@ -634,8 +635,7 @@ export const BulkAddLeadsPage = () => {
           navigate('/sales');
         },
         onError: (err: any) => {
-          const errorMsg = err?.response?.data?.error?.message || 'Failed to create leads';
-          addToast({ message: errorMsg, severity: 'error' });
+          showApiError(err);
         },
       },
     );

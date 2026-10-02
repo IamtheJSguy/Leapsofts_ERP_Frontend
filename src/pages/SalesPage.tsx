@@ -85,6 +85,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
+import { showApiError } from '@/utils/apiError';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
@@ -373,8 +374,7 @@ export const SalesPage = () => {
           });
         },
         onError: (err: any) => {
-          const errorMsg = err?.response?.data?.error?.message || 'Failed to create lead';
-          addToast({ message: errorMsg, severity: 'error' });
+          showApiError(err);
         },
       },
     );
@@ -409,9 +409,7 @@ export const SalesPage = () => {
           });
         },
         onError: (err: any) => {
-          const errorMsg = err?.response?.data?.error?.message
-            || (nextStatus === 'sent' ? 'Failed to mark as sent' : 'Failed to mark as accepted');
-          addToast({ message: errorMsg, severity: 'error' });
+          showApiError(err);
         },
         onSettled: () => {
           setMarkingAcceptedIds((prev) => {
@@ -434,8 +432,7 @@ export const SalesPage = () => {
           addToast({ message: 'Marked as sent', severity: 'success' });
         },
         onError: (err: any) => {
-          const errorMsg = err?.response?.data?.error?.message || 'Failed to mark as sent';
-          addToast({ message: errorMsg, severity: 'error' });
+          showApiError(err);
         },
         onSettled: () => {
           setMarkingSentIds((prev) => {
@@ -567,8 +564,7 @@ export const SalesPage = () => {
         });
       },
       onError: (err: any) => {
-        const errorMsg = err?.response?.data?.error?.message || 'Failed to update lead';
-        addToast({ message: errorMsg, severity: 'error' });
+        showApiError(err);
       }
     });
   }, [editingLeads, addToast, updateLead, removeFromSnapshot, handleEditCancel]);
@@ -582,11 +578,7 @@ export const SalesPage = () => {
             message: `FollowUp #${number} selected`,
             severity: 'success',
           }),
-        onError: () =>
-          addToast({
-            message: 'Failed to update follow-up',
-            severity: 'error',
-          }),
+        onError: (err) => showApiError(err),
       },
     );
   }, [logFollowUp, addToast]);
@@ -2213,8 +2205,7 @@ export const SalesPage = () => {
                                           message: comment ? 'Comment saved' : 'Comment removed',
                                           severity: 'success',
                                         }),
-                                      onError: () =>
-                                        addToast({ message: 'Failed to save comment', severity: 'error' }),
+                                      onError: (err) => showApiError(err),
                                     },
                                   )
                                 }
@@ -2365,11 +2356,7 @@ export const SalesPage = () => {
                                           message: `FollowUp #${number} selected`,
                                           severity: 'success',
                                         }),
-                                      onError: () =>
-                                        addToast({
-                                          message: 'Failed to update follow-up',
-                                          severity: 'error',
-                                        }),
+                                      onError: (err) => showApiError(err),
                                     },
                                   );
                                 }}
@@ -2695,10 +2682,7 @@ export const SalesPage = () => {
               setDisqualifyLeadId('');
             },
             onError: (err: any) => {
-              addToast({
-                message: err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to disqualify lead.',
-                severity: 'error',
-              });
+              showApiError(err);
             },
           });
         }}

@@ -23,6 +23,7 @@ import { FileUploader } from '@/components/common/FileUploader';
 import { useBulkUpload } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import type { BulkUploadResponse, BulkUploadRowStatus } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 interface BulkUploadModalProps {
   open: boolean;
@@ -86,10 +87,7 @@ export const BulkUploadModal = ({ open, onClose }: BulkUploadModalProps) => {
         });
       },
       onError: (err: unknown) => {
-        const message =
-          (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
-            ?.error?.message || 'Upload failed';
-        addToast({ message, severity: 'error' });
+        showApiError(err);
       },
     });
   };

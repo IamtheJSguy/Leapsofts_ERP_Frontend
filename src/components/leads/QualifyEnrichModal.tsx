@@ -22,6 +22,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead, Meeting, User } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -515,7 +516,8 @@ export const QualifyEnrichModal = ({
   const isDarkMode = theme.palette.mode === 'dark';
   const isUpdateMode = mode === 'update';
 
-  const { data: lead, isLoading: isLeadLoading } = useLead(open ? leadId : undefined);
+  const { data: lead, isLoading: isLeadLoading, isError: isLeadError, error: leadError } = useLead(open ? leadId : undefined);
+  useApiErrorToast(leadError, Boolean(open && isLeadError));
   const qualifyLead = useQualifyLead();
   const updateLead = useUpdateLead();
   const createMeeting = useCreateMeeting();
@@ -671,8 +673,7 @@ export const QualifyEnrichModal = ({
       addToast({ message: 'Lead updated successfully.', severity: 'success' });
       onSuccess();
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to update lead.';
-      addToast({ message: msg, severity: 'error' });
+      showApiError(err);
     }
   };
 
@@ -696,9 +697,7 @@ export const QualifyEnrichModal = ({
           : board?.projectId?._id || board?.projectId?.toString?.();
       onSuccess(board?._id, projectId);
     } catch (err: any) {
-      console.error('Failed to enrich and qualify lead:', err);
-      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to enrich and qualify lead.';
-      addToast({ message: msg, severity: 'error' });
+      showApiError(err);
     }
   };
 
@@ -742,8 +741,7 @@ export const QualifyEnrichModal = ({
       setMeetingForm({ title: '', scheduledAt: '', meetingLink: '', description: '' });
       setMeetingParticipants([]);
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to create meeting.';
-      addToast({ message: msg, severity: 'error' });
+      showApiError(err);
     }
   };
 
@@ -856,7 +854,6 @@ export const QualifyEnrichModal = ({
           </Box>
         ) : !lead ? (
           <Box sx={{ p: 4, textAlign: 'center', flex: 1 }}>
-            <Typography color="error" sx={{ fontSize: '1rem', fontWeight: 600 }}>Failed to load lead details.</Typography>
           </Box>
         ) : (
           <Box sx={{

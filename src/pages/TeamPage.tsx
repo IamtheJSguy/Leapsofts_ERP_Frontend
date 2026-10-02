@@ -97,6 +97,7 @@ import {
 } from '@/lib/permissions';
 import { formatSalesKpiActual, SALES_KPI_EXTRA_TOOLTIP } from '@/lib/salesKpi';
 import type { Role, SalesKpiEntry, SalesKpiMetric, TeamProgressRow, UserPermissions } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
   SALES_KPI_METRIC.NEW_PROSPECTS,
@@ -755,13 +756,7 @@ const TeamPage = () => {
         handleResetForm();
       },
       onError: (err: any) => {
-        addToast({
-          message:
-            err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            'Failed to add team member.',
-          severity: 'error'
-        });
+        showApiError(err);
       },
     });
   };
@@ -782,10 +777,7 @@ const TeamPage = () => {
         setSearchParams({});
       },
       onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || 'Failed to delete user.',
-          severity: 'error'
-        });
+        showApiError(err);
       }
     });
   };
@@ -823,10 +815,7 @@ const TeamPage = () => {
         setIsEditUserOpen(false);
       },
       onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || 'Failed to update user.',
-          severity: 'error'
-        });
+        showApiError(err);
       }
     });
   };
@@ -1731,10 +1720,7 @@ const TeamPage = () => {
                     setIsReset2faOpen(false);
                   },
                   onError: (err: any) => {
-                    addToast({
-                      message: err?.response?.data?.error?.message || 'Failed to reset 2FA.',
-                      severity: 'error',
-                    });
+                    showApiError(err);
                   },
                 });
               }}
@@ -1788,10 +1774,7 @@ const TeamPage = () => {
                     setIsResetPasswordOpen(false);
                   },
                   onError: (err: any) => {
-                    addToast({
-                      message: err?.response?.data?.error?.message || 'Failed to reset password.',
-                      severity: 'error',
-                    });
+                    showApiError(err);
                   },
                 });
               }}

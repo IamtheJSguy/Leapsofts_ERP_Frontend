@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -36,7 +35,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { InvoiceSettingsButton } from '@/components/invoices/InvoiceSettingsButton';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
-import { apiErrorMessage, useInvoiceClients, useInvoiceMutations } from '@/hooks/api/useInvoices';
+import { useInvoiceClients, useInvoiceMutations } from '@/hooks/api/useInvoices';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { emptyClientForm, type InvoiceClientForm } from '@/types/invoice';
 
 const headerButtonSx = {
@@ -59,28 +59,26 @@ const InvoicesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const clients = useInvoiceClients(includeArchived);
   const mutations = useInvoiceMutations();
-  const [error, setError] = useState('');
+  useApiErrorToast(clients.error, clients.isError);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<InvoiceClientForm>(emptyClientForm());
   const [baseline, setBaseline] = useState(JSON.stringify(emptyClientForm()));
 
   const startCreate = () => {
     const next = emptyClientForm();
-    setError('');
     setForm(next);
     setBaseline(JSON.stringify(next));
     setOpen(true);
   };
 
   const save = async (): Promise<boolean> => {
-    setError('');
     try {
       await mutations.createClient.mutateAsync(form);
       setBaseline(JSON.stringify(form));
       setOpen(false);
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the client'));
+      showApiError(err);
       return false;
     }
   };
@@ -279,9 +277,6 @@ const InvoicesPage = () => {
           }}
         />
       </Box>
-
-      {error && !open && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{error}</Alert>}
-      {clients.isError && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{apiErrorMessage(clients.error, 'Could not load clients')}</Alert>}
 
       {clients.isLoading ? (
         <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}>
@@ -617,7 +612,6 @@ const InvoicesPage = () => {
             msOverflowStyle: 'none', /* IE/Edge */
           }}
         >
-          {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '12px' }}>{error}</Alert>}
           <InvoiceClientFields value={form} onChange={setForm} />
         </DialogContent>
 

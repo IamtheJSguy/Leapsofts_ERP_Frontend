@@ -5,12 +5,14 @@ import api from '@/lib/axios';
 import { discardQueryCacheForSessionChange } from '@/lib/queryPersistence';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { User } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 const ImpersonatePage = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const token = params.get('token');
@@ -27,15 +29,16 @@ const ImpersonatePage = () => {
         setAuth(res.data.data);
         navigate('/', { replace: true });
       })
-      .catch(() => {
+      .catch((err) => {
         localStorage.removeItem('accessToken');
-        setError('Impersonation session could not be started');
+        showApiError(err);
+        setFailed(true);
       });
   }, [navigate, params, setAuth]);
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-      {error ? <Typography color="error">{error}</Typography> : <CircularProgress />}
+      {error ? <Typography color="error">{error}</Typography> : failed ? null : <CircularProgress />}
     </Box>
   );
 };

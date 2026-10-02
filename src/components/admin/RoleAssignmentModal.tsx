@@ -21,6 +21,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import type { User } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 interface RoleAssignmentModalProps {
   user: User | null;
@@ -74,10 +75,7 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
         },
         onError: (err: any) => {
           setConfirmOpen(false);
-          addToast({
-            message: err.response?.data?.message || 'Failed to update user',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       },
     );

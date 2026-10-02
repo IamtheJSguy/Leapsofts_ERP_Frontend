@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import type {
@@ -17,14 +16,6 @@ export const invoiceKeys = {
   list: (organizationId?: string, status?: string, clientId?: string) =>
     ['invoices', organizationId, status || 'all', clientId || 'all'] as const,
   detail: (organizationId?: string, id?: string) => ['invoice', organizationId, id] as const,
-};
-
-export const apiErrorMessage = (error: unknown, fallback: string): string => {
-  if (axios.isAxiosError(error)) {
-    const message = error.response?.data?.error?.message;
-    if (typeof message === 'string' && message.trim()) return message;
-  }
-  return fallback;
 };
 
 const invoiceApi = {

@@ -23,6 +23,7 @@ import MailOutline from '@mui/icons-material/MailOutline';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import { loginSchema, type LoginFormData } from '@/utils/validators';
 import { useLogin } from '@/hooks/api/useAuth';
+import { showApiError } from '@/utils/apiError';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 
@@ -72,7 +73,8 @@ const LoginPage = () => {
         }
         navigate(from);
       },
-      onError: () => {
+      onError: (err) => {
+        showApiError(err);
         setShake(true);
         setTimeout(() => setShake(false), 500);
       },
@@ -526,7 +528,7 @@ const LoginPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 fullWidth
                 error={!!errors.password || login.isError}
-                helperText={errors.password?.message || (login.isError ? (login.error as any)?.response?.data?.error?.message || 'Incorrect email or password' : '')}
+                helperText={errors.password?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

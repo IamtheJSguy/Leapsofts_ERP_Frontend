@@ -33,6 +33,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoard } from '@/hooks/api/useKanban';
+import { showApiError } from '@/utils/apiError';
 
 interface GroupSettingsModalProps {
   open: boolean;
@@ -123,7 +124,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
             setConfirmDialog({ isOpen: false, action: null, participantId: null, participantName: '' });
           },
           onError: (err: any) => {
-            addToast({ message: err?.response?.data?.message || 'Failed to add member', severity: 'error' });
+            showApiError(err);
             setConfirmDialog({ isOpen: false, action: null, participantId: null, participantName: '' });
           },
         }
@@ -137,7 +138,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
             setConfirmDialog({ isOpen: false, action: null, participantId: null, participantName: '' });
           },
           onError: (err: any) => {
-            addToast({ message: err?.response?.data?.message || 'Failed to remove member', severity: 'error' });
+            showApiError(err);
             setConfirmDialog({ isOpen: false, action: null, participantId: null, participantName: '' });
           },
         }

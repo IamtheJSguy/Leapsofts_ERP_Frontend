@@ -35,7 +35,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview } from '@/components/invoices/InvoiceTemplatePreview';
-import { apiErrorMessage, useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
+import { useUIStore } from '@/store/useUIStore';
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import {
@@ -80,7 +82,10 @@ const InvoiceEditorPage = () => {
   const clients = useInvoiceClients(false);
   const invoice = useInvoice(id);
   const mutations = useInvoiceMutations();
-  const [error, setError] = useState('');
+  useApiErrorToast(settings.error, settings.isError);
+  useApiErrorToast(invoice.error, !isNew && invoice.isError);
+  const addToast = useUIStore((s) => s.addToast);
+  const showFormError = (message: string) => addToast({ message, severity: 'error' });
   const [notice, setNotice] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -253,10 +258,9 @@ const InvoiceEditorPage = () => {
   ): Promise<boolean> => {
     const body = payload(override);
     if (!body) {
-      setError('Fill the invoice number, select a client, and enter valid line items before saving.');
+      showFormError('Fill the invoice number, select a client, and enter valid line items before saving.');
       return false;
     }
-    setError('');
     setNotice('');
     try {
       if (isNew) {
@@ -277,7 +281,7 @@ const InvoiceEditorPage = () => {
       }
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the invoice'));
+      showApiError(err);
       return false;
     }
   };
@@ -295,7 +299,7 @@ const InvoiceEditorPage = () => {
         setNewClient(emptyClientForm());
         setClientOpen(false);
       } catch (err) {
-        setError(apiErrorMessage(err, 'Could not save the client'));
+        showApiError(err);
         return false;
       }
     }
@@ -318,7 +322,7 @@ const InvoiceEditorPage = () => {
         setNewBank(emptyBankDraft());
         setBankOpen(false);
       } catch (err) {
-        setError(apiErrorMessage(err, 'Could not save the bank account'));
+        showApiError(err);
         return false;
       }
     }
@@ -336,7 +340,6 @@ const InvoiceEditorPage = () => {
   );
 
   const createClientNow = async () => {
-    setError('');
     try {
       const created = await mutations.createClient.mutateAsync(newClient);
       setClientId(created._id);
@@ -345,12 +348,11 @@ const InvoiceEditorPage = () => {
       setClientOpen(false);
       setNotice('Client created.');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the client'));
+      showApiError(err);
     }
   };
 
   const addBankNow = async () => {
-    setError('');
     try {
       const before = new Set((settings.data?.bankAccounts || []).map((bank) => bank.id));
       const saved = await mutations.addBank.mutateAsync({
@@ -367,7 +369,7 @@ const InvoiceEditorPage = () => {
       setBankOpen(false);
       setNotice('Bank account added.');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the bank account'));
+      showApiError(err);
     }
   };
 
@@ -402,7 +404,6 @@ const InvoiceEditorPage = () => {
 
   const markPaid = async () => {
     if (!id) return;
-    setError('');
     setNotice('');
     try {
       const pdf = await paidPreviewBlob();
@@ -410,26 +411,25 @@ const InvoiceEditorPage = () => {
       const from = settings.data?.mailbox.email || 'your invoicing mailbox';
       setNotice(`Payment confirmation sent to ${client.email} from ${from}.`);
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not mark this invoice paid'));
+      showApiError(err);
     }
   };
 
   const send = async () => {
     if (!id) return;
-    setError('');
     setNotice('');
     try {
       const body = payload();
       if (body && !locked) await mutations.updateInvoice.mutateAsync({ id, body });
       if (!previewRef.current) {
-        setError('Invoice preview is not ready to send.');
+        showFormError('Invoice preview is not ready to send.');
         return;
       }
       const pdf = await invoiceElementToPdfBlob(previewRef.current);
       await mutations.sendInvoice.mutateAsync({ id, pdf });
       setNotice('Invoice emailed to the client successfully.');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not send the invoice'));
+      showApiError(err);
     }
   };
 
@@ -438,23 +438,18 @@ const InvoiceEditorPage = () => {
     const filename = `invoice-${invoiceNumber || 'draft'}.pdf`;
     try {
       if (!previewRef.current) {
-        setError('Invoice preview is not ready to download.');
+        showFormError('Invoice preview is not ready to download.');
         return;
       }
       await exportInvoiceElementToPdf(previewRef.current, filename);
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not download this invoice'));
+      showApiError(err);
     } finally {
       setExportingPdf(false);
     }
   };
 
-  if (settings.isError) {
-    return <Alert severity="error" sx={{ borderRadius: '14px' }}>{apiErrorMessage(settings.error, 'Could not load invoice settings')}</Alert>;
-  }
-  if (!isNew && invoice.isError) {
-    return <Alert severity="error" sx={{ borderRadius: '14px' }}>{apiErrorMessage(invoice.error, 'Could not load this invoice')}</Alert>;
-  }
+  if (settings.isError || (!isNew && invoice.isError)) return null;
 
   if (settings.isLoading || (!isNew && invoice.isLoading) || !hydrated) {
     return <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}><CircularProgress size={36} sx={{ color: tokens.brand.primary }} /></Box>;
@@ -506,7 +501,6 @@ const InvoiceEditorPage = () => {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px' }}>{error}</Alert>}
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
 
       {/* Split-Screen Studio Grid */}

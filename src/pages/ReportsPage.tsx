@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Typography,
   Box,
@@ -21,6 +21,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useReport } from '@/hooks/api/useReports';
 import { tokens } from '@/styles/tokens';
+import { useUIStore } from '@/store/useUIStore';
+import { useApiErrorToast } from '@/utils/apiError';
 import type {
   Report,
   AttendanceMetrics,
@@ -64,7 +66,17 @@ const ReportsPage = () => {
   }, [isElevated, users, selectedAgentId]);
 
   // Fetch the selected report details (with polling while processing)
-  const { data: selectedReport, isLoading: reportLoading } = useReport(selectedReportId ?? undefined);
+  const { data: selectedReport, isLoading: reportLoading, isError: reportIsError, error: reportError } = useReport(selectedReportId ?? undefined);
+  const addToast = useUIStore((s) => s.addToast);
+  const failedReportKey = useRef('');
+  useApiErrorToast(reportError, reportIsError);
+  useEffect(() => {
+    if (selectedReport?.status !== 'failed') return;
+    const key = `${selectedReport._id}:${selectedReport.error || ''}`;
+    if (failedReportKey.current === key) return;
+    failedReportKey.current = key;
+    addToast({ message: selectedReport.error || 'Request failed', severity: 'error' });
+  }, [addToast, selectedReport]);
 
   /** Handle report generated — switch to viewing the result */
   const handleReportGenerated = (id: string) => {
@@ -110,13 +122,7 @@ const ReportsPage = () => {
     }
 
     // Failed state
-    if (selectedReport.status === 'failed') {
-      return (
-        <Alert severity="error" sx={{ borderRadius: '16px' }}>
-          Report generation failed: {selectedReport.error || 'Unknown error'}
-        </Alert>
-      );
-    }
+    if (selectedReport.status === 'failed') return null;
 
     // Completed — render the actual report view
     const metrics = selectedReport.metrics;
