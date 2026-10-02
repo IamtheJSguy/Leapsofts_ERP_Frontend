@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import {
   Alert,
@@ -36,6 +36,7 @@ import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview } from '@/components/invoices/InvoiceTemplatePreview';
 import { apiErrorMessage, useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { exportInvoiceElementToPdf } from '@/lib/invoicePdfExport';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import {
   emptyClientForm,
@@ -96,6 +97,8 @@ const InvoiceEditorPage = () => {
   const [newClient, setNewClient] = useState<InvoiceClientForm>(emptyClientForm());
   const [bankOpen, setBankOpen] = useState(false);
   const [newBank, setNewBank] = useState(emptyBankDraft());
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHydrated(false);
@@ -108,6 +111,7 @@ const InvoiceEditorPage = () => {
       if (presetClientId && clients.isLoading) return;
       const nextTemplate = settings.data.defaultTemplate;
       const nextTax = String(settings.data.defaultTaxRate);
+      const defaultBankIds = (settings.data.bankAccounts || []).map((b) => b.id);
       const match = presetClientId
         ? (clients.data || []).find((item) => item._id === presetClientId && !item.isArchived)
         : undefined;
@@ -119,6 +123,7 @@ const InvoiceEditorPage = () => {
       setTaxRate(nextTax);
       setClientId(nextClientId);
       setClient(nextClient);
+      setBankAccountIds(defaultBankIds);
       setBaseline(JSON.stringify({
         invoiceNumber: '',
         clientId: nextClientId,
@@ -128,7 +133,7 @@ const InvoiceEditorPage = () => {
         templateId: nextTemplate,
         taxRate: nextTax,
         lines: [{ description: '', qty: '1', unitPrice: '0' }],
-        bankAccountIds: [],
+        bankAccountIds: defaultBankIds,
       }));
       setHydrated(true);
       return;
@@ -384,6 +389,27 @@ const InvoiceEditorPage = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    setExportingPdf(true);
+    const filename = `invoice-${invoiceNumber || 'draft'}.pdf`;
+    try {
+      if (previewRef.current) {
+        await exportInvoiceElementToPdf(previewRef.current, filename);
+        return;
+      }
+      if (id) {
+        await mutations.download(id, filename);
+      }
+    } catch (err) {
+      console.error('High-fidelity PDF export error, falling back to server download:', err);
+      if (id) {
+        await mutations.download(id, filename);
+      }
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   if (settings.isError) {
     return <Alert severity="error" sx={{ borderRadius: '14px' }}>{apiErrorMessage(settings.error, 'Could not load invoice settings')}</Alert>;
   }
@@ -395,7 +421,11 @@ const InvoiceEditorPage = () => {
     return <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}><CircularProgress size={36} sx={{ color: tokens.brand.primary }} /></Box>;
   }
 
-  const selectedBanks = (settings.data?.bankAccounts || []).filter((bank) => bankAccountIds.includes(bank.id));
+  const allOrgBanks = settings.data?.bankAccounts || [];
+  const selectedBanks =
+    bankAccountIds.length > 0
+      ? allOrgBanks.filter((bank) => bankAccountIds.includes(bank.id))
+      : allOrgBanks;
   const previewLines = lines.map((line) => ({
     description: line.description,
     qty: Number(line.qty) || 0,
@@ -808,16 +838,15 @@ const InvoiceEditorPage = () => {
                 </Button>
               )}
 
-              {!isNew && id && (
-                <Button
-                  variant="outlined"
-                  onClick={() => mutations.download(id, `invoice-${invoiceNumber || 'draft'}.pdf`)}
-                  startIcon={<DownloadIcon />}
-                  sx={{ borderRadius: '14px', px: 2.5, py: 1.1, textTransform: 'none', fontWeight: 750 }}
-                >
-                  Download PDF
-                </Button>
-              )}
+              <Button
+                variant="outlined"
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                startIcon={exportingPdf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                sx={{ borderRadius: '14px', px: 2.5, py: 1.1, textTransform: 'none', fontWeight: 750 }}
+              >
+                Download PDF
+              </Button>
             </Box>
 
           </Box>
@@ -826,31 +855,45 @@ const InvoiceEditorPage = () => {
         {/* Right Column: Sticky Live Receipt Preview */}
         <Grid item xs={12} lg={5.5}>
           <Box sx={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.72rem' }}>
-              Live Receipt Preview
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.72rem' }}>
+                Live Receipt Preview
+              </Typography>
+              <Button
+                size="small"
+                variant="text"
+                startIcon={exportingPdf ? <CircularProgress size={13} color="inherit" /> : <DownloadIcon sx={{ fontSize: 15 }} />}
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.76rem', color: tokens.brand.primary, py: 0.25, px: 1 }}
+              >
+                Download PDF
+              </Button>
+            </Box>
 
-            <InvoiceTemplatePreview
-              data={{
-                template: templateId,
-                invoiceNumber,
-                issueDate,
-                dueDate,
-                currency,
-                paid: invoice.data?.status === 'paid',
-                logoUrl: settings.data?.logoUrl,
-                issuer: {
-                  name: settings.data?.issuerName || '',
-                  ntn: settings.data?.ntn || '',
-                  address: settings.data?.address || '',
-                  email: settings.data?.email || '',
-                },
-                client,
-                lines: previewLines,
-                taxRate: Number(taxRate) || 0,
-                banks: selectedBanks,
-              }}
-            />
+            <Box ref={previewRef} sx={{ background: '#FFFFFF', borderRadius: '16px', overflow: 'hidden' }}>
+              <InvoiceTemplatePreview
+                data={{
+                  template: templateId,
+                  invoiceNumber,
+                  issueDate,
+                  dueDate,
+                  currency,
+                  paid: invoice.data?.status === 'paid',
+                  logoUrl: settings.data?.logoUrl,
+                  issuer: {
+                    name: settings.data?.issuerName || '',
+                    ntn: settings.data?.ntn || '',
+                    address: settings.data?.address || '',
+                    email: settings.data?.email || '',
+                  },
+                  client,
+                  lines: previewLines,
+                  taxRate: Number(taxRate) || 0,
+                  banks: selectedBanks,
+                }}
+              />
+            </Box>
           </Box>
         </Grid>
       </Grid>
