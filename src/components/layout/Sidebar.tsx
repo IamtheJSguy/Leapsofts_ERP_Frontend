@@ -67,19 +67,26 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage', requiresEntitlement: 'salesModule' },
-      { label: 'Invoices', path: '/invoices', icon: <ReceiptLongIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canAccessInvoicing', requiresEntitlement: 'invoicingModule' },
-      { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
-      // { label: 'Leads', path: '/leads', icon: <ContactPageIcon sx={{ fontSize: 18 }} /> },
       { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'projectsAndBoards' },
-      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewTeamDashboard' },
     ],
   },
   {
-    title: 'Analytics',
+    title: 'Sales & CRM',
     items: [
-      // { label: 'KPIs', path: '/kpis', icon: <SpeedIcon sx={{ fontSize: 18 }} /> },
-      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports', requiresEntitlement: 'scheduledReports' },
+      { label: 'Sales & Pipeline', path: '/sales', icon: <TrendingUpIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewSalesPage', requiresEntitlement: 'salesModule' },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { label: 'Invoices', path: '/invoices', icon: <ReceiptLongIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canAccessInvoicing', requiresEntitlement: 'invoicingModule' },
+    ],
+  },
+  {
+    title: 'People & HR',
+    items: [
+      { label: 'Team', path: '/team', icon: <PeopleIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewTeamDashboard' },
+      { label: 'Attendance', path: '/attendance', icon: <AccessTimeIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {
@@ -87,6 +94,12 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
       { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'chat' },
+    ],
+  },
+  {
+    title: 'Analytics',
+    items: [
+      { label: 'Reports', path: '/reports', icon: <AssessmentIcon sx={{ fontSize: 18 }} />, requiresPermission: 'canViewAdminReports', requiresEntitlement: 'scheduledReports' },
     ],
   },
   {
@@ -318,7 +331,7 @@ export const Sidebar = () => {
           if (filteredItems.length === 0) return null;
 
           return (
-            <Box key={group.title} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : 3 }}>
+            <Box key={group.title} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : 2.5 }}>
               {/* Category Header Label */}
               <Typography
                 variant="caption"

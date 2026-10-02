@@ -317,7 +317,15 @@ const InvoiceClientDetailPage = () => {
   const settings = useInvoiceSettings();
   const mutations = useInvoiceMutations();
   const [filter, setFilter] = useState<'' | InvoiceStatus | 'overdue'>('');
-  const invoices = useInvoices(filter || undefined, clientId || undefined);
+  const [issuedFrom, setIssuedFrom] = useState('');
+  const [issuedTo, setIssuedTo] = useState('');
+  const dateRangeInvalid = Boolean(issuedFrom && issuedTo && issuedFrom > issuedTo);
+  const invoices = useInvoices(
+    filter || undefined,
+    clientId || undefined,
+    issuedFrom || undefined,
+    issuedTo || undefined,
+  );
   useApiErrorToast(clients.error, clients.isError);
   useApiErrorToast(invoices.error, invoices.isError);
   const [notice, setNotice] = useState('');
@@ -709,39 +717,93 @@ const InvoiceClientDetailPage = () => {
 
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
       {/* Invoices Toolbar & History Table */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.01em' }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 800,
+            color: isDarkMode ? '#fff' : tokens.text.primary,
+            letterSpacing: '-0.01em',
+            pt: 0.5,
+            mr: 'auto',
+          }}
+        >
           Billing History & Invoices
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {FILTERS.map((item) => {
-            const active = filter === item.id;
-            return (
-              <Chip
-                key={item.id || 'all'}
-                label={item.label}
-                clickable
-                onClick={() => setFilter(item.id)}
-                sx={{
-                  fontWeight: 750,
-                  fontSize: '0.75rem',
-                  height: 30,
-                  px: 0.75,
-                  borderRadius: '10px',
-                  bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
-                  color: active ? '#ffffff' : 'text.primary',
-                  border: `1px solid ${active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
-                  }
-                }}
-              />
-            );
-          })}
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 1.25,
+            maxWidth: '100%',
+          }}
+        >
+          <TextField
+            select
+            size="small"
+            label="Invoice type"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as '' | InvoiceStatus | 'overdue')}
+            InputLabelProps={{ shrink: true }}
+            SelectProps={{
+              displayEmpty: true,
+              renderValue: (value) => FILTERS.find((item) => item.id === value)?.label || 'All Invoices',
+            }}
+            sx={{
+              width: 160,
+              '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 },
+              '& .MuiSelect-select': { fontWeight: 700, fontSize: '0.85rem' },
+            }}
+          >
+            {FILTERS.map((item) => (
+              <MenuItem key={item.id || 'all'} value={item.id} sx={{ fontWeight: 650, fontSize: '0.85rem' }}>
+                {item.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            size="small"
+            type="date"
+            label="Issued from"
+            value={issuedFrom}
+            onChange={(event) => setIssuedFrom(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ max: issuedTo || undefined }}
+            sx={{ width: 168, '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="Issued to"
+            value={issuedTo}
+            onChange={(event) => setIssuedTo(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: issuedFrom || undefined }}
+            error={dateRangeInvalid}
+            sx={{ width: 168, '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
+          />
+          {(issuedFrom || issuedTo) && (
+            <Button
+              size="small"
+              onClick={() => {
+                setIssuedFrom('');
+                setIssuedTo('');
+              }}
+              sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, color: 'text.secondary' }}
+            >
+              Clear dates
+            </Button>
+          )}
         </Box>
       </Box>
+      {dateRangeInvalid && (
+        <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'error.main', fontWeight: 650, textAlign: 'right' }}>
+          Issued from must be on or before issued to.
+        </Typography>
+      )}
 
       <Paper
         elevation={0}
@@ -792,7 +854,11 @@ const InvoiceClientDetailPage = () => {
               {(invoices.data || []).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} sx={{ py: 6, textAlign: 'center', color: 'text.secondary', fontWeight: 600 }}>
-                    No invoice records found for this filter.
+                    {dateRangeInvalid
+                      ? 'Issued from must be on or before issued to.'
+                      : issuedFrom || issuedTo
+                        ? 'No invoices were issued in this date range.'
+                        : 'No invoice records found for this filter.'}
                   </TableCell>
                 </TableRow>
               )}
