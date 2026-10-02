@@ -13,8 +13,8 @@ export const invoiceKeys = {
   settings: (organizationId?: string) => ['invoice-settings', organizationId] as const,
   clients: (organizationId?: string, includeArchived = false) =>
     ['invoice-clients', organizationId, includeArchived] as const,
-  list: (organizationId?: string, status?: string, clientId?: string) =>
-    ['invoices', organizationId, status || 'all', clientId || 'all'] as const,
+  list: (organizationId?: string, status?: string, clientId?: string, issuedFrom?: string, issuedTo?: string) =>
+    ['invoices', organizationId, status || 'all', clientId || 'all', issuedFrom || '', issuedTo || ''] as const,
   detail: (organizationId?: string, id?: string) => ['invoice', organizationId, id] as const,
 };
 
@@ -50,11 +50,13 @@ const invoiceApi = {
     api.post<{ data: InvoiceClient }>(`/invoices/clients/${id}/archive`).then((r) => r.data.data),
   unarchiveClient: (id: string) =>
     api.post<{ data: InvoiceClient }>(`/invoices/clients/${id}/unarchive`).then((r) => r.data.data),
-  list: (status?: InvoiceStatus | 'overdue', clientId?: string) =>
+  list: (status?: InvoiceStatus | 'overdue', clientId?: string, issuedFrom?: string, issuedTo?: string) =>
     api.get<{ data: InvoiceRecord[] }>('/invoices', {
       params: {
         ...(status ? { status } : {}),
         ...(clientId ? { clientId } : {}),
+        ...(issuedFrom ? { issuedFrom } : {}),
+        ...(issuedTo ? { issuedTo } : {}),
       },
     }).then((r) => r.data.data),
   get: (id: string) => api.get<{ data: InvoiceRecord }>(`/invoices/${id}`).then((r) => r.data.data),
@@ -106,12 +108,17 @@ export const useInvoiceClients = (includeArchived = false) => {
   });
 };
 
-export const useInvoices = (status?: InvoiceStatus | 'overdue', clientId?: string) => {
+export const useInvoices = (
+  status?: InvoiceStatus | 'overdue',
+  clientId?: string,
+  issuedFrom?: string,
+  issuedTo?: string,
+) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
-    queryKey: invoiceKeys.list(organizationId, status, clientId),
-    queryFn: () => invoiceApi.list(status, clientId),
-    enabled: Boolean(organizationId),
+    queryKey: invoiceKeys.list(organizationId, status, clientId, issuedFrom, issuedTo),
+    queryFn: () => invoiceApi.list(status, clientId, issuedFrom, issuedTo),
+    enabled: Boolean(organizationId) && !(issuedFrom && issuedTo && issuedFrom > issuedTo),
   });
 };
 
