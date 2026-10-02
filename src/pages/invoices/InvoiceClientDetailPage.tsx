@@ -466,12 +466,12 @@ const InvoiceClientDetailPage = () => {
           mb: 2.5,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          alignItems: { xs: 'flex-start', lg: 'center' },
           gap: 2,
+          flexWrap: 'wrap',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, minWidth: 0, flex: '1 1 240px' }}>
           <Avatar
             sx={{
               width: 46,
@@ -517,26 +517,26 @@ const InvoiceClientDetailPage = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75, flexWrap: 'wrap', color: 'text.secondary', fontSize: '0.8rem' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
-                <span>{client.email}</span>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: { xs: 'flex-start', lg: 'center' }, flexWrap: 'wrap', gap: { xs: 0.65, lg: 1.75 }, mt: 0.75, color: 'text.secondary', fontSize: '0.8rem' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary, flexShrink: 0 }} />
+                <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.email}</Box>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <ReceiptLongOutlinedIcon sx={{ fontSize: 14 }} />
+                <ReceiptLongOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
                 <span>NTN: <strong>{client.ntn || '—'}</strong></span>
               </Box>
               {(client.location || client.address) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <LocationOnOutlinedIcon sx={{ fontSize: 14 }} />
-                  <span>{client.location || client.address}</span>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                  <LocationOnOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
+                  <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.location || client.address}</Box>
                 </Box>
               )}
             </Box>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 1, flexShrink: 0, alignItems: { xs: 'stretch', lg: 'center' }, minWidth: { xs: 168, lg: 'auto' } }}>
           <Button
             size="small"
             variant="outlined"
