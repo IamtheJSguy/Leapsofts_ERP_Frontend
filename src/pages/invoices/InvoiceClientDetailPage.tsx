@@ -104,23 +104,6 @@ const getStatusStyle = (status: InvoiceStatus, overdue: boolean, isDarkMode: boo
   }
 };
 
-const getTemplateBadge = (templateId?: string, isDarkMode = false) => {
-  switch (templateId) {
-    case 'modern':
-      return { label: 'Modern Studio', color: '#9333EA', bg: isDarkMode ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.08)', border: 'rgba(147, 51, 234, 0.3)' };
-    case 'classic':
-      return { label: 'Classic Corporate', color: isDarkMode ? '#94A3B8' : '#334155', bg: isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(51, 65, 85, 0.08)', border: 'rgba(51, 65, 85, 0.25)' };
-    case 'compact':
-      return { label: 'SaaS Minimalist', color: '#0284C7', bg: isDarkMode ? 'rgba(2, 132, 199, 0.15)' : 'rgba(2, 132, 199, 0.08)', border: 'rgba(2, 132, 199, 0.3)' };
-    case 'minimal':
-      return { label: 'Aqua Geometric', color: '#0891B2', bg: isDarkMode ? 'rgba(8, 145, 178, 0.15)' : 'rgba(8, 145, 178, 0.08)', border: 'rgba(8, 145, 178, 0.3)' };
-    case 'bold':
-      return { label: 'Monochrome Studio', color: isDarkMode ? '#F4F4F5' : '#18181B', bg: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(24, 24, 27, 0.08)', border: isDarkMode ? 'rgba(255, 255, 255, 0.25)' : 'rgba(24, 24, 27, 0.3)' };
-    default:
-      return { label: 'Modern Studio', color: '#9333EA', bg: isDarkMode ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.08)', border: 'rgba(147, 51, 234, 0.3)' };
-  }
-};
-
 const dateLabel = (value: string) => value.slice(0, 10);
 
 const PROFILE_GROUPS: Array<{
@@ -466,12 +449,12 @@ const InvoiceClientDetailPage = () => {
           mb: 2.5,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          alignItems: { xs: 'flex-start', lg: 'center' },
           gap: 2,
+          flexWrap: 'wrap',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, minWidth: 0, flex: '1 1 240px' }}>
           <Avatar
             sx={{
               width: 46,
@@ -517,26 +500,26 @@ const InvoiceClientDetailPage = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75, flexWrap: 'wrap', color: 'text.secondary', fontSize: '0.8rem' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary }} />
-                <span>{client.email}</span>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: { xs: 'flex-start', lg: 'center' }, flexWrap: 'wrap', gap: { xs: 0.65, lg: 1.75 }, mt: 0.75, color: 'text.secondary', fontSize: '0.8rem' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary, flexShrink: 0 }} />
+                <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.email}</Box>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <ReceiptLongOutlinedIcon sx={{ fontSize: 14 }} />
+                <ReceiptLongOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
                 <span>NTN: <strong>{client.ntn || '—'}</strong></span>
               </Box>
               {(client.location || client.address) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <LocationOnOutlinedIcon sx={{ fontSize: 14 }} />
-                  <span>{client.location || client.address}</span>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                  <LocationOnOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
+                  <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.location || client.address}</Box>
                 </Box>
               )}
             </Box>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 1, flexShrink: 0, alignItems: { xs: 'stretch', lg: 'center' }, minWidth: { xs: 168, lg: 'auto' } }}>
           <Button
             size="small"
             variant="outlined"
@@ -778,14 +761,18 @@ const InvoiceClientDetailPage = () => {
             <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
-          <Table size="medium">
+          <Box sx={{ overflowX: 'auto' }}>
+          <Table
+            size="medium"
+            sx={{
+              minWidth: 820,
+              '& th, & td': { whiteSpace: 'nowrap' },
+            }}
+          >
             <TableHead>
               <TableRow sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
                 <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary', py: 1.75 }}>
                   Invoice Number
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}>
-                  Design Layout
                 </TableCell>
                 <TableCell sx={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}>
                   Issue Date
@@ -807,14 +794,13 @@ const InvoiceClientDetailPage = () => {
             <TableBody>
               {(invoices.data || []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} sx={{ py: 6, textAlign: 'center', color: 'text.secondary', fontWeight: 600 }}>
+                  <TableCell colSpan={6} sx={{ py: 6, textAlign: 'center', color: 'text.secondary', fontWeight: 600 }}>
                     No invoice records found for this filter.
                   </TableCell>
                 </TableRow>
               )}
               {(invoices.data || []).map((invoice) => {
                 const st = getStatusStyle(invoice.status, invoice.overdue, isDarkMode);
-                const tpl = getTemplateBadge(invoice.templateId, isDarkMode);
                 return (
                   <TableRow
                     key={invoice._id}
@@ -827,22 +813,6 @@ const InvoiceClientDetailPage = () => {
                   >
                     <TableCell sx={{ fontWeight: 800, fontSize: '0.875rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
                       {invoice.invoiceNumber}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={tpl.label}
-                        sx={{
-                          height: 22,
-                          fontSize: '0.64rem',
-                          fontWeight: 800,
-                          bgcolor: tpl.bg,
-                          color: tpl.color,
-                          border: `1px solid ${tpl.border}`,
-                          borderRadius: '6px',
-                          px: 0.5,
-                        }}
-                      />
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.825rem', color: 'text.secondary', fontWeight: 550 }}>
                       {dateLabel(invoice.issueDate)}
@@ -873,7 +843,7 @@ const InvoiceClientDetailPage = () => {
                       <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <Button
                           size="small"
-                          onClick={() => navigate(`/invoices/${invoice._id}`)}
+                          onClick={() => navigate(`/invoices/${invoice._id}?clientId=${client._id}`)}
                           startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
                           sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
                         >
@@ -947,6 +917,7 @@ const InvoiceClientDetailPage = () => {
               })}
             </TableBody>
           </Table>
+          </Box>
         )}
       </Paper>
 

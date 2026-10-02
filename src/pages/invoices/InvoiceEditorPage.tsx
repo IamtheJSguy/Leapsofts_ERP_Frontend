@@ -72,7 +72,7 @@ const InvoiceEditorPage = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isNew = !id;
-  const presetClientId = isNew ? (searchParams.get('clientId') || '') : '';
+  const presetClientId = searchParams.get('clientId') || '';
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -264,7 +264,11 @@ const InvoiceEditorPage = () => {
         rememberSaved(body);
         if (openCreated) {
           allowNext();
-          navigate(`/invoices/${created._id}`, { replace: true });
+          const returnClientId = presetClientId || created.clientId || '';
+          navigate(
+            returnClientId ? `/invoices/${created._id}?clientId=${returnClientId}` : `/invoices/${created._id}`,
+            { replace: true },
+          );
         }
       } else if (id) {
         await mutations.updateInvoice.mutateAsync({ id, body });
@@ -322,7 +326,8 @@ const InvoiceEditorPage = () => {
     return persist(override, false);
   };
 
-  const exitTo = presetClientId ? `/invoices/clients/${presetClientId}` : '/invoices';
+  const returnClientId = presetClientId || invoice.data?.clientId || '';
+  const exitTo = returnClientId ? `/invoices/clients/${returnClientId}` : '/invoices';
   const { dialog: leaveDialog, requestLeave, allowNext } = useInvoiceLeave(
     Boolean(!locked && (invoiceDirty || clientDirty || bankDirty)),
     saveForLeave,
@@ -490,7 +495,7 @@ const InvoiceEditorPage = () => {
             startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
             sx={{ textTransform: 'none', px: 1, py: 0.5, mb: 1, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}
           >
-            {presetClientId ? 'Back to client' : 'Back to Invoices'}
+            {returnClientId ? 'Back to client' : 'Back to Invoices'}
           </Button>
           <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.025em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
             {isNew ? 'Invoice Studio' : invoiceNumber || 'Edit Invoice'}
