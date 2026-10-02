@@ -90,6 +90,7 @@ import {
   DEFAULT_SHIFT_END,
   resolvePermissions,
   isPermissionLocked,
+  isPermissionOffered,
   permissionLockHelperText,
   coercePermissions,
   emptyPermissions,
@@ -471,8 +472,11 @@ const AccessPermissionsFields = ({
   onChange: (next: UserPermissions) => void;
   isDarkMode: boolean;
 }) => {
+  const entitlements = useEntitlements();
   if (role === ROLES.ADMIN) return null;
   const resolved = resolvePermissions(role, department, permissions);
+  const visibleKeys = PERMISSION_KEYS.filter((key) => isPermissionOffered(key, entitlements));
+  if (visibleKeys.length === 0) return null;
 
   return (
     <Box sx={{ width: '100%', mb: 2.5 }}>
@@ -488,7 +492,7 @@ const AccessPermissionsFields = ({
         Access
       </Typography>
       <FormGroup>
-        {PERMISSION_KEYS.map((key) => {
+        {visibleKeys.map((key) => {
           const locked = isPermissionLocked(role, department, key);
           const helper = permissionLockHelperText(role, department, key);
           return (

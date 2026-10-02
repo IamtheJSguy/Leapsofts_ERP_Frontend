@@ -8,9 +8,33 @@ export const PERMISSION_KEYS = [
   'manageSystemSettings',
   'manageSalesSettings',
   'createProjectsAndBoards',
+  'accessInvoicing',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+/** Org modules that gate a permission checkbox. Keys omitted here are always offered. */
+const PERMISSION_ENTITLEMENT: Partial<
+  Record<PermissionKey, 'salesModule' | 'projectsAndBoards' | 'invoicingModule'>
+> = {
+  viewSalesPage: 'salesModule',
+  manageSalesSettings: 'salesModule',
+  createProjectsAndBoards: 'projectsAndBoards',
+  accessInvoicing: 'invoicingModule',
+};
+
+export const isPermissionOffered = (
+  key: PermissionKey,
+  entitlements: {
+    salesModule?: boolean;
+    projectsAndBoards?: boolean;
+    invoicingModule?: boolean;
+  },
+): boolean => {
+  const moduleKey = PERMISSION_ENTITLEMENT[key];
+  if (!moduleKey) return true;
+  return entitlements[moduleKey] !== false;
+};
 
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   viewSalesPage: 'View Sales page',
@@ -19,6 +43,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   manageSystemSettings: 'Manage system settings',
   manageSalesSettings: 'Manage sales settings',
   createProjectsAndBoards: 'Create projects and boards',
+  accessInvoicing: 'Use invoicing',
 };
 
 export const DEFAULT_SHIFT_START = '09:00';
@@ -31,6 +56,7 @@ export const emptyPermissions = (): UserPermissions => ({
   manageSystemSettings: false,
   manageSalesSettings: false,
   createProjectsAndBoards: false,
+  accessInvoicing: false,
 });
 
 export const coercePermissions = (stored?: Partial<UserPermissions> | null): UserPermissions => {

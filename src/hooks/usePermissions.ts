@@ -24,6 +24,7 @@ export const usePermissions = () => {
       canAccessTeam: flags.accessTeam,
       canViewAllAttendance: flags.viewAllAttendance,
       canCreateProjectsAndBoards: flags.createProjectsAndBoards,
+      canAccessInvoicing: flags.accessInvoicing,
       canPromoteRoles: isAdmin,
       canDeactivateUsers: isAdmin,
       canManageLeads: !!user,
