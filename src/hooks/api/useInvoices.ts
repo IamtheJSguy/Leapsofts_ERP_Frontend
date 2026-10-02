@@ -71,8 +71,20 @@ const invoiceApi = {
     api.post<{ data: InvoiceRecord }>('/invoices', body).then((r) => r.data.data),
   update: (id: string, body: SaveInvoicePayload) =>
     api.put<{ data: InvoiceRecord }>(`/invoices/${id}`, body).then((r) => r.data.data),
-  send: (id: string) => api.post<{ data: InvoiceRecord }>(`/invoices/${id}/send`).then((r) => r.data.data),
-  markPaid: (id: string) => api.post<{ data: InvoiceRecord }>(`/invoices/${id}/mark-paid`).then((r) => r.data.data),
+  send: (id: string, pdf: Blob) => {
+    const form = new FormData();
+    form.append('pdf', pdf, 'invoice.pdf');
+    return api.post<{ data: InvoiceRecord }>(`/invoices/${id}/send`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data.data);
+  },
+  markPaid: (id: string, pdf: Blob) => {
+    const form = new FormData();
+    form.append('pdf', pdf, 'invoice.pdf');
+    return api.post<{ data: InvoiceRecord }>(`/invoices/${id}/mark-paid`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data.data);
+  },
   voidInvoice: (id: string) => api.post<{ data: InvoiceRecord }>(`/invoices/${id}/void`).then((r) => r.data.data),
   download: async (id: string, filename: string) => {
     const response = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
@@ -149,8 +161,14 @@ export const useInvoiceMutations = () => {
       mutationFn: ({ id, body }: { id: string; body: SaveInvoicePayload }) => invoiceApi.update(id, body),
       onSuccess: invalidate,
     }),
-    sendInvoice: useMutation({ mutationFn: invoiceApi.send, onSuccess: invalidate }),
-    markPaid: useMutation({ mutationFn: invoiceApi.markPaid, onSuccess: invalidate }),
+    sendInvoice: useMutation({
+      mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.send(id, pdf),
+      onSuccess: invalidate,
+    }),
+    markPaid: useMutation({
+      mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.markPaid(id, pdf),
+      onSuccess: invalidate,
+    }),
     voidInvoice: useMutation({ mutationFn: invoiceApi.voidInvoice, onSuccess: invalidate }),
     download: invoiceApi.download,
   };

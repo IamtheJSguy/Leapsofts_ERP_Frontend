@@ -144,6 +144,21 @@ export const INVOICE_TEMPLATE_OPTIONS: Array<{ id: InvoiceTemplateId; label: str
   { id: 'bold', label: 'Monochrome Studio' },
 ];
 
+export const INVOICE_CURRENCIES: Array<{ code: string; label: string }> = [
+  { code: 'PKR', label: 'PKR — Pakistani Rupee' },
+  { code: 'USD', label: 'USD — US Dollar' },
+  { code: 'EUR', label: 'EUR — Euro' },
+  { code: 'GBP', label: 'GBP — British Pound' },
+  { code: 'AED', label: 'AED — UAE Dirham' },
+  { code: 'SAR', label: 'SAR — Saudi Riyal' },
+  { code: 'QAR', label: 'QAR — Qatari Riyal' },
+  { code: 'CAD', label: 'CAD — Canadian Dollar' },
+  { code: 'AUD', label: 'AUD — Australian Dollar' },
+  { code: 'INR', label: 'INR — Indian Rupee' },
+  { code: 'CNY', label: 'CNY — Chinese Yuan' },
+  { code: 'SGD', label: 'SGD — Singapore Dollar' },
+];
+
 export const MAILBOX_PROVIDER_OPTIONS: Array<{ id: MailboxProvider; label: string }> = [
   { id: 'gmail', label: 'Gmail' },
   { id: 'outlook', label: 'Outlook / Microsoft 365' },

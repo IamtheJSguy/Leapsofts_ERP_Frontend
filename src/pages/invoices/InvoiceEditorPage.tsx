@@ -36,7 +36,7 @@ import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview } from '@/components/invoices/InvoiceTemplatePreview';
 import { apiErrorMessage, useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
-import { exportInvoiceElementToPdf } from '@/lib/invoicePdfExport';
+import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import {
   emptyClientForm,
@@ -173,7 +173,9 @@ const InvoiceEditorPage = () => {
   }, [clients.data, clients.isLoading, dueDate, hydrated, invoice.data, isNew, issueDate, presetClientId, settings.data]);
 
   const locked = !isNew && invoice.data && invoice.data.status !== 'draft';
-  const currency = invoice.data?.currency || settings.data?.currency || 'USD';
+  const currency = locked
+    ? (invoice.data?.currency || settings.data?.currency || 'USD')
+    : (settings.data?.currency || invoice.data?.currency || 'USD');
 
   const totals = useMemo(() => {
     const parsed = lines.map((line) => {
@@ -320,10 +322,12 @@ const InvoiceEditorPage = () => {
     return persist(override, false);
   };
 
+  const exitTo = presetClientId ? `/invoices/clients/${presetClientId}` : '/invoices';
   const { dialog: leaveDialog, requestLeave, allowNext } = useInvoiceLeave(
     Boolean(!locked && (invoiceDirty || clientDirty || bankDirty)),
     saveForLeave,
     mutations.createInvoice.isPending || mutations.updateInvoice.isPending || mutations.createClient.isPending || mutations.addBank.isPending,
+    exitTo,
   );
 
   const createClientNow = async () => {
@@ -362,12 +366,42 @@ const InvoiceEditorPage = () => {
     }
   };
 
+  const previewBanks = () => {
+    const accounts = settings.data?.bankAccounts || [];
+    return bankAccountIds.length > 0 ? accounts.filter((bank) => bankAccountIds.includes(bank.id)) : accounts;
+  };
+
+  const paidPreviewBlob = () => renderInvoicePreviewToBlob({
+    template: templateId,
+    invoiceNumber,
+    issueDate,
+    dueDate,
+    currency,
+    paid: true,
+    logoUrl: settings.data?.logoUrl,
+    issuer: {
+      name: settings.data?.issuerName || '',
+      ntn: settings.data?.ntn || '',
+      address: settings.data?.address || '',
+      email: settings.data?.email || '',
+    },
+    client,
+    lines: lines.map((line) => ({
+      description: line.description,
+      qty: Number(line.qty) || 0,
+      unitPrice: Number(line.unitPrice) || 0,
+    })),
+    taxRate: Number(taxRate) || 0,
+    banks: previewBanks(),
+  });
+
   const markPaid = async () => {
     if (!id) return;
     setError('');
     setNotice('');
     try {
-      await mutations.markPaid.mutateAsync(id);
+      const pdf = await paidPreviewBlob();
+      await mutations.markPaid.mutateAsync({ id, pdf });
       const from = settings.data?.mailbox.email || 'your invoicing mailbox';
       setNotice(`Payment confirmation sent to ${client.email} from ${from}.`);
     } catch (err) {
@@ -382,7 +416,12 @@ const InvoiceEditorPage = () => {
     try {
       const body = payload();
       if (body && !locked) await mutations.updateInvoice.mutateAsync({ id, body });
-      await mutations.sendInvoice.mutateAsync(id);
+      if (!previewRef.current) {
+        setError('Invoice preview is not ready to send.');
+        return;
+      }
+      const pdf = await invoiceElementToPdfBlob(previewRef.current);
+      await mutations.sendInvoice.mutateAsync({ id, pdf });
       setNotice('Invoice emailed to the client successfully.');
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not send the invoice'));
@@ -393,18 +432,13 @@ const InvoiceEditorPage = () => {
     setExportingPdf(true);
     const filename = `invoice-${invoiceNumber || 'draft'}.pdf`;
     try {
-      if (previewRef.current) {
-        await exportInvoiceElementToPdf(previewRef.current, filename);
+      if (!previewRef.current) {
+        setError('Invoice preview is not ready to download.');
         return;
       }
-      if (id) {
-        await mutations.download(id, filename);
-      }
+      await exportInvoiceElementToPdf(previewRef.current, filename);
     } catch (err) {
-      console.error('High-fidelity PDF export error, falling back to server download:', err);
-      if (id) {
-        await mutations.download(id, filename);
-      }
+      setError(apiErrorMessage(err, 'Could not download this invoice'));
     } finally {
       setExportingPdf(false);
     }
@@ -456,7 +490,7 @@ const InvoiceEditorPage = () => {
             startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
             sx={{ textTransform: 'none', px: 1, py: 0.5, mb: 1, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}
           >
-            Back to Invoices
+            {presetClientId ? 'Back to client' : 'Back to Invoices'}
           </Button>
           <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.025em', color: isDarkMode ? '#fff' : tokens.text.primary }}>
             {isNew ? 'Invoice Studio' : invoiceNumber || 'Edit Invoice'}
@@ -871,7 +905,7 @@ const InvoiceEditorPage = () => {
               </Button>
             </Box>
 
-            <Box ref={previewRef} sx={{ background: '#FFFFFF', borderRadius: '16px', overflow: 'hidden' }}>
+            <Box ref={previewRef} sx={{ background: '#FFFFFF' }}>
               <InvoiceTemplatePreview
                 data={{
                   template: templateId,
