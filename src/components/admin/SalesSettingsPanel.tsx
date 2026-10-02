@@ -30,6 +30,7 @@ import {
 } from '@/hooks/api/useSettings';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { showApiError } from '@/utils/apiError';
 
 interface EntryListProps {
   title: string;
@@ -243,8 +244,6 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const getErrorMessage = (err: any, fallback: string) => err?.response?.data?.error?.message || fallback;
-
   const handleAddIcp = () => {
     const name = newIcpName.trim();
     if (!name) return;
@@ -253,7 +252,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
         setNewIcpName('');
         addToast({ message: 'ICP added successfully!', severity: 'success' });
       },
-      onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to add ICP.'), severity: 'error' }),
+      onError: (err: any) => showApiError(err),
     });
   };
 
@@ -268,7 +267,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
           setEditingIcpId(null);
           setEditingIcpName('');
         },
-        onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to rename ICP.'), severity: 'error' }),
+        onError: (err: any) => showApiError(err),
       },
     );
   };
@@ -276,7 +275,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
   const handleRemoveIcp = (icpId: string) => {
     removeIcp.mutate(icpId, {
       onSuccess: () => addToast({ message: 'ICP removed successfully!', severity: 'success' }),
-      onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to remove ICP.'), severity: 'error' }),
+      onError: (err: any) => showApiError(err),
     });
   };
 
@@ -288,7 +287,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
         setNewProfileName('');
         addToast({ message: 'Profile added successfully!', severity: 'success' });
       },
-      onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to add profile.'), severity: 'error' }),
+      onError: (err: any) => showApiError(err),
     });
   };
 
@@ -303,7 +302,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
           setEditingProfileId(null);
           setEditingProfileName('');
         },
-        onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to rename profile.'), severity: 'error' }),
+        onError: (err: any) => showApiError(err),
       },
     );
   };
@@ -311,7 +310,7 @@ export const SalesSettingsPanel = ({ readOnly = false }: { readOnly?: boolean })
   const handleRemoveProfile = (profileId: string) => {
     removeProfile.mutate(profileId, {
       onSuccess: () => addToast({ message: 'Profile removed successfully!', severity: 'success' }),
-      onError: (err: any) => addToast({ message: getErrorMessage(err, 'Failed to remove profile.'), severity: 'error' }),
+      onError: (err: any) => showApiError(err),
     });
   };
 

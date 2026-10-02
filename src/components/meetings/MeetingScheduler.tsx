@@ -38,6 +38,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { canEditOrDeleteMeeting } from '@/utils/meetingPermissions';
+import { showApiError } from '@/utils/apiError';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -147,9 +148,9 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         // Re-open detail so the cancelled meeting can still be viewed
         setSelectedMeeting({ ...cancelledMeeting, status: 'cancelled' });
       },
-      onError: () => {
+      onError: (err) => {
         setConfirmDeleteOpen(false);
-        addToast({ message: 'Failed to cancel meeting.', severity: 'error' });
+        showApiError(err);
       }
     });
   };

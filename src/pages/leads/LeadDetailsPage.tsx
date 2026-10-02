@@ -19,6 +19,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { tokens } from '@/styles/tokens';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 
 export const LeadDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +32,8 @@ export const LeadDetailsPage = () => {
   const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
   const disqualifyLead = useDisqualifyLead();
 
-  const { data: lead, isLoading } = useLead(id);
+  const { data: lead, isLoading, isError, error } = useLead(id);
+  useApiErrorToast(error, isError);
 
   if (isLoading) {
     return (
@@ -341,8 +343,8 @@ export const LeadDetailsPage = () => {
               addToast({ message: 'Lead marked as not qualified.', severity: 'success' });
               setConfirmDisqualifyOpen(false);
             },
-            onError: () => {
-              addToast({ message: 'Failed to disqualify lead.', severity: 'error' });
+            onError: (err) => {
+              showApiError(err);
             },
           });
         }}

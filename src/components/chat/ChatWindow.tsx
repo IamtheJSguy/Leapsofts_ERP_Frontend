@@ -52,6 +52,7 @@ import {
 import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUtils';
 import { useKanbanBoard, useKanbanBoards } from '@/hooks/api/useKanban';
 import type { DriveFile, Message, PresenceStatus, User } from '@/types';
+import { showApiError } from '@/utils/apiError';
 
 const SMALL_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
 const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
@@ -508,7 +509,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }
           },
           onError: (err) => {
-            console.error("Failed to create conversation", err);
+            showApiError(err);
           }
         }
       );

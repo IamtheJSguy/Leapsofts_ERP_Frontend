@@ -33,6 +33,7 @@ import { SALES_KPI_METRIC_LABELS, SALES_KPI_METRIC_OPTIONS } from '@/lib/constan
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { defaultTargetModeForMetric, isManualTarget } from '@/lib/salesKpi';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import type {
   KpiPriority,
@@ -203,8 +204,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
         }
       }
       onClose();
-    } catch {
-      addToast({ message: 'Failed to save the sales KPI template.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

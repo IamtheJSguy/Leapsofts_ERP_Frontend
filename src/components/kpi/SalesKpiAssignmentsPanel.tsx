@@ -27,6 +27,7 @@ import { SALES_KPI_METRIC_LABELS, SALES_KPI_METRIC_OPTIONS } from '@/lib/constan
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { defaultTargetModeForMetric, isManualTarget } from '@/lib/salesKpi';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import type {
   KpiPriority,
@@ -172,8 +173,8 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
       await updateMutation.mutateAsync({ id: assignment._id, items });
       addToast({ message: 'Assignment updated.', severity: 'success' });
       setDirty(false);
-    } catch {
-      addToast({ message: 'Failed to update the assignment.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 
@@ -181,8 +182,8 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
     try {
       await deleteMutation.mutateAsync(assignment._id);
       addToast({ message: 'Assignment removed.', severity: 'success' });
-    } catch {
-      addToast({ message: 'Failed to remove the assignment.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

@@ -22,6 +22,7 @@ import { WeekdayPicker } from '@/components/kpi/WeekdayPicker';
 import { useCreateKPI, useUpdateKPI } from '@/hooks/api/useKPIs';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUIStore } from '@/store/useUIStore';
+import { showApiError } from '@/utils/apiError';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import type { KPI, KpiPriority, KpiRecurrenceMode, KpiScheduleMode, User } from '@/types';
 import { tokens } from '@/styles/tokens';
@@ -143,8 +144,8 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         addToast({ message: 'KPI created.', severity: 'success' });
       }
       onClose();
-    } catch {
-      addToast({ message: 'Failed to save KPI.', severity: 'error' });
+    } catch (err) {
+      showApiError(err);
     }
   };
 

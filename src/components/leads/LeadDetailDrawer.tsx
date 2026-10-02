@@ -18,6 +18,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { showApiError } from '@/utils/apiError';
 import { useState } from 'react';
 import type { Lead } from '@/types';
 
@@ -54,9 +55,9 @@ export const LeadDetailDrawer = ({
           setConfirmQualifyOpen(false);
           onClose();
         },
-        onError: () => {
+        onError: (err) => {
           setConfirmQualifyOpen(false);
-          addToast({ message: 'Failed to qualify lead.', severity: 'error' });
+          showApiError(err);
         },
       }
     );
@@ -69,9 +70,9 @@ export const LeadDetailDrawer = ({
         addToast({ message: 'Lead marked as not qualified.', severity: 'success' });
         setConfirmDisqualifyOpen(false);
       },
-      onError: () => {
+      onError: (err) => {
         setConfirmDisqualifyOpen(false);
-        addToast({ message: 'Failed to disqualify lead.', severity: 'error' });
+        showApiError(err);
       },
     });
   };
@@ -86,8 +87,8 @@ export const LeadDetailDrawer = ({
         onSuccess: () => {
           addToast({ message: `FollowUp #${number} selected`, severity: 'success' });
         },
-        onError: () => {
-          addToast({ message: 'Failed to update follow-up', severity: 'error' });
+        onError: (err) => {
+          showApiError(err);
         },
       },
     );

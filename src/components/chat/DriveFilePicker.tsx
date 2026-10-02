@@ -38,6 +38,7 @@ import { useSendMessage } from '@/hooks/api/useChat';
 import { useChatStore } from '@/store/useChatStore';
 import { tokens } from '@/styles/tokens';
 import type { DriveFile } from '@/types';
+import { useApiErrorToast } from '@/utils/apiError';
 
 /**
  * Map Google Drive MIME types to Material icons and brand colors.
@@ -79,7 +80,8 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
   const isDarkMode = theme.palette.mode === 'dark';
 
   const isConnected = driveStatus?.connected ?? false;
-  const { data, isFetching, isError } = useDriveFiles(debouncedQuery, open && isConnected);
+  const { data, isFetching, isError, error } = useDriveFiles(debouncedQuery, open && isConnected);
+  useApiErrorToast(error, isError);
   const files = (data?.files || []) as DriveFile[];
 
   useEffect(() => {
@@ -338,7 +340,7 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
               <Box sx={{ py: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                 <CloudOffIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  Could not load Drive files. Reconnect and try again.
+                  Reconnect Google Drive and try again.
                 </Typography>
               </Box>
             ) : files.length === 0 ? (

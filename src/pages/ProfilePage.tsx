@@ -55,6 +55,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
 import { changePasswordSchema } from '@/utils/validators';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 
 export default function ProfilePage() {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -97,6 +98,7 @@ export default function ProfilePage() {
   const [enrollBackupCodes, setEnrollBackupCodes] = useState<string[] | null>(null);
   const regenerateBackupCodes = useRegenerateBackupCodes();
   const enrollSetup = useEnrollTwoFactorSetup(isEnrollOpen);
+  useApiErrorToast(enrollSetup.error, enrollSetup.isError);
   const enrollVerify = useEnrollTwoFactorVerify();
   const twoFactorEnabled = user?.twoFactorEnabled === true;
 
@@ -115,7 +117,6 @@ export default function ProfilePage() {
   const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
   const [isConnectConfirmOpen, setIsConnectConfirmOpen] = useState(false);
   const [sheetInput, setSheetInput] = useState('');
-  const [sheetError, setSheetError] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -168,10 +169,7 @@ export default function ProfilePage() {
           addToast({ message: 'Profile updated successfully!', severity: 'success' });
         },
         onError: (err: any) => {
-          addToast({
-            message: err?.response?.data?.message || 'Failed to update profile details.',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       }
     );
@@ -194,10 +192,7 @@ export default function ProfilePage() {
         addToast({ message: 'Profile photo updated.', severity: 'success' });
       },
       onError: (err: any) => {
-        addToast({
-          message: err?.response?.data?.message || 'Failed to upload profile photo.',
-          severity: 'error',
-        });
+        showApiError(err);
       },
     });
   };
@@ -212,8 +207,8 @@ export default function ProfilePage() {
           updateAuthUser({ notificationPreferences: notificationPrefs } as any);
           addToast({ message: 'Preferences updated successfully!', severity: 'success' });
         },
-        onError: () => {
-          addToast({ message: 'Failed to update preferences.', severity: 'error' });
+        onError: (err) => {
+          showApiError(err);
         },
       }
     );
@@ -267,10 +262,7 @@ export default function ProfilePage() {
           addToast({ message: 'Password updated successfully!', severity: 'success' });
         },
         onError: (err: any) => {
-          addToast({
-            message: err?.response?.data?.message || 'Failed to update password.',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       }
     );
@@ -285,20 +277,19 @@ export default function ProfilePage() {
   const handleOpenConnectConfirm = () => {
     const trimmedInput = sheetInput.trim();
     if (!trimmedInput) {
-      setSheetError('Google Sheet link or Spreadsheet ID is required.');
+      addToast({ message: 'Google Sheet link or Spreadsheet ID is required.', severity: 'error' });
       return;
     }
     const isLink = trimmedInput.includes('docs.google.com/spreadsheets');
     if (trimmedInput.startsWith('http') && !isLink) {
-      setSheetError('Please enter a valid Google Sheets URL (e.g. docs.google.com/spreadsheets/d/...)');
+      addToast({ message: 'Please enter a valid Google Sheets URL (e.g. docs.google.com/spreadsheets/d/...)', severity: 'error' });
       return;
     }
     const sheetId = extractSheetId(trimmedInput);
     if (!sheetId) {
-      setSheetError('Unable to extract a valid Spreadsheet ID.');
+      addToast({ message: 'Unable to extract a valid Spreadsheet ID.', severity: 'error' });
       return;
     }
-    setSheetError('');
     setIsConnectConfirmOpen(true);
   };
 
@@ -333,10 +324,7 @@ export default function ProfilePage() {
       onError: (err: any) => {
         clearInterval(progressInterval);
         setIsSyncing(false);
-        addToast({
-          message: err?.response?.data?.message || 'Failed to sync spreadsheet. Please verify permissions.',
-          severity: 'error',
-        });
+        showApiError(err);
       },
     });
   };
@@ -357,10 +345,7 @@ export default function ProfilePage() {
         },
         onError: (err: any) => {
           setIsSyncing(false);
-          addToast({
-            message: err?.response?.data?.message || 'Failed to connect Google Sheet.',
-            severity: 'error',
-          });
+          showApiError(err);
         },
       },
     );
@@ -1088,20 +1073,12 @@ export default function ProfilePage() {
                   )}
 
                   <Box sx={{ mb: 3.5 }}>
-                    {sheetError && (
-                      <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
-                        {sheetError}
-                      </Alert>
-                    )}
                     <TextField
                       fullWidth
                       label="Google Sheet URL or ID"
                       placeholder="https://docs.google.com/spreadsheets/d/..."
                       value={sheetInput}
-                      onChange={(e) => {
-                        setSheetInput(e.target.value);
-                        if (sheetError) setSheetError('');
-                      }}
+                      onChange={(e) => setSheetInput(e.target.value)}
                       helperText={
                         hasConnectedSheet
                           ? 'Paste a new link to update the sheet saved on your profile.'
@@ -1238,12 +1215,6 @@ export default function ProfilePage() {
                   <CircularProgress />
                 </Box>
               )}
-              {enrollSetup.error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {(enrollSetup.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
-                    || 'Could not start 2FA setup'}
-                </Alert>
-              )}
               {enrollSetup.data && (
                 <>
                   <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
@@ -1313,10 +1284,7 @@ export default function ProfilePage() {
                       updateAuthUser({ twoFactorEnabled: true });
                     },
                     onError: (err: unknown) => {
-                      const message =
-                        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
-                        'Invalid verification code';
-                      addToast({ message, severity: 'error' });
+                      showApiError(err);
                     },
                   });
                 }}
@@ -1372,10 +1340,7 @@ export default function ProfilePage() {
                   addToast({ message: 'Backup codes regenerated', severity: 'success' });
                 },
                 onError: (err: unknown) => {
-                  const message =
-                    (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
-                    'Could not regenerate backup codes';
-                  addToast({ message, severity: 'error' });
+                  showApiError(err);
                 },
               });
             }}
