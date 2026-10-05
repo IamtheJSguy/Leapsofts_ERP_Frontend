@@ -149,9 +149,9 @@ export const useConversations = (options?: { enabled?: boolean }) => {
         const data = r.data.data || [];
         return data;
       }),
-    // Sockets deliver live updates, but this is the fallback if a message
-    // was missed while the socket was disconnected (e.g. tab was backgrounded).
-    refetchOnWindowFocus: true,
+    // Sockets deliver live updates; reconnects are handled in useSocket.ts.
+    refetchOnWindowFocus: false,
+    staleTime: 2 * 60 * 1000,
     enabled: options?.enabled ?? true,
   });
 };
@@ -182,7 +182,7 @@ export const useMessages = (conversationId: string | null) => {
       return lastPage.messages[0]._id;
     },
     enabled: !!conversationId,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const messages = useMemo(
