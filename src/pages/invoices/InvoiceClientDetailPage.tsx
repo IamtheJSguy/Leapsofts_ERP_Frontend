@@ -949,7 +949,8 @@ const InvoiceClientDetailPage = () => {
           <Table
             size="medium"
             sx={{
-              minWidth: 820,
+              width: '100%',
+              minWidth: { xs: 1200, lg: 820 },
               '& th, & td': { whiteSpace: 'nowrap' },
             }}
           >
@@ -1184,4 +1185,3 @@ const InvoiceClientDetailPage = () => {
 };
 
 export default InvoiceClientDetailPage;
-
