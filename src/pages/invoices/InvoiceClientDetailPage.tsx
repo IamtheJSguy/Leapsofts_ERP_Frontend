@@ -50,8 +50,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import { useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
-import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { exportInvoiceRecordToPdf, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
+import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceRecord, type InvoiceStatus } from '@/types/invoice';
 
 const FILTERS: Array<{ id: '' | InvoiceStatus | 'overdue'; label: string }> = [
@@ -376,14 +376,9 @@ const InvoiceClientDetailPage = () => {
     setSendingId(invoice._id);
     setNotice('');
     try {
-      let pdf: Blob | undefined;
-      try {
-        pdf = await renderInvoicePreviewToBlob(
-          previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
-        );
-      } catch (pdfErr) {
-        console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
-      }
+      const pdf = await renderInvoicePreviewToBlob(
+        previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
+      );
       await mutations.sendInvoice.mutateAsync({ id: invoice._id, pdf });
       setNotice('Invoice sent successfully');
     } catch (err) {
@@ -957,14 +952,9 @@ const InvoiceClientDetailPage = () => {
                             startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
                             sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
                             onClick={() => run(async () => {
-                              let pdf: Blob | undefined;
-                              try {
-                                pdf = await renderInvoicePreviewToBlob(
-                                  previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
-                                );
-                              } catch (pdfErr) {
-                                console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
-                              }
+                              const pdf = await renderInvoicePreviewToBlob(
+                                previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
+                              );
                               await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
                             })}
                           >

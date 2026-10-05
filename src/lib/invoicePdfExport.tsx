@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import html2pdf from 'html2pdf.js';
 import api from '@/lib/axios';
 import { InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import type { InvoiceRecord, InvoiceBankAccount } from '@/types/invoice';
@@ -82,9 +83,46 @@ body > div > * > * {
 </style></head><body><div>${clone.outerHTML}</div></body></html>`;
 };
 
-const htmlToPdfBlob = async (html: string): Promise<Blob> => {
-  const response = await api.post('/invoices/preview-pdf', { html }, { responseType: 'blob' });
-  return response.data as Blob;
+const pdfOptions = {
+  margin: 0,
+  image: { type: 'jpeg' as const, quality: 0.98 },
+  html2canvas: {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  },
+  jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+};
+
+/** Render the on-screen invoice template to PDF in the browser (no server Chrome). */
+const elementToPdfBlobInBrowser = async (element: HTMLElement): Promise<Blob> => {
+  if (document.fonts) await document.fonts.ready;
+  await waitForImages(element);
+  const blob = await html2pdf().set(pdfOptions).from(element).outputPdf('blob');
+  if (!(blob instanceof Blob) || blob.size < 100) {
+    throw new Error('Could not render the invoice template to PDF.');
+  }
+  return blob;
+};
+
+const isPdfBlob = (blob: Blob) =>
+  blob.size > 100 && (blob.type === 'application/pdf' || blob.type === 'application/octet-stream');
+
+/** Prefer sharp server PDF when Chrome is available; otherwise match template in-browser. */
+const htmlToPdfBlob = async (html: string, sourceElement: HTMLElement): Promise<Blob> => {
+  try {
+    const response = await api.post('/invoices/preview-pdf', { html }, {
+      responseType: 'blob',
+      timeout: 90000,
+    });
+    const blob = response.data as Blob;
+    if (isPdfBlob(blob)) return blob;
+  } catch {
+    // Heroku without Chrome buildpack, or local server offline — use browser export.
+  }
+  return elementToPdfBlobInBrowser(sourceElement);
 };
 
 const saveBlob = (blob: Blob, filename: string) => {
@@ -97,7 +135,8 @@ const saveBlob = (blob: Blob, filename: string) => {
 };
 
 export const invoiceElementToPdfBlob = async (element: HTMLElement): Promise<Blob> => {
-  return htmlToPdfBlob(await invoiceElementToHtml(element));
+  const html = await invoiceElementToHtml(element);
+  return htmlToPdfBlob(html, element);
 };
 
 export const exportInvoiceElementToPdf = async (
@@ -180,10 +219,5 @@ export const exportInvoiceRecordToPdf = async (
   filename?: string,
 ): Promise<void> => {
   const blob = await renderInvoicePreviewToBlob(previewDataFromInvoice(invoice, availableBanks));
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename || `invoice-${invoice.invoiceNumber || 'INV'}.pdf`;
-  link.click();
-  URL.revokeObjectURL(url);
+  saveBlob(blob, filename || `invoice-${invoice.invoiceNumber || 'INV'}.pdf`);
 };
