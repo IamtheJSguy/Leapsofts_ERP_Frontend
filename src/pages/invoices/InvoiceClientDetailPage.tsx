@@ -50,7 +50,14 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import { useInvoiceClients, useInvoiceMutations, useInvoices, useInvoiceSettings } from '@/hooks/api/useInvoices';
-import { exportInvoiceRecordToPdf, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
+import {
+  exportInvoiceRecordToPdf,
+  invoiceElementToPdfBlob,
+  previewDataFromInvoice,
+  renderInvoicePreviewToBlob,
+} from '@/lib/invoicePdfExport';
+import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
+import type { InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceRecord, type InvoiceStatus } from '@/types/invoice';
 
@@ -331,6 +338,8 @@ const InvoiceClientDetailPage = () => {
   const [notice, setNotice] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendConfirmInvoice, setSendConfirmInvoice] = useState<InvoiceRecord | null>(null);
+  const [sendPreviewData, setSendPreviewData] = useState<InvoicePreviewData | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<InvoiceClientForm>(emptyClientForm());
   const [baseline, setBaseline] = useState('');
@@ -372,14 +381,20 @@ const InvoiceClientDetailPage = () => {
     }
   };
 
-  const sendInvoice = async (invoice: InvoiceRecord) => {
-    setSendingId(invoice._id);
+  const openSendConfirm = (invoice: InvoiceRecord) => {
     setNotice('');
+    setSendConfirmInvoice(invoice);
+    setSendPreviewData(previewDataFromInvoice(invoice, settings.data?.bankAccounts || []));
+  };
+
+  const confirmSendInvoice = async (previewElement: HTMLElement) => {
+    if (!sendConfirmInvoice) return;
+    setSendingId(sendConfirmInvoice._id);
     try {
-      const pdf = await renderInvoicePreviewToBlob(
-        previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
-      );
-      await mutations.sendInvoice.mutateAsync({ id: invoice._id, pdf });
+      const pdf = await invoiceElementToPdfBlob(previewElement);
+      await mutations.sendInvoice.mutateAsync({ id: sendConfirmInvoice._id, pdf });
+      setSendConfirmInvoice(null);
+      setSendPreviewData(null);
       setNotice('Invoice sent successfully');
     } catch (err) {
       showApiError(err);
@@ -939,7 +954,7 @@ const InvoiceClientDetailPage = () => {
                             startIcon={<SendIcon sx={{ fontSize: 14 }} />}
                             sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
                             disabled={sendingId === invoice._id}
-                            onClick={() => sendInvoice(invoice)}
+                            onClick={() => openSendConfirm(invoice)}
                           >
                             Send
                           </Button>
@@ -1039,6 +1054,19 @@ const InvoiceClientDetailPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <InvoiceSendConfirmModal
+        open={Boolean(sendConfirmInvoice)}
+        data={sendPreviewData}
+        clientEmail={sendConfirmInvoice?.clientSnapshot?.email || client?.email}
+        submitting={Boolean(sendingId)}
+        onClose={() => {
+          if (sendingId) return;
+          setSendConfirmInvoice(null);
+          setSendPreviewData(null);
+        }}
+        onConfirm={confirmSendInvoice}
+      />
     </Box>
   );
 };

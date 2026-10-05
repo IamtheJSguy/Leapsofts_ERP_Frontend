@@ -1262,6 +1262,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         bgcolor: '#FFFFFF',
         color: '#111827',
         width: '100%',
+        minHeight: '297mm',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
@@ -1509,7 +1510,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
       </Box>
 
       {/* Modern Wave Vector Footer Artwork (Exactly Matching Reference Image) */}
-      <Box sx={{ mt: 'auto', width: '100%', overflow: 'hidden', lineHeight: 0 }}>
+      <Box sx={{ mt: 'auto', width: '100%', overflow: 'hidden', lineHeight: 0, flexShrink: 0 }}>
         <svg
           viewBox="0 0 600 120"
           preserveAspectRatio="none"
