@@ -376,9 +376,14 @@ const InvoiceClientDetailPage = () => {
     setSendingId(invoice._id);
     setNotice('');
     try {
-      const pdf = await renderInvoicePreviewToBlob(
-        previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
-      );
+      let pdf: Blob | undefined;
+      try {
+        pdf = await renderInvoicePreviewToBlob(
+          previewDataFromInvoice(invoice, settings.data?.bankAccounts || []),
+        );
+      } catch (pdfErr) {
+        console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
+      }
       await mutations.sendInvoice.mutateAsync({ id: invoice._id, pdf });
       setNotice('Invoice sent successfully');
     } catch (err) {
@@ -952,9 +957,14 @@ const InvoiceClientDetailPage = () => {
                             startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
                             sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
                             onClick={() => run(async () => {
-                              const pdf = await renderInvoicePreviewToBlob(
-                                previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
-                              );
+                              let pdf: Blob | undefined;
+                              try {
+                                pdf = await renderInvoicePreviewToBlob(
+                                  previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
+                                );
+                              } catch (pdfErr) {
+                                console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
+                              }
                               await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
                             })}
                           >

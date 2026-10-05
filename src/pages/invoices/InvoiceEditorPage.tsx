@@ -406,7 +406,12 @@ const InvoiceEditorPage = () => {
     if (!id) return;
     setNotice('');
     try {
-      const pdf = await paidPreviewBlob();
+      let pdf: Blob | undefined;
+      try {
+        pdf = await paidPreviewBlob();
+      } catch (pdfErr) {
+        console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
+      }
       await mutations.markPaid.mutateAsync({ id, pdf });
       const from = settings.data?.mailbox.email || 'your invoicing mailbox';
       setNotice(`Payment confirmation sent to ${client.email} from ${from}.`);
@@ -421,11 +426,14 @@ const InvoiceEditorPage = () => {
     try {
       const body = payload();
       if (body && !locked) await mutations.updateInvoice.mutateAsync({ id, body });
-      if (!previewRef.current) {
-        showFormError('Invoice preview is not ready to send.');
-        return;
+      let pdf: Blob | undefined;
+      if (previewRef.current) {
+        try {
+          pdf = await invoiceElementToPdfBlob(previewRef.current);
+        } catch (pdfErr) {
+          console.warn('HTML-to-PDF preview failed, falling back to server-side PDFKit generator:', pdfErr);
+        }
       }
-      const pdf = await invoiceElementToPdfBlob(previewRef.current);
       await mutations.sendInvoice.mutateAsync({ id, pdf });
       setNotice('Invoice emailed to the client successfully.');
     } catch (err) {

@@ -160,11 +160,11 @@ export const useInvoiceMutations = () => {
       onSuccess: invalidate,
     }),
     sendInvoice: useMutation({
-      mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.send(id, pdf),
+      mutationFn: ({ id, pdf }: { id: string; pdf?: Blob }) => invoiceApi.send(id, pdf),
       onSuccess: invalidate,
     }),
     markPaid: useMutation({
-      mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.markPaid(id, pdf),
+      mutationFn: ({ id, pdf }: { id: string; pdf?: Blob }) => invoiceApi.markPaid(id, pdf),
       onSuccess: invalidate,
     }),
     voidInvoice: useMutation({ mutationFn: invoiceApi.voidInvoice, onSuccess: invalidate }),
