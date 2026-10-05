@@ -322,7 +322,7 @@ const ClientProfile = ({ client, isDarkMode }: { client: InvoiceClient; isDarkMo
         <Button
           size="small"
           endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', color: tokens.brand.primary, p: 0, minWidth: 0 }}
+          sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', color: tokens.brand.primary, p: .6, minWidth: 0 }}
         >
           {expanded ? 'Hide Details' : 'View Profile Details'}
         </Button>
