@@ -699,9 +699,9 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                   <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: '#111827', lineHeight: 1.2 }}>
                     {show(line.description, 'Service / Product Item')}
                   </Typography>
-                  <Typography sx={{ fontSize: 9, color: '#9CA3AF', mt: 0.2 }}>
+                  {/* <Typography sx={{ fontSize: 9, color: '#9CA3AF', mt: 0.2 }}>
                     Premium enterprise quality delivery
-                  </Typography>
+                  </Typography> */}
                 </Box>
                 <span style={{ textAlign: 'right', fontWeight: 600, color: '#374151' }}>
                   {formatInvoiceMoney(data.currency, line.unitPrice || 0)}
@@ -1036,9 +1036,9 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                 <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: '#111827', lineHeight: 1.2 }}>
                   {show(line.description, 'Item Name')}
                 </Typography>
-                <Typography sx={{ fontSize: 9.5, color: '#6B7280', mt: 0.25, lineHeight: 1.3 }}>
+                {/* <Typography sx={{ fontSize: 9.5, color: '#6B7280', mt: 0.25, lineHeight: 1.3 }}>
                   High standard verified delivery and service specification
-                </Typography>
+                </Typography> */}
               </Box>
               <span style={{ textAlign: 'right', fontWeight: 600, color: '#374151' }}>
                 {formatInvoiceMoney(data.currency, line.unitPrice || 0)}
