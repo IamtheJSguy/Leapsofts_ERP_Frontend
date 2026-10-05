@@ -1,7 +1,10 @@
+import { useIsRestoring } from '@tanstack/react-query';
 import { Navigate, useLocation } from 'react-router-dom';
+import { PageLoader } from '@/components/common/PageLoader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { resolvePermissions, type PermissionKey } from '@/lib/permissions';
 import { useEntitlements, useOrgEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
+import { useMe } from '@/hooks/api/useUsers';
 import type { Role } from '@/types';
 
 interface ProtectedRouteProps {
@@ -20,10 +23,25 @@ export const ProtectedRoute = ({
   const { user, isAuthenticated } = useAuthStore();
   const entitlements = useEntitlements();
   const entitlementsQuery = useOrgEntitlements();
+  const meQuery = useMe();
+  const isRestoringQueryCache = useIsRestoring();
   const location = useLocation();
 
   if (!isAuthenticated && !localStorage.getItem('accessToken')) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Persisted React Query cache (incl. org entitlements) rehydrates async on hard reload.
+  if (isRestoringQueryCache) {
+    return <PageLoader />;
+  }
+
+  if (user && requireEntitlement && entitlementsQuery.isPending) {
+    return <PageLoader />;
+  }
+
+  if (user && requirePermission && meQuery.isPending) {
+    return <PageLoader />;
   }
 
   if (user && !allowedRoles.includes(user.role)) {
@@ -37,10 +55,6 @@ export const ProtectedRoute = ({
     if (!allowed) {
       return <Navigate to="/" replace />;
     }
-  }
-
-  if (user && requireEntitlement && !entitlementsQuery.isSuccess && entitlementsQuery.isFetching) {
-    return null;
   }
 
   if (user && requireEntitlement && entitlements[requireEntitlement] === false) {
