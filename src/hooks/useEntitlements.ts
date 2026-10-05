@@ -40,8 +40,8 @@ export const useOrgEntitlements = (): UseQueryResult<OrgModuleFlags, Error> => {
     queryFn: () =>
       api.get<{ data: OrgModuleFlags }>('/organizations/me/entitlements').then((r) => r.data.data),
     enabled: isAuthenticated,
-    refetchOnWindowFocus: true,
-    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
