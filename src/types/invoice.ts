@@ -1,5 +1,5 @@
 export type InvoiceTemplateId = 'classic' | 'modern' | 'compact' | 'minimal' | 'bold';
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'disputed';
 export type MailboxProvider = 'gmail' | 'outlook' | 'yahoo' | 'zoho' | 'icloud';
 
 export interface InvoiceParty {
@@ -121,6 +121,8 @@ export interface InvoiceRecord {
   grandTotal: number;
   bankAccountIds: string[];
   status: InvoiceStatus;
+  disputeReason?: string;
+  disputedAt?: string;
   overdue: boolean;
 }
 

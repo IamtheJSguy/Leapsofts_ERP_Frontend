@@ -27,6 +27,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import GavelIcon from '@mui/icons-material/Gavel';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -34,7 +35,9 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
-import { InvoiceTemplatePicker, InvoiceTemplatePreview } from '@/components/invoices/InvoiceTemplatePreview';
+import { InvoiceTemplatePicker, InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
+import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
+import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
 import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
@@ -103,6 +106,10 @@ const InvoiceEditorPage = () => {
   const [bankOpen, setBankOpen] = useState(false);
   const [newBank, setNewBank] = useState(emptyBankDraft());
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -378,13 +385,13 @@ const InvoiceEditorPage = () => {
     return bankAccountIds.length > 0 ? accounts.filter((bank) => bankAccountIds.includes(bank.id)) : accounts;
   };
 
-  const paidPreviewBlob = () => renderInvoicePreviewToBlob({
+  const buildPreviewData = (paid = invoice.data?.status === 'paid'): InvoicePreviewData => ({
     template: templateId,
     invoiceNumber,
     issueDate,
     dueDate,
     currency,
-    paid: true,
+    paid,
     logoUrl: settings.data?.logoUrl,
     issuer: {
       name: settings.data?.issuerName || '',
@@ -402,6 +409,8 @@ const InvoiceEditorPage = () => {
     banks: previewBanks(),
   });
 
+  const paidPreviewBlob = () => renderInvoicePreviewToBlob(buildPreviewData(true));
+
   const markPaid = async () => {
     if (!id) return;
     setNotice('');
@@ -415,21 +424,44 @@ const InvoiceEditorPage = () => {
     }
   };
 
-  const send = async () => {
+  const openSendConfirm = async () => {
     if (!id) return;
     setNotice('');
     try {
       const body = payload();
       if (body && !locked) await mutations.updateInvoice.mutateAsync({ id, body });
-      if (!previewRef.current) {
-        showFormError('Invoice preview is not ready to send.');
-        return;
-      }
-      const pdf = await invoiceElementToPdfBlob(previewRef.current);
+      setSendConfirmOpen(true);
+    } catch (err) {
+      showApiError(err);
+    }
+  };
+
+  const confirmDispute = async (reason: string) => {
+    if (!id) return;
+    setDisputing(true);
+    try {
+      await mutations.disputeInvoice.mutateAsync({ id, reason });
+      setDisputeOpen(false);
+      setNotice('Invoice marked as disputed.');
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setDisputing(false);
+    }
+  };
+
+  const confirmSend = async (previewElement: HTMLElement) => {
+    if (!id) return;
+    setSendingEmail(true);
+    try {
+      const pdf = await invoiceElementToPdfBlob(previewElement);
       await mutations.sendInvoice.mutateAsync({ id, pdf });
+      setSendConfirmOpen(false);
       setNotice('Invoice emailed to the client successfully.');
     } catch (err) {
       showApiError(err);
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -454,17 +486,6 @@ const InvoiceEditorPage = () => {
   if (settings.isLoading || (!isNew && invoice.isLoading) || !hydrated) {
     return <Box sx={{ p: 8, display: 'flex', justifyContent: 'center' }}><CircularProgress size={36} sx={{ color: tokens.brand.primary }} /></Box>;
   }
-
-  const allOrgBanks = settings.data?.bankAccounts || [];
-  const selectedBanks =
-    bankAccountIds.length > 0
-      ? allOrgBanks.filter((bank) => bankAccountIds.includes(bank.id))
-      : allOrgBanks;
-  const previewLines = lines.map((line) => ({
-    description: line.description,
-    qty: Number(line.qty) || 0,
-    unitPrice: Number(line.unitPrice) || 0,
-  }));
 
   const inputStyle = {
     '& .MuiOutlinedInput-root': {
@@ -502,6 +523,11 @@ const InvoiceEditorPage = () => {
       </Box>
 
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
+      {invoice.data?.status === 'disputed' && invoice.data.disputeReason && (
+        <Alert severity="warning" sx={{ mb: 2.5, borderRadius: '14px' }}>
+          <strong>Disputed:</strong> {invoice.data.disputeReason}
+        </Alert>
+      )}
 
       {/* Split-Screen Studio Grid */}
       <Grid container spacing={3.5}>
@@ -850,8 +876,8 @@ const InvoiceEditorPage = () => {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={send}
-                  disabled={mutations.sendInvoice.isPending}
+                  onClick={() => void openSendConfirm()}
+                  disabled={mutations.sendInvoice.isPending || mutations.updateInvoice.isPending || sendingEmail}
                   startIcon={<SendIcon />}
                   sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
                 >
@@ -860,14 +886,39 @@ const InvoiceEditorPage = () => {
               )}
 
               {invoice.data?.status === 'sent' && id && (
+                <>
+                  <Button
+                    variant="contained"
+                    onClick={markPaid}
+                    disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
+                    startIcon={<CheckCircleOutlineIcon />}
+                    sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                  >
+                    Mark Paid
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    onClick={() => setDisputeOpen(true)}
+                    disabled={disputing}
+                    startIcon={<GavelIcon />}
+                    sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
+                  >
+                    Dispute
+                  </Button>
+                </>
+              )}
+
+              {!isNew && invoice.data?.status === 'draft' && id && (
                 <Button
-                  variant="contained"
-                  onClick={markPaid}
-                  disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
-                  startIcon={<CheckCircleOutlineIcon />}
-                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => setDisputeOpen(true)}
+                  disabled={disputing}
+                  startIcon={<GavelIcon />}
+                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
                 >
-                  Mark Paid
+                  Dispute
                 </Button>
               )}
 
@@ -905,31 +956,32 @@ const InvoiceEditorPage = () => {
             </Box>
 
             <Box ref={previewRef} sx={{ background: '#FFFFFF' }}>
-              <InvoiceTemplatePreview
-                data={{
-                  template: templateId,
-                  invoiceNumber,
-                  issueDate,
-                  dueDate,
-                  currency,
-                  paid: invoice.data?.status === 'paid',
-                  logoUrl: settings.data?.logoUrl,
-                  issuer: {
-                    name: settings.data?.issuerName || '',
-                    ntn: settings.data?.ntn || '',
-                    address: settings.data?.address || '',
-                    email: settings.data?.email || '',
-                  },
-                  client,
-                  lines: previewLines,
-                  taxRate: Number(taxRate) || 0,
-                  banks: selectedBanks,
-                }}
-              />
+              <InvoiceTemplatePreview data={buildPreviewData()} />
             </Box>
           </Box>
         </Grid>
       </Grid>
+
+      <InvoiceSendConfirmModal
+        open={sendConfirmOpen}
+        data={sendConfirmOpen ? buildPreviewData(false) : null}
+        clientEmail={client.email}
+        submitting={sendingEmail}
+        onClose={() => {
+          if (!sendingEmail) setSendConfirmOpen(false);
+        }}
+        onConfirm={confirmSend}
+      />
+
+      <InvoiceDisputeModal
+        open={disputeOpen}
+        invoiceNumber={invoiceNumber}
+        submitting={disputing}
+        onClose={() => {
+          if (!disputing) setDisputeOpen(false);
+        }}
+        onConfirm={confirmDispute}
+      />
 
       {/* New Client Modal */}
       <Dialog

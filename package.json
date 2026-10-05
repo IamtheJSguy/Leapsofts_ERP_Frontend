@@ -44,6 +44,7 @@
     "emoji-mart": "^5.6.0",
     "emoji-picker-react": "^4.19.1",
     "gsap": "^3.15.0",
+    "html2pdf.js": "^0.14.0",
     "idb-keyval": "^6.3.0",
     "linkify-html": "^4.3.3",
     "linkifyjs": "^4.3.3",
