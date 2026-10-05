@@ -27,6 +27,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import GavelIcon from '@mui/icons-material/Gavel';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -36,6 +37,7 @@ import { tokens } from '@/styles/tokens';
 import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
+import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
 import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
@@ -106,6 +108,8 @@ const InvoiceEditorPage = () => {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -432,6 +436,20 @@ const InvoiceEditorPage = () => {
     }
   };
 
+  const confirmDispute = async (reason: string) => {
+    if (!id) return;
+    setDisputing(true);
+    try {
+      await mutations.disputeInvoice.mutateAsync({ id, reason });
+      setDisputeOpen(false);
+      setNotice('Invoice marked as disputed.');
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setDisputing(false);
+    }
+  };
+
   const confirmSend = async (previewElement: HTMLElement) => {
     if (!id) return;
     setSendingEmail(true);
@@ -505,6 +523,11 @@ const InvoiceEditorPage = () => {
       </Box>
 
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
+      {invoice.data?.status === 'disputed' && invoice.data.disputeReason && (
+        <Alert severity="warning" sx={{ mb: 2.5, borderRadius: '14px' }}>
+          <strong>Disputed:</strong> {invoice.data.disputeReason}
+        </Alert>
+      )}
 
       {/* Split-Screen Studio Grid */}
       <Grid container spacing={3.5}>
@@ -863,14 +886,39 @@ const InvoiceEditorPage = () => {
               )}
 
               {invoice.data?.status === 'sent' && id && (
+                <>
+                  <Button
+                    variant="contained"
+                    onClick={markPaid}
+                    disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
+                    startIcon={<CheckCircleOutlineIcon />}
+                    sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                  >
+                    Mark Paid
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    onClick={() => setDisputeOpen(true)}
+                    disabled={disputing}
+                    startIcon={<GavelIcon />}
+                    sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
+                  >
+                    Dispute
+                  </Button>
+                </>
+              )}
+
+              {!isNew && invoice.data?.status === 'draft' && id && (
                 <Button
-                  variant="contained"
-                  onClick={markPaid}
-                  disabled={mutations.markPaid.isPending || !settings.data?.mailbox.configured}
-                  startIcon={<CheckCircleOutlineIcon />}
-                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => setDisputeOpen(true)}
+                  disabled={disputing}
+                  startIcon={<GavelIcon />}
+                  sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
                 >
-                  Mark Paid
+                  Dispute
                 </Button>
               )}
 
@@ -923,6 +971,16 @@ const InvoiceEditorPage = () => {
           if (!sendingEmail) setSendConfirmOpen(false);
         }}
         onConfirm={confirmSend}
+      />
+
+      <InvoiceDisputeModal
+        open={disputeOpen}
+        invoiceNumber={invoiceNumber}
+        submitting={disputing}
+        onClose={() => {
+          if (!disputing) setDisputeOpen(false);
+        }}
+        onConfirm={confirmDispute}
       />
 
       {/* New Client Modal */}

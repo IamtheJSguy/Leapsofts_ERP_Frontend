@@ -78,7 +78,8 @@ const invoiceApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data.data);
   },
-  voidInvoice: (id: string) => api.post<{ data: InvoiceRecord }>(`/invoices/${id}/void`).then((r) => r.data.data),
+  disputeInvoice: (id: string, reason: string) =>
+    api.post<{ data: InvoiceRecord }>(`/invoices/${id}/dispute`, { reason }).then((r) => r.data.data),
   download: async (id: string, filename: string) => {
     const response = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
     const url = URL.createObjectURL(response.data);
@@ -167,7 +168,10 @@ export const useInvoiceMutations = () => {
       mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.markPaid(id, pdf),
       onSuccess: invalidate,
     }),
-    voidInvoice: useMutation({ mutationFn: invoiceApi.voidInvoice, onSuccess: invalidate }),
+    disputeInvoice: useMutation({
+      mutationFn: ({ id, reason }: { id: string; reason: string }) => invoiceApi.disputeInvoice(id, reason),
+      onSuccess: invalidate,
+    }),
     download: invoiceApi.download,
   };
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Alert,
   Avatar,
@@ -15,6 +15,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Popover,
   Table,
   TableBody,
   TableCell,
@@ -36,7 +37,7 @@ import LanguageIcon from '@mui/icons-material/Language';
 import DownloadIcon from '@mui/icons-material/Download';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import BlockIcon from '@mui/icons-material/Block';
+import GavelIcon from '@mui/icons-material/Gavel';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -57,6 +58,7 @@ import {
   renderInvoicePreviewToBlob,
 } from '@/lib/invoicePdfExport';
 import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
+import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
 import type { InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { clientToForm, emptyClientForm, formatInvoiceMoney, type InvoiceClient, type InvoiceClientForm, type InvoiceRecord, type InvoiceStatus } from '@/types/invoice';
@@ -67,10 +69,11 @@ const FILTERS: Array<{ id: '' | InvoiceStatus | 'overdue'; label: string }> = [
   { id: 'sent', label: 'Sent' },
   { id: 'overdue', label: 'Overdue' },
   { id: 'paid', label: 'Paid' },
-  { id: 'void', label: 'Void' },
+  { id: 'disputed', label: 'Disputed' },
 ];
 
-const getStatusStyle = (status: InvoiceStatus, overdue: boolean, isDarkMode: boolean) => {
+const getStatusStyle = (status: InvoiceStatus | 'void', overdue: boolean, isDarkMode: boolean) => {
+  const normalized = status === 'void' ? 'disputed' : status;
   if (overdue) {
     return {
       label: 'OVERDUE',
@@ -79,7 +82,7 @@ const getStatusStyle = (status: InvoiceStatus, overdue: boolean, isDarkMode: boo
       border: 'rgba(239, 68, 68, 0.3)',
     };
   }
-  switch (status) {
+  switch (normalized) {
     case 'paid':
       return {
         label: 'PAID',
@@ -101,10 +104,16 @@ const getStatusStyle = (status: InvoiceStatus, overdue: boolean, isDarkMode: boo
         bg: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)',
         border: 'rgba(245, 158, 11, 0.3)',
       };
-    case 'void':
+    case 'disputed':
+      return {
+        label: 'DISPUTED',
+        color: '#D97706',
+        bg: isDarkMode ? 'rgba(217, 119, 6, 0.18)' : 'rgba(217, 119, 6, 0.1)',
+        border: 'rgba(217, 119, 6, 0.35)',
+      };
     default:
       return {
-        label: 'VOID',
+        label: String(normalized).toUpperCase(),
         color: 'text.secondary',
         bg: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
         border: 'rgba(0,0,0,0.1)',
@@ -113,6 +122,91 @@ const getStatusStyle = (status: InvoiceStatus, overdue: boolean, isDarkMode: boo
 };
 
 const dateLabel = (value: string) => value.slice(0, 10);
+
+const InvoiceStatusChip = ({
+  status,
+  overdue,
+  disputeReason,
+  isDarkMode,
+}: {
+  status: InvoiceStatus | 'void';
+  overdue: boolean;
+  disputeReason?: string;
+  isDarkMode: boolean;
+}) => {
+  const st = getStatusStyle(status, overdue, isDarkMode);
+  const normalized = status === 'void' ? 'disputed' : status;
+  const showReasonOnHover = normalized === 'disputed' && Boolean(disputeReason?.trim());
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openPopover = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (showReasonOnHover) setOpen(true);
+  };
+
+  const scheduleClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  return (
+    <>
+      <Box
+        ref={anchorRef}
+        onMouseEnter={openPopover}
+        onMouseLeave={scheduleClose}
+        sx={{ display: 'inline-flex', cursor: showReasonOnHover ? 'help' : 'default' }}
+      >
+        <Chip
+          size="small"
+          label={st.label}
+          sx={{
+            height: 22,
+            fontSize: '0.64rem',
+            fontWeight: 850,
+            bgcolor: st.bg,
+            color: st.color,
+            border: `1px solid ${st.border}`,
+            borderRadius: '6px',
+            px: 0.5,
+          }}
+        />
+      </Box>
+      <Popover
+        open={open}
+        anchorEl={anchorRef.current}
+        onClose={() => setOpen(false)}
+        disableRestoreFocus
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        slotProps={{
+          paper: {
+            onMouseEnter: openPopover,
+            onMouseLeave: scheduleClose,
+            sx: {
+              mt: 0.75,
+              p: 1.75,
+              maxWidth: 360,
+              borderRadius: '14px',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              boxShadow: isDarkMode ? '0 12px 32px rgba(0,0,0,0.45)' : '0 12px 28px rgba(26,22,37,0.12)',
+            },
+          },
+        }}
+        sx={{ pointerEvents: 'none', '& .MuiPaper-root': { pointerEvents: 'auto' } }}
+      >
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#D97706', mb: 0.75 }}>
+          Dispute reason
+        </Typography>
+        <Typography sx={{ fontSize: '0.85rem', fontWeight: 550, color: 'text.primary', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
+          {disputeReason}
+        </Typography>
+      </Popover>
+    </>
+  );
+};
 
 const PROFILE_GROUPS: Array<{
   category: string;
@@ -340,6 +434,8 @@ const InvoiceClientDetailPage = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirmInvoice, setSendConfirmInvoice] = useState<InvoiceRecord | null>(null);
   const [sendPreviewData, setSendPreviewData] = useState<InvoicePreviewData | null>(null);
+  const [disputeInvoice, setDisputeInvoice] = useState<InvoiceRecord | null>(null);
+  const [disputingId, setDisputingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<InvoiceClientForm>(emptyClientForm());
   const [baseline, setBaseline] = useState('');
@@ -385,6 +481,20 @@ const InvoiceClientDetailPage = () => {
     setNotice('');
     setSendConfirmInvoice(invoice);
     setSendPreviewData(previewDataFromInvoice(invoice, settings.data?.bankAccounts || []));
+  };
+
+  const confirmDispute = async (reason: string) => {
+    if (!disputeInvoice) return;
+    setDisputingId(disputeInvoice._id);
+    try {
+      await mutations.disputeInvoice.mutateAsync({ id: disputeInvoice._id, reason });
+      setDisputeInvoice(null);
+      setNotice('Invoice marked as disputed');
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setDisputingId(null);
+    }
   };
 
   const confirmSendInvoice = async (previewElement: HTMLElement) => {
@@ -878,7 +988,6 @@ const InvoiceClientDetailPage = () => {
                 </TableRow>
               )}
               {(invoices.data || []).map((invoice) => {
-                const st = getStatusStyle(invoice.status, invoice.overdue, isDarkMode);
                 return (
                   <TableRow
                     key={invoice._id}
@@ -902,19 +1011,11 @@ const InvoiceClientDetailPage = () => {
                       {formatInvoiceMoney(invoice.currency, invoice.grandTotal)}
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={st.label}
-                        sx={{
-                          height: 22,
-                          fontSize: '0.64rem',
-                          fontWeight: 850,
-                          bgcolor: st.bg,
-                          color: st.color,
-                          border: `1px solid ${st.border}`,
-                          borderRadius: '6px',
-                          px: 0.5,
-                        }}
+                      <InvoiceStatusChip
+                        status={invoice.status}
+                        overdue={invoice.overdue}
+                        disputeReason={invoice.disputeReason}
+                        isDarkMode={isDarkMode}
                       />
                     </TableCell>
                     <TableCell align="right" sx={{ pr: 2 }}>
@@ -980,12 +1081,12 @@ const InvoiceClientDetailPage = () => {
                         {(invoice.status === 'draft' || invoice.status === 'sent') && (
                           <Button
                             size="small"
-                            color="inherit"
-                            startIcon={<BlockIcon sx={{ fontSize: 14 }} />}
-                            sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px', color: 'text.secondary' }}
-                            onClick={() => run(() => mutations.voidInvoice.mutateAsync(invoice._id))}
+                            color="warning"
+                            startIcon={<GavelIcon sx={{ fontSize: 14 }} />}
+                            sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
+                            onClick={() => setDisputeInvoice(invoice)}
                           >
-                            Void
+                            Dispute
                           </Button>
                         )}
                       </Box>
@@ -1066,6 +1167,17 @@ const InvoiceClientDetailPage = () => {
           setSendPreviewData(null);
         }}
         onConfirm={confirmSendInvoice}
+      />
+
+      <InvoiceDisputeModal
+        open={Boolean(disputeInvoice)}
+        invoiceNumber={disputeInvoice?.invoiceNumber}
+        submitting={Boolean(disputingId)}
+        onClose={() => {
+          if (disputingId) return;
+          setDisputeInvoice(null);
+        }}
+        onConfirm={confirmDispute}
       />
     </Box>
   );
