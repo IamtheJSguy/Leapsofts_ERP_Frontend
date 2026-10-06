@@ -1328,6 +1328,7 @@ export interface LeadFilters {
   channel?: OutreachChannel;
   outreachStatus?: ColdOutreachStatus;
   responseStatus?: ColdResponseStatus;
+  untouched?: boolean;
 }
 
 export interface LeadExportColumn {

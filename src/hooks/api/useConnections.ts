@@ -17,11 +17,14 @@ export interface SalesPipelineStats {
   positive: number;
   futureLeads: number;
   futureLeadsDueSoon: number;
+  untouched?: number;
   inConversation?: number;
   qualified?: number;
   conversionRates: {
     sentRate?: number;
     pendingRate?: number;
+    untouchedRate?: number;
+    undialedRate?: number;
     acceptRate: number;
     messageSentRate: number;
     respondedRate: number;
@@ -38,9 +41,24 @@ export interface SalesPipelineStats {
     outreachStats: Record<string, number>;
     responseStats: Record<string, number>;
     callsDialed: number;
+    undialed?: number;
     followUps: number;
     futureLeads: number;
     futureLeadsDueSoon: number;
+    untouched?: number;
+    conversionRates?: {
+      dialedRate?: number;
+      dialed1Rate?: number;
+      dialed2Rate?: number;
+      dialed3Rate?: number;
+      conversationRate?: number;
+      followUpRate?: number;
+      followUp1Rate?: number;
+      followUp2Rate?: number;
+      followUp3Rate?: number;
+      positiveRate?: number;
+      negativeRate?: number;
+    };
   };
 }
 
