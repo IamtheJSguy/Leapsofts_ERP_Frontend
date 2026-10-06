@@ -15,14 +15,16 @@ import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
 import LinkIcon from '@mui/icons-material/Link';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
-import type { Lead, Meeting, User } from '@/types';
+import type { Lead, Meeting, User, SalesBoardPlacement } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
+import { PushToSalesBoardModal } from './PushToSalesBoardModal';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -70,7 +72,7 @@ const formatMeetingWhen = (iso: string) => {
 
 // --- Subcomponent: Lead Summary Column (Left) ---
 const LeadSummaryColumn = memo(({
-  leadData, onChange, isPending, errors, isDarkMode, avatarChar,
+  leadData, onChange, isPending, errors, isDarkMode, avatarChar, salesBoardPlacements = [],
 }: any) => {
   const renderField = (label: string, field: keyof Lead, placeholder?: string) => {
     const errorText = errors[field];
@@ -161,6 +163,42 @@ const LeadSummaryColumn = memo(({
         {renderField('Company Size', 'companySize')}
         {renderField('Location', 'location')}
       </Box>
+
+      {salesBoardPlacements && salesBoardPlacements.length > 0 && (
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)'}` }}>
+          <Typography variant="caption" sx={{
+            color: tokens.text.muted, fontWeight: 750, textTransform: 'uppercase',
+            letterSpacing: '0.06em', display: 'block', mb: 1, pl: 0.5, fontSize: '0.68rem',
+          }}>
+            Sales Boards ({salesBoardPlacements.length})
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            {salesBoardPlacements.map((p: SalesBoardPlacement, idx: number) => (
+              <Box
+                key={p._id || idx}
+                sx={{
+                  display: 'flex', alignItems: 'center', gap: 1,
+                  px: 1.25, py: 0.75, borderRadius: '10px',
+                  bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
+                  border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.12)'}`,
+                }}
+              >
+                <DashboardIcon sx={{ fontSize: 14, color: tokens.brand.accent, flexShrink: 0 }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.text.primary, lineHeight: 1.2 }} noWrap>
+                    {p.boardName || 'Board'}
+                  </Typography>
+                  {p.columnName && (
+                    <Typography variant="caption" sx={{ fontSize: '0.68rem', color: tokens.brand.primary, fontWeight: 600 }}>
+                      → {p.columnName}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 });
@@ -543,6 +581,7 @@ export const QualifyEnrichModal = ({
     description: '',
   });
   const [meetingParticipants, setMeetingParticipants] = useState<User[]>([]);
+  const [pushToSalesBoardOpen, setPushToSalesBoardOpen] = useState(false);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -863,6 +902,7 @@ export const QualifyEnrichModal = ({
               errors={errors}
               isDarkMode={isDarkMode}
               avatarChar={lead.firstName?.charAt(0) || lead.prospectName?.charAt(0) || '?'}
+              salesBoardPlacements={lead?.salesBoardPlacements ?? []}
             />
             {rightColumn}
           </Box>
@@ -876,6 +916,27 @@ export const QualifyEnrichModal = ({
         borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.01)',
       }}>
+        <Button
+          onClick={() => setPushToSalesBoardOpen(true)}
+          disabled={isPending || !lead}
+          variant="outlined"
+          startIcon={<DashboardIcon sx={{ fontSize: 17 }} />}
+          sx={{
+            mr: 'auto',
+            borderRadius: '12px',
+            textTransform: 'none',
+            fontWeight: 750,
+            fontSize: '0.85rem',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+            color: tokens.brand.primary,
+            '&:hover': {
+              borderColor: tokens.brand.primary,
+              bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
+            },
+          }}
+        >
+          Push to Sales Board
+        </Button>
         <Button
           onClick={onClose}
           disabled={isPending}
@@ -905,6 +966,15 @@ export const QualifyEnrichModal = ({
             : (isUpdateMode ? 'Save' : 'Qualify & Push')}
         </Button>
       </DialogActions>
+
+      {/* Push to Sales Board Modal */}
+      {pushToSalesBoardOpen && lead && (
+        <PushToSalesBoardModal
+          open={pushToSalesBoardOpen}
+          lead={lead}
+          onClose={() => setPushToSalesBoardOpen(false)}
+        />
+      )}
     </Dialog>
   );
 };

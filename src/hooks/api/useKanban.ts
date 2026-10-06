@@ -118,6 +118,9 @@ const kanbanApi = {
     data: { assignedTo: string[]; dueDate?: string };
   }) => api.patch<{ data: KanbanSubtask }>(`/kanban/subtasks/${subtaskId}/assign`, data),
   deleteSubtask: (subtaskId: string) => api.delete(`/kanban/subtasks/${subtaskId}`),
+  getSalesBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/sales-boards'),
+  pushLeadToSalesBoard: ({ leadId, boardId, columnId }: { leadId: string; boardId: string; columnId: string }) =>
+    api.post(`/kanban/leads/${leadId}/push-to-sales-board`, { boardId, columnId }),
 };
 
 const sortByOrder = (a: any, b: any) =>
@@ -210,6 +213,31 @@ export const useKanbanBoards = (options?: { enabled?: boolean }) => {
     queryKey: ['kanbanBoards', organizationId],
     queryFn: () => kanbanApi.getBoards().then((r) => r.data.data),
     enabled: options?.enabled ?? true,
+  });
+};
+
+export const useSalesBoards = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanSalesBoards', organizationId],
+    queryFn: () => kanbanApi.getSalesBoards().then((r) => r.data.data),
+    enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const usePushLeadToSalesBoard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.pushLeadToSalesBoard,
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.leadId] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanSalesBoards'] });
+    },
   });
 };
 
