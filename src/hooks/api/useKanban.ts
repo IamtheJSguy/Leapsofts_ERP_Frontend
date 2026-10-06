@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
+import type { BoardCategory, KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export type CreateMeetingOnCardPayload = {
@@ -16,8 +16,8 @@ const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
   getBoard: (id: string) => api.get<{ data: KanbanBoardResponse }>(`/kanban/board/${id}`),
   createBoard: (data: { name: string; type?: string; description?: string; status?: string; techStack?: string[] }) => api.post('/kanban/boards', data),
-  updateBoard: ({ id, name }: { id: string; name: string }) =>
-    api.patch<{ data: { message: string; board: KanbanBoard } }>(`/kanban/boards/${id}`, { name }),
+  updateBoard: ({ id, name, category }: { id: string; name?: string; category?: BoardCategory }) =>
+    api.patch<{ data: { message: string; board: KanbanBoard } }>(`/kanban/boards/${id}`, { name, category }),
   createColumn: ({ boardId, name }: { boardId: string; name: string }) =>
     api.post(`/kanban/boards/${boardId}/columns`, { name }),
   moveCard: ({ cardId, data }: { cardId: string; data: { columnId: string; position: number } }) =>

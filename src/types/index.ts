@@ -878,9 +878,18 @@ export interface BoardMember {
   role: 'admin' | 'member';
 }
 
+export type BoardCategory =
+  | 'general'
+  | 'sales'
+  | 'technology'
+  | 'marketing'
+  | 'operations'
+  | 'support';
+
 export interface KanbanBoard {
   _id: string;
   name: string;
+  category?: BoardCategory;
   columns: KanbanColumn[];
   projectId: string;
   ownerId: string;
