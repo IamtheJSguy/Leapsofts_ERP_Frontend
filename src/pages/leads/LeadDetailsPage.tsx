@@ -12,9 +12,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import LaunchIcon from '@mui/icons-material/Launch';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 
 import { useLead, useDisqualifyLead } from '@/hooks/api/useLeads';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
+import { PushToSalesBoardModal } from '@/components/leads/PushToSalesBoardModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { tokens } from '@/styles/tokens';
 import { useUIStore } from '@/store/useUIStore';
@@ -29,6 +31,7 @@ export const LeadDetailsPage = () => {
   const addToast = useUIStore((s) => s.addToast);
   const { isElevated } = usePermissions();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [pushModalOpen, setPushModalOpen] = useState(false);
   const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
   const disqualifyLead = useDisqualifyLead();
 
@@ -138,6 +141,23 @@ export const LeadDetailsPage = () => {
               Disqualify
             </Button>
           )}
+          <Button
+            variant="outlined"
+            startIcon={<DashboardIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setPushModalOpen(true)}
+            sx={{
+              borderRadius: '24px', textTransform: 'none', fontWeight: 700,
+              color: tokens.brand.primary,
+              borderColor: isDarkMode ? 'rgba(93,26,137,0.4)' : 'rgba(93,26,137,0.25)',
+              bgcolor: isDarkMode ? 'rgba(93,26,137,0.12)' : 'rgba(93,26,137,0.04)',
+              '&:hover': {
+                bgcolor: isDarkMode ? 'rgba(93,26,137,0.22)' : 'rgba(93,26,137,0.08)',
+                borderColor: tokens.brand.primary,
+              },
+            }}
+          >
+            Push to Sales Board
+          </Button>
           <Button
             variant="outlined"
             startIcon={<EditIcon sx={{ fontSize: 16 }} />}
@@ -319,6 +339,43 @@ export const LeadDetailsPage = () => {
             </Box>
           </Box>
 
+          {/* Sales Board Placements */}
+          {lead.salesBoardPlacements && lead.salesBoardPlacements.length > 0 && (
+            <Box sx={{
+              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+              borderRadius: '24px', p: 3,
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DashboardIcon sx={{ color: tokens.brand.accent, fontSize: 18 }} /> Sales Board Placements
+                </Typography>
+                <Chip label={lead.salesBoardPlacements.length} size="small" sx={{ fontWeight: 750, bgcolor: 'rgba(93,26,137,0.1)', color: tokens.brand.primary }} />
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                {[...lead.salesBoardPlacements].reverse().map((placement, idx) => (
+                  <Box key={placement._id || idx} sx={{
+                    p: 1.5, borderRadius: '14px',
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
+                  }}>
+                    <Typography variant="body2" sx={{ fontWeight: 750, color: 'text.primary' }}>
+                      {placement.boardName || placement.boardId}
+                    </Typography>
+                    {placement.columnName && (
+                      <Typography variant="caption" sx={{ color: tokens.brand.primary, fontWeight: 700, display: 'block' }}>
+                        Column: {placement.columnName}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                      {new Date(placement.pushedAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
         </Box>
       </Box>
 
@@ -351,6 +408,13 @@ export const LeadDetailsPage = () => {
         }}
         onCancel={() => setConfirmDisqualifyOpen(false)}
       />
+      {pushModalOpen && lead && (
+        <PushToSalesBoardModal
+          open={pushModalOpen}
+          lead={lead}
+          onClose={() => setPushModalOpen(false)}
+        />
+      )}
     </Box>
   );
 };

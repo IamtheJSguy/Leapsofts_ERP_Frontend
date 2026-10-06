@@ -133,6 +133,17 @@ export interface User {
   createdAt?: string;
 }
 
+export interface SalesBoardPlacement {
+  _id?: string;
+  boardId: string;
+  columnId: string;
+  cardId: string;
+  boardName?: string;
+  columnName?: string;
+  pushedAt: string;
+  pushedBy: string | User;
+}
+
 export interface Lead {
   _id: string;
   firstName?: string;
@@ -174,6 +185,8 @@ export interface Lead {
   futureLeadRemindersSent?: Record<string, string>;
   leadComment?: LeadComment | null;
   coldCalling?: ColdCallingState;
+  /** Full audit trail of every sales board push (append-only). */
+  salesBoardPlacements?: SalesBoardPlacement[];
 }
 
 export interface FollowUpEntry {
@@ -1315,6 +1328,7 @@ export interface LeadFilters {
   channel?: OutreachChannel;
   outreachStatus?: ColdOutreachStatus;
   responseStatus?: ColdResponseStatus;
+  untouched?: boolean;
 }
 
 export interface LeadExportColumn {

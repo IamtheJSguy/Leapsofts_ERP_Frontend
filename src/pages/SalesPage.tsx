@@ -215,7 +215,12 @@ export const SalesPage = () => {
 
   const funnelCardHeading = (label: string) => {
     if (label === 'TOTAL' || label === 'TOTAL LEADS') {
-      if (outreachChannel === 'cold_calling') return 'TOTAL LEADS';
+      if (outreachChannel === 'cold_calling') {
+        if (coldTotalView === 'undialed') return 'UNDIALED';
+        if (coldTotalView === 'untouched') return 'UNTOUCHED';
+        return 'TOTAL LEADS';
+      }
+      if (totalView === 'untouched') return 'UNTOUCHED';
       if (totalView === 'pending') return 'PENDING';
       if (totalView === 'sent') return 'SENT';
       return 'TOTAL LEADS';
@@ -223,6 +228,12 @@ export const SalesPage = () => {
     if (label === 'DIALED') return dialedView === 'all' ? 'DIALED' : `DIALED ${dialedView}`;
     if (label === 'ACCEPTED') return 'ACCEPTED';
     if (label === 'FOLLOW UP') {
+      if (outreachChannel === 'cold_calling') {
+        if (coldFollowUpView === '1') return 'FOLLOW UP 1';
+        if (coldFollowUpView === '2') return 'FOLLOW UP 2';
+        if (coldFollowUpView === '3') return 'FOLLOW UP 3';
+        return 'FOLLOW UP';
+      }
       if (followUpView === '1') return 'FOLLOW UP 1';
       if (followUpView === '2') return 'FOLLOW UP 2';
       return 'FOLLOW UP';
@@ -297,6 +308,10 @@ export const SalesPage = () => {
     setSelectedStatus('All statuses');
     setSelectedConnectionStatus('');
     setActiveCard('TOTAL');
+    setTotalView('all');
+    setColdTotalView('all');
+    setFollowUpView('all');
+    setColdFollowUpView('all');
     setFutureLeadWindow('');
     setMessagedOnly(false);
     if (user?._id) localStorage.setItem(`sales-outreach-channel:${user._id}`, channel);
@@ -325,7 +340,9 @@ export const SalesPage = () => {
   const [futureLeadWindow, setFutureLeadWindow] = useState<string>('');
   const [messagedOnly, setMessagedOnly] = useState(false);
   const [followUpView, setFollowUpView] = useState<'all' | '1' | '2'>('all');
-  const [totalView, setTotalView] = useState<'all' | 'pending' | 'sent'>('all');
+  const [coldFollowUpView, setColdFollowUpView] = useState<'all' | '1' | '2' | '3'>('all');
+  const [totalView, setTotalView] = useState<'all' | 'untouched' | 'pending' | 'sent'>('all');
+  const [coldTotalView, setColdTotalView] = useState<'all' | 'undialed' | 'untouched'>('all');
   const [dialedView, setDialedView] = useState<'all' | '1' | '2' | '3'>('all');
 
   const { data: usersData } = useUsers();
@@ -643,7 +660,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView, dialedView, outreachChannel]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -668,18 +685,28 @@ export const SalesPage = () => {
     };
 
     if (outreachChannel === 'cold_calling') {
-      if (activeCard === 'PENDING') filters.outreachStatus = 'pending';
+      const onTotalCard = activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS';
+      if (onTotalCard && !selectedConnectionStatus && coldTotalView === 'undialed') {
+        filters.outreachStatus = 'pending';
+      } else if (onTotalCard && !selectedConnectionStatus && coldTotalView === 'untouched') {
+        filters.untouched = true;
+      }
       if (activeCard === 'DIALED') filters.outreachStatus = dialedView === 'all' ? 'dialed' : `dialed_${dialedView}`;
       if (activeCard === 'DECLINED') filters.outreachStatus = 'declined';
       if (activeCard === 'IN CONVERSATION') filters.responseStatus = 'in_conversation';
       if (activeCard === 'NEGATIVE') filters.responseStatus = 'negative';
       if (activeCard === 'POSITIVE') filters.responseStatus = 'positive';
-      if (activeCard.startsWith('FOLLOW UP ')) filters.responseStatus = `follow_up_${activeCard.slice(-1)}`;
+      if (activeCard === 'FOLLOW UP' || activeCard === 'FOLLOW UPS' || activeCard.startsWith('FOLLOW UP ')) {
+        filters.responseStatus = coldFollowUpView === 'all' ? 'follow_up' : `follow_up_${coldFollowUpView}`;
+      }
       return filters;
     }
     const onTotalCard = activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS';
     // The card's Pending/Sent view is a bucket. A connection-status dropdown
     // choice is exact and must win, otherwise Sent keeps accepted + declined.
+    if (onTotalCard && !selectedConnectionStatus && totalView === 'untouched') {
+      filters.untouched = true;
+    }
     if (onTotalCard && !selectedConnectionStatus && totalView === 'pending') {
       filters.connectionStatus = 'pending';
       delete filters.connectionSent;
@@ -708,7 +735,7 @@ export const SalesPage = () => {
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView, dialedView, outreachChannel]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
@@ -909,6 +936,16 @@ export const SalesPage = () => {
     const pct = (value: number) => `${value}%`;
 
     if (!pipelineStats) {
+      if (outreachChannel === 'cold_calling') {
+        return [
+          { label: 'TOTAL', value: '0', percent: null },
+          { label: 'DIALED', value: '0', percent: '0%' },
+          { label: 'IN CONVERSATION', value: '0', percent: '0%' },
+          { label: 'FOLLOW UP', value: '0', percent: '0%' },
+          { label: 'POSITIVE', value: '0', percent: '0%' },
+          { label: 'NEGATIVE', value: '0', percent: '0%' },
+        ];
+      }
       return [
         { label: 'TOTAL', value: '0', percent: null },
         { label: 'ACCEPTED', value: '0', percent: '0%' },
@@ -924,15 +961,68 @@ export const SalesPage = () => {
       const cold = pipelineStats.coldCalling;
       const outreach = cold?.outreachStats ?? {};
       const response = cold?.responseStats ?? {};
+      const totalColdValue =
+        coldTotalView === 'undialed'
+          ? String(cold?.undialed ?? outreach.pending ?? 0)
+          : coldTotalView === 'untouched'
+            ? String(pipelineStats.untouched ?? 0)
+            : String(pipelineStats.totalProspects);
+      const totalColdPercent =
+        coldTotalView === 'undialed'
+          ? pct(pipelineStats.conversionRates?.undialedRate ?? (pipelineStats.totalProspects > 0 ? Math.round(((cold?.undialed ?? outreach.pending ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+          : coldTotalView === 'untouched'
+            ? pct(pipelineStats.conversionRates?.untouchedRate ?? (pipelineStats.totalProspects > 0 ? Math.round(((pipelineStats.untouched ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+            : null;
+
+      const dialedCount = dialedView === 'all' ? (cold?.callsDialed ?? 0) : (outreach[`dialed_${dialedView}`] ?? 0);
+      const dialedRate =
+        dialedView === '1'
+          ? (cold?.conversionRates?.dialed1Rate ?? (pipelineStats.totalProspects > 0 ? Math.round(((outreach.dialed_1 ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+          : dialedView === '2'
+            ? (cold?.conversionRates?.dialed2Rate ?? (pipelineStats.totalProspects > 0 ? Math.round(((outreach.dialed_2 ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+            : dialedView === '3'
+              ? (cold?.conversionRates?.dialed3Rate ?? (pipelineStats.totalProspects > 0 ? Math.round(((outreach.dialed_3 ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+              : (cold?.conversionRates?.dialedRate ?? (pipelineStats.totalProspects > 0 ? Math.round(((cold?.callsDialed ?? 0) / pipelineStats.totalProspects) * 100) : 0));
+
+      const inConversationCount = response.in_conversation ?? 0;
+      const conversationRate =
+        cold?.conversionRates?.conversationRate ??
+        ((cold?.callsDialed ?? 0) > 0 ? Math.round((inConversationCount / (cold?.callsDialed ?? 1)) * 100) : 0);
+
+      const followUpsCount =
+        coldFollowUpView === '1'
+          ? (response.follow_up_1 ?? 0)
+          : coldFollowUpView === '2'
+            ? (response.follow_up_2 ?? 0)
+            : coldFollowUpView === '3'
+              ? (response.follow_up_3 ?? 0)
+              : (cold?.followUps ?? 0);
+      const followUpRate =
+        coldFollowUpView === '1'
+          ? (cold?.conversionRates?.followUp1Rate ?? ((cold?.callsDialed ?? 0) > 0 ? Math.round(((response.follow_up_1 ?? 0) / (cold?.callsDialed ?? 1)) * 100) : 0))
+          : coldFollowUpView === '2'
+            ? (cold?.conversionRates?.followUp2Rate ?? ((cold?.callsDialed ?? 0) > 0 ? Math.round(((response.follow_up_2 ?? 0) / (cold?.callsDialed ?? 1)) * 100) : 0))
+            : coldFollowUpView === '3'
+              ? (cold?.conversionRates?.followUp3Rate ?? ((cold?.callsDialed ?? 0) > 0 ? Math.round(((response.follow_up_3 ?? 0) / (cold?.callsDialed ?? 1)) * 100) : 0))
+              : (cold?.conversionRates?.followUpRate ?? ((cold?.callsDialed ?? 0) > 0 ? Math.round(((cold?.followUps ?? 0) / (cold?.callsDialed ?? 1)) * 100) : 0));
+
+      const positiveCount = response.positive ?? 0;
+      const positiveRate =
+        cold?.conversionRates?.positiveRate ??
+        ((cold?.callsDialed ?? 0) > 0 ? Math.round((positiveCount / (cold?.callsDialed ?? 1)) * 100) : 0);
+
+      const negativeCount = response.negative ?? 0;
+      const negativeRate =
+        cold?.conversionRates?.negativeRate ??
+        ((cold?.callsDialed ?? 0) > 0 ? Math.round((negativeCount / (cold?.callsDialed ?? 1)) * 100) : 0);
+
       return [
-        { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
-        { label: 'PENDING', value: String(outreach.pending ?? 0), percent: null },
-        { label: 'DIALED', value: String(dialedView === 'all' ? (cold?.callsDialed ?? 0) : (outreach[`dialed_${dialedView}`] ?? 0)), percent: null },
-        { label: 'DECLINED', value: String(outreach.declined ?? 0), percent: null },
-        { label: 'IN CONVERSATION', value: String(response.in_conversation ?? 0), percent: null },
-        { label: 'FOLLOW UPS', value: String(cold?.followUps ?? 0), percent: null },
-        { label: 'POSITIVE', value: String(response.positive ?? 0), percent: null },
-        { label: 'NEGATIVE', value: String(response.negative ?? 0), percent: null },
+        { label: 'TOTAL', value: totalColdValue, percent: totalColdPercent },
+        { label: 'DIALED', value: String(dialedCount), percent: pct(dialedRate) },
+        { label: 'IN CONVERSATION', value: String(inConversationCount), percent: pct(conversationRate) },
+        { label: 'FOLLOW UP', value: String(followUpsCount), percent: pct(followUpRate) },
+        { label: 'POSITIVE', value: String(positiveCount), percent: pct(positiveRate) },
+        { label: 'NEGATIVE', value: String(negativeCount), percent: pct(negativeRate) },
       ];
     }
 
@@ -952,17 +1042,21 @@ export const SalesPage = () => {
           : pct(conversionRates.followUpRate ?? 0);
 
     const totalValue =
-      totalView === 'pending'
-        ? String(pipelineStats.pendingConnections ?? 0)
-        : totalView === 'sent'
-          ? String(pipelineStats.connectionsSent ?? 0)
-          : String(pipelineStats.totalProspects);
+      totalView === 'untouched'
+        ? String(pipelineStats.untouched ?? 0)
+        : totalView === 'pending'
+          ? String(pipelineStats.pendingConnections ?? 0)
+          : totalView === 'sent'
+            ? String(pipelineStats.connectionsSent ?? 0)
+            : String(pipelineStats.totalProspects);
     const totalPercent =
-      totalView === 'pending'
-        ? pct(conversionRates.pendingRate ?? 0)
-        : totalView === 'sent'
-          ? pct(conversionRates.sentRate ?? 0)
-          : null;
+      totalView === 'untouched'
+        ? pct(pipelineStats.conversionRates?.untouchedRate ?? (pipelineStats.totalProspects > 0 ? Math.round(((pipelineStats.untouched ?? 0) / pipelineStats.totalProspects) * 100) : 0))
+        : totalView === 'pending'
+          ? pct(conversionRates.pendingRate ?? 0)
+          : totalView === 'sent'
+            ? pct(conversionRates.sentRate ?? 0)
+            : null;
 
     return [
       { label: 'TOTAL', value: totalValue, percent: totalPercent },
@@ -973,7 +1067,7 @@ export const SalesPage = () => {
       { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
       { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
     ];
-  }, [pipelineStats, followUpView, totalView, dialedView, outreachChannel]);
+  }, [pipelineStats, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
   const applyFunnelCard = (label: string) => {
     setActiveCard(label);
@@ -982,11 +1076,10 @@ export const SalesPage = () => {
     if (outreachChannel === 'cold_calling') {
       setSelectedConnectionStatus('');
       setSelectedStatus('All statuses');
-      if (label === 'PENDING') setSelectedConnectionStatus('pending');
-      else if (label === 'DIALED') setSelectedConnectionStatus(dialedView === 'all' ? '' : `dialed_${dialedView}`);
+      if (label === 'DIALED') setSelectedConnectionStatus(dialedView === 'all' ? '' : `dialed_${dialedView}`);
       else if (label === 'DECLINED') setSelectedConnectionStatus('declined');
       else if (label === 'IN CONVERSATION') setSelectedStatus('in_conversation');
-      else if (label === 'FOLLOW UPS') setSelectedStatus('follow_up_1');
+      else if (label === 'FOLLOW UP' || label === 'FOLLOW UPS') setSelectedStatus(coldFollowUpView === 'all' ? 'follow_up' : `follow_up_${coldFollowUpView}`);
       else if (label === 'POSITIVE') setSelectedStatus('positive');
       else if (label === 'NEGATIVE') setSelectedStatus('negative');
       return;
@@ -1198,7 +1291,7 @@ export const SalesPage = () => {
               md: 'repeat(4, minmax(0, 1fr))',
             },
             '@media (min-width: 1024px)': {
-              gridTemplateColumns: `repeat(${outreachChannel === 'cold_calling' ? 8 : 7}, minmax(0, 1fr))`,
+              gridTemplateColumns: `repeat(${outreachChannel === 'cold_calling' ? 6 : 7}, minmax(0, 1fr))`,
             },
             gap: { xs: 1, md: 0.85, xl: 1.25 },
             mb: 1.5,
@@ -1316,7 +1409,7 @@ export const SalesPage = () => {
                       lineHeight: 1.1,
                       letterSpacing: '-0.02em',
                       whiteSpace: 'nowrap',
-                      textAlign: isTotalCard || item.label === 'FOLLOW UP' ? 'left' : 'center',
+                      textAlign: isTotalCard || item.label === 'FOLLOW UP' || (item.label === 'DIALED' && outreachChannel === 'cold_calling') ? 'left' : 'center',
                       flex: '1 1 auto',
                       minWidth: 0,
                       fontVariantNumeric: 'tabular-nums',
@@ -1329,19 +1422,40 @@ export const SalesPage = () => {
                       size="small"
                       value={totalView}
                       renderValue={(value) =>
-                        value === 'pending' ? 'P' : value === 'sent' ? 'S' : 'A'
+                        value === 'untouched' ? 'UT' : value === 'pending' ? 'P' : value === 'sent' ? 'S' : 'All'
                       }
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
-                        const next = e.target.value as 'all' | 'pending' | 'sent';
+                        const next = e.target.value as 'all' | 'untouched' | 'pending' | 'sent';
                         setTotalView(next);
                         applyFunnelCard('TOTAL');
                       }}
-                      sx={funnelSelectSx}
+                      sx={{ ...funnelSelectSx, minWidth: 44, width: 44 }}
                     >
                       <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                      <MenuItem value="untouched" sx={{ fontSize: '0.72rem' }}>Untouched</MenuItem>
                       <MenuItem value="pending" sx={{ fontSize: '0.72rem' }}>Pending</MenuItem>
                       <MenuItem value="sent" sx={{ fontSize: '0.72rem' }}>Sent</MenuItem>
+                    </Select>
+                  )}
+                  {isTotalCard && outreachChannel === 'cold_calling' && (
+                    <Select
+                      size="small"
+                      value={coldTotalView}
+                      renderValue={(value) =>
+                        value === 'undialed' ? 'UD' : value === 'untouched' ? 'UT' : 'All'
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const next = e.target.value as 'all' | 'undialed' | 'untouched';
+                        setColdTotalView(next);
+                        applyFunnelCard('TOTAL');
+                      }}
+                      sx={{ ...funnelSelectSx, minWidth: 44, width: 44 }}
+                    >
+                      <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                      <MenuItem value="undialed" sx={{ fontSize: '0.72rem' }}>Undialed</MenuItem>
+                      <MenuItem value="untouched" sx={{ fontSize: '0.72rem' }}>Untouched</MenuItem>
                     </Select>
                   )}
                   {item.label === 'DIALED' && outreachChannel === 'cold_calling' && (
@@ -1368,21 +1482,32 @@ export const SalesPage = () => {
                   {item.label === 'FOLLOW UP' && (
                     <Select
                       size="small"
-                      value={followUpView}
+                      value={outreachChannel === 'cold_calling' ? coldFollowUpView : followUpView}
                       renderValue={(value) =>
-                        value === '1' ? '#1' : value === '2' ? '#2' : 'All'
+                        value === '1' ? '#1' : value === '2' ? '#2' : value === '3' ? '#3' : 'All'
                       }
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
-                        const next = e.target.value as 'all' | '1' | '2';
-                        setFollowUpView(next);
-                        applyFunnelCard('FOLLOW UP');
+                        if (outreachChannel === 'cold_calling') {
+                          const next = e.target.value as 'all' | '1' | '2' | '3';
+                          setColdFollowUpView(next);
+                          setActiveCard('FOLLOW UP');
+                          setSelectedConnectionStatus('');
+                          setSelectedStatus(next === 'all' ? 'follow_up' : `follow_up_${next}`);
+                        } else {
+                          const next = e.target.value as 'all' | '1' | '2';
+                          setFollowUpView(next);
+                          applyFunnelCard('FOLLOW UP');
+                        }
                       }}
-                      sx={{ ...funnelSelectSx, minWidth: 40, width: 40 }}
+                      sx={{ ...funnelSelectSx, minWidth: 42, width: 42 }}
                     >
                       <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
-                      <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>#1</MenuItem>
-                      <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>#2</MenuItem>
+                      <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>{outreachChannel === 'cold_calling' ? 'Follow Up 1' : '#1'}</MenuItem>
+                      <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>{outreachChannel === 'cold_calling' ? 'Follow Up 2' : '#2'}</MenuItem>
+                      {outreachChannel === 'cold_calling' && (
+                        <MenuItem value="3" sx={{ fontSize: '0.72rem' }}>Follow Up 3</MenuItem>
+                      )}
                     </Select>
                   )}
                 </Box>
@@ -1771,7 +1896,7 @@ export const SalesPage = () => {
               >
                 <MenuItem value="">All Outreach Statuses</MenuItem>
                 {outreachChannel === 'cold_calling' ? [
-                  <MenuItem key="pending" value="pending">Pending</MenuItem>,
+                  <MenuItem key="pending" value="pending">Undialed</MenuItem>,
                   <MenuItem key="dialed_1" value="dialed_1">Dialed 1</MenuItem>,
                   <MenuItem key="dialed_2" value="dialed_2">Dialed 2</MenuItem>,
                   <MenuItem key="dialed_3" value="dialed_3">Dialed 3</MenuItem>,
@@ -1796,7 +1921,10 @@ export const SalesPage = () => {
                   setMessagedOnly(false);
                   if (val === 'replied') setActiveCard('RESPONDED');
                   else if (val === 'in_conversation') setActiveCard('IN CONVERSATION');
-                  else if (val === 'follow_up') setActiveCard('FOLLOW UP');
+                  else if (val === 'follow_up') { setActiveCard('FOLLOW UP'); if (outreachChannel === 'cold_calling') setColdFollowUpView('all'); }
+                  else if (val === 'follow_up_1') { setActiveCard('FOLLOW UP'); setColdFollowUpView('1'); }
+                  else if (val === 'follow_up_2') { setActiveCard('FOLLOW UP'); setColdFollowUpView('2'); }
+                  else if (val === 'follow_up_3') { setActiveCard('FOLLOW UP'); setColdFollowUpView('3'); }
                   else if (val === 'negative') setActiveCard('NEGATIVE');
                   else if (val === 'positive') setActiveCard('POSITIVE');
                   else setActiveCard('TOTAL');
@@ -2538,7 +2666,7 @@ export const SalesPage = () => {
                               </Typography>
                             )}
                             </> : <>
-                              <Chip label={`Outreach: ${coldOutreach.replace('_', ' ')}`} size="small" clickable={['pending', 'dialed_1', 'dialed_2'].includes(coldOutreach)} onClick={(e) => { e.stopPropagation(); handleAdvanceColdOutreach(prospect); }} sx={{ bgcolor: coldOutreachToken.bg, color: coldOutreachToken.color, fontWeight: 750, fontSize: '0.64rem', height: 20, textTransform: 'uppercase', borderRadius: '6px' }} />
+                              <Chip label={`Outreach: ${coldOutreach === 'pending' ? 'undialed' : coldOutreach.replace('_', ' ')}`} size="small" clickable={['pending', 'dialed_1', 'dialed_2'].includes(coldOutreach)} onClick={(e) => { e.stopPropagation(); handleAdvanceColdOutreach(prospect); }} sx={{ bgcolor: coldOutreachToken.bg, color: coldOutreachToken.color, fontWeight: 750, fontSize: '0.64rem', height: 20, textTransform: 'uppercase', borderRadius: '6px' }} />
                               <Chip label={`Answered: ${coldResponse.replaceAll('_', ' ')}`} size="small" sx={{ bgcolor: coldResponseToken.bg, color: coldResponseToken.color, fontWeight: 750, fontSize: '0.64rem', height: 20, textTransform: 'uppercase', borderRadius: '6px' }} />
                               {coldResponse === 'future_lead' && prospect.coldCalling?.futureLeadAt && <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Due {format(new Date(prospect.coldCalling.futureLeadAt), 'MMM d, yyyy HH:mm')}</Typography>}
                             </>}

@@ -240,7 +240,7 @@ export const SalesEditRow = memo(function SalesEditRow({
             onChange={(e) => onUpdate(leadId, { coldCalling: { ...editData.coldCalling, outreachStatus: e.target.value as ColdOutreachStatus } })}
             style={field}
           >
-            <option value="pending">Outreach: Pending</option><option value="dialed_1">Outreach: Dialed 1</option>
+            <option value="pending">Outreach: Undialed</option><option value="dialed_1">Outreach: Dialed 1</option>
             <option value="dialed_2">Outreach: Dialed 2</option><option value="dialed_3">Outreach: Dialed 3</option>
             <option value="declined">Outreach: Declined</option>
           </select>
@@ -497,7 +497,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
             />
           )}</> : <>
           <select value={data.coldCalling?.outreachStatus || 'pending'} onChange={(e) => onUpdate({ coldCalling: { ...(data.coldCalling || { responseStatus: 'no_response' }), outreachStatus: e.target.value } })} style={nativeFieldStyle(isDarkMode)}>
-            <option value="pending">Outreach: Pending</option><option value="dialed_1">Outreach: Dialed 1</option><option value="dialed_2">Outreach: Dialed 2</option><option value="dialed_3">Outreach: Dialed 3</option><option value="declined">Outreach: Declined</option>
+            <option value="pending">Outreach: Undialed</option><option value="dialed_1">Outreach: Dialed 1</option><option value="dialed_2">Outreach: Dialed 2</option><option value="dialed_3">Outreach: Dialed 3</option><option value="declined">Outreach: Declined</option>
           </select>
           <select value={data.coldCalling?.responseStatus || 'no_response'} onChange={(e) => { const responseStatus = e.target.value as ColdResponseStatus; onUpdate({ coldCalling: { outreachStatus: data.coldCalling?.outreachStatus || 'pending', ...data.coldCalling, responseStatus, ...(responseStatus !== 'future_lead' ? { futureLeadAt: undefined } : {}) } }); if (responseStatus === 'invalid_lead') setPromptInvalidComment(true); }} style={nativeFieldStyle(isDarkMode)}>
             <option value="no_response">Answered: No response yet</option><option value="positive">Answered: Positive</option><option value="negative">Answered: Negative</option><option value="in_conversation">Answered: In Conversation</option><option value="future_lead">Answered: Future Lead</option><option value="follow_up_1">Answered: Follow-up 1</option><option value="follow_up_2">Answered: Follow-up 2</option><option value="follow_up_3">Answered: Follow-up 3</option><option value="invalid_lead">Answered: Invalid Lead</option>
