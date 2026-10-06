@@ -34,6 +34,14 @@ export interface SalesPipelineStats {
     qualifiedRate?: number;
   };
   messageStats?: Record<string, number>;
+  coldCalling: {
+    outreachStats: Record<string, number>;
+    responseStats: Record<string, number>;
+    callsDialed: number;
+    followUps: number;
+    futureLeads: number;
+    futureLeadsDueSoon: number;
+  };
 }
 
 const connectionApi = {

@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { ConnectionStatus, MessageStatus } from '@/types';
+import type { ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, MessageStatus } from '@/types';
 
 export type CsvBulkLeadRow = {
   firstName: string;
@@ -16,6 +16,7 @@ export type CsvBulkLeadRow = {
   messageStatus: MessageStatus | '';
   linkedinMsg: string;
   futureLeadDate?: string;
+  coldCalling: { outreachStatus: ColdOutreachStatus; responseStatus: ColdResponseStatus; futureLeadAt?: string };
 };
 
 export type CsvImportResult = {
@@ -25,6 +26,8 @@ export type CsvImportResult = {
     profile: number;
     connectionStatus: number;
     messageStatus: number;
+    coldOutreachStatus: number;
+    coldResponseStatus: number;
   };
 };
 
@@ -59,6 +62,9 @@ const HEADER_ALIASES: Record<string, string[]> = {
   connectionStatus: ['connection status', 'connectionstatus', 'connection_status', 'connection'],
   messageStatus: ['message status', 'messagestatus', 'message_status', 'message', 'linkedin msg'],
   futureLeadDate: ['date', 'future lead date', 'futureleaddate', 'future_lead_date', 'reactivate on'],
+  coldOutreachStatus: ['cold outreach status', 'coldoutreachstatus'],
+  coldResponseStatus: ['cold answered status', 'cold response status', 'coldresponsestatus'],
+  coldFutureLeadAt: ['cold future lead at', 'coldfutureleadat'],
 };
 
 const normalizeHeader = (value: string) =>
@@ -130,6 +136,16 @@ const matchMessageStatus = (raw: string): MessageStatus | '' => {
   return '';
 };
 
+const matchColdOutreachStatus = (raw: string): ColdOutreachStatus | '' => {
+  const cleaned = stripStatusPrefix(raw);
+  return (['pending', 'dialed_1', 'dialed_2', 'dialed_3', 'declined'] as string[]).includes(cleaned) ? cleaned as ColdOutreachStatus : '';
+};
+const matchColdResponseStatus = (raw: string): ColdResponseStatus | '' => {
+  const cleaned = stripStatusPrefix(raw);
+  const statuses = ['no_response', 'positive', 'negative', 'in_conversation', 'future_lead', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'invalid_lead'];
+  return statuses.includes(cleaned) ? cleaned as ColdResponseStatus : '';
+};
+
 const normalizeDate = (raw: string): string | undefined => {
   const value = raw.trim();
   if (!value) return undefined;
@@ -176,9 +192,9 @@ const rowHasContent = (row: Record<string, unknown>, headerMap: Record<string, s
   Object.values(headerMap).some((header) => cellToString(row[header]).length > 0);
 
 export const SAMPLE_BULK_ADD_CSV =
-  'First Name,Last Name,Email,Phone,Profile URL,Website URL,ICP,Profile,Connection Status,Message Status,Date\n' +
-  'Jane,Doe,jane@example.com,+1 555 0100,https://linkedin.com/in/janedoe,https://example.com,SaaS Founders,John Smith,pending,not_sent,\n' +
-  'John,Smith,,,https://linkedin.com/in/johnsmith,,SaaS Founders,John Smith,accepted,future_lead,2026-09-01\n';
+  'First Name,Last Name,Email,Phone,Profile URL,Website URL,ICP,Profile,Connection Status,Message Status,Date,Cold Outreach Status,Cold Answered Status,Cold Future Lead At\n' +
+  'Jane,Doe,jane@example.com,+1 555 0100,https://linkedin.com/in/janedoe,https://example.com,SaaS Founders,John Smith,pending,not_sent,,dialed_1,no_response,\n' +
+  'John,Smith,,,https://linkedin.com/in/johnsmith,,SaaS Founders,John Smith,accepted,future_lead,2026-09-01,dialed_2,future_lead,2026-09-01T10:00:00Z\n';
 
 export const parseBulkAddLeadsFile = async (
   file: File,
@@ -213,6 +229,8 @@ export const parseBulkAddLeadsFile = async (
     profile: 0,
     connectionStatus: 0,
     messageStatus: 0,
+    coldOutreachStatus: 0,
+    coldResponseStatus: 0,
   };
 
   const rows: CsvBulkLeadRow[] = [];
@@ -238,6 +256,9 @@ export const parseBulkAddLeadsFile = async (
     const dateRaw = cellToString(
       headerMap.futureLeadDate ? raw[headerMap.futureLeadDate] : '',
     );
+    const coldOutreachRaw = cellToString(headerMap.coldOutreachStatus ? raw[headerMap.coldOutreachStatus] : '');
+    const coldResponseRaw = cellToString(headerMap.coldResponseStatus ? raw[headerMap.coldResponseStatus] : '');
+    const coldFutureRaw = cellToString(headerMap.coldFutureLeadAt ? raw[headerMap.coldFutureLeadAt] : '');
 
     const icp = matchName(icpRaw, options.icpNames);
     if (icpRaw && !icp) mismatched.icp += 1;
@@ -250,6 +271,10 @@ export const parseBulkAddLeadsFile = async (
 
     const matchedMessage = matchMessageStatus(messageRaw);
     if (messageRaw && !matchedMessage) mismatched.messageStatus += 1;
+    const matchedColdOutreach = matchColdOutreachStatus(coldOutreachRaw);
+    if (coldOutreachRaw && !matchedColdOutreach) mismatched.coldOutreachStatus += 1;
+    const matchedColdResponse = matchColdResponseStatus(coldResponseRaw);
+    if (coldResponseRaw && !matchedColdResponse) mismatched.coldResponseStatus += 1;
 
     // Provided-but-unmatched statuses stay blank; omitted statuses use sheet defaults.
     const connectionStatus: ConnectionStatus | '' = connectionRaw
@@ -272,6 +297,11 @@ export const parseBulkAddLeadsFile = async (
       messageStatus,
       linkedinMsg: messageStatus || '',
       futureLeadDate,
+      coldCalling: {
+        outreachStatus: matchedColdOutreach || 'pending',
+        responseStatus: matchedColdResponse || 'no_response',
+        ...(matchedColdResponse === 'future_lead' && coldFutureRaw ? { futureLeadAt: new Date(coldFutureRaw).toISOString() } : {}),
+      },
     });
   }
 
