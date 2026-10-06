@@ -48,12 +48,13 @@ import SaveIcon from '@mui/icons-material/Save';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
-import { tokens, connectionStatusTokens, messageStatusTokens } from '@/styles/tokens';
-import type { Lead } from '@/types';
+import { tokens, connectionStatusTokens, messageStatusTokens, coldOutreachStatusTokens, coldResponseStatusTokens } from '@/styles/tokens';
+import type { Lead, OutreachChannel } from '@/types';
 import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import {
   useLeadAutoSync,
   buildEditDataFromProspect,
+  isLeadEditEqual,
   type EditableLeadData,
 } from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
@@ -86,6 +87,7 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
+import api from '@/lib/axios';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
@@ -163,7 +165,28 @@ export const SalesPage = () => {
   };
 
   const handleUpdateLeadSuccess = () => {
+    const id = leadModalId;
     handleCloseLeadModal();
+    if (!id || !editingLeads[id]) return;
+    void api.get<{ data: Lead }>(`/leads/${id}`).then(({ data }) => {
+      const refreshed = buildEditDataFromProspect(data.data);
+      setEditingLeads((prev) => {
+        const current = prev[id];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [id]: {
+            ...refreshed,
+            connectionStatus: current.connectionStatus,
+            messageStatus: current.messageStatus,
+            linkedinMsg: current.linkedinMsg,
+            futureLeadDate: current.futureLeadDate,
+            coldCalling: current.coldCalling,
+            leadComment: current.leadComment,
+          },
+        };
+      });
+    }).catch(() => undefined);
   };
 
   const getCardTheme = (label: string) => {
@@ -192,10 +215,12 @@ export const SalesPage = () => {
 
   const funnelCardHeading = (label: string) => {
     if (label === 'TOTAL' || label === 'TOTAL LEADS') {
+      if (outreachChannel === 'cold_calling') return 'TOTAL LEADS';
       if (totalView === 'pending') return 'PENDING';
       if (totalView === 'sent') return 'SENT';
       return 'TOTAL LEADS';
     }
+    if (label === 'DIALED') return dialedView === 'all' ? 'DIALED' : `DIALED ${dialedView}`;
     if (label === 'ACCEPTED') return 'ACCEPTED';
     if (label === 'FOLLOW UP') {
       if (followUpView === '1') return 'FOLLOW UP 1';
@@ -259,6 +284,23 @@ export const SalesPage = () => {
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
   const { user, isAdmin } = useAuth();
+  const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>('linkedin');
+
+  useEffect(() => {
+    if (!user?._id) return;
+    const saved = localStorage.getItem(`sales-outreach-channel:${user._id}`);
+    if (saved === 'linkedin' || saved === 'cold_calling') setOutreachChannel(saved);
+  }, [user?._id]);
+
+  const handleOutreachChannelChange = (channel: OutreachChannel) => {
+    setOutreachChannel(channel);
+    setSelectedStatus('All statuses');
+    setSelectedConnectionStatus('');
+    setActiveCard('TOTAL');
+    setFutureLeadWindow('');
+    setMessagedOnly(false);
+    if (user?._id) localStorage.setItem(`sales-outreach-channel:${user._id}`, channel);
+  };
   const [exportOpen, setExportOpen] = useState(false);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
 
@@ -284,6 +326,7 @@ export const SalesPage = () => {
   const [messagedOnly, setMessagedOnly] = useState(false);
   const [followUpView, setFollowUpView] = useState<'all' | '1' | '2'>('all');
   const [totalView, setTotalView] = useState<'all' | 'pending' | 'sent'>('all');
+  const [dialedView, setDialedView] = useState<'all' | '1' | '2' | '3'>('all');
 
   const { data: usersData } = useUsers();
   const usersList = useMemo(() => {
@@ -322,6 +365,7 @@ export const SalesPage = () => {
     messageStatus: 'not_sent',
     linkedinMsg: '',
     futureLeadDate: undefined,
+    coldCalling: { outreachStatus: 'pending', responseStatus: 'no_response' },
   });
   const [addLeadErrors, setAddLeadErrors] = useState<Record<string, boolean>>({});
   const createLead = useCreateLead();
@@ -339,6 +383,8 @@ export const SalesPage = () => {
     if (newLeadData.messageStatus === 'invalid_lead' && !newLeadData.leadComment?.text?.trim()) {
       errors.leadComment = true;
     }
+    if (newLeadData.coldCalling?.responseStatus === 'future_lead' && !newLeadData.coldCalling.futureLeadAt) errors.coldFutureLeadAt = true;
+    if (newLeadData.coldCalling?.responseStatus === 'invalid_lead' && !newLeadData.leadComment?.text?.trim()) errors.leadComment = true;
 
     if (Object.keys(errors).length > 0) {
       setAddLeadErrors(errors);
@@ -371,6 +417,7 @@ export const SalesPage = () => {
             firstName: '', lastName: '', prospectName: '', email: '', phone: '', website: '', profileUrl: '', icp: '', profile: '',
             connectionStatus: 'pending', messageStatus: 'not_sent', linkedinMsg: '',
             futureLeadDate: undefined,
+            coldCalling: { outreachStatus: 'pending', responseStatus: 'no_response' },
           });
         },
         onError: (err: any) => {
@@ -444,6 +491,15 @@ export const SalesPage = () => {
       },
     );
   }, [markingSentIds, updateLead, addToast]);
+  const handleAdvanceColdOutreach = useCallback((lead: Lead) => {
+    const current = lead.coldCalling?.outreachStatus || 'pending';
+    const next = current === 'pending' ? 'dialed_1' : current === 'dialed_1' ? 'dialed_2' : current === 'dialed_2' ? 'dialed_3' : null;
+    if (!next) return;
+    updateLead.mutate({ id: lead._id, data: { coldCalling: { responseStatus: lead.coldCalling?.responseStatus || 'no_response', ...lead.coldCalling, outreachStatus: next } } }, {
+      onSuccess: () => addToast({ message: `Marked as ${next.replace('_', ' ')}`, severity: 'success' }),
+      onError: (err) => showApiError(err),
+    });
+  }, [updateLead, addToast]);
   const userId = user?._id || '';
   const {
     isEditAllMode,
@@ -517,6 +573,12 @@ export const SalesPage = () => {
       addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' });
       return;
     }
+    if (dataToSave.coldCalling.responseStatus === 'future_lead' && !dataToSave.coldCalling.futureLeadAt) {
+      addToast({ message: 'Please select a cold-call Future Lead date and time.', severity: 'error' }); return;
+    }
+    if (dataToSave.coldCalling.responseStatus === 'invalid_lead' && !dataToSave.leadComment?.text?.trim()) {
+      addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' }); return;
+    }
 
     const nameParts = splitProspectName(dataToSave.prospectName || composeProspectName(dataToSave));
     const payload = {
@@ -527,25 +589,7 @@ export const SalesPage = () => {
     };
 
     if (originalProspect) {
-      const originalName = composeProspectName(originalProspect);
-      const hasChanged =
-        payload.prospectName !== originalName ||
-        payload.firstName !== (originalProspect.firstName || '') ||
-        payload.lastName !== (originalProspect.lastName || '') ||
-        payload.email !== (originalProspect.email || '') ||
-        payload.phone !== (originalProspect.phone || '') ||
-        payload.website !== (originalProspect.website || '') ||
-        payload.profileUrl !== (originalProspect.profileUrl || '') ||
-        payload.icp !== (originalProspect.icp || '') ||
-        payload.profile !== (originalProspect.profile || '') ||
-        payload.connectionStatus !== (originalProspect.connectionStatus || 'pending') ||
-        payload.messageStatus !== (originalProspect.messageStatus || 'not_sent') ||
-        payload.linkedinMsg !== (originalProspect.linkedinMsg || '') ||
-        (payload.futureLeadDate || '') !== (
-          originalProspect.futureLeadDate
-            ? format(new Date(originalProspect.futureLeadDate), 'yyyy-MM-dd')
-            : ''
-        );
+      const hasChanged = !isLeadEditEqual(payload, buildEditDataFromProspect(originalProspect));
 
       if (!hasChanged) {
         handleEditCancel(id);
@@ -599,7 +643,7 @@ export const SalesPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView]);
+  }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView, dialedView, outreachChannel]);
 
   const leadFilters = useMemo(() => {
     const filters: any = {
@@ -609,8 +653,13 @@ export const SalesPage = () => {
       ...(selectedUserId !== 'All Users' ? { assignedTo: selectedUserId } : {}),
       ...(selectedIcp ? { icp: selectedIcp } : {}),
       ...(selectedProfile ? { profile: selectedProfile } : {}),
-      ...(selectedStatus !== 'All statuses' ? { messageStatus: selectedStatus } : {}),
-      ...(selectedConnectionStatus ? { connectionStatus: selectedConnectionStatus } : {}),
+      channel: outreachChannel,
+      ...(selectedStatus !== 'All statuses'
+        ? outreachChannel === 'cold_calling' ? { responseStatus: selectedStatus } : { messageStatus: selectedStatus }
+        : {}),
+      ...(selectedConnectionStatus
+        ? outreachChannel === 'cold_calling' ? { outreachStatus: selectedConnectionStatus } : { connectionStatus: selectedConnectionStatus }
+        : {}),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
       dateField: dateFilterField,
@@ -618,6 +667,16 @@ export const SalesPage = () => {
       ...(futureLeadWindow ? { futureLeadWindow } : {}),
     };
 
+    if (outreachChannel === 'cold_calling') {
+      if (activeCard === 'PENDING') filters.outreachStatus = 'pending';
+      if (activeCard === 'DIALED') filters.outreachStatus = dialedView === 'all' ? 'dialed' : `dialed_${dialedView}`;
+      if (activeCard === 'DECLINED') filters.outreachStatus = 'declined';
+      if (activeCard === 'IN CONVERSATION') filters.responseStatus = 'in_conversation';
+      if (activeCard === 'NEGATIVE') filters.responseStatus = 'negative';
+      if (activeCard === 'POSITIVE') filters.responseStatus = 'positive';
+      if (activeCard.startsWith('FOLLOW UP ')) filters.responseStatus = `follow_up_${activeCard.slice(-1)}`;
+      return filters;
+    }
     const onTotalCard = activeCard === 'TOTAL' || activeCard === 'TOTAL LEADS';
     // The card's Pending/Sent view is a bucket. A connection-status dropdown
     // choice is exact and must win, otherwise Sent keeps accepted + declined.
@@ -649,7 +708,7 @@ export const SalesPage = () => {
     if (activeCard === 'POSITIVE') filters.messageStatus = 'positive';
 
     return filters;
-  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView]);
+  }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, totalView, dialedView, outreachChannel]);
 
   const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
@@ -861,6 +920,22 @@ export const SalesPage = () => {
       ];
     }
 
+    if (outreachChannel === 'cold_calling') {
+      const cold = pipelineStats.coldCalling;
+      const outreach = cold?.outreachStats ?? {};
+      const response = cold?.responseStats ?? {};
+      return [
+        { label: 'TOTAL', value: String(pipelineStats.totalProspects), percent: null },
+        { label: 'PENDING', value: String(outreach.pending ?? 0), percent: null },
+        { label: 'DIALED', value: String(dialedView === 'all' ? (cold?.callsDialed ?? 0) : (outreach[`dialed_${dialedView}`] ?? 0)), percent: null },
+        { label: 'DECLINED', value: String(outreach.declined ?? 0), percent: null },
+        { label: 'IN CONVERSATION', value: String(response.in_conversation ?? 0), percent: null },
+        { label: 'FOLLOW UPS', value: String(cold?.followUps ?? 0), percent: null },
+        { label: 'POSITIVE', value: String(response.positive ?? 0), percent: null },
+        { label: 'NEGATIVE', value: String(response.negative ?? 0), percent: null },
+      ];
+    }
+
     const { conversionRates } = pipelineStats;
 
     const followUpValue =
@@ -898,12 +973,24 @@ export const SalesPage = () => {
       { label: 'NEGATIVE', value: String(pipelineStats.negative ?? pipelineStats.messageStats?.negative ?? 0), percent: pct(conversionRates.negativeRate ?? 0) },
       { label: 'POSITIVE', value: String(pipelineStats.positive ?? pipelineStats.messageStats?.positive ?? 0), percent: pct(conversionRates.positiveRate ?? 0) },
     ];
-  }, [pipelineStats, followUpView, totalView]);
+  }, [pipelineStats, followUpView, totalView, dialedView, outreachChannel]);
 
   const applyFunnelCard = (label: string) => {
     setActiveCard(label);
     setFutureLeadWindow('');
     setMessagedOnly(false);
+    if (outreachChannel === 'cold_calling') {
+      setSelectedConnectionStatus('');
+      setSelectedStatus('All statuses');
+      if (label === 'PENDING') setSelectedConnectionStatus('pending');
+      else if (label === 'DIALED') setSelectedConnectionStatus(dialedView === 'all' ? '' : `dialed_${dialedView}`);
+      else if (label === 'DECLINED') setSelectedConnectionStatus('declined');
+      else if (label === 'IN CONVERSATION') setSelectedStatus('in_conversation');
+      else if (label === 'FOLLOW UPS') setSelectedStatus('follow_up_1');
+      else if (label === 'POSITIVE') setSelectedStatus('positive');
+      else if (label === 'NEGATIVE') setSelectedStatus('negative');
+      return;
+    }
     if (label === 'MESSAGE SENT') {
       setSelectedStatus('All statuses');
       setMessagedOnly(true);
@@ -976,33 +1063,51 @@ export const SalesPage = () => {
       {/* Page Header */}
       <Box sx={{ mb: 4.5, position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography
-            variant="h4"
+          <Box
             sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.025em',
               mb: 0.5,
-              color: isDarkMode ? '#fff' : tokens.text.primary,
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: 1.5,
             }}
           >
-            Sales & Pipeline
-            <Chip
-              label="Outbound Motion"
-              size="small"
+            <Typography
+              variant="h4"
               sx={{
-                bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
-                color: tokens.brand.primary,
                 fontWeight: 800,
-                fontSize: '0.68rem',
-                height: 22,
-                border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)'}`,
+                letterSpacing: '-0.025em',
+                color: isDarkMode ? '#fff' : tokens.text.primary,
               }}
-            />
-          </Typography>
+            >
+              {outreachChannel === 'cold_calling' ? 'Cold Calling & Pipeline' : 'LinkedIn Outreach & Pipeline'}
+            </Typography>
+            <FormControl size="small">
+              <Select
+                value={outreachChannel}
+                onChange={(e) => handleOutreachChannelChange(e.target.value as OutreachChannel)}
+                aria-label="Outreach channel"
+                sx={{
+                  height: 30,
+                  minWidth: 154,
+                  borderRadius: '999px',
+                  bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
+                  color: tokens.brand.primary,
+                  fontWeight: 800,
+                  fontSize: '0.72rem',
+                  '& .MuiSelect-select': { py: 0.5, pl: 1.75, pr: '32px !important' },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDarkMode ? 'rgba(93, 26, 137, 0.28)' : 'rgba(93, 26, 137, 0.14)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: tokens.brand.primary },
+                  '& .MuiSvgIcon-root': { color: tokens.brand.primary, fontSize: 18 },
+                }}
+              >
+                <MenuItem value="linkedin">LinkedIn Outreach</MenuItem>
+                <MenuItem value="cold_calling">Cold Calling</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
           <Typography
             variant="body1"
             sx={{
@@ -1011,7 +1116,9 @@ export const SalesPage = () => {
               fontSize: '0.92rem',
             }}
           >
-            Track outbound conversions, manage prospects, and update outreach stages.
+            {outreachChannel === 'cold_calling'
+              ? 'Track calls, responses, follow-ups, and cold outreach stages.'
+              : 'Track LinkedIn connections, conversations, and outreach stages.'}
           </Typography>
         </Box>
 
@@ -1091,7 +1198,7 @@ export const SalesPage = () => {
               md: 'repeat(4, minmax(0, 1fr))',
             },
             '@media (min-width: 1024px)': {
-              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+              gridTemplateColumns: `repeat(${outreachChannel === 'cold_calling' ? 8 : 7}, minmax(0, 1fr))`,
             },
             gap: { xs: 1, md: 0.85, xl: 1.25 },
             mb: 1.5,
@@ -1217,7 +1324,7 @@ export const SalesPage = () => {
                   >
                     {item.value}
                   </Typography>
-                  {isTotalCard && (
+                  {isTotalCard && outreachChannel !== 'cold_calling' && (
                     <Select
                       size="small"
                       value={totalView}
@@ -1235,6 +1342,27 @@ export const SalesPage = () => {
                       <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
                       <MenuItem value="pending" sx={{ fontSize: '0.72rem' }}>Pending</MenuItem>
                       <MenuItem value="sent" sx={{ fontSize: '0.72rem' }}>Sent</MenuItem>
+                    </Select>
+                  )}
+                  {item.label === 'DIALED' && outreachChannel === 'cold_calling' && (
+                    <Select
+                      size="small"
+                      value={dialedView}
+                      renderValue={(value) => value === 'all' ? 'All' : `#${value}`}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const next = e.target.value as 'all' | '1' | '2' | '3';
+                        setDialedView(next);
+                        setActiveCard('DIALED');
+                        setSelectedConnectionStatus(next === 'all' ? '' : `dialed_${next}`);
+                        setSelectedStatus('All statuses');
+                      }}
+                      sx={{ ...funnelSelectSx, minWidth: 42, width: 42 }}
+                    >
+                      <MenuItem value="all" sx={{ fontSize: '0.72rem' }}>All</MenuItem>
+                      <MenuItem value="1" sx={{ fontSize: '0.72rem' }}>Dialed 1</MenuItem>
+                      <MenuItem value="2" sx={{ fontSize: '0.72rem' }}>Dialed 2</MenuItem>
+                      <MenuItem value="3" sx={{ fontSize: '0.72rem' }}>Dialed 3</MenuItem>
                     </Select>
                   )}
                   {item.label === 'FOLLOW UP' && (
@@ -1274,7 +1402,7 @@ export const SalesPage = () => {
         >
           <Chip
             icon={<EventIcon sx={{ fontSize: '16px !important' }} />}
-            label={`Future leads: ${pipelineStats?.futureLeads ?? 0}`}
+            label={`Future leads: ${outreachChannel === 'cold_calling' ? (pipelineStats?.coldCalling?.futureLeads ?? 0) : (pipelineStats?.futureLeads ?? 0)}`}
             onClick={() => {
               setActiveCard('TOTAL');
               setMessagedOnly(false);
@@ -1292,7 +1420,7 @@ export const SalesPage = () => {
             }}
           />
           <Chip
-            label={`Due soon: ${pipelineStats?.futureLeadsDueSoon ?? 0}`}
+            label={`Due soon: ${outreachChannel === 'cold_calling' ? (pipelineStats?.coldCalling?.futureLeadsDueSoon ?? 0) : (pipelineStats?.futureLeadsDueSoon ?? 0)}`}
             onClick={() => {
               setActiveCard('TOTAL');
               setMessagedOnly(false);
@@ -1641,11 +1769,19 @@ export const SalesPage = () => {
                 }}
                 input={<OutlinedInput />}
               >
-                <MenuItem value="">All Connection Statuses</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="sent">Sent</MenuItem>
-                <MenuItem value="accepted">Accepted</MenuItem>
-                <MenuItem value="declined">Declined</MenuItem>
+                <MenuItem value="">All Outreach Statuses</MenuItem>
+                {outreachChannel === 'cold_calling' ? [
+                  <MenuItem key="pending" value="pending">Pending</MenuItem>,
+                  <MenuItem key="dialed_1" value="dialed_1">Dialed 1</MenuItem>,
+                  <MenuItem key="dialed_2" value="dialed_2">Dialed 2</MenuItem>,
+                  <MenuItem key="dialed_3" value="dialed_3">Dialed 3</MenuItem>,
+                  <MenuItem key="declined" value="declined">Declined</MenuItem>,
+                ] : [
+                  <MenuItem key="pending" value="pending">Pending</MenuItem>,
+                  <MenuItem key="sent" value="sent">Sent</MenuItem>,
+                  <MenuItem key="accepted" value="accepted">Accepted</MenuItem>,
+                  <MenuItem key="declined" value="declined">Declined</MenuItem>,
+                ]}
               </Select>
             </FormControl>
 
@@ -1667,16 +1803,24 @@ export const SalesPage = () => {
                 }}
                 input={<OutlinedInput />}
               >
-                <MenuItem value="All statuses">Message status</MenuItem>
-                <MenuItem value="not_sent">Not Sent</MenuItem>
-                <MenuItem value="sent">Sent</MenuItem>
-                <MenuItem value="in_conversation">In Conversation</MenuItem>
-                <MenuItem value="replied">Replied</MenuItem>
-                <MenuItem value="follow_up">Follow Up</MenuItem>
-                <MenuItem value="negative">Negative</MenuItem>
-                <MenuItem value="positive">Positive</MenuItem>
-                <MenuItem value="future_lead">Future Lead</MenuItem>
-                <MenuItem value="invalid_lead">Invalid Lead</MenuItem>
+                <MenuItem value="All statuses">{outreachChannel === 'cold_calling' ? 'Answered status' : 'Message status'}</MenuItem>
+                {outreachChannel === 'cold_calling' ? [
+                  <MenuItem key="no_response" value="no_response">No response yet</MenuItem>,
+                  <MenuItem key="positive" value="positive">Positive</MenuItem>,
+                  <MenuItem key="negative" value="negative">Negative</MenuItem>,
+                  <MenuItem key="in_conversation" value="in_conversation">In Conversation</MenuItem>,
+                  <MenuItem key="future_lead" value="future_lead">Future Lead</MenuItem>,
+                  <MenuItem key="follow_up_1" value="follow_up_1">Follow-up 1</MenuItem>,
+                  <MenuItem key="follow_up_2" value="follow_up_2">Follow-up 2</MenuItem>,
+                  <MenuItem key="follow_up_3" value="follow_up_3">Follow-up 3</MenuItem>,
+                  <MenuItem key="invalid_lead" value="invalid_lead">Invalid Lead</MenuItem>,
+                ] : [
+                  <MenuItem key="not_sent" value="not_sent">Not Sent</MenuItem>, <MenuItem key="sent" value="sent">Sent</MenuItem>,
+                  <MenuItem key="in_conversation" value="in_conversation">In Conversation</MenuItem>, <MenuItem key="replied" value="replied">Replied</MenuItem>,
+                  <MenuItem key="follow_up" value="follow_up">Follow Up</MenuItem>, <MenuItem key="negative" value="negative">Negative</MenuItem>,
+                  <MenuItem key="positive" value="positive">Positive</MenuItem>, <MenuItem key="future_lead" value="future_lead">Future Lead</MenuItem>,
+                  <MenuItem key="invalid_lead" value="invalid_lead">Invalid Lead</MenuItem>,
+                ]}
               </Select>
             </FormControl>
 
@@ -1959,6 +2103,7 @@ export const SalesPage = () => {
                       onUpdate={handleInlineAddUpdate}
                       onSave={handleInlineSave}
                       onCancel={handleInlineAddCancel}
+                      outreachChannel={outreachChannel}
                     />
                   )}
                   {prospects.map((prospect, idx) => {
@@ -1988,6 +2133,8 @@ export const SalesPage = () => {
                           onSave={handleEditSave}
                           onCancel={handleEditCancel}
                           onFollowUpChange={handleFollowUpChange}
+                          outreachChannel={outreachChannel}
+                          onOpenProfile={handleOpenUpdateLead}
                         />
                       );
                     }
@@ -1996,6 +2143,10 @@ export const SalesPage = () => {
 
                     const connToken = (connectionStatusTokens as any)[prospect.connectionStatus || 'pending'] || connectionStatusTokens.pending;
                     const msgToken = (messageStatusTokens as any)[prospect.messageStatus || 'not_sent'] || messageStatusTokens.not_sent;
+                    const coldOutreach = prospect.coldCalling?.outreachStatus || 'pending';
+                    const coldResponse = prospect.coldCalling?.responseStatus || 'no_response';
+                    const coldOutreachToken = (coldOutreachStatusTokens as any)[coldOutreach] || coldOutreachStatusTokens.pending;
+                    const coldResponseToken = (coldResponseStatusTokens as any)[coldResponse] || coldResponseStatusTokens.no_response;
                     const isMarkingSent = !!markingSentIds[prospect._id];
                     const isMarkingAccepted = !!markingAcceptedIds[prospect._id];
                     const canAdvanceConn =
@@ -2229,6 +2380,7 @@ export const SalesPage = () => {
                         {/* Outreach Connection/Message Status */}
                         <TableCell sx={{ py: 2, borderBottom: 0 }}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+                            {outreachChannel === 'linkedin' ? <>
                             <Chip
                               label={
                                 isMarkingAccepted
@@ -2385,6 +2537,11 @@ export const SalesPage = () => {
                                 Due {format(new Date(prospect.futureLeadDate), 'MMM d, yyyy')}
                               </Typography>
                             )}
+                            </> : <>
+                              <Chip label={`Outreach: ${coldOutreach.replace('_', ' ')}`} size="small" clickable={['pending', 'dialed_1', 'dialed_2'].includes(coldOutreach)} onClick={(e) => { e.stopPropagation(); handleAdvanceColdOutreach(prospect); }} sx={{ bgcolor: coldOutreachToken.bg, color: coldOutreachToken.color, fontWeight: 750, fontSize: '0.64rem', height: 20, textTransform: 'uppercase', borderRadius: '6px' }} />
+                              <Chip label={`Answered: ${coldResponse.replaceAll('_', ' ')}`} size="small" sx={{ bgcolor: coldResponseToken.bg, color: coldResponseToken.color, fontWeight: 750, fontSize: '0.64rem', height: 20, textTransform: 'uppercase', borderRadius: '6px' }} />
+                              {coldResponse === 'future_lead' && prospect.coldCalling?.futureLeadAt && <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Due {format(new Date(prospect.coldCalling.futureLeadAt), 'MMM d, yyyy HH:mm')}</Typography>}
+                            </>}
                           </Box>
                         </TableCell>
 
@@ -2663,6 +2820,7 @@ export const SalesPage = () => {
         <QualifyEnrichModal
           open={leadModalOpen}
           leadId={leadModalId}
+          lead={prospectsByIdRef.current[leadModalId]}
           mode={leadModalMode}
           onSuccess={leadModalMode === 'update' ? handleUpdateLeadSuccess : handleQualifySuccess}
           onClose={handleCloseLeadModal}

@@ -326,6 +326,7 @@ export const LeadDetailsPage = () => {
         <QualifyEnrichModal
           open={editModalOpen}
           leadId={id}
+          lead={lead}
           mode="update"
           onSuccess={() => setEditModalOpen(false)}
           onClose={() => setEditModalOpen(false)}

@@ -137,6 +137,20 @@ export const AdminDashboard = () => {
       target: '/sales',
     },
     {
+      label: 'CALLS DIALED',
+      val: pipelineOverview?.coldCalling?.callsDialed ?? 0,
+      sub: 'Cold calling outreach',
+      action: 'navigate' as const,
+      target: '/sales',
+    },
+    {
+      label: 'CALL FOLLOW UPS',
+      val: pipelineOverview?.coldCalling?.followUps ?? 0,
+      sub: 'Cold calling responses',
+      action: 'navigate' as const,
+      target: '/sales',
+    },
+    {
       label: 'REPLIED',
       val: (pipelineOverview?.replied ?? 0) + (pipelineOverview?.positive ?? 0),
       sub: pipelineOverview?.replyRate ? `${pipelineOverview.replyRate}% reply rate` : undefined,
@@ -735,4 +749,3 @@ export const AdminDashboard = () => {
     </Box>
   );
 };
-

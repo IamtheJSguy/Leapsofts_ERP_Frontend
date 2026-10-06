@@ -15,18 +15,19 @@ import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
 import LinkIcon from '@mui/icons-material/Link';
-import { useLead, useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
+import { useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead, Meeting, User } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
-import { showApiError, useApiErrorToast } from '@/utils/apiError';
+import { showApiError } from '@/utils/apiError';
 
 interface QualifyEnrichModalProps {
   open: boolean;
   leadId: string;
+  lead: Lead;
   mode?: 'update' | 'qualify';
   onClose: () => void;
   onSuccess: (boardId?: string, projectId?: string) => void;
@@ -508,6 +509,7 @@ const SharingMeetingsColumn = memo(({
 export const QualifyEnrichModal = ({
   open,
   leadId,
+  lead,
   mode = 'qualify',
   onClose,
   onSuccess,
@@ -516,8 +518,6 @@ export const QualifyEnrichModal = ({
   const isDarkMode = theme.palette.mode === 'dark';
   const isUpdateMode = mode === 'update';
 
-  const { data: lead, isLoading: isLeadLoading, isError: isLeadError, error: leadError } = useLead(open ? leadId : undefined);
-  useApiErrorToast(leadError, Boolean(open && isLeadError));
   const qualifyLead = useQualifyLead();
   const updateLead = useUpdateLead();
   const createMeeting = useCreateMeeting();
@@ -848,14 +848,7 @@ export const QualifyEnrichModal = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {isLeadLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 6, flex: 1 }}>
-            <CircularProgress sx={{ color: tokens.brand.primary }} size={40} thickness={4} />
-          </Box>
-        ) : !lead ? (
-          <Box sx={{ p: 4, textAlign: 'center', flex: 1 }}>
-          </Box>
-        ) : (
+        {(
           <Box sx={{
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import api from '@/lib/axios';
-import type { ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
+import type { ColdCallingState, ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 export type EditableLeadData = {
@@ -20,6 +20,7 @@ export type EditableLeadData = {
   linkedinMsg: string;
   futureLeadDate?: string;
   leadComment?: LeadComment | null;
+  coldCalling: ColdCallingState;
 };
 
 export type LeadSyncStats = {
@@ -45,6 +46,7 @@ const EDITABLE_FIELDS = [
   'linkedinMsg',
   'futureLeadDate',
   'leadComment',
+  'coldCalling',
 ] as const;
 
 type EditableField = (typeof EDITABLE_FIELDS)[number];
@@ -71,6 +73,7 @@ const normalizeValue = (field: EditableField, value: unknown): string => {
     const comment = value as LeadComment;
     return `${comment.level}:${comment.text}`;
   }
+  if (field === 'coldCalling') return JSON.stringify(value ?? {});
   return value == null ? '' : String(value);
 };
 
@@ -98,6 +101,11 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
       ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
       : undefined,
     leadComment: prospect.leadComment || undefined,
+    coldCalling: {
+      outreachStatus: prospect.coldCalling?.outreachStatus || 'pending',
+      responseStatus: prospect.coldCalling?.responseStatus || 'no_response',
+      futureLeadAt: prospect.coldCalling?.futureLeadAt,
+    },
   };
 };
 
@@ -105,6 +113,7 @@ export const cloneEditData = (data: EditableLeadData): EditableLeadData => ({
   ...data,
   futureLeadDate: data.futureLeadDate || undefined,
   leadComment: data.leadComment ? { ...data.leadComment } : undefined,
+  coldCalling: { ...data.coldCalling },
 });
 
 export const isLeadEditEqual = (a?: EditableLeadData, b?: EditableLeadData): boolean => {
@@ -129,6 +138,8 @@ export const getChangedLeadIds = (
 const isValidForSync = (data: EditableLeadData): boolean => {
   if (data.messageStatus === 'future_lead' && !data.futureLeadDate) return false;
   if (data.messageStatus === 'invalid_lead' && !data.leadComment?.text?.trim()) return false;
+  if (data.coldCalling.responseStatus === 'future_lead' && !data.coldCalling.futureLeadAt) return false;
+  if (data.coldCalling.responseStatus === 'invalid_lead' && !data.leadComment?.text?.trim()) return false;
   return true;
 };
 
@@ -416,6 +427,7 @@ export const useLeadAutoSync = ({
           linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
           futureLeadDate: data.futureLeadDate || undefined,
           leadComment: data.leadComment || undefined,
+          coldCalling: data.coldCalling || { outreachStatus: 'pending', responseStatus: 'no_response' },
         };
       }
 
@@ -441,6 +453,7 @@ export const useLeadAutoSync = ({
           linkedinMsg: data.linkedinMsg || data.messageStatus || 'not_sent',
           futureLeadDate: data.futureLeadDate || undefined,
           leadComment: data.leadComment || undefined,
+          coldCalling: data.coldCalling || { outreachStatus: 'pending', responseStatus: 'no_response' },
         };
       }
 

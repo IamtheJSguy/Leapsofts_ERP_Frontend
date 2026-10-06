@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { Project, ProjectMember, KanbanBoard, ProjectStatus } from '@/types';
+import type { BoardCategory, Project, ProjectMember, KanbanBoard, ProjectStatus } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface ProjectResponse {
@@ -24,7 +24,7 @@ const projectsApi = {
     api.delete(`/projects/${id}/members/${userId}`),
 
   getBoards: (id: string) => api.get<{ data: KanbanBoard[] }>(`/projects/${id}/boards`),
-  createBoard: ({ id, data }: { id: string; data: { name: string; columns?: { name: string; order: number }[] } }) =>
+  createBoard: ({ id, data }: { id: string; data: { name: string; category?: BoardCategory; columns?: { name: string; order: number }[] } }) =>
     api.post<{ data: KanbanBoard }>(`/projects/${id}/boards`, data),
   importBoard: ({
     id,
