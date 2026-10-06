@@ -424,6 +424,17 @@ const InvoiceEditorPage = () => {
     }
   };
 
+  const sendReminder = async () => {
+    if (!id) return;
+    setNotice('');
+    try {
+      await mutations.sendReminder.mutateAsync(id);
+      setNotice('Reminder sent successfully');
+    } catch (error) {
+      showApiError(error);
+    }
+  };
+
   const openSendConfirm = async () => {
     if (!id) return;
     setNotice('');
@@ -517,7 +528,7 @@ const InvoiceEditorPage = () => {
             {isNew ? 'Invoice Studio' : invoiceNumber || 'Edit Invoice'}
           </Typography>
           <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.55)' : tokens.text.secondary, fontWeight: 500, mt: 0.25 }}>
-            {locked ? `This invoice is currently ${invoice.data?.status?.toUpperCase()}.` : 'Design, build line items, and generate real-time receipts.'}
+            {locked ? `This invoice is currently ${invoice.data?.overdue ? 'OVERDUE' : invoice.data?.status?.toUpperCase()}.` : 'Design, build line items, and generate real-time receipts.'}
           </Typography>
         </Box>
       </Box>
@@ -621,26 +632,6 @@ const InvoiceEditorPage = () => {
                         </li>
                       )}
                     />
-                    {!locked && (
-                      <Button
-                        size="small"
-                        onClick={() => { setNewClient(emptyClientForm()); setClientOpen(true); }}
-                        startIcon={<PersonAddOutlinedIcon sx={{ fontSize: 16 }} />}
-                        sx={{
-                          height: 40,
-                          px: 2,
-                          borderRadius: '12px',
-                          textTransform: 'none',
-                          fontWeight: 750,
-                          fontSize: '0.78rem',
-                          flexShrink: 0,
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(93,26,137,0.04)',
-                          color: tokens.brand.primary,
-                        }}
-                      >
-                        New client
-                      </Button>
-                    )}
                   </Box>
                 </Grid>
               </Grid>
@@ -896,6 +887,18 @@ const InvoiceEditorPage = () => {
                   >
                     Mark Paid
                   </Button>
+                  {invoice.data?.overdue && invoice.data?.invoiceEmailMessageId && (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      onClick={sendReminder}
+                      disabled={mutations.sendReminder.isPending}
+                      startIcon={<EmailOutlinedIcon />}
+                      sx={{ borderRadius: '14px', px: 3, py: 1.1, textTransform: 'none', fontWeight: 800 }}
+                    >
+                      Send Reminder
+                    </Button>
+                  )}
                   <Button
                     variant="outlined"
                     color="warning"
