@@ -40,10 +40,39 @@ import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
 import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
-import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
+import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings, useInvoices } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
-import { useUsers } from '@/hooks/api/useUsers';
+
+const generateNextInvoiceNumber = (invoices: any[]) => {
+  if (!invoices || invoices.length === 0) return '1';
+  let maxNum = 0;
+  let format = '';
+  let padding = 0;
+  for (const inv of invoices) {
+    const match = inv.invoiceNumber.match(/^(.*?)(\d+)$/);
+    if (match) {
+      const numStr = match[2];
+      const num = parseInt(numStr, 10);
+      if (num > maxNum) {
+        maxNum = num;
+        format = match[1];
+        padding = numStr.length;
+      }
+    } else {
+      const num = parseInt(inv.invoiceNumber, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+        format = '';
+        padding = inv.invoiceNumber.length;
+      }
+    }
+  }
+  if (maxNum === 0) return '1';
+  const nextNumStr = (maxNum + 1).toString();
+  const paddedNextNum = padding > nextNumStr.length ? nextNumStr.padStart(padding, '0') : nextNumStr;
+  return `${format}${paddedNextNum}`;
+};
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
   emptyClientForm,
@@ -105,7 +134,7 @@ const InvoiceEditorPage = () => {
   const clients = useInvoiceClients(false);
   const invoice = useInvoice(id);
   const mutations = useInvoiceMutations();
-  const { data: allUsers = [] } = useUsers();
+  const allInvoices = useInvoices();
   useApiErrorToast(settings.error, settings.isError);
   useApiErrorToast(invoice.error, !isNew && invoice.isError);
   const addToast = useUIStore((s) => s.addToast);
@@ -142,27 +171,43 @@ const InvoiceEditorPage = () => {
   }, [id]);
 
   useEffect(() => {
+    if (isNew && !presetClientId) {
+      navigate('/invoices', { replace: true });
+    }
+  }, [isNew, presetClientId, navigate]);
+
+  useEffect(() => {
     if (hydrated || !settings.data) return;
     if (!isNew && !invoice.data) return;
     if (isNew) {
       if (presetClientId && clients.isLoading) return;
+      if (allInvoices.isLoading) return;
       const nextTemplate = settings.data.defaultTemplate;
       const nextTax = String(settings.data.defaultTaxRate);
       const defaultBankIds = (settings.data.bankAccounts || []).map((b) => b.id);
       const match = presetClientId
         ? (clients.data || []).find((item) => item._id === presetClientId && !item.isArchived)
         : undefined;
+
+      if (presetClientId && !match) {
+        showFormError('Invalid or archived client selected.');
+        navigate('/invoices', { replace: true });
+        return;
+      }
+
       const nextClient = match
         ? { name: match.name, ntn: match.ntn, address: match.address, email: match.email }
         : emptyParty();
       const nextClientId = match?._id || '';
+      const nextInvoiceNumber = generateNextInvoiceNumber(allInvoices.data || []);
+      setInvoiceNumber(nextInvoiceNumber);
       setTemplateId(nextTemplate);
       setTaxRate(nextTax);
       setClientId(nextClientId);
       setClient(nextClient);
       setBankAccountIds(defaultBankIds);
       setBaseline(JSON.stringify({
-        invoiceNumber: '',
+        invoiceNumber: nextInvoiceNumber,
         clientId: nextClientId,
         client: nextClient,
         issueDate,
@@ -247,6 +292,11 @@ const InvoiceEditorPage = () => {
   const bankDirty = bankOpen && Object.values(newBank).some((value) => value.trim());
   const invoiceDirty = hydrated && baseline !== '' && draftKey !== baseline;
 
+  const isDuplicateNumber = (num: string) => {
+    if (!num.trim()) return false;
+    return (allInvoices.data || []).some(inv => inv.invoiceNumber === num.trim() && inv._id !== id);
+  };
+
   const payload = (override?: Partial<Pick<SaveInvoicePayload, 'clientId' | 'client' | 'bankAccountIds'>>): SaveInvoicePayload | null => {
     const nextClientId = override?.clientId ?? clientId;
     const nextClient = override?.client ?? client;
@@ -256,12 +306,12 @@ const InvoiceEditorPage = () => {
       qty: Number(line.qty),
       unitPrice: Number(line.unitPrice),
     }));
-    if ((!isNew && !invoiceNumber.trim()) || !nextClientId) return null;
+    if (!invoiceNumber.trim() || !nextClientId) return null;
     if (lineItems.some((line) => !line.description || !Number.isFinite(line.qty) || line.qty <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)) {
       return null;
     }
     return {
-      invoiceNumber: isNew ? undefined : invoiceNumber.trim(),
+      invoiceNumber: invoiceNumber.trim(),
       clientId: nextClientId,
       client: nextClient,
       issueDate,
@@ -296,6 +346,10 @@ const InvoiceEditorPage = () => {
     const body = payload(override);
     if (!body) {
       showFormError('Fill the invoice number, select a client, and enter valid line items before saving.');
+      return false;
+    }
+    if (isDuplicateNumber(body.invoiceNumber || invoiceNumber)) {
+      showFormError('Invoice number already exists.');
       return false;
     }
     setNotice('');
@@ -601,9 +655,11 @@ const InvoiceEditorPage = () => {
                     fullWidth
                     size="small"
                     label="Invoice Number *"
-                    value={isNew ? 'Auto-generated' : invoiceNumber}
-                    disabled={true}
+                    value={invoiceNumber}
+                    disabled={Boolean(locked)}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
+                    error={isDuplicateNumber(invoiceNumber)}
+                    helperText={isDuplicateNumber(invoiceNumber) ? 'Invoice number already exists' : ''}
                     sx={inputStyle}
                   />
                 </Grid>
@@ -644,34 +700,18 @@ const InvoiceEditorPage = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Autocomplete
+                  <TextField
                     fullWidth
                     size="small"
-                    options={clients.data || []}
-                    value={(clients.data || []).find((item) => item._id === clientId) || null}
-                    disabled={Boolean(locked)}
-                    onChange={(_, value) => applyClient(value?._id || '')}
-                    getOptionLabel={(option: InvoiceClient) => option.name}
-                    isOptionEqualToValue={(option, value) => option._id === value._id}
-                    filterOptions={(options, state) => {
-                      const query = state.inputValue.trim().toLowerCase();
-                      if (!query) return options;
-                      return options.filter((option) =>
-                        option.name.toLowerCase().includes(query)
-                        || option.email.toLowerCase().includes(query)
-                        || option.ntn.toLowerCase().includes(query));
+                    label="Billed Client *"
+                    value={client.name || (clients.isLoading ? 'Loading...' : '')}
+                    disabled={true}
+                    sx={{
+                      ...inputStyle,
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: isDarkMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)',
+                      },
                     }}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Billed Client *" placeholder="Search client name, email..." sx={inputStyle} />
-                    )}
-                    renderOption={(props, option) => (
-                      <li {...props} key={option._id}>
-                        <Box>
-                          <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{option.name}</Typography>
-                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email} · NTN: {option.ntn || '—'}</Typography>
-                        </Box>
-                      </li>
-                    )}
                   />
                 </Grid>
                 
@@ -733,16 +773,14 @@ const InvoiceEditorPage = () => {
                     fullWidth
                     size="small"
                     disabled={Boolean(locked)}
-                    options={allUsers.filter((u: any) => u.email && !ccEmails.includes(u.email))}
+                    options={client.email && !ccEmails.includes(client.email) ? [client.email] : []}
                     getOptionLabel={(option: any) => typeof option === 'string' ? option : option.email}
                     filterOptions={(options, state) => {
                       const query = state.inputValue.trim().toLowerCase();
                       if (!query) return options;
                       return options.filter((option: any) => {
                         if (typeof option === 'string') return option.toLowerCase().includes(query);
-                        const name = `${option.firstName || ''} ${option.lastName || ''}`.toLowerCase();
-                        const email = option.email.toLowerCase();
-                        return name.includes(query) || email.includes(query);
+                        return option.email.toLowerCase().includes(query);
                       });
                     }}
                     value={ccEmails}
@@ -771,17 +809,11 @@ const InvoiceEditorPage = () => {
                       }
                     }}
                     renderOption={(props, option: any) => {
-                      if (typeof option === 'string') return <li {...props}>{option}</li>;
-                      const fullName = `${option.firstName || ''} ${option.lastName || ''}`.trim();
-                      const initial = fullName.charAt(0) || option.email.charAt(0) || 'U';
+                      const emailStr = typeof option === 'string' ? option : option.email;
                       return (
-                        <li {...props} key={option._id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.5 }}>
-                            <Avatar src={option.avatarUrl} sx={{ width: 28, height: 28, fontSize: '0.875rem' }}>{initial.toUpperCase()}</Avatar>
-                            <Box>
-                              <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{fullName || 'No Name'}</Typography>
-                              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email}</Typography>
-                            </Box>
+                        <li {...props} key={emailStr}>
+                          <Box sx={{ py: 0.5 }}>
+                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{emailStr}</Typography>
                           </Box>
                         </li>
                       );
