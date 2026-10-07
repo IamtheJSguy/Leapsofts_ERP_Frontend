@@ -298,7 +298,7 @@ const InvoiceEditorPage = () => {
     return (allInvoices.data || []).some(inv => 
       inv.invoiceNumber === num.trim() && 
       inv._id !== id && 
-      (inv.clientId === clientId || inv.clientSnapshot?.id === clientId || inv.client?._id === clientId || inv.clientSnapshot?._id === clientId)
+      inv.clientId === clientId
     );
   };
 
