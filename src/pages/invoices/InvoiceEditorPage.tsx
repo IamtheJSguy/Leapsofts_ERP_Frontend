@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -490,6 +491,37 @@ const InvoiceEditorPage = () => {
     }
   };
 
+  const handleAddEmails = (inputStr: string) => {
+    const tokens = inputStr.split(/[\s,;\n]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (!tokens.length) return;
+
+    let newError = '';
+    const validToAdd: string[] = [];
+
+    for (const email of tokens) {
+      if (!isValidEmail(email)) {
+        newError = `Invalid email: ${email}`;
+        break;
+      }
+      validToAdd.push(email);
+    }
+
+    if (newError) {
+      setCcError(newError);
+      return;
+    }
+
+    const merged = Array.from(new Set([...ccEmails, ...validToAdd]));
+    if (merged.length > 10) {
+      setCcError('Maximum 10 CC emails allowed');
+      return;
+    }
+
+    setCcEmails(merged);
+    setCcInput('');
+    setCcError('');
+  };
+
   if (settings.isError || (!isNew && invoice.isError)) return null;
 
   if (settings.isLoading || (!isNew && invoice.isLoading) || !hydrated) {
@@ -640,52 +672,6 @@ const InvoiceEditorPage = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12}>
-                  <Autocomplete
-                    multiple
-                    freeSolo
-                    fullWidth
-                    size="small"
-                    disabled={Boolean(locked)}
-                    options={[]}
-                    value={ccEmails}
-                    inputValue={ccInput}
-                    onInputChange={(_, newInputValue) => {
-                      setCcInput(newInputValue);
-                      setCcError('');
-                    }}
-                    onChange={(_, newValue) => {
-                      const cleanEmails = newValue
-                        .map((v) => v.trim().toLowerCase())
-                        .filter((v) => v);
-                      
-                      const lastAdded = cleanEmails[cleanEmails.length - 1];
-                      if (lastAdded && !isValidEmail(lastAdded)) {
-                        setCcError(`Invalid email: ${lastAdded}`);
-                        return;
-                      }
-                      
-                      const uniqueEmails = Array.from(new Set(cleanEmails));
-                      if (uniqueEmails.length > 10) {
-                        setCcError('Maximum 10 CC emails allowed');
-                        return;
-                      }
-                      
-                      setCcError('');
-                      setCcEmails(uniqueEmails);
-                    }}
-                    renderInput={(params) => (
-                      <TextField 
-                        {...params} 
-                        label="CC Emails" 
-                        placeholder={ccEmails.length < 10 ? "Type email and press Enter" : ""}
-                        error={Boolean(ccError)}
-                        helperText={ccError}
-                        sx={inputStyle} 
-                      />
-                    )}
-                  />
-                </Grid>
               </Grid>
             </Card>
 
@@ -733,6 +719,78 @@ const InvoiceEditorPage = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField fullWidth size="small" label="Billing Address" value={client.address} disabled={Boolean(locked)} onChange={(e) => setClient({ ...client, address: e.target.value })} sx={inputStyle} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    fullWidth
+                    size="small"
+                    disabled={Boolean(locked)}
+                    options={[]}
+                    value={ccEmails}
+                    inputValue={ccInput}
+                    onInputChange={(_, newInputValue) => {
+                      setCcInput(newInputValue);
+                      if (ccError) setCcError('');
+                    }}
+                    onChange={(_, newValue, reason) => {
+                      if (reason === 'removeOption' || reason === 'clear') {
+                        setCcEmails(newValue as string[]);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (ccInput.trim()) {
+                        handleAddEmails(ccInput);
+                      }
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, onDelete, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            label={option}
+                            size="small"
+                            onDelete={locked ? undefined : onDelete}
+                            {...tagProps}
+                          />
+                        );
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="CC Emails"
+                        placeholder={ccEmails.length === 0 ? "Type email and press Enter" : ""}
+                        error={Boolean(ccError)}
+                        helperText={ccError || "Up to 10 emails. Press Enter after each email."}
+                        sx={inputStyle}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasted = e.clipboardData.getData('text');
+                          if (pasted) {
+                            handleAddEmails(pasted);
+                          }
+                        }}
+                        inputProps={{
+                          ...params.inputProps,
+                          onKeyDown: (e) => {
+                            if (['Enter', ',', ' ', 'Tab'].includes(e.key)) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (ccInput.trim()) {
+                                handleAddEmails(ccInput);
+                              }
+                            } else if (params.inputProps.onKeyDown) {
+                              params.inputProps.onKeyDown(e as any);
+                            }
+                          },
+                        }}
+                      />
+                    )}
+                  />
                 </Grid>
               </Grid>
             </Card>
