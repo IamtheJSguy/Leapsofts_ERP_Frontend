@@ -124,6 +124,7 @@ export interface InvoiceRecord {
   taxAmount: number;
   grandTotal: number;
   bankAccountIds: string[];
+  bankAccounts?: Array<Omit<InvoiceBankAccount, 'id'> & { sourceId?: string }>;
   status: InvoiceStatus;
   disputeReason?: string;
   disputedAt?: string;
