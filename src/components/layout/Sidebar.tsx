@@ -65,7 +65,7 @@ const navGroups: NavGroup[] = [
   {
     title: 'Workspace',
     items: [
-      { label: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
       { label: 'Tasks', path: '/tasks', icon: <FormatListBulletedIcon sx={{ fontSize: 18 }} /> },
       { label: 'Projects', path: '/projects', icon: <ViewKanbanIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'projectsAndBoards' },
     ],
@@ -166,7 +166,7 @@ export const Sidebar = () => {
       setOrgMenuAnchor(event.currentTarget);
       return;
     }
-    navigate('/');
+    navigate('/dashboard');
     if (isMobile && sidebarOpen) {
       toggleSidebar();
     }
@@ -353,8 +353,8 @@ export const Sidebar = () => {
               <List sx={{ p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {filteredItems.map((item) => {
                   const isActive =
-                    item.path === '/'
-                      ? location.pathname === '/'
+                    item.path === '/dashboard'
+                      ? location.pathname === '/dashboard'
                       : location.pathname.startsWith(item.path);
 
                   return (

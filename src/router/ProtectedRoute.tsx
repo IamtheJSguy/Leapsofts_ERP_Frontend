@@ -45,7 +45,7 @@ export const ProtectedRoute = ({
   }
 
   if (user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (user && requirePermission) {
@@ -53,12 +53,12 @@ export const ProtectedRoute = ({
     const keys = Array.isArray(requirePermission) ? requirePermission : [requirePermission];
     const allowed = keys.some((key) => resolved[key]);
     if (!allowed) {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
   if (user && requireEntitlement && entitlements[requireEntitlement] === false) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

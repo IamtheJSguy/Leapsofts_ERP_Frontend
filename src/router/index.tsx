@@ -37,6 +37,10 @@ import {
   InvoiceEditorPage,
   InvoiceClientDetailPage,
   InvoiceSettingsPage,
+  HomePage,
+  PrivacyPage,
+  TermsPage,
+  SecurityPolicyPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -49,6 +53,22 @@ const wrap = (element: React.ReactNode) => (
 );
 
 export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: wrap(<HomePage />),
+  },
+  {
+    path: '/terms',
+    element: wrap(<TermsPage />),
+  },
+  {
+    path: '/privacy',
+    element: wrap(<PrivacyPage />),
+  },
+  {
+    path: '/security',
+    element: wrap(<SecurityPolicyPage />),
+  },
   {
     path: '/impersonate',
     element: wrap(<ImpersonatePage />),
@@ -82,14 +102,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/',
     element: (
       <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
         <AppLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: wrap(<DashboardPage />) },
+      { path: 'dashboard', element: wrap(<DashboardPage />) },
+      { path: 'app', element: wrap(<DashboardPage />) },
       {
         path: 'tasks',
         element: wrap(
