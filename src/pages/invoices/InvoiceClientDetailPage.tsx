@@ -1202,7 +1202,7 @@ const InvoiceClientDetailPage = () => {
       <Dialog
         open={Boolean(remindConfirmInvoice)}
         onClose={() => !remindingId && setRemindConfirmInvoice(null)}
-        PaperProps={{ sx: { width: '100%', maxWidth: 400, borderRadius: '16px', bgcolor: isDarkMode ? tokens.background.card : '#fff' } }}
+        PaperProps={{ sx: { width: '100%', maxWidth: 400, borderRadius: '16px', bgcolor: isDarkMode ? tokens.surface.card : '#fff' } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, pt: 3, px: 3, pb: 1 }}>
           Send payment reminder?

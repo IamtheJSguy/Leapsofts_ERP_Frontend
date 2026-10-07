@@ -124,6 +124,8 @@ export interface InvoiceRecord {
   disputeReason?: string;
   disputedAt?: string;
   overdue: boolean;
+  ccEmails?: string[];
+  invoiceEmailMessageId?: string;
 }
 
 export interface SaveInvoicePayload {
@@ -136,6 +138,7 @@ export interface SaveInvoicePayload {
   taxRate: number;
   lineItems: InvoiceLineInput[];
   bankAccountIds: string[];
+  ccEmails?: string[];
 }
 
 export const INVOICE_TEMPLATE_OPTIONS: Array<{ id: InvoiceTemplateId; label: string }> = [

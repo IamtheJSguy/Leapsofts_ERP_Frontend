@@ -30,6 +30,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import GavelIcon from '@mui/icons-material/Gavel';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
@@ -42,9 +43,11 @@ import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
+  emptyClientForm,
   formatInvoiceMoney,
   roundMoney,
   type InvoiceClient,
+  type InvoiceClientForm,
   type InvoiceParty,
   type InvoiceTemplateId,
   type SaveInvoicePayload,
