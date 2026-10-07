@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useLeadHistory, useQualifyLead, useDisqualifyLead, useLogFollowUp } from '@/hooks/api/useLeads';
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
@@ -21,6 +22,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
 import { useState } from 'react';
 import type { Lead } from '@/types';
+import { PushToSalesBoardModal } from './PushToSalesBoardModal';
 
 interface LeadDetailDrawerProps {
   lead: Lead | null;
@@ -44,6 +46,7 @@ export const LeadDetailDrawer = ({
   const addToast = useUIStore((s) => s.addToast);
   const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
   const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
+  const [pushModalOpen, setPushModalOpen] = useState(false);
 
   const handleConfirmQualify = () => {
     if (!lead) return;
@@ -135,6 +138,14 @@ export const LeadDetailDrawer = ({
         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="outlined" onClick={onEdit}>Edit</Button>
           <Button variant="outlined" color="error" onClick={onDelete}>Delete</Button>
+          <Button
+            variant="outlined"
+            startIcon={<DashboardIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setPushModalOpen(true)}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Push to Board
+          </Button>
           {lead.messageStatus === 'follow_up' && (
             <Select
               size="small"
@@ -176,6 +187,26 @@ export const LeadDetailDrawer = ({
             </Button>
           )}
         </Box>
+
+        {lead.salesBoardPlacements && lead.salesBoardPlacements.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <DashboardIcon sx={{ fontSize: 16, color: 'primary.main' }} /> Sales Board Placements ({lead.salesBoardPlacements.length})
+            </Typography>
+            <List dense>
+              {[...lead.salesBoardPlacements].reverse().map((placement, idx) => (
+                <ListItem key={placement._id || idx} disableGutters>
+                  <ListItemText
+                    primary={`${placement.boardName || placement.boardId}${placement.columnName ? ` → ${placement.columnName}` : ''}`}
+                    secondary={formatDateTime(placement.pushedAt)}
+                    primaryTypographyProps={{ variant: 'body2', fontWeight: 650 }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </>
+        )}
 
         {followUps.length > 0 && (
           <>
@@ -235,6 +266,13 @@ export const LeadDetailDrawer = ({
         onCancel={() => setConfirmDisqualifyOpen(false)}
         isPending={disqualifyLeadMutation.isPending}
       />
+      {pushModalOpen && lead && (
+        <PushToSalesBoardModal
+          open={pushModalOpen}
+          lead={lead}
+          onClose={() => setPushModalOpen(false)}
+        />
+      )}
     </Drawer>
   );
 };

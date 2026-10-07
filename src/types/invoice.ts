@@ -27,6 +27,10 @@ export interface InvoiceMailboxState {
 
 export interface InvoiceSettings {
   issuerName: string;
+  /** Person name used in invoice email From / sign-off. */
+  senderName: string;
+  /** Job title / position under sender name in email sign-off. */
+  senderPosition: string;
   ntn: string;
   address: string;
   email: string;
@@ -120,10 +124,15 @@ export interface InvoiceRecord {
   taxAmount: number;
   grandTotal: number;
   bankAccountIds: string[];
+  bankAccounts?: Array<Omit<InvoiceBankAccount, 'id'> & { sourceId?: string }>;
   status: InvoiceStatus;
   disputeReason?: string;
   disputedAt?: string;
   overdue: boolean;
+  ccEmails?: string[];
+  invoiceEmailMessageId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SaveInvoicePayload {
@@ -136,6 +145,7 @@ export interface SaveInvoicePayload {
   taxRate: number;
   lineItems: InvoiceLineInput[];
   bankAccountIds: string[];
+  ccEmails?: string[];
 }
 
 export const INVOICE_TEMPLATE_OPTIONS: Array<{ id: InvoiceTemplateId; label: string }> = [

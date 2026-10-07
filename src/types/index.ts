@@ -17,6 +17,19 @@ export type MessageStatus =
   | 'future_lead'
   | 'invalid_lead';
 
+export type OutreachChannel = 'linkedin' | 'cold_calling';
+export type ColdOutreachStatus = 'pending' | 'dialed_1' | 'dialed_2' | 'dialed_3' | 'declined';
+export type ColdResponseStatus =
+  | 'no_response' | 'positive' | 'negative' | 'in_conversation' | 'future_lead'
+  | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'invalid_lead';
+
+export interface ColdCallingState {
+  outreachStatus: ColdOutreachStatus;
+  responseStatus: ColdResponseStatus;
+  futureLeadAt?: string;
+  futureLeadRemindersSent?: Record<string, string>;
+}
+
 export type LeadCommentLevel = 'red' | 'yellow' | 'green';
 
 export interface LeadComment {
@@ -120,6 +133,17 @@ export interface User {
   createdAt?: string;
 }
 
+export interface SalesBoardPlacement {
+  _id?: string;
+  boardId: string;
+  columnId: string;
+  cardId: string;
+  boardName?: string;
+  columnName?: string;
+  pushedAt: string;
+  pushedBy: string | User;
+}
+
 export interface Lead {
   _id: string;
   firstName?: string;
@@ -160,6 +184,9 @@ export interface Lead {
   futureLeadDate?: string;
   futureLeadRemindersSent?: Record<string, string>;
   leadComment?: LeadComment | null;
+  coldCalling?: ColdCallingState;
+  /** Full audit trail of every sales board push (append-only). */
+  salesBoardPlacements?: SalesBoardPlacement[];
 }
 
 export interface FollowUpEntry {
@@ -187,7 +214,9 @@ export type LeadTimelineEventType =
   | 'connection'
   | 'message'
   | 'follow_up'
-  | 'qualified';
+  | 'qualified'
+  | 'cold_outreach'
+  | 'cold_response';
 
 export interface LeadTimelineEvent {
   id: string;
@@ -196,6 +225,7 @@ export interface LeadTimelineEvent {
   detail?: string;
   at: string;
   byName?: string;
+  channel: OutreachChannel;
 }
 
 export interface PaginatedResponse<T> {
@@ -321,7 +351,7 @@ export interface KPITemplate {
 }
 
 /** Sales KPI subsystem — day-of-week scheduled, auto-generated, auto-progressed. */
-export type SalesKpiMetric = 'new_prospects' | 'messages_sent' | 'follow_ups';
+export type SalesKpiMetric = 'new_prospects' | 'messages_sent' | 'follow_ups' | 'calls_dialed' | 'call_follow_ups';
 
 export type SalesKpiScheduleMode = 'per_day' | 'span';
 
@@ -596,6 +626,8 @@ export interface KpiDailyTrend {
   newProspects?: number;
   messagesSent?: number;
   followUps?: number;
+  callsDialed?: number;
+  callFollowUps?: number;
 }
 
 export interface KpiTargetActualRow {
@@ -859,9 +891,18 @@ export interface BoardMember {
   role: 'admin' | 'member';
 }
 
+export type BoardCategory =
+  | 'general'
+  | 'sales'
+  | 'technology'
+  | 'marketing'
+  | 'operations'
+  | 'support';
+
 export interface KanbanBoard {
   _id: string;
   name: string;
+  category?: BoardCategory;
   columns: KanbanColumn[];
   projectId: string;
   ownerId: string;
@@ -1177,6 +1218,7 @@ export interface PipelineOverviewSummary {
   futureLeads: number;
   assignedReps: number;
   messageStats: Record<string, number>;
+  coldCalling?: { outreachStats: Record<string, number>; responseStats: Record<string, number>; callsDialed: number; followUps: number };
 }
 
 export interface DashboardStats {
@@ -1283,6 +1325,10 @@ export interface LeadFilters {
   sortBy?: string;
   order?: 'asc' | 'desc';
   search?: string;
+  channel?: OutreachChannel;
+  outreachStatus?: ColdOutreachStatus;
+  responseStatus?: ColdResponseStatus;
+  untouched?: boolean;
 }
 
 export interface LeadExportColumn {

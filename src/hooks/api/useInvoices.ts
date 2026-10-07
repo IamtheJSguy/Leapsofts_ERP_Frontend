@@ -71,6 +71,8 @@ const invoiceApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data.data);
   },
+  sendReminder: (id: string) =>
+    api.post<{ data: InvoiceRecord }>(`/invoices/${id}/remind`).then((r) => r.data.data),
   markPaid: (id: string, pdf: Blob) => {
     const form = new FormData();
     form.append('pdf', pdf, 'invoice.pdf');
@@ -162,6 +164,10 @@ export const useInvoiceMutations = () => {
     }),
     sendInvoice: useMutation({
       mutationFn: ({ id, pdf }: { id: string; pdf: Blob }) => invoiceApi.send(id, pdf),
+      onSuccess: invalidate,
+    }),
+    sendReminder: useMutation({
+      mutationFn: invoiceApi.sendReminder,
       onSuccess: invalidate,
     }),
     markPaid: useMutation({

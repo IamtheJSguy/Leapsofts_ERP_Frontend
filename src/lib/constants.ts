@@ -17,6 +17,16 @@ export const MESSAGE_STATUS = {
   INVALID_LEAD: 'invalid_lead',
 } as const;
 
+export const COLD_OUTREACH_STATUS = {
+  PENDING: 'pending', DIALED_1: 'dialed_1', DIALED_2: 'dialed_2', DIALED_3: 'dialed_3', DECLINED: 'declined',
+} as const;
+export const COLD_RESPONSE_STATUS = {
+  NO_RESPONSE: 'no_response', POSITIVE: 'positive', NEGATIVE: 'negative', IN_CONVERSATION: 'in_conversation',
+  FUTURE_LEAD: 'future_lead', FOLLOW_UP_1: 'follow_up_1', FOLLOW_UP_2: 'follow_up_2', FOLLOW_UP_3: 'follow_up_3', INVALID_LEAD: 'invalid_lead',
+} as const;
+export const COLD_OUTREACH_STATUS_OPTIONS = Object.values(COLD_OUTREACH_STATUS);
+export const COLD_RESPONSE_STATUS_OPTIONS = Object.values(COLD_RESPONSE_STATUS);
+
 export const LEAD_COMMENT_LEVEL = {
   RED: 'red',
   YELLOW: 'yellow',
@@ -35,6 +45,8 @@ export const SALES_KPI_METRIC = {
   NEW_PROSPECTS: 'new_prospects',
   MESSAGES_SENT: 'messages_sent',
   FOLLOW_UPS: 'follow_ups',
+  CALLS_DIALED: 'calls_dialed',
+  CALL_FOLLOW_UPS: 'call_follow_ups',
 } as const;
 
 export const SALES_KPI_SCHEDULE_MODE = { PER_DAY: 'per_day', SPAN: 'span' } as const;
@@ -145,6 +157,8 @@ export const SALES_KPI_METRIC_LABELS: Record<string, string> = {
   new_prospects: 'New Prospects',
   messages_sent: 'Messages Sent',
   follow_ups: 'Follow-Ups',
+  calls_dialed: 'Calls Dialed',
+  call_follow_ups: 'Call Follow-Ups',
 };
 
 /** Only these metrics take an admin-entered target; the rest are snapshotted from the pipeline. */

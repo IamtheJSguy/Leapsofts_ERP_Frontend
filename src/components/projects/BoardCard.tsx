@@ -7,6 +7,7 @@ import {
   Tooltip,
   useTheme,
   IconButton,
+  Chip,
 } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import EditIcon from '@mui/icons-material/Edit';
@@ -14,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { tokens } from '@/styles/tokens';
 import type { KanbanBoard, User } from '@/types';
 import { useUsers } from '@/hooks/api/useUsers';
+import { getBoardCategoryOption } from '@/lib/boardCategories';
 
 interface BoardCardProps {
   board: KanbanBoard;
@@ -26,6 +28,7 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const { data: dbUsers = [] } = useUsers();
+  const category = getBoardCategoryOption(board.category);
 
   const totalCards = useMemo(() => {
     if (typeof board.totalCards === 'number') return board.totalCards;
@@ -64,11 +67,25 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-          <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
-          <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
-            {board.name}
-          </Typography>
+        <Box sx={{ minWidth: 0, mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
+              {board.name}
+            </Typography>
+          </Box>
+          <Chip
+            label={category.label}
+            size="small"
+            sx={{
+              mt: 1.25,
+              height: 24,
+              color: category.color,
+              bgcolor: category.backgroundColor,
+              fontWeight: 700,
+              fontSize: '0.7rem',
+            }}
+          />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {onEdit && (

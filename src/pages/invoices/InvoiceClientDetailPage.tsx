@@ -431,8 +431,10 @@ const InvoiceClientDetailPage = () => {
   useApiErrorToast(invoices.error, invoices.isError);
   const [notice, setNotice] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirmInvoice, setSendConfirmInvoice] = useState<InvoiceRecord | null>(null);
+  const [remindConfirmInvoice, setRemindConfirmInvoice] = useState<InvoiceRecord | null>(null);
   const [sendPreviewData, setSendPreviewData] = useState<InvoicePreviewData | null>(null);
   const [disputeInvoice, setDisputeInvoice] = useState<InvoiceRecord | null>(null);
   const [disputingId, setDisputingId] = useState<string | null>(null);
@@ -510,6 +512,20 @@ const InvoiceClientDetailPage = () => {
       showApiError(err);
     } finally {
       setSendingId(null);
+    }
+  };
+
+  const confirmRemindInvoice = async () => {
+    if (!remindConfirmInvoice) return;
+    setRemindingId(remindConfirmInvoice._id);
+    try {
+      await mutations.sendReminder.mutateAsync(remindConfirmInvoice._id);
+      setRemindConfirmInvoice(null);
+      setNotice('Reminder sent successfully');
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setRemindingId(null);
     }
   };
 
@@ -1062,6 +1078,19 @@ const InvoiceClientDetailPage = () => {
                           </Button>
                         )}
 
+                        {invoice.status === 'sent' && invoice.overdue && (
+                          <Button
+                            size="small"
+                            color="warning"
+                            startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
+                            sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
+                            disabled={remindingId === invoice._id}
+                            onClick={() => setRemindConfirmInvoice(invoice)}
+                          >
+                            Send Reminder
+                          </Button>
+                        )}
+
                         {invoice.status === 'sent' && (
                           <Button
                             size="small"
@@ -1169,6 +1198,39 @@ const InvoiceClientDetailPage = () => {
         }}
         onConfirm={confirmSendInvoice}
       />
+
+      <Dialog
+        open={Boolean(remindConfirmInvoice)}
+        onClose={() => !remindingId && setRemindConfirmInvoice(null)}
+        PaperProps={{ sx: { width: '100%', maxWidth: 400, borderRadius: '16px', bgcolor: isDarkMode ? tokens.surface.card : '#fff' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, pt: 3, px: 3, pb: 1 }}>
+          Send payment reminder?
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 1 }}>
+          <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, mb: 1.5, fontSize: '0.9rem' }}>
+            This invoice is overdue. A reminder email will be sent to the customer.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1 }}>
+          <Button
+            onClick={() => setRemindConfirmInvoice(null)}
+            disabled={Boolean(remindingId)}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px', color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={confirmRemindInvoice}
+            disabled={Boolean(remindingId)}
+            sx={{ textTransform: 'none', fontWeight: 750, borderRadius: '8px', boxShadow: 'none' }}
+          >
+            {remindingId ? 'Sending...' : 'Send Reminder'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <InvoiceDisputeModal
         open={Boolean(disputeInvoice)}

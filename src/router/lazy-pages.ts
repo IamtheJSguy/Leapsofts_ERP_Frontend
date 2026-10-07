@@ -30,3 +30,7 @@ export const InvoicesPage = lazyRetry(() => import('@/pages/invoices/InvoicesPag
 export const InvoiceEditorPage = lazyRetry(() => import('@/pages/invoices/InvoiceEditorPage'));
 export const InvoiceClientDetailPage = lazyRetry(() => import('@/pages/invoices/InvoiceClientDetailPage'));
 export const InvoiceSettingsPage = lazyRetry(() => import('@/pages/invoices/InvoiceSettingsPage'));
+export const HomePage = lazyRetry(() => import('@/pages/public/HomePage'));
+export const PrivacyPage = lazyRetry(() => import('@/pages/public/PrivacyPage'));
+export const TermsPage = lazyRetry(() => import('@/pages/public/TermsPage'));
+export const SecurityPolicyPage = lazyRetry(() => import('@/pages/public/SecurityPolicyPage'));

@@ -118,6 +118,8 @@ const SectionTable = ({
     newProspects: d.newProspects ?? 0,
     messagesSent: d.messagesSent ?? 0,
     followUps: d.followUps ?? 0,
+    callsDialed: d.callsDialed ?? 0,
+    callFollowUps: d.callFollowUps ?? 0,
   }));
 
   const tooltipSx = {
@@ -161,6 +163,24 @@ const SectionTable = ({
                     dataKey="newProspects"
                     name="New prospects"
                     stroke={tokens.brand.primary}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="callsDialed"
+                    name="Calls dialed"
+                    stroke="#0EA5E9"
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="callFollowUps"
+                    name="Call follow-ups"
+                    stroke="#10B981"
                     strokeWidth={2.5}
                     dot={{ r: 3 }}
                     activeDot={{ r: 5 }}

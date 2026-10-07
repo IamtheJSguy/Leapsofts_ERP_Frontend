@@ -103,12 +103,16 @@ const SALES_KPI_CARD_METRICS: SalesKpiMetric[] = [
   SALES_KPI_METRIC.NEW_PROSPECTS,
   SALES_KPI_METRIC.MESSAGES_SENT,
   SALES_KPI_METRIC.FOLLOW_UPS,
+  SALES_KPI_METRIC.CALLS_DIALED,
+  SALES_KPI_METRIC.CALL_FOLLOW_UPS,
 ];
 
 const SALES_KPI_SHORT_LABELS: Record<SalesKpiMetric, string> = {
   new_prospects: 'Prospects',
   messages_sent: 'Messages',
   follow_ups: 'Follow-ups',
+  calls_dialed: 'Calls',
+  call_follow_ups: 'Call follow-ups',
 };
 
 type MemberSalesKpiStat = {

@@ -10,7 +10,7 @@ export const GuestRoute = ({ children }: GuestRouteProps) => {
   const hasToken = !!localStorage.getItem('accessToken');
 
   if (isAuthenticated || hasToken) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

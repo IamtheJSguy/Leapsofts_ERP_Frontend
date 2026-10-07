@@ -10,6 +10,7 @@ import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import ReplayOutlinedIcon from '@mui/icons-material/ReplayOutlined';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
+import PhoneInTalkOutlinedIcon from '@mui/icons-material/PhoneInTalkOutlined';
 import type { SvgIconComponent } from '@mui/icons-material';
 import { tokens } from '@/styles/tokens';
 import { formatDateTime } from '@/utils/formatters';
@@ -24,6 +25,8 @@ const EVENT_VISUALS: Record<LeadTimelineEventType, EventVisual> = {
   message: { icon: ForumOutlinedIcon, color: '#10B981' },
   follow_up: { icon: ReplayOutlinedIcon, color: '#FBBF24' },
   qualified: { icon: StarOutlineIcon, color: tokens.brand.accent },
+  cold_outreach: { icon: PhoneInTalkOutlinedIcon, color: tokens.brand.primary },
+  cold_response: { icon: PhoneInTalkOutlinedIcon, color: tokens.brand.accent },
 };
 
 const FALLBACK_VISUAL: EventVisual = {
@@ -154,6 +157,9 @@ export const LeadTimelinePopover = ({
                     }}
                   >
                     {event.label}
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'inline-block', color: event.channel === 'cold_calling' ? tokens.brand.accent : tokens.brand.primary, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.58rem', mt: 0.25 }}>
+                    {event.channel === 'cold_calling' ? 'Cold calling' : 'LinkedIn'}
                   </Typography>
                   {event.detail && (
                     <Typography

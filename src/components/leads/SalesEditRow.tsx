@@ -8,12 +8,14 @@ import {
 } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { tokens } from '@/styles/tokens';
 import type { EditableLeadData } from '@/hooks/useLeadAutoSync';
-import type { ConnectionStatus, LeadComment, MessageStatus } from '@/types';
+import type { ColdCallingState, ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, LeadComment, MessageStatus, OutreachChannel } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { nativeFieldStyle } from './nativeFieldStyles';
 import { LeadCommentButton } from './LeadCommentButton';
+import { ColdFutureDateTimeField } from './ColdFutureDateTimeField';
 
 type OptionItem = { _id: string; name: string };
 
@@ -33,6 +35,8 @@ type SalesEditRowProps = {
   onSave: (id: string) => void;
   onCancel: (id: string) => void;
   onFollowUpChange?: (id: string, number: number) => void;
+  outreachChannel: OutreachChannel;
+  onOpenProfile: (id: string) => void;
 };
 
 export const SalesEditRow = memo(function SalesEditRow({
@@ -51,6 +55,8 @@ export const SalesEditRow = memo(function SalesEditRow({
   onSave,
   onCancel,
   onFollowUpChange,
+  outreachChannel,
+  onOpenProfile,
 }: SalesEditRowProps) {
   const field = nativeFieldStyle(isDarkMode);
   const [promptInvalidComment, setPromptInvalidComment] = useState(false);
@@ -126,7 +132,7 @@ export const SalesEditRow = memo(function SalesEditRow({
             onSave={(comment) => onUpdate(leadId, { leadComment: comment })}
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
-            requireReason={editData.messageStatus === 'invalid_lead'}
+            requireReason={editData.messageStatus === 'invalid_lead' || editData.coldCalling.responseStatus === 'invalid_lead'}
           />
         </Box>
       </TableCell>
@@ -160,7 +166,7 @@ export const SalesEditRow = memo(function SalesEditRow({
       </TableCell>
       <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <select
+          {outreachChannel === 'linkedin' ? <><select
             value={editData.connectionStatus}
             onChange={(e) =>
               onUpdate(leadId, { connectionStatus: e.target.value as ConnectionStatus })
@@ -228,7 +234,35 @@ export const SalesEditRow = memo(function SalesEditRow({
                 </option>
               ))}
             </select>
+          )}</> : <>
+          <select
+            value={editData.coldCalling.outreachStatus}
+            onChange={(e) => onUpdate(leadId, { coldCalling: { ...editData.coldCalling, outreachStatus: e.target.value as ColdOutreachStatus } })}
+            style={field}
+          >
+            <option value="pending">Outreach: Undialed</option><option value="dialed_1">Outreach: Dialed 1</option>
+            <option value="dialed_2">Outreach: Dialed 2</option><option value="dialed_3">Outreach: Dialed 3</option>
+            <option value="declined">Outreach: Declined</option>
+          </select>
+          <select
+            value={editData.coldCalling.responseStatus}
+            onChange={(e) => {
+              const responseStatus = e.target.value as ColdResponseStatus;
+              onUpdate(leadId, { coldCalling: { ...editData.coldCalling, responseStatus, ...(responseStatus !== 'future_lead' ? { futureLeadAt: undefined } : {}) } });
+              if (responseStatus === 'invalid_lead') setPromptInvalidComment(true);
+            }}
+            style={field}
+          >
+            <option value="no_response">Answered: No response yet</option><option value="positive">Answered: Positive</option>
+            <option value="negative">Answered: Negative</option><option value="in_conversation">Answered: In Conversation</option>
+            <option value="future_lead">Answered: Future Lead</option><option value="follow_up_1">Answered: Follow-up 1</option>
+            <option value="follow_up_2">Answered: Follow-up 2</option><option value="follow_up_3">Answered: Follow-up 3</option>
+            <option value="invalid_lead">Answered: Invalid Lead</option>
+          </select>
+          {editData.coldCalling.responseStatus === 'future_lead' && (
+            <ColdFutureDateTimeField value={editData.coldCalling.futureLeadAt} compact onChange={(futureLeadAt) => onUpdate(leadId, { coldCalling: { ...editData.coldCalling, futureLeadAt } })} />
           )}
+          </>}
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>
@@ -241,6 +275,7 @@ export const SalesEditRow = memo(function SalesEditRow({
       </TableCell>
       <TableCell align="right" sx={{ py: 2, pr: 3 }}>
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+          <IconButton onClick={() => onOpenProfile(leadId)} aria-label="Open full lead profile"><PersonOutlineIcon sx={{ fontSize: 20 }} /></IconButton>
           <IconButton
             onClick={() => onSave(leadId)}
             sx={{
@@ -282,6 +317,7 @@ type SalesInlineAddRowProps = {
     messageStatus?: MessageStatus | string;
     futureLeadDate?: string;
     leadComment?: LeadComment | null;
+    coldCalling?: ColdCallingState;
   };
   errors: Record<string, boolean>;
   isDarkMode: boolean;
@@ -291,6 +327,7 @@ type SalesInlineAddRowProps = {
   onUpdate: (patch: Record<string, unknown>) => void;
   onSave: () => void;
   onCancel: () => void;
+  outreachChannel: OutreachChannel;
 };
 
 export const SalesInlineAddRow = memo(function SalesInlineAddRow({
@@ -303,6 +340,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
   onUpdate,
   onSave,
   onCancel,
+  outreachChannel,
 }: SalesInlineAddRowProps) {
   const prospectNameValue =
     data.prospectName !== undefined && data.prospectName !== null
@@ -378,7 +416,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
             onSave={(comment) => onUpdate({ leadComment: comment })}
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
-            requireReason={data.messageStatus === 'invalid_lead'}
+            requireReason={data.messageStatus === 'invalid_lead' || data.coldCalling?.responseStatus === 'invalid_lead'}
           />
         </Box>
       </TableCell>
@@ -412,7 +450,7 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
       </TableCell>
       <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <select
+          {outreachChannel === 'linkedin' ? <><select
             value={data.connectionStatus || 'pending'}
             onChange={(e) => onUpdate({ connectionStatus: e.target.value })}
             style={nativeFieldStyle(isDarkMode)}
@@ -457,7 +495,17 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
               }
               style={nativeFieldStyle(isDarkMode, !!errors.futureLeadDate)}
             />
+          )}</> : <>
+          <select value={data.coldCalling?.outreachStatus || 'pending'} onChange={(e) => onUpdate({ coldCalling: { ...(data.coldCalling || { responseStatus: 'no_response' }), outreachStatus: e.target.value } })} style={nativeFieldStyle(isDarkMode)}>
+            <option value="pending">Outreach: Undialed</option><option value="dialed_1">Outreach: Dialed 1</option><option value="dialed_2">Outreach: Dialed 2</option><option value="dialed_3">Outreach: Dialed 3</option><option value="declined">Outreach: Declined</option>
+          </select>
+          <select value={data.coldCalling?.responseStatus || 'no_response'} onChange={(e) => { const responseStatus = e.target.value as ColdResponseStatus; onUpdate({ coldCalling: { outreachStatus: data.coldCalling?.outreachStatus || 'pending', ...data.coldCalling, responseStatus, ...(responseStatus !== 'future_lead' ? { futureLeadAt: undefined } : {}) } }); if (responseStatus === 'invalid_lead') setPromptInvalidComment(true); }} style={nativeFieldStyle(isDarkMode)}>
+            <option value="no_response">Answered: No response yet</option><option value="positive">Answered: Positive</option><option value="negative">Answered: Negative</option><option value="in_conversation">Answered: In Conversation</option><option value="future_lead">Answered: Future Lead</option><option value="follow_up_1">Answered: Follow-up 1</option><option value="follow_up_2">Answered: Follow-up 2</option><option value="follow_up_3">Answered: Follow-up 3</option><option value="invalid_lead">Answered: Invalid Lead</option>
+          </select>
+          {data.coldCalling?.responseStatus === 'future_lead' && (
+            <ColdFutureDateTimeField value={data.coldCalling.futureLeadAt} error={!!errors.coldFutureLeadAt} compact onChange={(futureLeadAt) => onUpdate({ coldCalling: { ...data.coldCalling!, futureLeadAt } })} />
           )}
+          </>}
         </Box>
       </TableCell>
       <TableCell sx={{ py: 2 }}>

@@ -100,6 +100,26 @@ export const messageStatusTokens = {
   invalid_lead: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
 } as const;
 
+export const coldOutreachStatusTokens = {
+  pending: { color: tokens.semantic.neutral, bg: tokens.semantic.neutralBg },
+  dialed_1: { color: tokens.brand.primary, bg: tokens.semantic.infoBg },
+  dialed_2: { color: tokens.brand.primaryDark, bg: tokens.brand.primary50 },
+  dialed_3: { color: tokens.brand.accentDark, bg: tokens.brand.accent50 },
+  declined: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
+} as const;
+
+export const coldResponseStatusTokens = {
+  no_response: { color: tokens.semantic.neutral, bg: tokens.semantic.neutralBg },
+  positive: { color: tokens.semantic.success, bg: tokens.semantic.successBg },
+  negative: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
+  in_conversation: { color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
+  future_lead: { color: tokens.brand.primaryDark, bg: tokens.brand.primary50 },
+  follow_up_1: { color: tokens.brand.accentDark, bg: tokens.brand.accent50 },
+  follow_up_2: { color: tokens.brand.accentDark, bg: tokens.brand.accent50 },
+  follow_up_3: { color: tokens.brand.accentDark, bg: tokens.brand.accent50 },
+  invalid_lead: { color: tokens.semantic.error, bg: tokens.semantic.errorBg },
+} as const;
+
 /** Lead comment severity level → dot/icon color */
 export const leadCommentLevelTokens = {
   red: tokens.semantic.error,

@@ -59,6 +59,8 @@ const InvoiceSettingsPage = () => {
   useApiErrorToast(settings.error, settings.isError);
   const [notice, setNotice] = useState('');
   const [issuerName, setIssuerName] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [senderPosition, setSenderPosition] = useState('');
   const [ntn, setNtn] = useState('');
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
@@ -73,7 +75,7 @@ const InvoiceSettingsPage = () => {
   const [baseline, setBaseline] = useState('');
 
   const draftKey = JSON.stringify({
-    issuerName, ntn, address, email, defaultTemplate, defaultTaxRate, currency, banks, provider, mailboxEmail, appPassword,
+    issuerName, senderName, senderPosition, ntn, address, email, defaultTemplate, defaultTaxRate, currency, banks, provider, mailboxEmail, appPassword,
   });
 
   const save = async (): Promise<boolean> => {
@@ -88,11 +90,13 @@ const InvoiceSettingsPage = () => {
         : undefined;
       const saved = await mutations.updateSettings.mutateAsync({
         issuerName,
+        senderName: senderName.trim(),
+        senderPosition: senderPosition.trim(),
         ntn,
         address,
         email,
         defaultTemplate,
-        defaultTaxRate: Number(defaultTaxRate) || 0,
+        defaultTaxRate: Math.min(100, Math.max(0, Number(defaultTaxRate) || 0)),
         currency,
         bankAccounts: banks
           .filter((bank) => bank.paymentTitle.trim() || bank.bankName.trim() || bank.accountTitle.trim() || bank.accountNumber.trim())
@@ -111,7 +115,7 @@ const InvoiceSettingsPage = () => {
       setBanks(nextBanks);
       setAppPassword('');
       setBaseline(JSON.stringify({
-        issuerName, ntn, address, email, defaultTemplate, defaultTaxRate, currency, banks: nextBanks, provider, mailboxEmail, appPassword: '',
+        issuerName, senderName, senderPosition, ntn, address, email, defaultTemplate, defaultTaxRate, currency, banks: nextBanks, provider, mailboxEmail, appPassword: '',
       }));
       setNotice('Invoice settings saved.');
       return true;
@@ -136,6 +140,8 @@ const InvoiceSettingsPage = () => {
     const nextProvider = (settings.data.mailbox.provider as MailboxProvider) || 'gmail';
     const nextMailbox = settings.data.mailbox.email || '';
     setIssuerName(settings.data.issuerName);
+    setSenderName(settings.data.senderName || '');
+    setSenderPosition(settings.data.senderPosition || '');
     setNtn(settings.data.ntn);
     setAddress(settings.data.address);
     setEmail(settings.data.email);
@@ -147,6 +153,8 @@ const InvoiceSettingsPage = () => {
     setMailboxEmail(nextMailbox);
     setBaseline(JSON.stringify({
       issuerName: settings.data.issuerName,
+      senderName: settings.data.senderName || '',
+      senderPosition: settings.data.senderPosition || '',
       ntn: settings.data.ntn,
       address: settings.data.address,
       email: settings.data.email,
@@ -289,7 +297,28 @@ const InvoiceSettingsPage = () => {
           </Typography>
           <InvoiceTemplatePicker value={defaultTemplate} onChange={setDefaultTemplate} />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '180px 280px' }, gap: 2, mt: 2.5 }}>
-            <TextField fullWidth size="small" label="Default tax %" type="number" value={defaultTaxRate} onChange={(e) => setDefaultTaxRate(e.target.value)} sx={inputStyle} />
+            <TextField
+              fullWidth
+              size="small"
+              label="Default tax %"
+              type="number"
+              value={defaultTaxRate}
+              inputProps={{ min: 0, max: 100, step: 'any' }}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '' || raw === '.') {
+                  setDefaultTaxRate(raw);
+                  return;
+                }
+                const n = Number(raw);
+                if (!Number.isFinite(n) || n < 0) {
+                  setDefaultTaxRate('0');
+                  return;
+                }
+                setDefaultTaxRate(n > 100 ? '100' : raw);
+              }}
+              sx={inputStyle}
+            />
             <TextField
               select
               fullWidth
@@ -352,7 +381,17 @@ const InvoiceSettingsPage = () => {
         </Card>
 
         <Card elevation={0} sx={cardSx}>
-          {sectionLabel(<MailOutlineIcon sx={{ fontSize: 16 }} />, 'Invoicing mailbox')}
+          {sectionLabel(<MailOutlineIcon sx={{ fontSize: 16 }} />, 'Email sender')}
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 2 }}>
+            Name and position shown in the From header and email sign-off (under Regards). Company name still appears below.
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+            <TextField fullWidth size="small" label="Sender name" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="e.g. Jane Smith" sx={inputStyle} />
+            <TextField fullWidth size="small" label="Position" value={senderPosition} onChange={(e) => setSenderPosition(e.target.value)} placeholder="e.g. Accounts Manager" sx={inputStyle} />
+          </Box>
+          <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem', display: 'block', mb: 1.5 }}>
+            Invoicing mailbox
+          </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 2 }}>
             Pick the provider, then enter the mailbox email and an app password. Host, port, and TLS are set for that provider.
             {settings.data?.mailbox.configured ? ' A mailbox is already saved. Leave the app password blank to keep it.' : ''}
