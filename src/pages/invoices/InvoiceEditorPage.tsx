@@ -28,7 +28,6 @@ import SendIcon from '@mui/icons-material/Send';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import GavelIcon from '@mui/icons-material/Gavel';
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
@@ -42,13 +41,10 @@ import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings 
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
-import { InvoiceClientFields } from '@/components/invoices/InvoiceClientFields';
 import {
-  emptyClientForm,
   formatInvoiceMoney,
   roundMoney,
   type InvoiceClient,
-  type InvoiceClientForm,
   type InvoiceParty,
   type InvoiceTemplateId,
   type SaveInvoicePayload,
@@ -71,7 +67,25 @@ const emptyBankDraft = () => ({
   branch: '',
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const date = new Date();
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+};
+
+const getLastDayOfMonth = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [y, m] = dateStr.split('-');
+  const date = new Date(Number(y), Number(m), 0);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+};
+
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const InvoiceEditorPage = () => {
   const { id } = useParams();
@@ -95,11 +109,15 @@ const InvoiceEditorPage = () => {
   const [clientId, setClientId] = useState('');
   const [client, setClient] = useState<InvoiceParty>(emptyParty());
   const [issueDate, setIssueDate] = useState(today());
-  const [dueDate, setDueDate] = useState(today());
+  const [dueDate, setDueDate] = useState(getLastDayOfMonth(today()));
+  const [dueDateTouched, setDueDateTouched] = useState(false);
   const [templateId, setTemplateId] = useState<InvoiceTemplateId>('classic');
   const [taxRate, setTaxRate] = useState('0');
   const [lines, setLines] = useState<LineDraft[]>([{ description: '', qty: '1', unitPrice: '0' }]);
   const [bankAccountIds, setBankAccountIds] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [ccInput, setCcInput] = useState('');
+  const [ccError, setCcError] = useState('');
   const [baseline, setBaseline] = useState('');
   const [clientOpen, setClientOpen] = useState(false);
   const [newClient, setNewClient] = useState<InvoiceClientForm>(emptyClientForm());
@@ -146,6 +164,7 @@ const InvoiceEditorPage = () => {
         taxRate: nextTax,
         lines: [{ description: '', qty: '1', unitPrice: '0' }],
         bankAccountIds: defaultBankIds,
+        ccEmails: [],
       }));
       setHydrated(true);
       return;
@@ -170,6 +189,8 @@ const InvoiceEditorPage = () => {
     setTaxRate(nextTax);
     setLines(nextLines);
     setBankAccountIds(current.bankAccountIds);
+    setCcEmails(current.ccEmails || []);
+    setDueDateTouched(true);
     setBaseline(JSON.stringify({
       invoiceNumber: current.invoiceNumber,
       clientId: current.clientId || '',
@@ -180,6 +201,7 @@ const InvoiceEditorPage = () => {
       taxRate: nextTax,
       lines: nextLines,
       bankAccountIds: current.bankAccountIds,
+      ccEmails: current.ccEmails || [],
     }));
     setHydrated(true);
   }, [clients.data, clients.isLoading, dueDate, hydrated, invoice.data, isNew, issueDate, presetClientId, settings.data]);
@@ -213,9 +235,8 @@ const InvoiceEditorPage = () => {
   };
 
   const draftKey = JSON.stringify({
-    invoiceNumber, clientId, client, issueDate, dueDate, templateId, taxRate, lines, bankAccountIds,
+    invoiceNumber, clientId, client, issueDate, dueDate, templateId, taxRate, lines, bankAccountIds, ccEmails
   });
-  const clientDirty = clientOpen && JSON.stringify(newClient) !== JSON.stringify(emptyClientForm());
   const bankDirty = bankOpen && Object.values(newBank).some((value) => value.trim());
   const invoiceDirty = hydrated && baseline !== '' && draftKey !== baseline;
 
@@ -228,12 +249,12 @@ const InvoiceEditorPage = () => {
       qty: Number(line.qty),
       unitPrice: Number(line.unitPrice),
     }));
-    if (!invoiceNumber.trim() || !nextClientId) return null;
+    if ((!isNew && !invoiceNumber.trim()) || !nextClientId) return null;
     if (lineItems.some((line) => !line.description || !Number.isFinite(line.qty) || line.qty <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)) {
       return null;
     }
     return {
-      invoiceNumber: invoiceNumber.trim(),
+      invoiceNumber: isNew ? undefined : invoiceNumber.trim(),
       clientId: nextClientId,
       client: nextClient,
       issueDate,
@@ -242,7 +263,8 @@ const InvoiceEditorPage = () => {
       taxRate: Number(taxRate),
       lineItems,
       bankAccountIds: nextBanks,
-    };
+      ccEmails,
+    } as any;
   };
 
   const rememberSaved = (body: SaveInvoicePayload) => {
@@ -256,6 +278,7 @@ const InvoiceEditorPage = () => {
       taxRate,
       lines,
       bankAccountIds: body.bankAccountIds,
+      ccEmails,
     }));
   };
 
@@ -295,21 +318,6 @@ const InvoiceEditorPage = () => {
 
   const saveForLeave = async (): Promise<boolean> => {
     const override: Partial<Pick<SaveInvoicePayload, 'clientId' | 'client' | 'bankAccountIds'>> = {};
-    if (clientDirty) {
-      try {
-        const created = await mutations.createClient.mutateAsync(newClient);
-        const party = { name: created.name, ntn: created.ntn, address: created.address, email: created.email };
-        override.clientId = created._id;
-        override.client = party;
-        setClientId(created._id);
-        setClient(party);
-        setNewClient(emptyClientForm());
-        setClientOpen(false);
-      } catch (err) {
-        showApiError(err);
-        return false;
-      }
-    }
     if (bankDirty) {
       try {
         const before = new Set((settings.data?.bankAccounts || []).map((bank) => bank.id));
@@ -340,24 +348,11 @@ const InvoiceEditorPage = () => {
   const returnClientId = presetClientId || invoice.data?.clientId || '';
   const exitTo = returnClientId ? `/invoices/clients/${returnClientId}` : '/invoices';
   const { dialog: leaveDialog, requestLeave, allowNext } = useInvoiceLeave(
-    Boolean(!locked && (invoiceDirty || clientDirty || bankDirty)),
+    Boolean(!locked && (invoiceDirty || bankDirty)),
     saveForLeave,
-    mutations.createInvoice.isPending || mutations.updateInvoice.isPending || mutations.createClient.isPending || mutations.addBank.isPending,
+    mutations.createInvoice.isPending || mutations.updateInvoice.isPending || mutations.addBank.isPending,
     exitTo,
   );
-
-  const createClientNow = async () => {
-    try {
-      const created = await mutations.createClient.mutateAsync(newClient);
-      setClientId(created._id);
-      setClient({ name: created.name, ntn: created.ntn, address: created.address, email: created.email });
-      setNewClient(emptyClientForm());
-      setClientOpen(false);
-      setNotice('Client created.');
-    } catch (err) {
-      showApiError(err);
-    }
-  };
 
   const addBankNow = async () => {
     try {
@@ -568,8 +563,8 @@ const InvoiceEditorPage = () => {
                     fullWidth
                     size="small"
                     label="Invoice Number *"
-                    value={invoiceNumber}
-                    disabled={Boolean(locked)}
+                    value={isNew ? 'Auto-generated' : invoiceNumber}
+                    disabled={true}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     sx={inputStyle}
                   />
@@ -582,7 +577,13 @@ const InvoiceEditorPage = () => {
                     type="date"
                     value={issueDate}
                     disabled={Boolean(locked)}
-                    onChange={(e) => setIssueDate(e.target.value)}
+                    onChange={(e) => {
+                      const newIssueDate = e.target.value;
+                      setIssueDate(newIssueDate);
+                      if (!dueDateTouched && newIssueDate) {
+                        setDueDate(getLastDayOfMonth(newIssueDate));
+                      }
+                    }}
                     InputLabelProps={{ shrink: true }}
                     sx={inputStyle}
                   />
@@ -595,44 +596,92 @@ const InvoiceEditorPage = () => {
                     type="date"
                     value={dueDate}
                     disabled={Boolean(locked)}
-                    onChange={(e) => setDueDate(e.target.value)}
+                    onChange={(e) => {
+                      setDueDate(e.target.value);
+                      setDueDateTouched(true);
+                    }}
                     InputLabelProps={{ shrink: true }}
                     sx={inputStyle}
                   />
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Autocomplete
-                      fullWidth
-                      size="small"
-                      options={clients.data || []}
-                      value={(clients.data || []).find((item) => item._id === clientId) || null}
-                      disabled={Boolean(locked)}
-                      onChange={(_, value) => applyClient(value?._id || '')}
-                      getOptionLabel={(option: InvoiceClient) => option.name}
-                      isOptionEqualToValue={(option, value) => option._id === value._id}
-                      filterOptions={(options, state) => {
-                        const query = state.inputValue.trim().toLowerCase();
-                        if (!query) return options;
-                        return options.filter((option) =>
-                          option.name.toLowerCase().includes(query)
-                          || option.email.toLowerCase().includes(query)
-                          || option.ntn.toLowerCase().includes(query));
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} label="Billed Client *" placeholder="Search client name, email..." sx={inputStyle} />
-                      )}
-                      renderOption={(props, option) => (
-                        <li {...props} key={option._id}>
-                          <Box>
-                            <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{option.name}</Typography>
-                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email} · NTN: {option.ntn || '—'}</Typography>
-                          </Box>
-                        </li>
-                      )}
-                    />
-                  </Box>
+                  <Autocomplete
+                    fullWidth
+                    size="small"
+                    options={clients.data || []}
+                    value={(clients.data || []).find((item) => item._id === clientId) || null}
+                    disabled={Boolean(locked)}
+                    onChange={(_, value) => applyClient(value?._id || '')}
+                    getOptionLabel={(option: InvoiceClient) => option.name}
+                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                    filterOptions={(options, state) => {
+                      const query = state.inputValue.trim().toLowerCase();
+                      if (!query) return options;
+                      return options.filter((option) =>
+                        option.name.toLowerCase().includes(query)
+                        || option.email.toLowerCase().includes(query)
+                        || option.ntn.toLowerCase().includes(query));
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Billed Client *" placeholder="Search client name, email..." sx={inputStyle} />
+                    )}
+                    renderOption={(props, option) => (
+                      <li {...props} key={option._id}>
+                        <Box>
+                          <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{option.name}</Typography>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email} · NTN: {option.ntn || '—'}</Typography>
+                        </Box>
+                      </li>
+                    )}
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    fullWidth
+                    size="small"
+                    disabled={Boolean(locked)}
+                    options={[]}
+                    value={ccEmails}
+                    inputValue={ccInput}
+                    onInputChange={(_, newInputValue) => {
+                      setCcInput(newInputValue);
+                      setCcError('');
+                    }}
+                    onChange={(_, newValue) => {
+                      const cleanEmails = newValue
+                        .map((v) => v.trim().toLowerCase())
+                        .filter((v) => v);
+                      
+                      const lastAdded = cleanEmails[cleanEmails.length - 1];
+                      if (lastAdded && !isValidEmail(lastAdded)) {
+                        setCcError(`Invalid email: ${lastAdded}`);
+                        return;
+                      }
+                      
+                      const uniqueEmails = Array.from(new Set(cleanEmails));
+                      if (uniqueEmails.length > 10) {
+                        setCcError('Maximum 10 CC emails allowed');
+                        return;
+                      }
+                      
+                      setCcError('');
+                      setCcEmails(uniqueEmails);
+                    }}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="CC Emails" 
+                        placeholder={ccEmails.length < 10 ? "Type email and press Enter" : ""}
+                        error={Boolean(ccError)}
+                        helperText={ccError}
+                        sx={inputStyle} 
+                      />
+                    )}
+                  />
                 </Grid>
               </Grid>
             </Card>
@@ -985,32 +1034,6 @@ const InvoiceEditorPage = () => {
         }}
         onConfirm={confirmDispute}
       />
-
-      {/* New Client Modal */}
-      <Dialog
-        open={clientOpen}
-        onClose={() => setClientOpen(false)}
-        fullWidth
-        maxWidth="md"
-        PaperProps={{
-          sx: {
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? 'rgba(24, 21, 30, 0.98)' : '#FFFFFF',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1, pt: 3, px: 3.5, fontWeight: 800, fontSize: '1.25rem' }}>New client profile</DialogTitle>
-        <DialogContent sx={{ pt: '8px !important', pb: 2, px: 3.5 }}>
-          <InvoiceClientFields value={newClient} onChange={setNewClient} />
-        </DialogContent>
-        <DialogActions sx={{ px: 3.5, pt: 1, pb: 3, gap: 1 }}>
-          <Button onClick={() => setClientOpen(false)} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}>Cancel</Button>
-          <Button onClick={createClientNow} variant="contained" disabled={mutations.createClient.isPending} sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '12px', bgcolor: tokens.brand.primary }}>
-            Save client
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* New Bank Modal */}
       <Dialog
