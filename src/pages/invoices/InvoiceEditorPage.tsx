@@ -84,6 +84,15 @@ interface LineDraft {
   unitPrice: string;
 }
 
+/** Keep number inputs non-negative while allowing empty / partial typing. */
+const sanitizeNonNegative = (raw: string): string => {
+  if (raw === '' || raw === '.') return raw;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return '0';
+  if (n < 0) return '0';
+  return raw;
+};
+
 const emptyParty = (): InvoiceParty => ({ name: '', ntn: '', address: '', email: '' });
 
 const emptyBankDraft = () => ({
@@ -307,6 +316,10 @@ const InvoiceEditorPage = () => {
     if (lineItems.some((line) => !line.description || !Number.isFinite(line.qty) || line.qty <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)) {
       return null;
     }
+    const nextTax = Number(taxRate);
+    if (!Number.isFinite(nextTax) || nextTax < 0 || nextTax > 100) {
+      return null;
+    }
     return {
       invoiceNumber: invoiceNumber.trim(),
       clientId: nextClientId,
@@ -314,7 +327,7 @@ const InvoiceEditorPage = () => {
       issueDate,
       dueDate,
       templateId,
-      taxRate: Number(taxRate),
+      taxRate: nextTax,
       lineItems,
       bankAccountIds: nextBanks,
       ccEmails,
@@ -917,7 +930,8 @@ const InvoiceEditorPage = () => {
                       type="number"
                       value={line.qty}
                       disabled={Boolean(locked)}
-                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: e.target.value } : item))}
+                      inputProps={{ min: 0, step: 'any' }}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: sanitizeNonNegative(e.target.value) } : item))}
                       sx={inputStyle}
                     />
                     <TextField
@@ -926,7 +940,8 @@ const InvoiceEditorPage = () => {
                       type="number"
                       value={line.unitPrice}
                       disabled={Boolean(locked)}
-                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: e.target.value } : item))}
+                      inputProps={{ min: 0, step: 'any' }}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: sanitizeNonNegative(e.target.value) } : item))}
                       sx={inputStyle}
                     />
                     {!locked && lines.length > 1 && (
@@ -954,7 +969,12 @@ const InvoiceEditorPage = () => {
                     type="number"
                     value={taxRate}
                     disabled={Boolean(locked)}
-                    onChange={(e) => setTaxRate(e.target.value)}
+                    inputProps={{ min: 0, max: 100, step: 'any' }}
+                    onChange={(e) => {
+                      const next = sanitizeNonNegative(e.target.value);
+                      const n = Number(next);
+                      setTaxRate(Number.isFinite(n) && n > 100 ? '100' : next);
+                    }}
                     sx={{ ...inputStyle, width: 130 }}
                   />
                 </Box>
