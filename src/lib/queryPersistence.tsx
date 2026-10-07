@@ -55,7 +55,7 @@ export function QueryCacheProvider({ children }: { children: ReactNode }) {
           shouldDehydrateQuery: (query) =>
             persistQueries &&
             Boolean(useAuthStore.getState().user?._id) &&
-            defaultShouldDehydrateQuery(query),
+            defaultShouldDehydrateQuery(query as any),
         },
       }}
     >
