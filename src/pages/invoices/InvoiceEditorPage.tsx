@@ -48,30 +48,22 @@ const generateNextInvoiceNumber = (invoices: any[], targetClientId?: string, tar
   const year = targetIssueDate ? new Date(targetIssueDate).getFullYear() : new Date().getFullYear();
   const format = `${year}-`;
 
-  if (!invoices || invoices.length === 0) return `${format}001`;
+  if (!targetClientId || !invoices?.length) return `${format}001`;
 
-  const clientInvoices = invoices.filter((inv) => {
-    if (!targetClientId) return false;
-    return (
-      inv.clientId === targetClientId ||
-      inv.clientSnapshot?._id === targetClientId ||
-      inv.client?._id === targetClientId ||
-      inv.clientSnapshot?.id === targetClientId
-    );
-  });
+  const clientInvoices = invoices.filter((inv) => inv.clientId === targetClientId);
+  if (clientInvoices.length === 0) return `${format}001`;
 
-  let maxNum = 0;
-  for (const inv of clientInvoices) {
-    if (inv.invoiceNumber) {
-      const match = inv.invoiceNumber.match(/^(?:\d{4}-)?(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-  }
+  // Most recently created invoice for this client (createdAt, else ObjectId order)
+  const lastCreated = [...clientInvoices].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) return bTime - aTime;
+    return String(b._id || '').localeCompare(String(a._id || ''));
+  })[0];
 
-  const nextNumStr = (maxNum + 1).toString().padStart(3, '0');
+  const match = String(lastCreated?.invoiceNumber || '').match(/(\d{1,})$/);
+  const lastSeq = match ? parseInt(match[1], 10) : 0;
+  const nextNumStr = (Number.isFinite(lastSeq) ? lastSeq + 1 : 1).toString().padStart(3, '0');
   return `${format}${nextNumStr}`;
 };
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';

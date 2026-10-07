@@ -126,6 +126,8 @@ export interface InvoiceRecord {
   overdue: boolean;
   ccEmails?: string[];
   invoiceEmailMessageId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SaveInvoicePayload {
