@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -42,6 +43,7 @@ import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
 import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
+import { useUsers } from '@/hooks/api/useUsers';
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
   emptyClientForm,
@@ -103,6 +105,7 @@ const InvoiceEditorPage = () => {
   const clients = useInvoiceClients(false);
   const invoice = useInvoice(id);
   const mutations = useInvoiceMutations();
+  const { data: allUsers = [] } = useUsers();
   useApiErrorToast(settings.error, settings.isError);
   useApiErrorToast(invoice.error, !isNew && invoice.isError);
   const addToast = useUIStore((s) => s.addToast);
@@ -725,19 +728,41 @@ const InvoiceEditorPage = () => {
                   <Autocomplete
                     multiple
                     freeSolo
+                    openOnFocus
+                    disableCloseOnSelect
                     fullWidth
                     size="small"
                     disabled={Boolean(locked)}
-                    options={[]}
+                    options={allUsers.filter((u: any) => u.email && !ccEmails.includes(u.email))}
+                    getOptionLabel={(option: any) => typeof option === 'string' ? option : option.email}
+                    filterOptions={(options, state) => {
+                      const query = state.inputValue.trim().toLowerCase();
+                      if (!query) return options;
+                      return options.filter((option: any) => {
+                        if (typeof option === 'string') return option.toLowerCase().includes(query);
+                        const name = `${option.firstName || ''} ${option.lastName || ''}`.toLowerCase();
+                        const email = option.email.toLowerCase();
+                        return name.includes(query) || email.includes(query);
+                      });
+                    }}
                     value={ccEmails}
                     inputValue={ccInput}
-                    onInputChange={(_, newInputValue) => {
+                    onInputChange={(_, newInputValue, reason) => {
+                      if (reason === 'reset') return;
                       setCcInput(newInputValue);
                       if (ccError) setCcError('');
                     }}
-                    onChange={(_, newValue, reason) => {
+                    onChange={(_, newValue, reason, details) => {
                       if (reason === 'removeOption' || reason === 'clear') {
                         setCcEmails(newValue as string[]);
+                        return;
+                      }
+                      if (reason === 'selectOption' || reason === 'createOption') {
+                        const addedItem = details?.option;
+                        if (addedItem) {
+                          const emailToAdd = typeof addedItem === 'string' ? addedItem : addedItem.email;
+                          handleAddEmails(emailToAdd);
+                        }
                       }
                     }}
                     onBlur={() => {
@@ -745,13 +770,30 @@ const InvoiceEditorPage = () => {
                         handleAddEmails(ccInput);
                       }
                     }}
+                    renderOption={(props, option: any) => {
+                      if (typeof option === 'string') return <li {...props}>{option}</li>;
+                      const fullName = `${option.firstName || ''} ${option.lastName || ''}`.trim();
+                      const initial = fullName.charAt(0) || option.email.charAt(0) || 'U';
+                      return (
+                        <li {...props} key={option._id}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.5 }}>
+                            <Avatar src={option.avatarUrl} sx={{ width: 28, height: 28, fontSize: '0.875rem' }}>{initial.toUpperCase()}</Avatar>
+                            <Box>
+                              <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{fullName || 'No Name'}</Typography>
+                              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{option.email}</Typography>
+                            </Box>
+                          </Box>
+                        </li>
+                      );
+                    }}
                     renderTags={(value, getTagProps) =>
-                      value.map((option, index) => {
+                      value.map((option: any, index) => {
                         const { key, onDelete, ...tagProps } = getTagProps({ index });
+                        const emailStr = typeof option === 'string' ? option : option.email;
                         return (
                           <Chip
                             key={key}
-                            label={option}
+                            label={emailStr}
                             size="small"
                             onDelete={locked ? undefined : onDelete}
                             {...tagProps}
@@ -763,6 +805,8 @@ const InvoiceEditorPage = () => {
                       <TextField
                         {...params}
                         label="CC Emails"
+                        name="cc-recipients-search"
+                        type="text"
                         placeholder={ccEmails.length === 0 ? "Type email and press Enter" : ""}
                         error={Boolean(ccError)}
                         helperText={ccError || "Up to 10 emails. Press Enter after each email."}
@@ -776,8 +820,9 @@ const InvoiceEditorPage = () => {
                         }}
                         inputProps={{
                           ...params.inputProps,
+                          autoComplete: "off",
                           onKeyDown: (e) => {
-                            if (['Enter', ',', ' ', 'Tab'].includes(e.key)) {
+                            if ([' ', ',', 'Tab'].includes(e.key)) {
                               e.preventDefault();
                               e.stopPropagation();
                               if (ccInput.trim()) {
