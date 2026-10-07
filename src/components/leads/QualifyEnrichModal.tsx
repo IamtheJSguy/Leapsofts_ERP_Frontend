@@ -16,9 +16,12 @@ import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
 import LinkIcon from '@mui/icons-material/Link';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useNavigate } from 'react-router-dom';
 import { useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useSalesBoards } from '@/hooks/api/useKanban';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import type { Lead, Meeting, User, SalesBoardPlacement } from '@/types';
@@ -73,6 +76,7 @@ const formatMeetingWhen = (iso: string) => {
 // --- Subcomponent: Lead Summary Column (Left) ---
 const LeadSummaryColumn = memo(({
   leadData, onChange, isPending, errors, isDarkMode, avatarChar, salesBoardPlacements = [],
+  onOpenPlacement,
 }: any) => {
   const renderField = (label: string, field: keyof Lead, placeholder?: string) => {
     const errorText = errors[field];
@@ -173,29 +177,51 @@ const LeadSummaryColumn = memo(({
             Sales Boards ({salesBoardPlacements.length})
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-            {salesBoardPlacements.map((p: SalesBoardPlacement, idx: number) => (
-              <Box
-                key={p._id || idx}
-                sx={{
-                  display: 'flex', alignItems: 'center', gap: 1,
-                  px: 1.25, py: 0.75, borderRadius: '10px',
-                  bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
-                  border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.12)'}`,
-                }}
-              >
-                <DashboardIcon sx={{ fontSize: 14, color: tokens.brand.accent, flexShrink: 0 }} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.text.primary, lineHeight: 1.2 }} noWrap>
-                    {p.boardName || 'Board'}
-                  </Typography>
-                  {p.columnName && (
-                    <Typography variant="caption" sx={{ fontSize: '0.68rem', color: tokens.brand.primary, fontWeight: 600 }}>
-                      → {p.columnName}
+            {salesBoardPlacements.map((p: SalesBoardPlacement, idx: number) => {
+              const canOpen = Boolean(p.boardId && p.cardId && onOpenPlacement);
+              return (
+                <Box
+                  key={p._id || idx}
+                  onClick={() => canOpen && onOpenPlacement(p)}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (!canOpen) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onOpenPlacement(p);
+                    }
+                  }}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 1,
+                    px: 1.25, py: 0.75, borderRadius: '10px',
+                    bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
+                    border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.12)'}`,
+                    cursor: canOpen ? 'pointer' : 'default',
+                    transition: 'background 0.15s ease, border-color 0.15s ease',
+                    '&:hover': canOpen ? {
+                      bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)',
+                      borderColor: isDarkMode ? 'rgba(93, 26, 137, 0.4)' : 'rgba(93, 26, 137, 0.22)',
+                    } : {},
+                  }}
+                >
+                  <DashboardIcon sx={{ fontSize: 14, color: tokens.brand.accent, flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.text.primary, lineHeight: 1.2 }} noWrap>
+                      {p.boardName || 'Board'}
                     </Typography>
+                    {p.columnName && (
+                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: tokens.brand.primary, fontWeight: 600 }}>
+                        → {p.columnName}
+                      </Typography>
+                    )}
+                  </Box>
+                  {canOpen && (
+                    <OpenInNewIcon sx={{ fontSize: 14, color: tokens.text.muted, flexShrink: 0 }} />
                   )}
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
         </Box>
       )}
@@ -556,17 +582,27 @@ export const QualifyEnrichModal = ({
   const isDarkMode = theme.palette.mode === 'dark';
   const isUpdateMode = mode === 'update';
 
+  const navigate = useNavigate();
   const qualifyLead = useQualifyLead();
   const updateLead = useUpdateLead();
   const createMeeting = useCreateMeeting();
   const { data: usersData } = useUsers({}, { enabled: open });
   const dbUsers = Array.isArray(usersData) ? usersData : [];
+  const { data: salesBoards = [] } = useSalesBoards({ enabled: open });
   const { data: meetingsData, isLoading: meetingsLoading } = useMeetings(
     { leadId },
     { enabled: open && !!leadId },
   );
   const leadMeetings = Array.isArray(meetingsData) ? meetingsData : [];
   const addToast = useUIStore((s) => s.addToast);
+
+  const handleOpenPlacement = useCallback((placement: SalesBoardPlacement) => {
+    if (!placement.boardId || !placement.cardId) return;
+    const board = salesBoards.find((b) => b._id === placement.boardId);
+    const projectId = board?.projectId || placement.boardId;
+    onClose();
+    navigate(`/projects/${projectId}/boards/${placement.boardId}?card=${placement.cardId}`);
+  }, [salesBoards, navigate, onClose]);
 
   const [leadData, setLeadData] = useState<Partial<Lead>>({});
   const [notes, setNotes] = useState('');
@@ -903,6 +939,7 @@ export const QualifyEnrichModal = ({
               isDarkMode={isDarkMode}
               avatarChar={lead.firstName?.charAt(0) || lead.prospectName?.charAt(0) || '?'}
               salesBoardPlacements={lead?.salesBoardPlacements ?? []}
+              onOpenPlacement={handleOpenPlacement}
             />
             {rightColumn}
           </Box>

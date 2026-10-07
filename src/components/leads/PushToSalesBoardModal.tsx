@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,8 +12,12 @@ import {
   MenuItem,
   Select,
   FormControl,
+  InputLabel,
+  OutlinedInput,
   Divider,
   Chip,
+  TextField,
+  Avatar,
   useTheme,
   Collapse,
 } from '@mui/material';
@@ -24,10 +28,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useSalesBoards, usePushLeadToSalesBoard } from '@/hooks/api/useKanban';
+import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { showApiError } from '@/utils/apiError';
-import type { KanbanBoard, KanbanColumn, Lead, SalesBoardPlacement } from '@/types';
+import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { toPlainText } from '@/components/common/RichTextContent';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { ModernTimePicker } from '@/components/common/ModernTimePicker';
+import type { KanbanBoard, KanbanColumn, Lead, SalesBoardPlacement, User } from '@/types';
 
 interface PushToSalesBoardModalProps {
   open: boolean;
@@ -35,6 +44,33 @@ interface PushToSalesBoardModalProps {
   onClose: () => void;
   onSuccess?: (boardId: string) => void;
 }
+
+const DEFAULT_DUE_TIME = '23:59';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const toLocalDateStr = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const combineDueDateTime = (dateStr: string, timeStr: string): string | undefined => {
+  if (!dateStr) return undefined;
+  const time = timeStr || DEFAULT_DUE_TIME;
+  const local = new Date(`${dateStr}T${time}:00`);
+  if (Number.isNaN(local.getTime())) return dateStr;
+  return local.toISOString();
+};
+
+const PRIORITY_CONFIG = {
+  low: { label: 'Low', color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', dot: '#3b82f6', border: 'rgba(96,165,250,0.2)' },
+  medium: { label: 'Medium', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', dot: '#d97706', border: 'rgba(251,191,36,0.2)' },
+  high: { label: 'High', color: '#fb923c', bg: 'rgba(251,146,60,0.08)', dot: '#ea580c', border: 'rgba(251,146,60,0.2)' },
+  urgent: { label: 'Urgent', color: '#f87171', bg: 'rgba(248,113,113,0.08)', dot: '#dc2626', border: 'rgba(248,113,113,0.2)' },
+} as const;
+
+type PriorityKey = keyof typeof PRIORITY_CONFIG;
+
+const leadDefaultTitle = (lead: Lead) =>
+  [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.company || 'Lead';
 
 const formatDate = (iso: string) => {
   try {
@@ -44,28 +80,90 @@ const formatDate = (iso: string) => {
   } catch { return iso; }
 };
 
+const userDisplayName = (u: User) =>
+  `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || u._id;
+
 export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushToSalesBoardModalProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
 
   const { data: salesBoards = [], isLoading: boardsLoading } = useSalesBoards({ enabled: open });
+  const { data: usersData } = useUsers({}, { enabled: open });
+  const allUsers: User[] = Array.isArray(usersData) ? usersData : [];
   const pushMutation = usePushLeadToSalesBoard();
 
   const [selectedBoardId, setSelectedBoardId] = useState('');
   const [selectedColumnId, setSelectedColumnId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [cardTitle, setCardTitle] = useState('');
+  const [cardDescription, setCardDescription] = useState('');
+  const [cardPriority, setCardPriority] = useState<PriorityKey>('medium');
+  const [cardDueDate, setCardDueDate] = useState('');
+  const [cardDueTime, setCardDueTime] = useState('');
+  const [cardAssignees, setCardAssignees] = useState<string[]>([]);
 
   const selectedBoard: KanbanBoard | undefined = salesBoards.find((b) => b._id === selectedBoardId);
   const columns: KanbanColumn[] = selectedBoard?.columns ?? [];
 
-  useEffect(() => { setSelectedColumnId(''); }, [selectedBoardId]);
-  useEffect(() => { if (!open) { setSelectedBoardId(''); setSelectedColumnId(''); setShowHistory(false); } }, [open]);
+  const boardMembers = useMemo(() => {
+    if (!selectedBoard) return [] as User[];
+    const owner = allUsers.find((u) => u._id === selectedBoard.ownerId);
+    const fromMembers = (selectedBoard.members || [])
+      .map((m) => {
+        if (typeof m.userId === 'object' && m.userId && '_id' in m.userId) {
+          return m.userId as User;
+        }
+        const uid = typeof m.userId === 'string' ? m.userId : undefined;
+        return uid ? allUsers.find((u) => u._id === uid) : undefined;
+      })
+      .filter(Boolean) as User[];
+    const all = [owner, ...fromMembers].filter(Boolean) as User[];
+    const seen = new Set<string>();
+    return all.filter((u) => {
+      if (seen.has(u._id)) return false;
+      seen.add(u._id);
+      return true;
+    });
+  }, [selectedBoard, allUsers]);
+
+  const resetCardFields = (nextLead?: Lead) => {
+    setCardTitle(nextLead ? leadDefaultTitle(nextLead) : '');
+    setCardDescription('');
+    setCardPriority('medium');
+    setCardDueDate('');
+    setCardDueTime('');
+    setCardAssignees([]);
+  };
+
+  useEffect(() => { setSelectedColumnId(''); setCardAssignees([]); }, [selectedBoardId]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedBoardId('');
+      setSelectedColumnId('');
+      setShowHistory(false);
+      resetCardFields();
+      return;
+    }
+    resetCardFields(lead);
+  }, [open, lead]);
 
   const handlePush = async () => {
     if (!selectedBoardId || !selectedColumnId) return;
+    const trimmedTitle = cardTitle.trim();
+    const descriptionPlain = toPlainText(cardDescription);
     try {
-      await pushMutation.mutateAsync({ leadId: lead._id, boardId: selectedBoardId, columnId: selectedColumnId });
+      await pushMutation.mutateAsync({
+        leadId: lead._id,
+        boardId: selectedBoardId,
+        columnId: selectedColumnId,
+        ...(trimmedTitle ? { title: trimmedTitle } : {}),
+        ...(descriptionPlain ? { description: cardDescription } : {}),
+        priority: cardPriority,
+        ...(cardDueDate ? { dueDate: combineDueDateTime(cardDueDate, cardDueTime) } : {}),
+        ...(cardAssignees.length > 0 ? { assignedTo: cardAssignees } : {}),
+      });
       addToast({ message: 'Lead pushed to sales board successfully!', severity: 'success' });
       onSuccess?.(selectedBoardId);
       onClose();
@@ -83,7 +181,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
     <Dialog
       open={open}
       onClose={isPending ? undefined : onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
@@ -96,6 +194,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
             : '0 40px 80px rgba(0,0,0,0.1)',
           backgroundImage: 'none',
           overflow: 'hidden',
+          maxHeight: '92vh',
         },
       }}
     >
@@ -122,7 +221,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                 Push to Sales Board
               </Typography>
               <Typography variant="body2" sx={{ color: tokens.text.secondary, fontSize: '0.78rem', mt: 0.2 }}>
-                {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.company || 'Lead'}
+                {leadDefaultTitle(lead)}
               </Typography>
             </Box>
           </Box>
@@ -136,7 +235,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, pb: 2 }}>
+      <DialogContent sx={{ p: 3, pb: 2, overflowY: 'auto' }}>
         {/* ── Step 1: Board ── */}
         <Typography variant="caption" sx={{
           color: tokens.text.muted, fontWeight: 750, textTransform: 'uppercase',
@@ -244,6 +343,167 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                 );
               })}
             </Box>
+          </Box>
+        </Collapse>
+
+        {/* ── Step 3: Optional card details ── */}
+        <Collapse in={!!selectedColumnId} timeout={220}>
+          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="caption" sx={{
+              color: tokens.text.muted, fontWeight: 750, textTransform: 'uppercase',
+              letterSpacing: '0.07em', fontSize: '0.68rem', display: 'block',
+            }}>
+              3 · Card details (optional)
+            </Typography>
+
+            <TextField
+              fullWidth
+              size="small"
+              label="Title"
+              value={cardTitle}
+              onChange={(e) => setCardTitle(e.target.value)}
+              disabled={isPending}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '14px',
+                  bgcolor: fieldBg,
+                  '& fieldset': { border: 'none' },
+                },
+              }}
+            />
+
+            <Box>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: tokens.text.secondary }}>
+                Description
+              </Typography>
+              <Box
+                sx={{
+                  borderRadius: '14px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                  bgcolor: isDarkMode ? 'rgba(0,0,0,0.1)' : '#fff',
+                  overflow: 'hidden',
+                }}
+              >
+                <RichTextEditor
+                  value={cardDescription}
+                  onChange={setCardDescription}
+                  submitOnEnter={false}
+                  alwaysShowToolbar
+                  minHeight="90px"
+                  maxHeight="220px"
+                  placeholder="Add details about this card…"
+                  mentionableUsers={boardMembers}
+                />
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: '1 1 180px', minWidth: 160 }}>
+                <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 700, color: tokens.text.secondary }}>
+                  Priority
+                </Typography>
+                <FormControl size="small" fullWidth>
+                  <Select
+                    value={cardPriority}
+                    onChange={(e) => setCardPriority(e.target.value as PriorityKey)}
+                    disabled={isPending}
+                    sx={{ borderRadius: '14px', bgcolor: fieldBg, '& fieldset': { border: 'none' } }}
+                    renderValue={(val) => {
+                      const p = PRIORITY_CONFIG[val as PriorityKey];
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.dot }} />
+                          <Typography variant="body2" sx={{ fontWeight: 650 }}>{p.label}</Typography>
+                        </Box>
+                      );
+                    }}
+                  >
+                    {(Object.entries(PRIORITY_CONFIG) as [PriorityKey, (typeof PRIORITY_CONFIG)[PriorityKey]][]).map(([key, cfg]) => (
+                      <MenuItem key={key} value={key}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: cfg.dot }} />
+                          <Typography variant="body2" sx={{ fontWeight: 650 }}>{cfg.label}</Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              <Box sx={{ flex: '1 1 220px', minWidth: 180, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <ModernDatePicker
+                  label="Due Date"
+                  value={cardDueDate ? new Date(`${cardDueDate}T00:00:00`) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setCardDueDate(toLocalDateStr(date));
+                      if (!cardDueTime) setCardDueTime(DEFAULT_DUE_TIME);
+                    } else {
+                      setCardDueDate('');
+                      setCardDueTime('');
+                    }
+                  }}
+                />
+                {cardDueDate && (
+                  <ModernTimePicker
+                    label="Due Time"
+                    value={cardDueTime || DEFAULT_DUE_TIME}
+                    onChange={(t) => setCardDueTime(t)}
+                  />
+                )}
+              </Box>
+            </Box>
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="push-card-assign-label">Assign to</InputLabel>
+              <Select
+                labelId="push-card-assign-label"
+                multiple
+                value={cardAssignees}
+                onChange={(e) => setCardAssignees(e.target.value as string[])}
+                input={<OutlinedInput label="Assign to" />}
+                disabled={isPending || boardMembers.length === 0}
+                sx={{ borderRadius: '14px' }}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((val) => {
+                      const match = boardMembers.find((u) => u._id === val) || allUsers.find((u) => u._id === val);
+                      return (
+                        <Chip
+                          key={val}
+                          label={match ? userDisplayName(match) : val}
+                          size="small"
+                          onDelete={() => setCardAssignees(cardAssignees.filter((id) => id !== val))}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          sx={{ height: 22, fontSize: '0.72rem' }}
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {boardMembers.map((u) => (
+                  <MenuItem key={u._id} value={u._id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        src={u.avatarUrl || undefined}
+                        sx={{ width: 28, height: 28, bgcolor: tokens.brand.primaryMuted, fontSize: '0.72rem', fontWeight: 700 }}
+                      >
+                        {(u.firstName?.charAt(0) || u.email?.charAt(0) || 'U').toUpperCase()}
+                      </Avatar>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {userDisplayName(u)}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+              {boardMembers.length === 0 && selectedBoardId && (
+                <Typography variant="caption" sx={{ color: tokens.text.muted, mt: 0.75, display: 'block' }}>
+                  No board members found. The card will be assigned to you.
+                </Typography>
+              )}
+            </FormControl>
           </Box>
         </Collapse>
 

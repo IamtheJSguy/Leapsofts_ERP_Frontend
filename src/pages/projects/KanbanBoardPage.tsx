@@ -30,6 +30,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FlagIcon from '@mui/icons-material/Flag';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
 import LinkIcon from '@mui/icons-material/Link';
 import EventIcon from '@mui/icons-material/Event';
@@ -43,6 +44,9 @@ import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import { RichTextEditor } from '@/components/chat/RichTextEditor';
 import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
+import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
+import { useLead } from '@/hooks/api/useLeads';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
@@ -281,7 +285,7 @@ const CardImageLightbox = ({
   </Modal>
 );
 
-const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
+const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
   const companyName = task.lead?.company || (task.lead ? 'Lead Prospect' : null);
   const priority = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.medium;
   const hasDueDate = task.dueDate;
@@ -291,6 +295,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
     : (task.comments || 0);
   const createdByUser = task.createdBy || null;
   const lastMovedById = task.lastMovedBy?._id || (typeof task.lastMovedBy === 'string' ? task.lastMovedBy : null);
+  const leadId = task.lead?._id;
 
   const formatDue = (d: string) => {
     const date = new Date(d);
@@ -476,8 +481,8 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
       )}
 
       {/* Bottom row */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-        <Box sx={{ display: 'flex', gap: 1.25, color: 'text.secondary', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.25, color: 'text.secondary', alignItems: 'center', minWidth: 0, flexWrap: 'wrap' }}>
           {commentsCount > 0 && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <ChatBubbleOutlineIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
@@ -535,23 +540,55 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
             </Tooltip>
           )}
         </Box>
-        <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.65rem', fontWeight: 800, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
-          {task.assignedUsers?.map((u: any, idx: number) => (
-            <Tooltip key={u._id || idx} title={kanbanUserDisplayName(u)} arrow enterDelay={100}>
-              <Box component="span" sx={{ display: 'inline-flex' }}>
-                <Avatar
-                  src={u.avatarUrl || undefined}
-                  sx={{
-                    bgcolor: tokens.brand.primary,
-                    ...kanbanActiveMoverRingSx(u._id === lastMovedById),
-                  }}
-                >
-                  {kanbanUserInitial(u)}
-                </Avatar>
-              </Box>
-            </Tooltip>
-          ))}
-        </AvatarGroup>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          {leadId && onViewLead && (
+            <Button
+              size="small"
+              startIcon={<PersonOutlineIcon sx={{ fontSize: '14px !important' }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewLead(leadId);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 750,
+                fontSize: '0.68rem',
+                minWidth: 0,
+                px: 1,
+                py: 0.25,
+                height: 24,
+                borderRadius: '8px',
+                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
+                border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.2)' : 'rgba(93,26,137,0.12)'}`,
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(167,139,250,0.18)' : 'rgba(93,26,137,0.1)',
+                },
+              }}
+            >
+              View lead
+            </Button>
+          )}
+          <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.65rem', fontWeight: 800, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
+            {task.assignedUsers?.map((u: any, idx: number) => (
+              <Tooltip key={u._id || idx} title={kanbanUserDisplayName(u)} arrow enterDelay={100}>
+                <Box component="span" sx={{ display: 'inline-flex' }}>
+                  <Avatar
+                    src={u.avatarUrl || undefined}
+                    sx={{
+                      bgcolor: tokens.brand.primary,
+                      ...kanbanActiveMoverRingSx(u._id === lastMovedById),
+                    }}
+                  >
+                    {kanbanUserInitial(u)}
+                  </Avatar>
+                </Box>
+              </Tooltip>
+            ))}
+          </AvatarGroup>
+        </Box>
       </Box>
     </Box>
   );
@@ -560,7 +597,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick }: any) => {
 
 
 
-const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
+const SortableTask = ({ task, isDarkMode, onTaskClick, onViewLead }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: 'Task', task },
@@ -575,7 +612,12 @@ const SortableTask = ({ task, isDarkMode, onTaskClick }: any) => {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCardVisual task={task} isDarkMode={isDarkMode} onClick={() => onTaskClick(task)} />
+      <TaskCardVisual
+        task={task}
+        isDarkMode={isDarkMode}
+        onClick={() => onTaskClick(task)}
+        onViewLead={onViewLead}
+      />
     </div>
   );
 };
@@ -688,6 +730,7 @@ const SortableBoardColumn = ({
   onAddCard,
   onColumnMenuOpen,
   setDrawerTaskId,
+  onViewLead,
 }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: col.id,
@@ -741,7 +784,13 @@ const SortableBoardColumn = ({
       <SortableContext items={colTasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
         <DroppableColumn col={col} isDarkMode={isDarkMode}>
           {colTasks.map((task: any) => (
-            <SortableTask key={task.id} task={task} isDarkMode={isDarkMode} onTaskClick={(t: any) => setDrawerTaskId(t.id)} />
+            <SortableTask
+              key={task.id}
+              task={task}
+              isDarkMode={isDarkMode}
+              onTaskClick={(t: any) => setDrawerTaskId(t.id)}
+              onViewLead={onViewLead}
+            />
           ))}
         </DroppableColumn>
       </SortableContext>
@@ -1579,8 +1628,7 @@ const CardMeetingsSection = ({
   );
 };
 
-const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard }: any) => {
-  const navigate = useNavigate();
+const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard, onViewLead }: any) => {
   const [searchParams] = useSearchParams();
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -1996,13 +2044,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             )}
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
-            {lead && (
-              <Tooltip title="View Details">
-                <IconButton 
-                  onClick={() => navigate(`/sales/leads/${lead._id}`)}
+            {lead?._id && onViewLead && (
+              <Tooltip title="View lead">
+                <IconButton
+                  onClick={() => onViewLead(lead._id)}
                   sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}
                 >
-                  <OpenInNewIcon fontSize="small" />
+                  <PersonOutlineIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
@@ -2980,6 +3028,8 @@ export const KanbanBoardPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const queryClient = useQueryClient();
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   const { data: board, isLoading, error } = useKanbanBoard(activeBoardId);
   const { data: allUsers = [] } = useUsers();
@@ -3107,6 +3157,23 @@ export const KanbanBoardPage = () => {
   const [activeTask, setActiveTask] = useState<any>(null);
   const [activeColumn, setActiveColumn] = useState<any>(null);
   const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null);
+  const [viewLeadId, setViewLeadId] = useState<string | null>(null);
+  const { data: viewLead, isLoading: viewLeadLoading } = useLead(viewLeadId || undefined);
+
+  const handleViewLead = (leadId: string) => {
+    if (!leadId) return;
+    setViewLeadId(leadId);
+  };
+
+  const handleCloseLeadModal = () => setViewLeadId(null);
+
+  const handleLeadUpdateSuccess = () => {
+    if (activeBoardId) {
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', activeBoardId, organizationId] });
+    }
+    queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+    handleCloseLeadModal();
+  };
 
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
@@ -3693,6 +3760,7 @@ export const KanbanBoardPage = () => {
                     setRenameColumnText(title);
                   }}
                   setDrawerTaskId={setDrawerTaskId}
+                  onViewLead={handleViewLead}
                 />
               );
             })}
@@ -4248,7 +4316,30 @@ export const KanbanBoardPage = () => {
         boardMembers={boardMembers}
         boardId={activeBoardId}
         actualBoard={actualBoard}
+        onViewLead={handleViewLead}
       />
+
+      <Dialog
+        open={Boolean(viewLeadId) && viewLeadLoading && !viewLead}
+        onClose={handleCloseLeadModal}
+        PaperProps={{ sx: { borderRadius: '20px', p: 2, minWidth: 200 } }}
+      >
+        <DialogContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 3 }}>
+          <CircularProgress size={22} sx={{ color: tokens.brand.primary }} />
+          <Typography variant="body2" sx={{ fontWeight: 650 }}>Loading lead…</Typography>
+        </DialogContent>
+      </Dialog>
+
+      {viewLeadId && viewLead ? (
+        <QualifyEnrichModal
+          open={Boolean(viewLeadId)}
+          leadId={viewLeadId}
+          lead={viewLead}
+          mode="update"
+          onSuccess={handleLeadUpdateSuccess}
+          onClose={handleCloseLeadModal}
+        />
+      ) : null}
 
       {/* Custom Column Delete Confirmation */}
       <ModernConfirmDialog
