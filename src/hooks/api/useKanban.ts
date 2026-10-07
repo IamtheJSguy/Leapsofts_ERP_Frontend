@@ -119,8 +119,34 @@ const kanbanApi = {
   }) => api.patch<{ data: KanbanSubtask }>(`/kanban/subtasks/${subtaskId}/assign`, data),
   deleteSubtask: (subtaskId: string) => api.delete(`/kanban/subtasks/${subtaskId}`),
   getSalesBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/sales-boards'),
-  pushLeadToSalesBoard: ({ leadId, boardId, columnId }: { leadId: string; boardId: string; columnId: string }) =>
-    api.post(`/kanban/leads/${leadId}/push-to-sales-board`, { boardId, columnId }),
+  pushLeadToSalesBoard: ({
+    leadId,
+    boardId,
+    columnId,
+    title,
+    description,
+    priority,
+    dueDate,
+    assignedTo,
+  }: {
+    leadId: string;
+    boardId: string;
+    columnId: string;
+    title?: string;
+    description?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    dueDate?: string;
+    assignedTo?: string[];
+  }) =>
+    api.post(`/kanban/leads/${leadId}/push-to-sales-board`, {
+      boardId,
+      columnId,
+      ...(title ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(priority ? { priority } : {}),
+      ...(dueDate !== undefined ? { dueDate } : {}),
+      ...(assignedTo && assignedTo.length > 0 ? { assignedTo } : {}),
+    }),
 };
 
 const sortByOrder = (a: any, b: any) =>
