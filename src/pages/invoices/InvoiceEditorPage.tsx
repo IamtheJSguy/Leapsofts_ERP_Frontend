@@ -44,34 +44,35 @@ import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings,
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 
-const generateNextInvoiceNumber = (invoices: any[]) => {
-  if (!invoices || invoices.length === 0) return '1';
+const generateNextInvoiceNumber = (invoices: any[], targetClientId?: string, targetIssueDate?: string) => {
+  const year = targetIssueDate ? new Date(targetIssueDate).getFullYear() : new Date().getFullYear();
+  const format = `${year}-`;
+
+  if (!invoices || invoices.length === 0) return `${format}001`;
+
+  const clientInvoices = invoices.filter((inv) => {
+    if (!targetClientId) return false;
+    return (
+      inv.clientId === targetClientId ||
+      inv.clientSnapshot?._id === targetClientId ||
+      inv.client?._id === targetClientId ||
+      inv.clientSnapshot?.id === targetClientId
+    );
+  });
+
   let maxNum = 0;
-  let format = '';
-  let padding = 0;
-  for (const inv of invoices) {
-    const match = inv.invoiceNumber.match(/^(.*?)(\d+)$/);
-    if (match) {
-      const numStr = match[2];
-      const num = parseInt(numStr, 10);
-      if (num > maxNum) {
-        maxNum = num;
-        format = match[1];
-        padding = numStr.length;
-      }
-    } else {
-      const num = parseInt(inv.invoiceNumber, 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
-        format = '';
-        padding = inv.invoiceNumber.length;
+  for (const inv of clientInvoices) {
+    if (inv.invoiceNumber) {
+      const match = inv.invoiceNumber.match(/^(?:\d{4}-)?(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
       }
     }
   }
-  if (maxNum === 0) return '1';
-  const nextNumStr = (maxNum + 1).toString();
-  const paddedNextNum = padding > nextNumStr.length ? nextNumStr.padStart(padding, '0') : nextNumStr;
-  return `${format}${paddedNextNum}`;
+
+  const nextNumStr = (maxNum + 1).toString().padStart(3, '0');
+  return `${format}${nextNumStr}`;
 };
 import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
@@ -199,7 +200,7 @@ const InvoiceEditorPage = () => {
         ? { name: match.name, ntn: match.ntn, address: match.address, email: match.email }
         : emptyParty();
       const nextClientId = match?._id || '';
-      const nextInvoiceNumber = generateNextInvoiceNumber(allInvoices.data || []);
+      const nextInvoiceNumber = generateNextInvoiceNumber(allInvoices.data || [], nextClientId, issueDate);
       setInvoiceNumber(nextInvoiceNumber);
       setTemplateId(nextTemplate);
       setTaxRate(nextTax);
@@ -294,7 +295,11 @@ const InvoiceEditorPage = () => {
 
   const isDuplicateNumber = (num: string) => {
     if (!num.trim()) return false;
-    return (allInvoices.data || []).some(inv => inv.invoiceNumber === num.trim() && inv._id !== id);
+    return (allInvoices.data || []).some(inv => 
+      inv.invoiceNumber === num.trim() && 
+      inv._id !== id && 
+      (inv.clientId === clientId || inv.clientSnapshot?.id === clientId || inv.client?._id === clientId || inv.clientSnapshot?._id === clientId)
+    );
   };
 
   const payload = (override?: Partial<Pick<SaveInvoicePayload, 'clientId' | 'client' | 'bankAccountIds'>>): SaveInvoicePayload | null => {
@@ -569,10 +574,6 @@ const InvoiceEditorPage = () => {
     }
 
     const merged = Array.from(new Set([...ccEmails, ...validToAdd]));
-    if (merged.length > 10) {
-      setCcError('Maximum 10 CC emails allowed');
-      return;
-    }
 
     setCcEmails(merged);
     setCcInput('');
@@ -657,7 +658,15 @@ const InvoiceEditorPage = () => {
                     label="Invoice Number *"
                     value={invoiceNumber}
                     disabled={Boolean(locked)}
-                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      const yearPrefix = `${new Date(issueDate || Date.now()).getFullYear()}-`;
+                      if (!val.startsWith(yearPrefix)) {
+                        // If user tries to delete the prefix, restore it
+                        val = yearPrefix + val.replace(new RegExp(`^\\d{4}-?`), '');
+                      }
+                      setInvoiceNumber(val);
+                    }}
                     error={isDuplicateNumber(invoiceNumber)}
                     helperText={isDuplicateNumber(invoiceNumber) ? 'Invoice number already exists' : ''}
                     sx={inputStyle}
