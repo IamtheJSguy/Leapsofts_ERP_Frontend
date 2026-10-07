@@ -66,7 +66,7 @@ const generateNextInvoiceNumber = (invoices: any[], targetClientId?: string, tar
   const nextNumStr = (Number.isFinite(lastSeq) ? lastSeq + 1 : 1).toString().padStart(3, '0');
   return `${format}${nextNumStr}`;
 };
-import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
+import { downloadStoredInvoicePdf, exportInvoiceElementToPdf, invoiceElementToPdfBlob, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
   emptyClientForm,
   formatInvoiceMoney,
@@ -451,29 +451,34 @@ const InvoiceEditorPage = () => {
     return bankAccountIds.length > 0 ? accounts.filter((bank) => bankAccountIds.includes(bank.id)) : accounts;
   };
 
-  const buildPreviewData = (paid = invoice.data?.status === 'paid'): InvoicePreviewData => ({
-    template: templateId,
-    invoiceNumber,
-    issueDate,
-    dueDate,
-    currency,
-    paid,
-    logoUrl: settings.data?.logoUrl,
-    issuer: {
-      name: settings.data?.issuerName || '',
-      ntn: settings.data?.ntn || '',
-      address: settings.data?.address || '',
-      email: settings.data?.email || '',
-    },
-    client,
-    lines: lines.map((line) => ({
-      description: line.description,
-      qty: Number(line.qty) || 0,
-      unitPrice: Number(line.unitPrice) || 0,
-    })),
-    taxRate: Number(taxRate) || 0,
-    banks: previewBanks(),
-  });
+  const buildPreviewData = (paid = invoice.data?.status === 'paid'): InvoicePreviewData => {
+    if (locked && invoice.data) {
+      return previewDataFromInvoice(invoice.data, settings.data?.bankAccounts || [], paid);
+    }
+    return {
+      template: templateId,
+      invoiceNumber,
+      issueDate,
+      dueDate,
+      currency,
+      paid,
+      logoUrl: settings.data?.logoUrl,
+      issuer: {
+        name: settings.data?.issuerName || '',
+        ntn: settings.data?.ntn || '',
+        address: settings.data?.address || '',
+        email: settings.data?.email || '',
+      },
+      client,
+      lines: lines.map((line) => ({
+        description: line.description,
+        qty: Number(line.qty) || 0,
+        unitPrice: Number(line.unitPrice) || 0,
+      })),
+      taxRate: Number(taxRate) || 0,
+      banks: previewBanks(),
+    };
+  };
 
   const paidPreviewBlob = () => renderInvoicePreviewToBlob(buildPreviewData(true));
 
@@ -546,6 +551,7 @@ const InvoiceEditorPage = () => {
     setExportingPdf(true);
     const filename = `invoice-${invoiceNumber || 'draft'}.pdf`;
     try {
+      if (locked && id && await downloadStoredInvoicePdf(id, filename)) return;
       if (!previewRef.current) {
         showFormError('Invoice preview is not ready to download.');
         return;
