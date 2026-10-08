@@ -577,16 +577,25 @@ export const ProjectDetailsPage = () => {
               >
                 {boards.map((board) => {
                   const isQualifiedBoard = board.name.trim().toLowerCase() === 'qualified';
+                  const canEditBoard = Boolean(
+                    isElevated ||
+                    currentUser?.role === 'admin' ||
+                    board.ownerId === currentUser?._id
+                  );
                   const canDeleteBoard = (canManageProject || board.ownerId === currentUser?._id) && !isQualifiedBoard;
                   return (
                     <BoardCard
                       key={board._id}
                       board={board}
                       onClick={() => navigate(`/projects/${project._id}/boards/${board._id}`)}
-                      onEdit={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditBoard(board);
-                      }}
+                      onEdit={
+                        canEditBoard
+                          ? (e) => {
+                              e.stopPropagation();
+                              handleOpenEditBoard(board);
+                            }
+                          : undefined
+                      }
                       onDelete={
                         canDeleteBoard
                           ? (e) => {
