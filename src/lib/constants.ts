@@ -115,6 +115,7 @@ export const SOCKET_EVENTS = {
   KANBAN_CARD_MOVED: 'kanban:card_moved',
   KANBAN_COMMENT_ADDED: 'kanban:comment_added',
   LEAD_STATUS_CHANGED: 'lead:status_changed',
+  SALES_KPI_PROGRESS_UPDATED: 'sales:kpi-progress-updated',
   USER_ONLINE: 'user:online',
   USER_PRESENCE: 'user:presence',
   PRESENCE_ACTIVITY: 'presence:activity',

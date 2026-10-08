@@ -3094,6 +3094,11 @@ export const KanbanBoardPage = () => {
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
   const canManageTeam = actualBoard?.ownerId === currentUser?._id || isElevated;
+  const canEditBoard = Boolean(
+    isElevated ||
+    currentUser?.role === 'admin' ||
+    actualBoard?.ownerId === currentUser?._id
+  );
   const canManageBoardChat = Boolean(
     currentUser &&
       actualBoard &&
@@ -3638,19 +3643,21 @@ export const KanbanBoardPage = () => {
                 ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
                 : `${actualBoard.name}`}
             </Typography>
-            <Tooltip title="Edit Board Name">
-              <IconButton
-                size="small"
-                onClick={handleOpenEditBoardModal}
-                sx={{
-                  color: 'text.secondary',
-                  p: 0.5,
-                  '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
-                }}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            {canEditBoard && (
+              <Tooltip title="Edit Board Name">
+                <IconButton
+                  size="small"
+                  onClick={handleOpenEditBoardModal}
+                  sx={{
+                    color: 'text.secondary',
+                    p: 0.5,
+                    '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
           {boardLead?.company && (
             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>

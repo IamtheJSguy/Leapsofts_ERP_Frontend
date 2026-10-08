@@ -1,8 +1,10 @@
+import { applyLeadUpdateResponse, getLeadUpdateScope } from '@/utils/leadUpdateCache';
+import { scheduleSalesKpiRefresh } from '@/utils/salesKpiRefresh';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import api from '@/lib/axios';
-import type { ColdCallingState, ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
+import type { ApiResponse, ColdCallingState, ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 
 export type EditableLeadData = {
@@ -230,6 +232,7 @@ export const useLeadAutoSync = ({
       isSyncingRef.current = true;
       setStats((prev) => ({ ...prev, isSyncing: true }));
 
+      const scope = getLeadUpdateScope();
       let synced = 0;
       let failed = 0;
       let skipped = 0;
@@ -249,12 +252,13 @@ export const useLeadAutoSync = ({
             const nameParts = splitProspectName(
               data.prospectName || composeProspectName(data),
             );
-            await api.put(`/leads/${id}`, {
+            const response = await api.put<ApiResponse<Lead>>(`/leads/${id}`, {
               ...data,
               firstName: nameParts.firstName,
               lastName: nameParts.lastName,
               prospectName: nameParts.prospectName.trim(),
             });
+            if (response.data.data?._id === id) await applyLeadUpdateResponse(queryClient, response.data.data, scope);
             snapshotRef.current[id] = cloneEditData(data);
             failedIdsRef.current.delete(id);
             synced += 1;
@@ -268,6 +272,7 @@ export const useLeadAutoSync = ({
       );
 
       if (anySuccess) {
+        scheduleSalesKpiRefresh(queryClient);
         invalidateLeadQueries();
       }
 
@@ -291,7 +296,7 @@ export const useLeadAutoSync = ({
 
       return { synced, failed, skipped };
     },
-    [invalidateLeadQueries, clearSession],
+    [invalidateLeadQueries, clearSession, queryClient],
   );
 
   useEffect(() => {
