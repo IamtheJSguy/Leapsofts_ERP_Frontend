@@ -1,3 +1,4 @@
+import { combineTeamMembers } from '@/lib/teamRoster';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -72,7 +73,8 @@ import { formatDate } from '@/utils/formatters';
 import { getSocket } from '@/lib/socket';
 import { CreateTeamModal } from '@/components/team/CreateTeamModal';
 import { AddExistingTeamMemberPanel } from '@/components/team/AddExistingTeamMemberPanel';
-import { useMyTeam } from '@/hooks/api/useTeam';
+import { useMyTeams } from '@/hooks/api/useTeam';
+import { TeamMembershipOverview, MemberTeamBadges } from '@/components/team/TeamMembershipOverview';
 import { useTeamProgress } from '@/hooks/api/useAdminTeamDashboard';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -541,9 +543,12 @@ const TeamPage = () => {
   const screenshotsOn = entitlements.screenshotsEnabled;
   const appUsageOn = entitlements.appUsageTelemetry;
   const currentUser = useAuthStore((s) => s.user);
-  const teamQuery = useMyTeam({ enabled: !isAdmin && canAccessTeam });
-  const showCreateTeam = isManager && teamQuery.isError;
-  const canAddExistingMember = isManager && !showCreateTeam;
+  const teamQuery = useMyTeams({ enabled: !isAdmin && canAccessTeam });
+  const showCreateTeam = isManager && !teamQuery.isLoading && !teamQuery.isError && teamQuery.data?.length === 0;
+  const [targetTeamId, setTargetTeamId] = useState('');
+  const selectedTeamId = teamQuery.data?.some((team) => team._id === targetTeamId)
+    ? targetTeamId : teamQuery.data?.length === 1 ? teamQuery.data[0]._id : '';
+  const canAddExistingMember = canAccessTeam && !isAdmin && Boolean(teamQuery.data?.length);
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -560,12 +565,8 @@ const TeamPage = () => {
 
     if (isAdmin) return allUsers;
 
-    const manager = teamQuery.data?.managerId;
-    const members = teamQuery.data?.members || [];
-    if (!manager?._id) return members;
-    if (members.some((m) => m._id === manager._id)) return members;
-    return [manager, ...members];
-  }, [isAdmin, dbUsers, teamQuery.data?.managerId, teamQuery.data?.members]);
+    return combineTeamMembers(teamQuery.data ?? []);
+  }, [isAdmin, dbUsers, teamQuery.data]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -737,7 +738,12 @@ const TeamPage = () => {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
+    if (!isAdmin && canAccessTeam && !selectedTeamId) {
+      addToast({ message: 'Select a team for the new member.', severity: 'error' });
+      return;
+    }
     const payload = {
+      ...(!isAdmin && selectedTeamId ? { targetTeamId: selectedTeamId } : {}),
       email,
       ...(password.trim() ? { password: password.trim() } : {}),
       firstName,
@@ -2147,6 +2153,8 @@ const TeamPage = () => {
         </Box>
       </Box>
 
+      {!isAdmin && teamQuery.data && <TeamMembershipOverview teams={teamQuery.data} />}
+      {!isAdmin && teamQuery.isError && <Typography color="error">Unable to load your teams. Please try again.</Typography>}
       {/* Team Cards Grid */}
       {(isAdmin ? isUsersLoading : teamQuery.isLoading) ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
@@ -2249,6 +2257,7 @@ const TeamPage = () => {
                     <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 0.5, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
                       {name}
                     </Typography>
+                    <MemberTeamBadges teams={teamQuery.data ?? []} userId={member._id} />
 
                     <Typography variant="body2" sx={{ color: tokens.brand.primaryMuted, fontWeight: 700, fontSize: '0.76rem', mb: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <WorkIcon sx={{ fontSize: 13 }} />
@@ -2436,6 +2445,7 @@ const TeamPage = () => {
                     >
                       {name}
                     </Typography>
+                    <MemberTeamBadges teams={teamQuery.data ?? []} userId={member._id} />
                     <Typography
                       variant="body2"
                       sx={{
@@ -2610,13 +2620,19 @@ const TeamPage = () => {
               '-ms-overflow-style': 'none',
             }}
           >
+            {!isAdmin && Boolean(teamQuery.data?.length) && <TextField
+              select fullWidth label="Target team" value={selectedTeamId}
+              onChange={(e) => setTargetTeamId(e.target.value)} sx={{ mb: 2, mt: 1 }}
+            >
+              {(teamQuery.data ?? []).map((team) => <MenuItem key={team._id} value={team._id}>{team.name}</MenuItem>)}
+            </TextField>}
             {addMemberTab === 'existing' && canAddExistingMember ? (
-              <AddExistingTeamMemberPanel
+              selectedTeamId ? <AddExistingTeamMemberPanel teamId={selectedTeamId}
                 onAdded={() => {
                   setIsAddOpen(false);
                   handleResetForm();
                 }}
-              />
+              /> : <Typography>Select a team to add an employee.</Typography>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', mt: 1.5 }}>
 

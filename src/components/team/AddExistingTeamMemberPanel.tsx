@@ -23,16 +23,17 @@ import { showApiError } from '@/utils/apiError';
 
 interface AddExistingTeamMemberPanelProps {
   onAdded?: () => void;
+  teamId?: string;
 }
 
-export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPanelProps) => {
+export const AddExistingTeamMemberPanel = ({ onAdded, teamId }: AddExistingTeamMemberPanelProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const addToast = useUIStore((s) => s.addToast);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: availableMembers = [], isLoading } = useAvailableTeamMembers();
-  const addTeamMember = useAddTeamMember();
+  const { data: availableMembers = [], isLoading, isError, refetch } = useAvailableTeamMembers(true, teamId);
+  const addTeamMember = useAddTeamMember(teamId);
 
   const filteredMembers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -57,6 +58,13 @@ export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPan
     });
   };
 
+  if (isError) {
+    return <Box sx={{ py: 2 }}>
+      <Typography color="error">Unable to load available employees.</Typography>
+      <Button onClick={() => void refetch()}>Try again</Button>
+    </Box>;
+  }
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -68,7 +76,7 @@ export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPan
   return (
     <Box>
       <Typography variant="body2" sx={{ mb: 2, color: tokens.text.secondary, fontWeight: 500 }}>
-        Select an existing employee who is not assigned to a team yet.
+        Select an employee to add to this team. Employees can belong to multiple teams.
       </Typography>
 
       <TextField
@@ -105,7 +113,7 @@ export const AddExistingTeamMemberPanel = ({ onAdded }: AddExistingTeamMemberPan
         >
           <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 600 }}>
             {availableMembers.length === 0
-              ? 'No unassigned employees are available right now.'
+              ? 'All eligible employees are already on this team.'
               : 'No employees matched your search.'}
           </Typography>
         </Box>
