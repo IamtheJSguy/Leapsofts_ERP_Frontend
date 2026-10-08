@@ -1,3 +1,5 @@
+import { applyLeadUpdateResponse, getLeadUpdateScope } from '@/utils/leadUpdateCache';
+import { scheduleSalesKpiRefresh } from '@/utils/salesKpiRefresh';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -21,7 +23,7 @@ const leadApi = {
   getLead: (id: string) => api.get<{ data: Lead }>(`/leads/${id}`),
   createLead: (data: Partial<Lead>) => api.post('/leads', data),
   updateLead: ({ id, data }: { id: string; data: Partial<Lead> }) =>
-    api.put(`/leads/${id}`, data),
+    api.put<ApiResponse<Lead>>(`/leads/${id}`, data),
   deleteLead: (id: string) => api.delete(`/leads/${id}`),
   bulkCreateLeads: (data: { leads: Partial<Lead>[]; updateDuplicates?: boolean }) =>
     api.post<ApiResponse<BulkCreateResponse>>('/leads/bulk', data),
@@ -98,7 +100,13 @@ export const useUpdateLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: leadApi.updateLead,
-    onSuccess: (_res, variables) => {
+    onMutate: () => getLeadUpdateScope(),
+    onSuccess: async (response, variables, scope) => {
+      const saved = response.data.data;
+      if (saved?._id === variables.id && scope) {
+        if (!await applyLeadUpdateResponse(queryClient, saved, scope)) return;
+      }
+      scheduleSalesKpiRefresh(queryClient);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.id] });

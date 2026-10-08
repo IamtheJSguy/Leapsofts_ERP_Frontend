@@ -1,3 +1,4 @@
+import { refreshSalesKpiQueries } from '@/utils/salesKpiRefresh';
 import type { QueryClient } from '@tanstack/react-query';
 import { SOCKET_EVENTS } from '@/lib/constants';
 import type { Conversation, Message, MessageReaction, Notification, PresenceStatus, User } from '@/types';
@@ -146,6 +147,12 @@ export const setupSocketEventHandlers = (
     } catch (e) {
       console.error("Audio not supported");
     }
+  });
+
+  socket.on(SOCKET_EVENTS.SALES_KPI_PROGRESS_UPDATED, (data: unknown) => {
+    const payload = data as { organizationId?: string };
+    if (!payload?.organizationId || !belongsToActiveOrg(payload.organizationId)) return;
+    refreshSalesKpiQueries(queryClient);
   });
 
   socket.on(SOCKET_EVENTS.SHIFT_UPDATED, () => {

@@ -35,7 +35,7 @@ interface QualifyEnrichModalProps {
   lead: Lead;
   mode?: 'update' | 'qualify';
   onClose: () => void;
-  onSuccess: (boardId?: string, projectId?: string) => void;
+  onSuccess: (boardId?: string, projectId?: string, updatedLead?: Lead) => void;
 }
 
 const DEFAULT_SECTIONS = [
@@ -744,9 +744,9 @@ export const QualifyEnrichModal = ({
   const handleSave = async () => {
     if (!leadId || !validateFields()) return;
     try {
-      await updateLead.mutateAsync({ id: leadId, data: buildLeadPayload() });
+      const response = await updateLead.mutateAsync({ id: leadId, data: buildLeadPayload() });
       addToast({ message: 'Lead updated successfully.', severity: 'success' });
-      onSuccess();
+      onSuccess(undefined, undefined, response.data.data);
     } catch (err: any) {
       showApiError(err);
     }

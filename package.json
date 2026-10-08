@@ -8,7 +8,9 @@
     "build": "node ./node_modules/typescript/bin/tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:teams": "node --experimental-strip-types --test tests/teamRoster.test.ts"
+    "test:teams": "node --experimental-strip-types --test tests/teamRoster.test.ts",
+    "test:sales-kpi-refresh": "node --test tests/salesKpiRefresh.test.mjs",
+    "test:lead-updates": "node --test tests/leadUpdateCache.test.mjs tests/salesKpiRefresh.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
