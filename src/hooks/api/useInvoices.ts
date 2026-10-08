@@ -187,7 +187,4 @@ export const checkInvoiceNumberApi = (clientId: string, number: string, excludeI
     params: { clientId, number, excludeInvoiceId },
   }).then((r) => r.data.data);
 
-export const getNextInvoiceNumberApi = (clientId?: string) =>
-  api.get<{ data: { nextInvoiceNumber: string } }>('/invoices/next-number', {
-    params: { clientId },
-  }).then((r) => r.data.data);
+

@@ -40,7 +40,7 @@ import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
 import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
-import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings, useInvoices, checkInvoiceNumberApi, getNextInvoiceNumberApi } from '@/hooks/api/useInvoices';
+import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings, useInvoices, checkInvoiceNumberApi } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 
@@ -140,6 +140,39 @@ const InvoiceEditorPage = () => {
 
   const [isDuplicateNumberState, setIsDuplicateNumberState] = useState(false);
 
+  const generateNextInvoiceNumber = (targetClientId: string, targetIssueDate: string) => {
+    const currentYear = new Date(targetIssueDate || Date.now()).getFullYear();
+    let baseNumber = `${currentYear}-001`;
+
+    if (targetClientId && allInvoices.data) {
+      const clientInvoices = allInvoices.data.filter(inv => inv.clientId === targetClientId);
+
+      if (clientInvoices.length > 0) {
+        const sorted = [...clientInvoices].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          
+          if (dateA !== dateB) return dateB - dateA;
+          return a._id < b._id ? 1 : -1;
+        });
+
+        const latestInvoice = sorted[0];
+
+        if (latestInvoice && latestInvoice.invoiceNumber) {
+          const match = latestInvoice.invoiceNumber.match(/(\d+)$/);
+          if (match) {
+            const numStr = match[1];
+            const nextNum = parseInt(numStr, 10) + 1;
+            const padding = Math.max(3, numStr.length);
+            baseNumber = `${currentYear}-${String(nextNum).padStart(padding, '0')}`;
+          }
+        }
+      }
+    }
+
+    return baseNumber;
+  };
+
   useEffect(() => {
     if (!invoiceNumber.trim() || !clientId) {
       setIsDuplicateNumberState(false);
@@ -191,31 +224,26 @@ const InvoiceEditorPage = () => {
         ? { name: match.name, ntn: match.ntn, address: match.address, email: match.email }
         : emptyParty();
       const nextClientId = match?._id || '';
-      getNextInvoiceNumberApi(nextClientId).then(res => {
-        const nextInvoiceNumber = res.nextInvoiceNumber;
-        setInvoiceNumber(nextInvoiceNumber);
-        setTemplateId(nextTemplate);
-        setTaxRate(nextTax);
-        setClientId(nextClientId);
-        setClient(nextClient);
-        setBankAccountIds(defaultBankIds);
-        setBaseline(JSON.stringify({
-          invoiceNumber: nextInvoiceNumber,
-          clientId: nextClientId,
-          client: nextClient,
-          issueDate,
-          dueDate,
-          templateId: nextTemplate,
-          taxRate: nextTax,
-          lines: [{ description: '', qty: '1', unitPrice: '0' }],
-          bankAccountIds: defaultBankIds,
-          ccEmails: [],
-        }));
-        setHydrated(true);
-      }).catch(err => {
-        showFormError('Failed to fetch next invoice number');
-        navigate('/invoices');
-      });
+      const nextInvoiceNumber = generateNextInvoiceNumber(nextClientId, issueDate);
+      setInvoiceNumber(nextInvoiceNumber);
+      setTemplateId(nextTemplate);
+      setTaxRate(nextTax);
+      setClientId(nextClientId);
+      setClient(nextClient);
+      setBankAccountIds(defaultBankIds);
+      setBaseline(JSON.stringify({
+        invoiceNumber: nextInvoiceNumber,
+        clientId: nextClientId,
+        client: nextClient,
+        issueDate,
+        dueDate,
+        templateId: nextTemplate,
+        taxRate: nextTax,
+        lines: [{ description: '', qty: '1', unitPrice: '0' }],
+        bankAccountIds: defaultBankIds,
+        ccEmails: [],
+      }));
+      setHydrated(true);
       return;
     }
     const current = invoice.data;
@@ -283,11 +311,8 @@ const InvoiceEditorPage = () => {
     }
     
     if (isNew) {
-      getNextInvoiceNumberApi(nextId).then(res => {
-        setInvoiceNumber(res.nextInvoiceNumber);
-      }).catch(err => {
-        showFormError('Failed to fetch next invoice number');
-      });
+      const nextInvoiceNumber = generateNextInvoiceNumber(nextId, issueDate);
+      setInvoiceNumber(nextInvoiceNumber);
     }
   };
 
