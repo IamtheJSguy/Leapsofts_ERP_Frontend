@@ -181,3 +181,13 @@ export const useInvoiceMutations = () => {
     download: invoiceApi.download,
   };
 };
+
+export const checkInvoiceNumberApi = (clientId: string, number: string, excludeInvoiceId?: string) =>
+  api.get<{ data: { isDuplicate: boolean } }>('/invoices/check-number', {
+    params: { clientId, number, excludeInvoiceId },
+  }).then((r) => r.data.data);
+
+export const getNextInvoiceNumberApi = (clientId?: string) =>
+  api.get<{ data: { nextInvoiceNumber: string } }>('/invoices/next-number', {
+    params: { clientId },
+  }).then((r) => r.data.data);
