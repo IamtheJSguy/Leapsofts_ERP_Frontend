@@ -15,18 +15,24 @@ import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
 import LinkIcon from '@mui/icons-material/Link';
-import { useLead, useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useNavigate } from 'react-router-dom';
+import { useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
+import { useSalesBoards } from '@/hooks/api/useKanban';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
-import type { Lead, Meeting, User } from '@/types';
+import type { Lead, Meeting, User, SalesBoardPlacement } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
-import { showApiError, useApiErrorToast } from '@/utils/apiError';
+import { showApiError } from '@/utils/apiError';
+import { PushToSalesBoardModal } from './PushToSalesBoardModal';
 
 interface QualifyEnrichModalProps {
   open: boolean;
   leadId: string;
+  lead: Lead;
   mode?: 'update' | 'qualify';
   onClose: () => void;
   onSuccess: (boardId?: string, projectId?: string) => void;
@@ -69,7 +75,8 @@ const formatMeetingWhen = (iso: string) => {
 
 // --- Subcomponent: Lead Summary Column (Left) ---
 const LeadSummaryColumn = memo(({
-  leadData, onChange, isPending, errors, isDarkMode, avatarChar,
+  leadData, onChange, isPending, errors, isDarkMode, avatarChar, salesBoardPlacements = [],
+  onOpenPlacement,
 }: any) => {
   const renderField = (label: string, field: keyof Lead, placeholder?: string) => {
     const errorText = errors[field];
@@ -160,6 +167,64 @@ const LeadSummaryColumn = memo(({
         {renderField('Company Size', 'companySize')}
         {renderField('Location', 'location')}
       </Box>
+
+      {salesBoardPlacements && salesBoardPlacements.length > 0 && (
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)'}` }}>
+          <Typography variant="caption" sx={{
+            color: tokens.text.muted, fontWeight: 750, textTransform: 'uppercase',
+            letterSpacing: '0.06em', display: 'block', mb: 1, pl: 0.5, fontSize: '0.68rem',
+          }}>
+            Sales Boards ({salesBoardPlacements.length})
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            {salesBoardPlacements.map((p: SalesBoardPlacement, idx: number) => {
+              const canOpen = Boolean(p.boardId && p.cardId && onOpenPlacement);
+              return (
+                <Box
+                  key={p._id || idx}
+                  onClick={() => canOpen && onOpenPlacement(p)}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (!canOpen) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onOpenPlacement(p);
+                    }
+                  }}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 1,
+                    px: 1.25, py: 0.75, borderRadius: '10px',
+                    bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
+                    border: `1px solid ${isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.12)'}`,
+                    cursor: canOpen ? 'pointer' : 'default',
+                    transition: 'background 0.15s ease, border-color 0.15s ease',
+                    '&:hover': canOpen ? {
+                      bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)',
+                      borderColor: isDarkMode ? 'rgba(93, 26, 137, 0.4)' : 'rgba(93, 26, 137, 0.22)',
+                    } : {},
+                  }}
+                >
+                  <DashboardIcon sx={{ fontSize: 14, color: tokens.brand.accent, flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.text.primary, lineHeight: 1.2 }} noWrap>
+                      {p.boardName || 'Board'}
+                    </Typography>
+                    {p.columnName && (
+                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: tokens.brand.primary, fontWeight: 600 }}>
+                        → {p.columnName}
+                      </Typography>
+                    )}
+                  </Box>
+                  {canOpen && (
+                    <OpenInNewIcon sx={{ fontSize: 14, color: tokens.text.muted, flexShrink: 0 }} />
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 });
@@ -508,6 +573,7 @@ const SharingMeetingsColumn = memo(({
 export const QualifyEnrichModal = ({
   open,
   leadId,
+  lead,
   mode = 'qualify',
   onClose,
   onSuccess,
@@ -516,19 +582,27 @@ export const QualifyEnrichModal = ({
   const isDarkMode = theme.palette.mode === 'dark';
   const isUpdateMode = mode === 'update';
 
-  const { data: lead, isLoading: isLeadLoading, isError: isLeadError, error: leadError } = useLead(open ? leadId : undefined);
-  useApiErrorToast(leadError, Boolean(open && isLeadError));
+  const navigate = useNavigate();
   const qualifyLead = useQualifyLead();
   const updateLead = useUpdateLead();
   const createMeeting = useCreateMeeting();
   const { data: usersData } = useUsers({}, { enabled: open });
   const dbUsers = Array.isArray(usersData) ? usersData : [];
+  const { data: salesBoards = [] } = useSalesBoards({ enabled: open });
   const { data: meetingsData, isLoading: meetingsLoading } = useMeetings(
     { leadId },
     { enabled: open && !!leadId },
   );
   const leadMeetings = Array.isArray(meetingsData) ? meetingsData : [];
   const addToast = useUIStore((s) => s.addToast);
+
+  const handleOpenPlacement = useCallback((placement: SalesBoardPlacement) => {
+    if (!placement.boardId || !placement.cardId) return;
+    const board = salesBoards.find((b) => b._id === placement.boardId);
+    const projectId = board?.projectId || placement.boardId;
+    onClose();
+    navigate(`/projects/${projectId}/boards/${placement.boardId}?card=${placement.cardId}`);
+  }, [salesBoards, navigate, onClose]);
 
   const [leadData, setLeadData] = useState<Partial<Lead>>({});
   const [notes, setNotes] = useState('');
@@ -543,6 +617,7 @@ export const QualifyEnrichModal = ({
     description: '',
   });
   const [meetingParticipants, setMeetingParticipants] = useState<User[]>([]);
+  const [pushToSalesBoardOpen, setPushToSalesBoardOpen] = useState(false);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -848,14 +923,7 @@ export const QualifyEnrichModal = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {isLeadLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 6, flex: 1 }}>
-            <CircularProgress sx={{ color: tokens.brand.primary }} size={40} thickness={4} />
-          </Box>
-        ) : !lead ? (
-          <Box sx={{ p: 4, textAlign: 'center', flex: 1 }}>
-          </Box>
-        ) : (
+        {(
           <Box sx={{
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },
@@ -870,6 +938,8 @@ export const QualifyEnrichModal = ({
               errors={errors}
               isDarkMode={isDarkMode}
               avatarChar={lead.firstName?.charAt(0) || lead.prospectName?.charAt(0) || '?'}
+              salesBoardPlacements={lead?.salesBoardPlacements ?? []}
+              onOpenPlacement={handleOpenPlacement}
             />
             {rightColumn}
           </Box>
@@ -883,6 +953,27 @@ export const QualifyEnrichModal = ({
         borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.01)',
       }}>
+        <Button
+          onClick={() => setPushToSalesBoardOpen(true)}
+          disabled={isPending || !lead}
+          variant="outlined"
+          startIcon={<DashboardIcon sx={{ fontSize: 17 }} />}
+          sx={{
+            mr: 'auto',
+            borderRadius: '12px',
+            textTransform: 'none',
+            fontWeight: 750,
+            fontSize: '0.85rem',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+            color: tokens.brand.primary,
+            '&:hover': {
+              borderColor: tokens.brand.primary,
+              bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.12)' : 'rgba(93, 26, 137, 0.04)',
+            },
+          }}
+        >
+          Push to Sales Board
+        </Button>
         <Button
           onClick={onClose}
           disabled={isPending}
@@ -912,6 +1003,15 @@ export const QualifyEnrichModal = ({
             : (isUpdateMode ? 'Save' : 'Qualify & Push')}
         </Button>
       </DialogActions>
+
+      {/* Push to Sales Board Modal */}
+      {pushToSalesBoardOpen && lead && (
+        <PushToSalesBoardModal
+          open={pushToSalesBoardOpen}
+          lead={lead}
+          onClose={() => setPushToSalesBoardOpen(false)}
+        />
+      )}
     </Dialog>
   );
 };

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
+import type { BoardCategory, KanbanBoard, KanbanBoardResponse, KanbanCard, KanbanCardLink, KanbanSubtask } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export type CreateMeetingOnCardPayload = {
@@ -16,8 +16,8 @@ const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
   getBoard: (id: string) => api.get<{ data: KanbanBoardResponse }>(`/kanban/board/${id}`),
   createBoard: (data: { name: string; type?: string; description?: string; status?: string; techStack?: string[] }) => api.post('/kanban/boards', data),
-  updateBoard: ({ id, name }: { id: string; name: string }) =>
-    api.patch<{ data: { message: string; board: KanbanBoard } }>(`/kanban/boards/${id}`, { name }),
+  updateBoard: ({ id, name, category }: { id: string; name?: string; category?: BoardCategory }) =>
+    api.patch<{ data: { message: string; board: KanbanBoard } }>(`/kanban/boards/${id}`, { name, category }),
   createColumn: ({ boardId, name }: { boardId: string; name: string }) =>
     api.post(`/kanban/boards/${boardId}/columns`, { name }),
   moveCard: ({ cardId, data }: { cardId: string; data: { columnId: string; position: number } }) =>
@@ -118,6 +118,35 @@ const kanbanApi = {
     data: { assignedTo: string[]; dueDate?: string };
   }) => api.patch<{ data: KanbanSubtask }>(`/kanban/subtasks/${subtaskId}/assign`, data),
   deleteSubtask: (subtaskId: string) => api.delete(`/kanban/subtasks/${subtaskId}`),
+  getSalesBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/sales-boards'),
+  pushLeadToSalesBoard: ({
+    leadId,
+    boardId,
+    columnId,
+    title,
+    description,
+    priority,
+    dueDate,
+    assignedTo,
+  }: {
+    leadId: string;
+    boardId: string;
+    columnId: string;
+    title?: string;
+    description?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    dueDate?: string;
+    assignedTo?: string[];
+  }) =>
+    api.post(`/kanban/leads/${leadId}/push-to-sales-board`, {
+      boardId,
+      columnId,
+      ...(title ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(priority ? { priority } : {}),
+      ...(dueDate !== undefined ? { dueDate } : {}),
+      ...(assignedTo && assignedTo.length > 0 ? { assignedTo } : {}),
+    }),
 };
 
 const sortByOrder = (a: any, b: any) =>
@@ -210,6 +239,31 @@ export const useKanbanBoards = (options?: { enabled?: boolean }) => {
     queryKey: ['kanbanBoards', organizationId],
     queryFn: () => kanbanApi.getBoards().then((r) => r.data.data),
     enabled: options?.enabled ?? true,
+  });
+};
+
+export const useSalesBoards = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanSalesBoards', organizationId],
+    queryFn: () => kanbanApi.getSalesBoards().then((r) => r.data.data),
+    enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const usePushLeadToSalesBoard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.pushLeadToSalesBoard,
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leadHistory', variables.leadId] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', variables.boardId] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanSalesBoards'] });
+    },
   });
 };
 

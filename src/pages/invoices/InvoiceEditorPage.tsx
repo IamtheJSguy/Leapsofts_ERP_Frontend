@@ -45,7 +45,7 @@ import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 
 
-import { exportInvoiceElementToPdf, invoiceElementToPdfBlob, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
+import { downloadStoredInvoicePdf, exportInvoiceElementToPdf, invoiceElementToPdfBlob, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
   emptyClientForm,
   formatInvoiceMoney,
@@ -62,6 +62,15 @@ interface LineDraft {
   qty: string;
   unitPrice: string;
 }
+
+/** Keep number inputs non-negative while allowing empty / partial typing. */
+const sanitizeNonNegative = (raw: string): string => {
+  if (raw === '' || raw === '.') return raw;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return '0';
+  if (n < 0) return '0';
+  return raw;
+};
 
 const emptyParty = (): InvoiceParty => ({ name: '', ntn: '', address: '', email: '' });
 
@@ -337,6 +346,10 @@ const InvoiceEditorPage = () => {
     if (lineItems.some((line) => !line.description || !Number.isFinite(line.qty) || line.qty <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)) {
       return null;
     }
+    const nextTax = Number(taxRate);
+    if (!Number.isFinite(nextTax) || nextTax < 0 || nextTax > 100) {
+      return null;
+    }
     return {
       invoiceNumber: invoiceNumber.trim(),
       clientId: nextClientId,
@@ -344,7 +357,7 @@ const InvoiceEditorPage = () => {
       issueDate,
       dueDate,
       templateId,
-      taxRate: Number(taxRate),
+      taxRate: nextTax,
       lineItems,
       bankAccountIds: nextBanks,
       ccEmails,
@@ -468,29 +481,34 @@ const InvoiceEditorPage = () => {
     return bankAccountIds.length > 0 ? accounts.filter((bank) => bankAccountIds.includes(bank.id)) : accounts;
   };
 
-  const buildPreviewData = (paid = invoice.data?.status === 'paid'): InvoicePreviewData => ({
-    template: templateId,
-    invoiceNumber,
-    issueDate,
-    dueDate,
-    currency,
-    paid,
-    logoUrl: settings.data?.logoUrl,
-    issuer: {
-      name: settings.data?.issuerName || '',
-      ntn: settings.data?.ntn || '',
-      address: settings.data?.address || '',
-      email: settings.data?.email || '',
-    },
-    client,
-    lines: lines.map((line) => ({
-      description: line.description,
-      qty: Number(line.qty) || 0,
-      unitPrice: Number(line.unitPrice) || 0,
-    })),
-    taxRate: Number(taxRate) || 0,
-    banks: previewBanks(),
-  });
+  const buildPreviewData = (paid = invoice.data?.status === 'paid'): InvoicePreviewData => {
+    if (locked && invoice.data) {
+      return previewDataFromInvoice(invoice.data, settings.data?.bankAccounts || [], paid);
+    }
+    return {
+      template: templateId,
+      invoiceNumber,
+      issueDate,
+      dueDate,
+      currency,
+      paid,
+      logoUrl: settings.data?.logoUrl,
+      issuer: {
+        name: settings.data?.issuerName || '',
+        ntn: settings.data?.ntn || '',
+        address: settings.data?.address || '',
+        email: settings.data?.email || '',
+      },
+      client,
+      lines: lines.map((line) => ({
+        description: line.description,
+        qty: Number(line.qty) || 0,
+        unitPrice: Number(line.unitPrice) || 0,
+      })),
+      taxRate: Number(taxRate) || 0,
+      banks: previewBanks(),
+    };
+  };
 
   const paidPreviewBlob = () => renderInvoicePreviewToBlob(buildPreviewData(true));
 
@@ -563,6 +581,7 @@ const InvoiceEditorPage = () => {
     setExportingPdf(true);
     const filename = `invoice-${invoiceNumber || 'draft'}.pdf`;
     try {
+      if (locked && id && await downloadStoredInvoicePdf(id, filename)) return;
       if (!previewRef.current) {
         showFormError('Invoice preview is not ready to download.');
         return;
@@ -947,7 +966,8 @@ const InvoiceEditorPage = () => {
                       type="number"
                       value={line.qty}
                       disabled={Boolean(locked)}
-                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: e.target.value } : item))}
+                      inputProps={{ min: 0, step: 'any' }}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, qty: sanitizeNonNegative(e.target.value) } : item))}
                       sx={inputStyle}
                     />
                     <TextField
@@ -956,7 +976,8 @@ const InvoiceEditorPage = () => {
                       type="number"
                       value={line.unitPrice}
                       disabled={Boolean(locked)}
-                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: e.target.value } : item))}
+                      inputProps={{ min: 0, step: 'any' }}
+                      onChange={(e) => setLines(lines.map((item, i) => i === index ? { ...item, unitPrice: sanitizeNonNegative(e.target.value) } : item))}
                       sx={inputStyle}
                     />
                     {!locked && lines.length > 1 && (
@@ -984,7 +1005,12 @@ const InvoiceEditorPage = () => {
                     type="number"
                     value={taxRate}
                     disabled={Boolean(locked)}
-                    onChange={(e) => setTaxRate(e.target.value)}
+                    inputProps={{ min: 0, max: 100, step: 'any' }}
+                    onChange={(e) => {
+                      const next = sanitizeNonNegative(e.target.value);
+                      const n = Number(next);
+                      setTaxRate(Number.isFinite(n) && n > 100 ? '100' : next);
+                    }}
                     sx={{ ...inputStyle, width: 130 }}
                   />
                 </Box>

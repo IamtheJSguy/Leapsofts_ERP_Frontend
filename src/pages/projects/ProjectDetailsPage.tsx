@@ -57,6 +57,8 @@ import {
 import { useDeleteBoard, useUpdateBoard } from '@/hooks/api/useKanban';
 import type { ProjectStatus, ProjectMember } from '@/types';
 import { showApiError } from '@/utils/apiError';
+import { BOARD_CATEGORY_OPTIONS } from '@/lib/boardCategories';
+import type { BoardCategory } from '@/types';
 
 const TABS = ['Board', 'Overview', 'Team'];
 
@@ -112,11 +114,13 @@ export const ProjectDetailsPage = () => {
 
   // New board input states
   const [newBoardName, setNewBoardName] = useState('');
+  const [newBoardCategory, setNewBoardCategory] = useState<BoardCategory>('general');
 
   // Edit board states
   const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
   const [boardToEditId, setBoardToEditId] = useState<string | null>(null);
   const [editBoardName, setEditBoardName] = useState('');
+  const [editBoardCategory, setEditBoardCategory] = useState<BoardCategory>('general');
   const [editBoardError, setEditBoardError] = useState('');
 
   // Add member states
@@ -213,11 +217,12 @@ export const ProjectDetailsPage = () => {
       createProjectBoardMutation.mutate(
         {
           id: projectId,
-          data: { name: newBoardName.trim() },
+          data: { name: newBoardName.trim(), category: newBoardCategory },
         },
         {
           onSuccess: () => {
             setNewBoardName('');
+            setNewBoardCategory('general');
             setIsCreateBoardOpen(false);
             addToast({ message: 'Board created successfully', severity: 'success' });
           },
@@ -283,6 +288,7 @@ export const ProjectDetailsPage = () => {
   const handleOpenEditBoard = (board: any) => {
     setBoardToEditId(board._id);
     setEditBoardName(board.name || '');
+    setEditBoardCategory(board.category || 'general');
     setEditBoardError('');
     setIsEditBoardModalOpen(true);
   };
@@ -301,10 +307,10 @@ export const ProjectDetailsPage = () => {
 
     setEditBoardError('');
     updateBoardMutation.mutate(
-      { id: boardToEditId, name: trimmed },
+      { id: boardToEditId, name: trimmed, category: editBoardCategory },
       {
         onSuccess: () => {
-          addToast({ message: 'Board name updated successfully', severity: 'success' });
+          addToast({ message: 'Board updated successfully', severity: 'success' });
           setIsEditBoardModalOpen(false);
           setBoardToEditId(null);
           if (projectId) {
@@ -900,7 +906,7 @@ export const ProjectDetailsPage = () => {
         fullWidth
         PaperProps={{ sx: { borderRadius: '20px' } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Edit Board Name</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Edit Board</DialogTitle>
         <DialogContent sx={{ overflow: 'visible' }}>
           <TextField
             autoFocus
@@ -921,6 +927,18 @@ export const ProjectDetailsPage = () => {
               if (e.key === 'Enter') handleSaveBoardEdit();
             }}
           />
+          <FormControl fullWidth size="small" sx={{ mt: 2 }}>
+            <InputLabel>Board category</InputLabel>
+            <Select
+              value={editBoardCategory}
+              label="Board category"
+              onChange={(e) => setEditBoardCategory(e.target.value as BoardCategory)}
+            >
+              {BOARD_CATEGORY_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button
@@ -979,6 +997,18 @@ export const ProjectDetailsPage = () => {
             onChange={(e) => setNewBoardName(e.target.value)}
             InputProps={{ sx: { borderRadius: '12px' } }}
           />
+          <FormControl fullWidth size="small" sx={{ mt: 2 }}>
+            <InputLabel>Board category</InputLabel>
+            <Select
+              value={newBoardCategory}
+              label="Board category"
+              onChange={(e) => setNewBoardCategory(e.target.value as BoardCategory)}
+            >
+              {BOARD_CATEGORY_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button

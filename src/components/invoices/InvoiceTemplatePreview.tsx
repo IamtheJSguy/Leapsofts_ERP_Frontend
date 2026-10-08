@@ -168,7 +168,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             <span style={{ textAlign: 'right' }}>Amount</span>
           </Box>
           {priced.map((line, index) => (
-            <Box key={index} sx={{ display: 'grid', gridTemplateColumns: '1.8fr 0.5fr 0.8fr 0.8fr', px: 1.25, py: 0.85, fontSize: 11, borderBottom: '1px solid #F3F4F6', bgcolor: index % 2 === 0 ? '#FFFFFF' : '#FAF8FC' }}>
+            <Box data-invoice-row key={index} sx={{ display: 'grid', gridTemplateColumns: '1.8fr 0.5fr 0.8fr 0.8fr', px: 1.25, py: 0.85, fontSize: 11, borderBottom: '1px solid #F3F4F6', bgcolor: index % 2 === 0 ? '#FFFFFF' : '#FAF8FC' }}>
               <span style={{ fontWeight: 600 }}>{show(line.description, 'Line item')}</span>
               <span style={{ textAlign: 'right', color: '#4B5563' }}>{line.qty || 0}</span>
               <span style={{ textAlign: 'right', color: '#4B5563' }}>{formatInvoiceMoney(data.currency, line.unitPrice || 0)}</span>
@@ -177,7 +177,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           ))}
 
           {/* Totals Summary */}
-          <Box sx={{ mt: 1.5, ml: 'auto', width: '55%', bgcolor: '#FAF5FF', p: 1.5, borderRadius: '10px', border: '1px solid #E9D5FF', display: 'grid', gap: 0.5, fontSize: 11 }}>
+          <Box data-invoice-block sx={{ mt: 1.5, ml: 'auto', width: '55%', bgcolor: '#FAF5FF', p: 1.5, borderRadius: '10px', border: '1px solid #E9D5FF', display: 'grid', gap: 0.5, fontSize: 11 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', color: '#6B7280', fontWeight: 600 }}>
               <span>Subtotal</span><span>{formatInvoiceMoney(data.currency, subtotal)}</span>
             </Box>
@@ -191,7 +191,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Banks Section */}
-          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #E5E7EB' }}>
+          <Box data-invoice-block sx={{ mt: 2, pt: 1.5, borderTop: '1px dashed #E5E7EB' }}>
             <Typography sx={{ fontSize: 10, fontWeight: 800, color: '#5D1A89', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <AccountBalanceIcon sx={{ fontSize: 13 }} /> Payment Bank Accounts
             </Typography>
@@ -348,7 +348,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             <span style={{ textAlign: 'right' }}>TOTAL</span>
           </Box>
           {priced.map((line, index) => (
-            <Box key={index} sx={{ display: 'grid', gridTemplateColumns: '1.8fr 0.5fr 0.8fr 0.8fr', px: 1.25, py: 0.75, fontSize: 10.5, borderBottom: '1px solid #E2E8F0' }}>
+            <Box data-invoice-row key={index} sx={{ display: 'grid', gridTemplateColumns: '1.8fr 0.5fr 0.8fr 0.8fr', px: 1.25, py: 0.75, fontSize: 10.5, borderBottom: '1px solid #E2E8F0' }}>
               <span>{show(line.description, 'Line item')}</span>
               <span style={{ textAlign: 'right' }}>{line.qty || 0}</span>
               <span style={{ textAlign: 'right' }}>{formatInvoiceMoney(data.currency, line.unitPrice || 0)}</span>
@@ -357,7 +357,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           ))}
 
           {/* Totals */}
-          <Box sx={{ mt: 2, ml: 'auto', width: '50%', border: '1px solid #0F172A', p: 1.25, fontSize: 11 }}>
+          <Box data-invoice-block sx={{ mt: 2, ml: 'auto', width: '50%', border: '1px solid #0F172A', p: 1.25, fontSize: 11 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
               <span>Subtotal</span><span>{formatInvoiceMoney(data.currency, subtotal)}</span>
             </Box>
@@ -370,7 +370,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Classic Bank Accounts Section */}
-          <Box sx={{ mt: 2.5, pt: 1.5, borderTop: '1px solid #0F172A' }}>
+          <Box data-invoice-block sx={{ mt: 2.5, pt: 1.5, borderTop: '1px solid #0F172A' }}>
             <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
               BANK & PAYMENT INSTRUCTIONS
             </Typography>
@@ -685,6 +685,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
             {/* Table Rows */}
             {priced.map((line, idx) => (
               <Box
+                data-invoice-row
                 key={idx}
                 sx={{
                   display: 'grid',
@@ -699,9 +700,9 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                   <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: '#111827', lineHeight: 1.2 }}>
                     {show(line.description, 'Service / Product Item')}
                   </Typography>
-                  <Typography sx={{ fontSize: 9, color: '#9CA3AF', mt: 0.2 }}>
+                  {/* <Typography sx={{ fontSize: 9, color: '#9CA3AF', mt: 0.2 }}>
                     Premium enterprise quality delivery
-                  </Typography>
+                  </Typography> */}
                 </Box>
                 <span style={{ textAlign: 'right', fontWeight: 600, color: '#374151' }}>
                   {formatInvoiceMoney(data.currency, line.unitPrice || 0)}
@@ -717,7 +718,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Totals Breakdown Row (Right Aligned) */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+          <Box data-invoice-block sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
             <Box sx={{ minWidth: { xs: '100%', sm: 260 }, display: 'grid', gap: 0.6 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#4B5563' }}>
                 <span>Sub-Total</span>
@@ -750,7 +751,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           </Box>
 
           {/* Payment Info Section (Uniform 2-Column Cards) */}
-          <Box sx={{ mb: 1 }}>
+          <Box data-invoice-block sx={{ mb: 1 }}>
             <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#111827', mb: 1 }}>
               Payment Info:
             </Typography>
@@ -1021,6 +1022,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
           {/* Table Rows */}
           {priced.map((line, index) => (
             <Box
+              data-invoice-row
               key={index}
               sx={{
                 display: 'grid',
@@ -1036,9 +1038,9 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
                 <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: '#111827', lineHeight: 1.2 }}>
                   {show(line.description, 'Item Name')}
                 </Typography>
-                <Typography sx={{ fontSize: 9.5, color: '#6B7280', mt: 0.25, lineHeight: 1.3 }}>
+                {/* <Typography sx={{ fontSize: 9.5, color: '#6B7280', mt: 0.25, lineHeight: 1.3 }}>
                   High standard verified delivery and service specification
-                </Typography>
+                </Typography> */}
               </Box>
               <span style={{ textAlign: 'right', fontWeight: 600, color: '#374151' }}>
                 {formatInvoiceMoney(data.currency, line.unitPrice || 0)}
@@ -1054,7 +1056,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Totals Breakdown Row (Right Aligned) */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+        <Box data-invoice-block sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
           <Box sx={{ minWidth: { xs: '100%', sm: 260 }, display: 'grid', gap: 0.75 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#4B5563' }}>
               <span style={{ fontWeight: 750, color: '#111827' }}>Subtotal :</span>
@@ -1090,7 +1092,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Bottom Section: Thank You Pill & 2-Column Payment Info Cards */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+        <Box data-invoice-block sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
           {/* Dark Thank You Pill */}
           <Box
             sx={{
@@ -1230,6 +1232,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
 
         {/* Footer Bar: Thank You Message & Support */}
         <Box
+          data-invoice-block
           sx={{
             pt: 2,
             borderTop: '1px solid #E5E7EB',
@@ -1383,6 +1386,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
 
           {priced.map((line, index) => (
             <Box
+              data-invoice-row
               key={index}
               sx={{
                 display: 'grid',
@@ -1402,7 +1406,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Total Summary Row */}
-        <Box sx={{ pt: 1, pb: 2, borderBottom: '1.5px solid #E5E7EB', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.4, fontSize: 11 }}>
+        <Box data-invoice-block sx={{ pt: 1, pb: 2, borderBottom: '1.5px solid #E5E7EB', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.4, fontSize: 11 }}>
           <Box sx={{ display: 'flex', gap: 3, color: '#6B7280', fontWeight: 600 }}>
             <span>Subtotal:</span>
             <span>{formatInvoiceMoney(data.currency, subtotal)}</span>
@@ -1420,7 +1424,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Payment & Notes */}
-        <Box sx={{ mt: 2, display: 'grid', gap: 0.75, fontSize: 11 }}>
+        <Box data-invoice-block sx={{ mt: 2, display: 'grid', gap: 0.75, fontSize: 11 }}>
           <Typography sx={{ fontSize: 11, color: '#111827' }}>
             <strong>Payment method:</strong> {data.banks.length > 0 ? 'Bank Transfer / Wire' : 'Cash / Direct'}
           </Typography>
@@ -1430,7 +1434,7 @@ export const InvoiceTemplatePreview = ({ data }: { data: InvoicePreviewData }) =
         </Box>
 
         {/* Bank Instructions in Clean Monochrome Cards */}
-        <Box sx={{ mt: 2, mb: 1 }}>
+        <Box data-invoice-block sx={{ mt: 2, mb: 1 }}>
           {data.banks.length > 0 ? (
             <Box sx={{ display: 'grid', gridTemplateColumns: data.banks.length > 1 ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr', gap: 1.25 }}>
               {data.banks.map((bank, index) => (

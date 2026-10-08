@@ -6,6 +6,8 @@ import {
   CircularProgress,
   Typography,
   useTheme,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
@@ -13,6 +15,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import { nativeFieldStyle } from '@/components/leads/nativeFieldStyles';
+import { ColdFutureDateTimeField } from '@/components/leads/ColdFutureDateTimeField';
 import { useBulkCreateLeads } from '@/hooks/api/useLeads';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,7 +30,7 @@ import {
 } from '@/lib/bulkAddLeadsCsv';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
-import type { ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
+import type { ColdCallingState, ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, Lead, LeadComment, MessageStatus, OutreachChannel } from '@/types';
 import { splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
 import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
@@ -50,6 +53,7 @@ type BulkLeadRow = {
   linkedinMsg: string;
   futureLeadDate?: string;
   leadComment?: LeadComment | null;
+  coldCalling: ColdCallingState;
 };
 
 type RowErrors = Record<string, boolean>;
@@ -70,6 +74,7 @@ const createEmptyRow = (): BulkLeadRow => ({
   messageStatus: 'not_sent',
   linkedinMsg: 'not_sent',
   futureLeadDate: undefined,
+  coldCalling: { outreachStatus: 'pending', responseStatus: 'no_response' },
 });
 
 const isRowEmpty = (row: BulkLeadRow) =>
@@ -118,6 +123,11 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
         row.leadComment && typeof row.leadComment === 'object'
           ? (row.leadComment as LeadComment)
           : undefined,
+      coldCalling: {
+        outreachStatus: row.coldCalling?.outreachStatus || 'pending',
+        responseStatus: row.coldCalling?.responseStatus || 'no_response',
+        futureLeadAt: row.coldCalling?.futureLeadAt,
+      },
     };
   });
 
@@ -138,6 +148,8 @@ const validateRow = (row: BulkLeadRow): RowErrors => {
   if (row.messageStatus === 'invalid_lead' && !row.leadComment?.text?.trim()) {
     errors.leadComment = true;
   }
+  if (row.coldCalling.responseStatus === 'future_lead' && !row.coldCalling.futureLeadAt) errors.coldFutureLeadAt = true;
+  if (row.coldCalling.responseStatus === 'invalid_lead' && !row.leadComment?.text?.trim()) errors.leadComment = true;
   return errors;
 };
 
@@ -151,6 +163,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
   icpsList,
   profileUsersList,
   onUpdate,
+  outreachChannel,
 }: {
   index: number;
   row: BulkLeadRow;
@@ -161,6 +174,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
   icpsList: OptionItem[];
   profileUsersList: OptionItem[];
   onUpdate: (index: number, patch: Partial<BulkLeadRow>) => void;
+  outreachChannel: OutreachChannel;
 }) {
   const hasError = Object.keys(errors).length > 0;
   const [promptInvalidComment, setPromptInvalidComment] = useState(false);
@@ -228,7 +242,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
             onSave={(comment) => onUpdate(index, { leadComment: comment })}
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
-            requireReason={row.messageStatus === 'invalid_lead'}
+            requireReason={row.messageStatus === 'invalid_lead' || row.coldCalling.responseStatus === 'invalid_lead'}
           />
         </div>
       </td>
@@ -275,7 +289,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           minWidth: 150,
         }}
       >
-        <select
+        {outreachChannel === 'linkedin' ? <select
           value={row.connectionStatus}
           onChange={(e) =>
             onUpdate(index, {
@@ -289,7 +303,9 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           <option value="sent">Sent</option>
           <option value="accepted">Accepted</option>
           <option value="declined">Declined</option>
-        </select>
+        </select> : <select value={row.coldCalling.outreachStatus} onChange={(e) => onUpdate(index, { coldCalling: { ...row.coldCalling, outreachStatus: e.target.value as ColdOutreachStatus } })} style={nativeFieldStyle(isDarkMode)}>
+          <option value="pending">Pending</option><option value="dialed_1">Dialed 1</option><option value="dialed_2">Dialed 2</option><option value="dialed_3">Dialed 3</option><option value="declined">Declined</option>
+        </select>}
       </td>
       <td
         style={{
@@ -300,7 +316,7 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <select
+          {outreachChannel === 'linkedin' ? <><select
             value={row.messageStatus}
             onChange={(e) => {
               const messageStatus = e.target.value as MessageStatus | '';
@@ -338,7 +354,14 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
               }
               style={nativeFieldStyle(isDarkMode, !!errors.futureLeadDate)}
             />
-          )}
+          )}</> : <>
+            <select value={row.coldCalling.responseStatus} onChange={(e) => { const responseStatus = e.target.value as ColdResponseStatus; onUpdate(index, { coldCalling: { ...row.coldCalling, responseStatus, ...(responseStatus !== 'future_lead' ? { futureLeadAt: undefined } : {}) } }); if (responseStatus === 'invalid_lead') setPromptInvalidComment(true); }} style={nativeFieldStyle(isDarkMode)}>
+              <option value="no_response">No response yet</option><option value="positive">Positive</option><option value="negative">Negative</option><option value="in_conversation">In Conversation</option><option value="future_lead">Future Lead</option><option value="follow_up_1">Follow-up 1</option><option value="follow_up_2">Follow-up 2</option><option value="follow_up_3">Follow-up 3</option><option value="invalid_lead">Invalid Lead</option>
+            </select>
+            {row.coldCalling.responseStatus === 'future_lead' && (
+              <ColdFutureDateTimeField value={row.coldCalling.futureLeadAt} error={!!errors.coldFutureLeadAt} compact onChange={(futureLeadAt) => onUpdate(index, { coldCalling: { ...row.coldCalling, futureLeadAt } })} />
+            )}
+          </>}
         </div>
       </td>
       <td
@@ -364,6 +387,12 @@ export const BulkAddLeadsPage = () => {
   const isDarkMode = muiTheme.palette.mode === 'dark';
   const { user } = useAuth();
   const userId = user?._id || '';
+  const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>('linkedin');
+  useEffect(() => {
+    if (!userId) return;
+    const saved = localStorage.getItem(`sales-outreach-channel:${userId}`);
+    if (saved === 'linkedin' || saved === 'cold_calling') setOutreachChannel(saved);
+  }, [userId]);
   const addToast = useUIStore((s) => s.addToast);
   const bulkCreate = useBulkCreateLeads();
 
@@ -501,6 +530,7 @@ export const BulkAddLeadsPage = () => {
           messageStatus: row.messageStatus,
           linkedinMsg: row.linkedinMsg,
           futureLeadDate: row.futureLeadDate,
+          coldCalling: row.coldCalling || { outreachStatus: 'pending', responseStatus: 'no_response' },
         }));
 
         const nextRows =
@@ -520,6 +550,8 @@ export const BulkAddLeadsPage = () => {
         if (mismatched.messageStatus) {
           mismatchParts.push(`${mismatched.messageStatus} Message`);
         }
+        if (mismatched.coldOutreachStatus) mismatchParts.push(`${mismatched.coldOutreachStatus} Cold Outreach`);
+        if (mismatched.coldResponseStatus) mismatchParts.push(`${mismatched.coldResponseStatus} Cold Answered`);
 
         addToast({
           message:
@@ -559,7 +591,7 @@ export const BulkAddLeadsPage = () => {
       const rowErr = validateRow(row);
       if (Object.keys(rowErr).length > 0) {
         errors[index] = rowErr;
-        if (rowErr.futureLeadDate) hasFutureDateError = true;
+        if (rowErr.futureLeadDate || rowErr.coldFutureLeadAt) hasFutureDateError = true;
         if (rowErr.leadComment) hasCommentError = true;
       }
     }
@@ -602,6 +634,7 @@ export const BulkAddLeadsPage = () => {
           ? { futureLeadDate: row.futureLeadDate }
           : {}),
         ...(row.leadComment ? { leadComment: row.leadComment } : {}),
+        coldCalling: row.coldCalling,
       };
     });
 
@@ -675,7 +708,7 @@ export const BulkAddLeadsPage = () => {
           </Button>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Add Multiple Leads
+              Add Multiple {outreachChannel === 'cold_calling' ? 'Cold Calling' : 'LinkedIn'} Leads
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Fill any rows below — empty rows are skipped. Or upload a CSV to load into this sheet.
@@ -688,6 +721,10 @@ export const BulkAddLeadsPage = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <Select size="small" value={outreachChannel} onChange={(e) => { const channel = e.target.value as OutreachChannel; setOutreachChannel(channel); if (userId) localStorage.setItem(`sales-outreach-channel:${userId}`, channel); }} sx={{ minWidth: 190, borderRadius: '20px', height: 40, fontWeight: 700 }}>
+            <MenuItem value="linkedin">LinkedIn Outreach</MenuItem>
+            <MenuItem value="cold_calling">Cold Calling Outreach</MenuItem>
+          </Select>
           <input
             ref={csvInputRef}
             type="file"
@@ -757,7 +794,14 @@ export const BulkAddLeadsPage = () => {
         >
           <thead>
             <tr>
-              {['#', 'Contact', 'ICP / Profile', 'Connection', 'Message', 'Agent'].map((label) => (
+              {[
+                '#',
+                'Contact',
+                'ICP / Profile',
+                outreachChannel === 'cold_calling' ? 'Outreach Status' : 'Connection',
+                outreachChannel === 'cold_calling' ? 'Answered Status' : 'Message',
+                'Agent',
+              ].map((label) => (
                 <th
                   key={label}
                   style={{
@@ -794,6 +838,7 @@ export const BulkAddLeadsPage = () => {
                 icpsList={icpsList}
                 profileUsersList={profileUsersList}
                 onUpdate={updateRow}
+                outreachChannel={outreachChannel}
               />
             ))}
           </tbody>
