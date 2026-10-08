@@ -95,6 +95,7 @@ export interface OrgMembership {
 }
 
 export interface User {
+  teamIds?: string[];
   _id: string;
   email: string;
   firstName?: string;

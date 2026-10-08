@@ -1,3 +1,4 @@
+import { combineTeamMembers } from '@/lib/teamRoster';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -41,7 +42,7 @@ import { ShiftDaySessions } from '@/components/attendance/ShiftDaySessions';
 import { AttendanceShiftCard } from '@/components/attendance/AttendanceShiftCard';
 import { useShiftHistory, useTeamAttendanceSummary } from '@/hooks/api/useShifts';
 import { useUsers } from '@/hooks/api/useUsers';
-import { useMyTeam } from '@/hooks/api/useTeam';
+import { useMyTeams } from '@/hooks/api/useTeam';
 import { useAuthStore } from '@/store/useAuthStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { format } from 'date-fns';
@@ -242,7 +243,10 @@ export const AttendancePage = () => {
     { limit: '500' },
     { enabled: showOrgDirectory }
   );
-  const { data: myTeam, isLoading: isTeamLoading } = useMyTeam({ enabled: showTeamDirectory });
+  const { data: myTeams, isLoading: isTeamLoading } = useMyTeams({ enabled: showTeamDirectory });
+  const myTeam = useMemo(() => {
+    return { members: combineTeamMembers(myTeams ?? []), managerId: undefined };
+  }, [myTeams]);
   const isDirectoryLoading = showOrgDirectory ? isUsersLoading : isTeamLoading;
   const { data: teamSummary, isLoading: isTeamSummaryLoading } = useTeamAttendanceSummary();
   const { data: userHistoryData, isLoading: isUserHistoryLoading } = useShiftHistory(

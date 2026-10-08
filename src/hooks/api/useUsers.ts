@@ -7,7 +7,7 @@ const userApi = {
   getUsers: (params: Record<string, string>) =>
     api.get<{ data: User[] }>('/users', { params }),
   getUser: (id: string) => api.get<{ data: User }>(`/users/${id}`),
-  createUser: (data: Partial<User> & { password?: string }) => api.post('/users', data),
+  createUser: (data: Partial<User> & { password?: string; targetTeamId?: string }) => api.post('/users', data),
   updateUser: ({ id, data }: { id: string; data: Partial<User> }) =>
     api.put(`/users/${id}`, data),
   deleteUser: (id: string) => api.delete(`/users/${id}`),

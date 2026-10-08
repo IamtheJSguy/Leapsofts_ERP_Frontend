@@ -13,7 +13,9 @@ export interface TeamMember {
   role: string;
   jobTitle?: string;
   department?: string;
-  teamId?: string;
+  teamIds?: string[];
+  baseOrganizationId?: string;
+  organizationId?: string;
   isActive?: boolean;
   permissions?: UserPermissions;
   shiftStart?: string;
@@ -41,12 +43,12 @@ export const useMyTeam = (options?: { enabled?: boolean }) => {
   });
 };
 
-export const useAvailableTeamMembers = (enabled = true) => {
+export const useAvailableTeamMembers = (enabled = true, teamId?: string) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
-    queryKey: ['teams', 'mine', 'available-members', organizationId],
+    queryKey: ['teams', 'mine', 'available-members', organizationId, teamId],
     queryFn: () =>
-      api.get<{ data: TeamMember[] }>('/teams/mine/available-members').then((r) => r.data.data),
+      api.get<{ data: TeamMember[] }>(teamId ? `/teams/${teamId}/available-members` : '/teams/mine/available-members').then((r) => r.data.data),
     enabled,
   });
 };
@@ -55,40 +57,50 @@ export const useCreateTeam = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => api.post<{ data: Team }>('/teams', { name }).then((r) => r.data.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams', 'mine'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams'] }),
   });
 };
 
-export const useUpdateTeam = () => {
+export const useUpdateTeam = (teamId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => api.patch<{ data: Team }>('/teams/mine', { name }).then((r) => r.data.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams', 'mine'] }),
+    mutationFn: (name: string) => api.patch<{ data: Team }>(teamId ? `/teams/${teamId}/name` : '/teams/mine', { name }).then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams'] }),
   });
 };
 
-export const useAddTeamMember = () => {
+export const useAddTeamMember = (teamId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) =>
-      api.post<{ data: Team }>('/teams/mine/members', { userId }).then((r) => r.data.data),
+      api.post<{ data: Team }>(teamId ? `/teams/${teamId}/members` : '/teams/mine/members', { userId }).then((r) => r.data.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['teams', 'mine', 'available-members'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
 };
 
-export const useRemoveTeamMember = () => {
+export const useRemoveTeamMember = (teamId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) =>
-      api.delete<{ data: Team }>(`/teams/mine/members/${userId}`).then((r) => r.data.data),
+      api.delete<{ data: Team }>(teamId ? `/teams/${teamId}/members/${userId}` : `/teams/mine/members/${userId}`).then((r) => r.data.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['teams', 'mine', 'available-members'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+  });
+};
+
+export const useMyTeams = (options?: { enabled?: boolean }) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['teams', 'mine', 'all', organizationId],
+    queryFn: () => api.get<{ data: Team[] }>('/teams/mine/all').then((r) => r.data.data),
+    retry: false,
+    enabled: options?.enabled,
   });
 };
