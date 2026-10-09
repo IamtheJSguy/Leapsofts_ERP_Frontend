@@ -1,7 +1,7 @@
 import { format, isSameDay, isToday, isYesterday, parseISO } from 'date-fns';
 import type { Message, MessageReplySnippet, User } from '@/types';
 
-export type TickStatus = 'sent' | 'delivered' | 'seen';
+export type TickStatus = 'pending' | 'sent' | 'delivered' | 'seen';
 
 /** Calendar-day key for grouping messages (local timezone). */
 export const getMessageDayKey = (date: string | Date | undefined): string | null => {
@@ -50,6 +50,7 @@ export const getTickStatus = (
   message: Message,
   otherParticipantIds: string[],
 ): TickStatus => {
+  if (message.isPending) return 'pending';
   if (!otherParticipantIds.length) return 'sent';
 
   const readBy = new Set(normalizeIdList(message.readBy));
@@ -59,6 +60,26 @@ export const getTickStatus = (
   if (otherParticipantIds.every((id) => deliveredTo.has(id))) return 'delivered';
 
   return 'sent';
+};
+
+export const toReplySnippet = (message: Message): MessageReplySnippet => {
+  const type: MessageReplySnippet['type'] =
+    message.type === 'drive_file'
+      ? 'drive_file'
+      : message.type === 'board_event'
+        ? 'board_event'
+        : message.type === 'file' || message.type === 'image'
+          ? 'file'
+          : 'text';
+  return {
+    _id: message._id,
+    content: message.content || '',
+    type,
+    senderId: message.senderId,
+    sender: typeof message.sender === 'object' ? message.sender : message.senderId,
+    driveFileName: message.driveFileName,
+    fileUrl: message.fileUrl,
+  };
 };
 
 export const resolveReplySnippet = (

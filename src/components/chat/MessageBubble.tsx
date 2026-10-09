@@ -31,6 +31,7 @@ import { LinkifiedText } from './LinkifiedText';
 import { FileMessage } from './FileMessage';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ReplyIcon from '@mui/icons-material/Reply';
 import AddReactionOutlinedIcon from '@mui/icons-material/AddReactionOutlined';
 import AddIcon from '@mui/icons-material/Add';
@@ -63,6 +64,9 @@ const getDriveFileIcon = (mimeType?: string): { icon: React.ReactNode; color: st
 
 const TickIcon = ({ status, isOwn }: { status: TickStatus; isOwn: boolean }) => {
   const baseColor = isOwn ? 'rgba(255,255,255,0.85)' : 'text.secondary';
+  if (status === 'pending') {
+    return <AccessTimeIcon sx={{ fontSize: 14, color: baseColor }} />;
+  }
   if (status === 'sent') {
     return <DoneIcon sx={{ fontSize: 14, color: baseColor }} />;
   }
@@ -309,10 +313,12 @@ export const MessageBubble = React.memo(({
             <Box
               component="button"
               type="button"
-              aria-label="Message info"
+              aria-label={message.isPending ? 'Sending' : 'Message info'}
+              disabled={message.isPending}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                if (message.isPending) return;
                 setInfoOpen(true);
               }}
               onMouseDown={(e) => e.stopPropagation()}
@@ -324,11 +330,11 @@ export const MessageBubble = React.memo(({
                 m: 0,
                 border: 'none',
                 background: 'transparent',
-                cursor: 'pointer',
+                cursor: message.isPending ? 'default' : 'pointer',
                 lineHeight: 0,
                 borderRadius: '4px',
                 opacity: 0.8,
-                '&:hover': { opacity: 1 },
+                '&:hover': { opacity: message.isPending ? 0.8 : 1 },
               }}
             >
               <TickIcon status={tickStatus} isOwn={false} />

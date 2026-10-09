@@ -6,9 +6,10 @@ import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { normalizeMessageReceipts } from '@/utils/chatMessageUtils';
+import { normalizeMessageReceipts, toReplySnippet } from '@/utils/chatMessageUtils';
 import {
   appendMessageToCache,
+  findMessageInCache,
   flattenMessagePages,
   mapMessageCache,
   messagesQueryKey,
@@ -223,6 +224,22 @@ const applySentMessageToCache = (
   }
 };
 
+const resolveOptimisticReplyTo = (
+  queryClient: QueryClient,
+  conversationId: string,
+  replyToId?: string,
+) => {
+  if (!replyToId) return undefined;
+  const queries = queryClient.getQueriesData<Message[] | MessagesInfiniteData>({
+    queryKey: ['messages', conversationId],
+  });
+  for (const [, data] of queries) {
+    const found = findMessageInCache(data, replyToId);
+    if (found) return toReplySnippet(found);
+  }
+  return undefined;
+};
+
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -235,6 +252,11 @@ export const useSendMessage = () => {
 
       const user = useAuthStore.getState().user;
       const tempId = `optimistic-${Date.now()}`;
+      const replyTo = resolveOptimisticReplyTo(
+        queryClient,
+        variables.conversationId,
+        variables.replyTo,
+      );
       const optimisticMessage: Message = {
         _id: tempId,
         conversationId: variables.conversationId,
@@ -251,6 +273,7 @@ export const useSendMessage = () => {
         createdAt: new Date().toISOString(),
         isPending: true,
         reactions: [],
+        ...(replyTo ? { replyTo } : {}),
       } as Message;
 
       queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
@@ -276,7 +299,9 @@ export const useSendMessage = () => {
                   );
               }
               return messages.map((m) =>
-                m._id === context?.tempId ? { ...m, ...realMessage, clientId: context?.tempId } : m
+                m._id === context?.tempId
+                  ? { ...m, ...realMessage, clientId: context?.tempId, isPending: false }
+                  : m,
               );
             });
           }
@@ -323,6 +348,11 @@ export const useSendChatImage = () => {
 
       const user = useAuthStore.getState().user;
       const tempId = `optimistic-${Date.now()}`;
+      const replyTo = resolveOptimisticReplyTo(
+        queryClient,
+        variables.conversationId,
+        variables.replyTo,
+      );
       const optimisticMessage: Message = {
         _id: tempId,
         conversationId: variables.conversationId,
@@ -334,6 +364,7 @@ export const useSendChatImage = () => {
         createdAt: new Date().toISOString(),
         isPending: true,
         reactions: [],
+        ...(replyTo ? { replyTo } : {}),
       } as Message;
 
       queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
@@ -359,7 +390,9 @@ export const useSendChatImage = () => {
                   );
               }
               return messages.map((m) =>
-                m._id === context?.tempId ? { ...m, ...realMessage, clientId: context?.tempId } : m
+                m._id === context?.tempId
+                  ? { ...m, ...realMessage, clientId: context?.tempId, isPending: false }
+                  : m,
               );
             });
           }
