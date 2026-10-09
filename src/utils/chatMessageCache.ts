@@ -26,6 +26,20 @@ export const flattenMessagePages = (data: MessagesInfiniteData | undefined): Mes
   return [...data.pages].reverse().flatMap((page) => page.messages);
 };
 
+export const findMessageInCache = (
+  data: MessagesInfiniteData | Message[] | undefined,
+  messageId: string,
+): Message | undefined => {
+  if (!data || !messageId) return undefined;
+  if (Array.isArray(data)) return data.find((m) => m._id === messageId);
+  if (!isMessagesInfiniteData(data)) return undefined;
+  for (const page of data.pages) {
+    const found = page.messages.find((m) => m._id === messageId);
+    if (found) return found;
+  }
+  return undefined;
+};
+
 /** True when the cached pages already include the conversation's lastMessage. */
 export const cacheIncludesLastMessage = (
   data: MessagesInfiniteData | Message[] | undefined,
