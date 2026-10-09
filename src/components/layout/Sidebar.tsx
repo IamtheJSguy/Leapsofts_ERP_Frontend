@@ -110,25 +110,29 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-const BrandMark = () => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-  return (
+const BrandMark = () => (
+  <Box
+    component="picture"
+    sx={{ width: 36, height: 36, flexShrink: 0, display: 'block', lineHeight: 0 }}
+  >
+    <source srcSet="/logo/leapsofts.webp" type="image/webp" />
     <Box
       component="img"
-      src={isDark ? '/logo/leapsofts-white.png' : '/logo/leapsofts.png'}
+      src="/logo/leapsofts.png"
       alt=""
       aria-hidden
+      width={36}
+      height={36}
       sx={{
         width: 36,
         height: 36,
         borderRadius: '8px',
         objectFit: 'contain',
-        flexShrink: 0,
+        display: 'block',
       }}
     />
-  );
-};
+  </Box>
+);
 
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();

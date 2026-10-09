@@ -1,3 +1,4 @@
+import { refreshSalesKpiQueries } from '@/utils/salesKpiRefresh';
 import { useEffect, useRef, useCallback } from 'react';
 import { connectSocket, disconnectSocket, getSocket } from '@/lib/socket';
 import { queryClient } from '@/lib/queryClient';
@@ -49,6 +50,7 @@ export const useSocket = () => {
           socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, { conversationId: activeConversationId });
           queryClient.invalidateQueries({ queryKey: ['messages', activeConversationId] });
         }
+        refreshSalesKpiQueries(queryClient);
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
         queryClient.invalidateQueries({ queryKey: ['org-entitlements'] });
         lastActivityEmit.current = 0;
@@ -64,6 +66,7 @@ export const useSocket = () => {
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
+        refreshSalesKpiQueries(queryClient);
         lastActivityEmit.current = 0;
         emitPresenceActivity();
       }
@@ -74,6 +77,8 @@ export const useSocket = () => {
     };
 
     document.addEventListener('visibilitychange', onVisibility);
+    const onFocus = () => refreshSalesKpiQueries(queryClient);
+    window.addEventListener('focus', onFocus);
     window.addEventListener('mousemove', onUserActivity, { passive: true });
     window.addEventListener('keydown', onUserActivity, { passive: true });
     window.addEventListener('click', onUserActivity, { passive: true });
@@ -82,6 +87,7 @@ export const useSocket = () => {
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
       window.removeEventListener('mousemove', onUserActivity);
       window.removeEventListener('keydown', onUserActivity);
       window.removeEventListener('click', onUserActivity);

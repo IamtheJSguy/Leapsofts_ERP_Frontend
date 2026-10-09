@@ -1,3 +1,4 @@
+import { refreshSalesKpiQueries } from '@/utils/salesKpiRefresh';
 import type { QueryClient } from '@tanstack/react-query';
 import { SOCKET_EVENTS } from '@/lib/constants';
 import type { Conversation, Message, MessageReaction, Notification, PresenceStatus, User } from '@/types';
@@ -9,9 +10,11 @@ import { getDisplayName } from '@/utils/formatters';
 import {
   appendMessageToCache,
   mapMessageCache,
+  messagesQueryKey,
   type MessagesInfiniteData,
 } from '@/utils/chatMessageCache';
 import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
+import { fetchMessagesPage } from '@/utils/fetchMessagesPage';
 
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -148,6 +151,12 @@ export const setupSocketEventHandlers = (
     }
   });
 
+  socket.on(SOCKET_EVENTS.SALES_KPI_PROGRESS_UPDATED, (data: unknown) => {
+    const payload = data as { organizationId?: string };
+    if (!payload?.organizationId || !belongsToActiveOrg(payload.organizationId)) return;
+    refreshSalesKpiQueries(queryClient);
+  });
+
   socket.on(SOCKET_EVENTS.SHIFT_UPDATED, () => {
     queryClient.invalidateQueries({ queryKey: ['shifts'] });
     queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -210,10 +219,38 @@ export const setupSocketEventHandlers = (
       socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, { conversationId });
     }
 
+    // Update any existing message queries for this conversation.
     queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
       { queryKey: ['messages', conversationId] },
       (old) => appendMessageToCache(old, message),
     );
+
+    // Unopened chats have no query yet — setQueriesData won't create one.
+    // Seed the canonical key so IndexedDB stays current before the user opens the chat.
+    if (conversationId) {
+      const organizationId = useAuthStore.getState().user?.organizationId;
+      const key = messagesQueryKey(conversationId, organizationId);
+      if (!queryClient.getQueryData(key)) {
+        queryClient.setQueryData(key, appendMessageToCache(undefined, message));
+        // Replace the one-message stub with the real latest page in the background.
+        void fetchMessagesPage(conversationId)
+          .then((page) => {
+            const hasIncoming = page.messages.some((m) => m._id === message._id);
+            queryClient.setQueryData(key, {
+              pages: [
+                {
+                  messages: hasIncoming ? page.messages : [...page.messages, message],
+                  hasMore: page.hasMore,
+                },
+              ],
+              pageParams: [undefined],
+            });
+          })
+          .catch(() => {
+            /* stub remains until warm/open fetch */
+          });
+      }
+    }
 
     queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return old;

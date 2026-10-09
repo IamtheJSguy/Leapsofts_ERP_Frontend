@@ -1,12 +1,15 @@
 import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import html2pdf from 'html2pdf.js';
 import api from '@/lib/axios';
 import { InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import type { InvoiceRecord, InvoiceBankAccount } from '@/types/invoice';
+import { lightTheme } from '@/styles/theme';
 
-/** A4 at 96dpi — matches Puppeteer viewport / on-screen preview width. */
+/** A4 at 96dpi — matches the on-screen preview width. */
 const A4_WIDTH_PX = 794;
-const A4_HEIGHT_PX = 1123;
+const A4_HEIGHT_PX = Math.floor(A4_WIDTH_PX * 297 / 210);
 
 const waitForImages = async (element: HTMLElement) => {
   const images = Array.from(element.querySelectorAll('img'));
@@ -28,46 +31,23 @@ const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   reader.readAsDataURL(blob);
 });
 
-const collectCss = () => {
-  let css = '';
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) css += `${rule.cssText}\n`;
-    } catch {
-      // Cross-origin sheets cannot be read. The print document loads its own font file.
-    }
-  }
-  return css;
-};
-
 /**
  * Print CSS for A4. Important: do NOT flex-grow every child — that stretches the
  * wave footer and leaves a blank gap under it. Templates pin the footer with mt:auto.
  */
 const INVOICE_PRINT_CSS = `
-@page { size: A4; margin: 0; }
-html, body {
-  margin: 0;
-  padding: 0;
-  background: #fff;
-  width: 210mm;
-}
-body {
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
 .invoice-print-frame {
-  width: 210mm;
-  min-height: 297mm;
+  width: 100%;
+  min-height: ${A4_HEIGHT_PX}px;
   margin: 0;
   padding: 0;
   background: #fff;
   box-sizing: border-box;
 }
 .invoice-print-frame > .invoice-print-sheet {
-  width: 210mm !important;
+  width: 100% !important;
   max-width: none !important;
-  min-height: 297mm !important;
+  min-height: ${A4_HEIGHT_PX}px !important;
   height: auto !important;
   display: flex !important;
   flex-direction: column !important;
@@ -116,15 +96,35 @@ const prepareClone = async (element: HTMLElement): Promise<HTMLElement> => {
   clone.style.flexDirection = 'column';
   clone.style.boxSizing = 'border-box';
   clone.style.background = '#FFFFFF';
+  clone.style.fontFamily = getComputedStyle(element).fontFamily;
   return clone;
 };
 
-const invoiceElementToHtml = async (element: HTMLElement): Promise<string> => {
-  const clone = await prepareClone(element);
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"><style>
-${collectCss()}
-${INVOICE_PRINT_CSS}
-</style></head><body><div class="invoice-print-frame">${clone.outerHTML}</div></body></html>`;
+// Fractional A4 rounding or bottom padding can produce an entirely blank last
+// page. Remove only complete blank trailing pages, retaining all invoice content.
+const trimBlankTrailingPages = (canvas: HTMLCanvasElement) => {
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  const pageHeight = Math.floor(canvas.width * 297 / 210);
+  let height = canvas.height;
+  while (height > pageHeight) {
+    const start = Math.floor((height - 1) / pageHeight) * pageHeight;
+    const pixels = context.getImageData(0, start, canvas.width, height - start).data;
+    let blank = true;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i + 3] && (pixels[i] < 250 || pixels[i + 1] < 250 || pixels[i + 2] < 250)) {
+        blank = false;
+        break;
+      }
+    }
+    if (!blank) break;
+    height = start;
+  }
+  if (height !== canvas.height) {
+    const content = context.getImageData(0, 0, canvas.width, height);
+    canvas.height = height;
+    context.putImageData(content, 0, 0);
+  }
 };
 
 const pdfOptions = {
@@ -133,14 +133,15 @@ const pdfOptions = {
   html2canvas: {
     scale: 2,
     useCORS: true,
-    allowTaint: true,
+    allowTaint: false,
     backgroundColor: '#ffffff',
     logging: false,
     width: A4_WIDTH_PX,
     windowWidth: A4_WIDTH_PX,
+    onrendered: trimBlankTrailingPages,
   },
   jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-  pagebreak: { mode: ['avoid-all', 'css', 'legacy'] as const },
+  pagebreak: { mode: ['css'] as const, avoid: ['[data-invoice-row]', '[data-invoice-block]'] },
 };
 
 /** Build an off-screen A4 frame so the wave footer pins to the bottom, then rasterize. */
@@ -149,9 +150,7 @@ const elementToPdfBlobInBrowser = async (element: HTMLElement): Promise<Blob> =>
   const frame = document.createElement('div');
   frame.className = 'invoice-print-frame';
   frame.style.cssText = [
-    'position:fixed',
-    'top:0',
-    'left:-10000px',
+    'position:relative',
     `width:${A4_WIDTH_PX}px`,
     `min-height:${A4_HEIGHT_PX}px`,
     'margin:0',
@@ -166,9 +165,13 @@ const elementToPdfBlobInBrowser = async (element: HTMLElement): Promise<Blob> =>
   style.textContent = INVOICE_PRINT_CSS;
   frame.appendChild(style);
   frame.appendChild(clone);
-  document.body.appendChild(frame);
+  const host = document.createElement('div');
+  host.style.cssText = `position:fixed;top:0;left:-10000px;width:${A4_WIDTH_PX}px`;
+  host.appendChild(frame);
+  document.body.appendChild(host);
 
   try {
+    await waitForImages(clone);
     // Let layout settle so margin-top:auto / flex pin the footer.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => setTimeout(resolve, 50));
@@ -177,34 +180,13 @@ const elementToPdfBlobInBrowser = async (element: HTMLElement): Promise<Blob> =>
     if (!(blob instanceof Blob) || blob.size < 100) {
       throw new Error('Could not render the invoice template to PDF.');
     }
+    if (blob.size > 12 * 1024 * 1024) {
+      throw new Error('Invoice PDF exceeds 12 MB. Use a smaller logo or fewer line items.');
+    }
     return blob;
   } finally {
-    frame.remove();
+    host.remove();
   }
-};
-
-const isPdfBlob = (blob: Blob) =>
-  blob.size > 100 && (blob.type === 'application/pdf' || blob.type === 'application/octet-stream' || !blob.type);
-
-/** Prefer sharp server PDF when Chrome is available; otherwise match template in-browser. */
-const htmlToPdfBlob = async (html: string, sourceElement: HTMLElement): Promise<Blob> => {
-  try {
-    const response = await api.post('/invoices/preview-pdf', { html }, {
-      responseType: 'blob',
-      timeout: 90000,
-      validateStatus: (status) => status >= 200 && status < 300,
-    });
-    const blob = response.data as Blob;
-    // API errors often arrive as JSON with content-type application/json.
-    const contentType = String(response.headers?.['content-type'] || blob.type || '');
-    if (contentType.includes('application/json')) {
-      throw new Error('Server PDF render failed');
-    }
-    if (isPdfBlob(blob)) return blob;
-  } catch {
-    // Heroku without Chrome buildpack, or local server offline — use browser export.
-  }
-  return elementToPdfBlobInBrowser(sourceElement);
 };
 
 const saveBlob = (blob: Blob, filename: string) => {
@@ -212,15 +194,16 @@ const saveBlob = (blob: Blob, filename: string) => {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 export const invoiceElementToPdfBlob = async (element: HTMLElement): Promise<Blob> => {
   // Prefer the first real template root inside wrappers.
-  const root = (element.querySelector(':scope > *') as HTMLElement | null) || element;
-  const html = await invoiceElementToHtml(root);
-  return htmlToPdfBlob(html, root);
+  const root = (element.querySelector(':scope > :not(style)') as HTMLElement | null) || element;
+  return elementToPdfBlobInBrowser(root);
 };
 
 export const exportInvoiceElementToPdf = async (
@@ -239,13 +222,14 @@ const mountPreview = async (data: InvoicePreviewData): Promise<{ container: HTML
   container.style.background = '#FFFFFF';
   document.body.appendChild(container);
   const root = createRoot(container);
-  await new Promise<void>((resolve) => {
+  flushSync(() => {
     root.render(
-      <div style={{ width: `${A4_WIDTH_PX}px`, background: '#FFFFFF' }}>
-        <InvoiceTemplatePreview data={data} />
-      </div>,
+      <ThemeProvider theme={lightTheme}>
+        <div style={{ width: `${A4_WIDTH_PX}px`, background: '#FFFFFF', fontFamily: lightTheme.typography.fontFamily }}>
+          <InvoiceTemplatePreview data={data} />
+        </div>
+      </ThemeProvider>,
     );
-    setTimeout(resolve, 400);
   });
   return { container, root };
 };
@@ -286,7 +270,7 @@ export const previewDataFromInvoice = (
       unitPrice: Number(line.unitPrice) || 0,
     })),
     taxRate: invoice.taxRate || 0,
-    banks: selectedBanks.map((bank) => ({
+    banks: (invoice.bankAccounts ?? selectedBanks).map((bank) => ({
       paymentTitle: bank.paymentTitle,
       bankName: bank.bankName,
       accountTitle: bank.accountTitle,
@@ -302,6 +286,22 @@ export const exportInvoiceRecordToPdf = async (
   availableBanks: InvoiceBankAccount[] = [],
   filename?: string,
 ): Promise<void> => {
+  if (invoice.status !== 'draft' && await downloadStoredInvoicePdf(invoice._id, filename || `invoice-${invoice.invoiceNumber || 'INV'}.pdf`)) return;
   const blob = await renderInvoicePreviewToBlob(previewDataFromInvoice(invoice, availableBanks));
   saveBlob(blob, filename || `invoice-${invoice.invoiceNumber || 'INV'}.pdf`);
+};
+
+/** Old invoices have no saved file; only that specific response permits a fresh render. */
+export const downloadStoredInvoicePdf = async (id: string, filename: string): Promise<boolean> => {
+  const response = await api.get(`/invoices/${id}/pdf`, {
+    responseType: 'blob',
+    validateStatus: (status) => (status >= 200 && status < 300) || status === 404,
+  });
+  if (response.status === 404) {
+    const error = JSON.parse(await (response.data as Blob).text());
+    if (error.error?.code === 'INVOICE_PDF_NOT_FOUND') return false;
+    throw new Error(error.error?.message || 'Invoice not found.');
+  }
+  saveBlob(response.data as Blob, filename);
+  return true;
 };

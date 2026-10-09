@@ -164,29 +164,27 @@ export const SalesPage = () => {
     if (boardId && projectId) navigate(`/projects/${projectId}/boards/${boardId}`);
   };
 
-  const handleUpdateLeadSuccess = () => {
+  const handleUpdateLeadSuccess = (_boardId?: string, _projectId?: string, saved?: Lead) => {
     const id = leadModalId;
     handleCloseLeadModal();
-    if (!id || !editingLeads[id]) return;
-    void api.get<{ data: Lead }>(`/leads/${id}`).then(({ data }) => {
-      const refreshed = buildEditDataFromProspect(data.data);
-      setEditingLeads((prev) => {
-        const current = prev[id];
-        if (!current) return prev;
-        return {
-          ...prev,
-          [id]: {
-            ...refreshed,
-            connectionStatus: current.connectionStatus,
-            messageStatus: current.messageStatus,
-            linkedinMsg: current.linkedinMsg,
-            futureLeadDate: current.futureLeadDate,
-            coldCalling: current.coldCalling,
-            leadComment: current.leadComment,
-          },
-        };
-      });
-    }).catch(() => undefined);
+    if (!id || !editingLeads[id] || !saved) return;
+    const refreshed = buildEditDataFromProspect(saved);
+    setEditingLeads((prev) => {
+      const current = prev[id];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [id]: {
+          ...refreshed,
+          connectionStatus: current.connectionStatus,
+          messageStatus: current.messageStatus,
+          linkedinMsg: current.linkedinMsg,
+          futureLeadDate: current.futureLeadDate,
+          coldCalling: current.coldCalling,
+          leadComment: current.leadComment,
+        },
+      };
+    });
   };
 
   const getCardTheme = (label: string) => {

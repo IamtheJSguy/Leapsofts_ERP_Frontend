@@ -1,17 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Grid,
   Box,
   Typography,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
   Chip,
-  CircularProgress
+  CircularProgress,
+  IconButton,
+  Collapse,
 } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
@@ -19,7 +15,10 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import { useAdminDashboard, useMyDashboardTasks } from '@/hooks/api/useDashboard';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { useMyDashboardTasks } from '@/hooks/api/useDashboard';
+import { useSalesPipelineStats, type SalesPipelineStats } from '@/hooks/api/useConnections';
 import { useTeamAnalysis } from '@/hooks/api/useAdminTeamDashboard';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +29,184 @@ import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
 import type { Meeting } from '@/types';
+
+type PipelineStat = {
+  label: string;
+  val: number;
+  sub?: string;
+  action?: 'scroll' | 'navigate';
+  target?: string;
+};
+
+const PIPELINE_EXPANDED_KEY = 'dashboard.pipelineExpanded';
+
+const readStoredExpanded = (): boolean => {
+  try {
+    return localStorage.getItem(PIPELINE_EXPANDED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const pctLabel = (rate?: number) => (typeof rate === 'number' ? `${rate}%` : undefined);
+
+/** Same LinkedIn funnel as Sales page (all-time, no date window). */
+const buildLinkedInStats = (stats?: SalesPipelineStats | null): PipelineStat[] => {
+  const rates = stats?.conversionRates;
+  return [
+    {
+      label: 'TOTAL LEADS',
+      val: stats?.totalProspects ?? 0,
+      action: 'scroll',
+      target: 'team-connections-split',
+    },
+    {
+      label: 'ACCEPTED',
+      val: stats?.acceptedConnections ?? 0,
+      sub: rates?.acceptRate !== undefined
+        ? `${rates.acceptRate}% of ${stats?.connectionsSent ?? 0} sent`
+        : undefined,
+      action: 'scroll',
+      target: 'team-connections-split',
+    },
+    {
+      label: 'MESSAGE SENT',
+      val: stats?.messageSent ?? 0,
+      sub: pctLabel(rates?.messageSentRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'IN CONVERSATION',
+      val: stats?.inConversation ?? stats?.messageStats?.in_conversation ?? 0,
+      sub: pctLabel(rates?.conversationRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'FOLLOW UP',
+      val: stats?.followUp ?? 0,
+      sub: pctLabel(rates?.followUpRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'NEGATIVE',
+      val: stats?.negative ?? 0,
+      sub: pctLabel(rates?.negativeRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'POSITIVE',
+      val: stats?.positive ?? 0,
+      sub: pctLabel(rates?.positiveRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+  ];
+};
+
+/** Collapsed dashboard row: unique leads across LinkedIn + cold calling. */
+const buildCollapsedUnifiedStats = (stats?: SalesPipelineStats | null): PipelineStat[] => {
+  const total = stats?.totalProspects ?? 0;
+  const u = stats?.unifiedSummary;
+  const rate = (n: number) => (total > 0 ? `${Math.round((n / total) * 100)}%` : undefined);
+  return [
+    {
+      label: 'TOTAL LEADS',
+      val: total,
+      action: 'scroll',
+      target: 'team-connections-split',
+    },
+    {
+      label: 'CONTACTED',
+      val: u?.contacted ?? 0,
+      sub: rate(u?.contacted ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'IN CONVERSATION',
+      val: u?.inConversation ?? 0,
+      sub: rate(u?.inConversation ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'FOLLOW UP',
+      val: u?.followUp ?? 0,
+      sub: rate(u?.followUp ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'POSITIVE',
+      val: u?.positive ?? 0,
+      sub: rate(u?.positive ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'NEGATIVE',
+      val: u?.negative ?? 0,
+      sub: rate(u?.negative ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+  ];
+};
+
+/** Same cold-calling funnel as Sales page (all-time, no date window). */
+const buildColdCallingStats = (stats?: SalesPipelineStats | null): PipelineStat[] => {
+  const cold = stats?.coldCalling;
+  const response = cold?.responseStats ?? {};
+  const rates = cold?.conversionRates;
+  const dialed = cold?.callsDialed ?? 0;
+  return [
+    {
+      label: 'TOTAL LEADS',
+      val: stats?.totalProspects ?? 0,
+      action: 'scroll',
+      target: 'team-connections-split',
+    },
+    {
+      label: 'DIALED',
+      val: dialed,
+      sub: pctLabel(rates?.dialedRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'IN CONVERSATION',
+      val: response.in_conversation ?? 0,
+      sub: pctLabel(rates?.conversationRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'FOLLOW UP',
+      val: cold?.followUps ?? 0,
+      sub: pctLabel(rates?.followUpRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'POSITIVE',
+      val: response.positive ?? 0,
+      sub: pctLabel(rates?.positiveRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'NEGATIVE',
+      val: response.negative ?? 0,
+      sub: pctLabel(rates?.negativeRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+  ];
+};
 
 const getUserTimeZone = (user?: any) =>
   user?.timezone ||
@@ -64,11 +241,13 @@ const formatTaskDate = (dateInput?: string | Date, timeZone?: string): string =>
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: pipelineOverview, isLoading: isPipelineOverviewLoading, refetch } = useAdminDashboard();
+  // Same source as Sales page funnel — all-time team pipeline (no date window)
+  const { data: pipelineStats, isLoading: isPipelineStatsLoading } = useSalesPipelineStats();
   const { data: teamAnalysis, isLoading: isTeamAnalysisLoading } = useTeamAnalysis('week');
   const { data: allMeetings = [] } = useMeetings();
   const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
   const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
+  const [pipelineExpanded, setPipelineExpanded] = useState(readStoredExpanded);
 
   const userTimeZone = useMemo(() => getUserTimeZone(user), [user]);
   const dashboardTasks = dashboardTasksData?.tasks ?? [];
@@ -89,8 +268,30 @@ export const AdminDashboard = () => {
     return { dueTasks: due, activeTasks: active };
   }, [dashboardTasks, userTimeZone]);
 
+  const linkedInStats = useMemo(() => buildLinkedInStats(pipelineStats), [pipelineStats]);
+  const coldCallingStats = useMemo(() => buildColdCallingStats(pipelineStats), [pipelineStats]);
+  const collapsedUnifiedStats = useMemo(
+    () => buildCollapsedUnifiedStats(pipelineStats),
+    [pipelineStats],
+  );
 
-  if (isPipelineOverviewLoading || isTeamAnalysisLoading) {
+  const handlePipelineExpandedToggle = useCallback(() => {
+    setPipelineExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(PIPELINE_EXPANDED_KEY, String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const handleStatClick = useCallback((stat: PipelineStat) => {
+    if (stat.action === 'scroll' && stat.target) {
+      document.getElementById(stat.target)?.scrollIntoView({ behavior: 'smooth' });
+    } else if (stat.action === 'navigate' && stat.target) {
+      navigate(stat.target);
+    }
+  }, [navigate]);
+
+  if (isPipelineStatsLoading || isTeamAnalysisLoading) {
     return (
       <Box className="animate-fade-in-up" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <ChartSkeleton height={180} />
@@ -108,75 +309,77 @@ export const AdminDashboard = () => {
 
   const upcomingDeadlines = teamAnalysis?.deadlines ?? [];
 
-  const pipelineStats = [
-    {
-      label: 'TOTAL LEADS',
-      val: pipelineOverview?.totalLeads ?? 0,
-      sub: pipelineOverview?.assignedReps
-        ? `${pipelineOverview.assignedReps} reps assigned`
-        : undefined,
-      action: 'scroll' as const,
-      target: 'team-connections-split',
-    },
-    {
-      label: 'ACCEPTED',
-      val: pipelineOverview?.connectionsAccepted ?? 0,
-      sub: pipelineOverview?.connectionsSent
-        ? `${pipelineOverview.acceptanceRate}% of ${pipelineOverview.connectionsSent} sent`
-        : undefined,
-      action: 'scroll' as const,
-      target: 'team-connections-split',
-    },
-    {
-      label: 'FOLLOW UPS',
-      val: pipelineOverview?.followUps ?? 0,
-      sub: pipelineOverview?.awaitingReply
-        ? `${pipelineOverview.awaitingReply} awaiting reply`
-        : undefined,
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-    {
-      label: 'CALLS DIALED',
-      val: pipelineOverview?.coldCalling?.callsDialed ?? 0,
-      sub: 'Cold calling outreach',
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-    {
-      label: 'CALL FOLLOW UPS',
-      val: pipelineOverview?.coldCalling?.followUps ?? 0,
-      sub: 'Cold calling responses',
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-    {
-      label: 'REPLIED',
-      val: (pipelineOverview?.replied ?? 0) + (pipelineOverview?.positive ?? 0),
-      sub: pipelineOverview?.replyRate ? `${pipelineOverview.replyRate}% reply rate` : undefined,
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-    {
-      label: 'NOT SENT',
-      val: pipelineOverview?.notSent ?? 0,
-      sub: pipelineOverview?.totalLeads
-        ? `${Math.round(((pipelineOverview.notSent ?? 0) / pipelineOverview.totalLeads) * 100)}% of pipeline`
-        : undefined,
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-    {
-      label: 'QUALIFIED',
-      val: pipelineOverview?.qualified ?? 0,
-      sub: pipelineOverview?.negative
-        ? `${pipelineOverview.negative} negative responses`
-        : undefined,
-      action: 'navigate' as const,
-      target: '/sales',
-    },
-  ];
-
+  const renderStatsGrid = (stats: PipelineStat[], keyPrefix: string) => (
+    <Grid container spacing={2.5}>
+      {stats.map((stat) => (
+        <Grid
+          item
+          xs={6}
+          sm={4}
+          md={stats.length > 6 ? true : 2}
+          key={`${keyPrefix}-${stat.label}`}
+          sx={stats.length > 6 ? { flexGrow: 1, maxWidth: { md: `${100 / stats.length}%` }, flexBasis: { md: 0 } } : undefined}
+        >          <Box
+            onClick={() => handleStatClick(stat)}
+            sx={{
+              p: 2.2,
+              borderRadius: '16px',
+              bgcolor: 'rgba(0,0,0,0.008)',
+              border: '1px solid rgba(0,0,0,0.015)',
+              cursor: stat.action ? 'pointer' : 'default',
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              height: '100%',
+              '&:hover': {
+                bgcolor: stat.action ? 'rgba(59, 130, 246, 0.04)' : 'rgba(0,0,0,0.015)',
+                borderColor: stat.action ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.03)',
+                transform: 'translateY(-1px)',
+                boxShadow: stat.action ? '0 6px 16px rgba(59, 130, 246, 0.08)' : '0 4px 12px rgba(0,0,0,0.01)'
+              }
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: tokens.text.muted,
+                fontWeight: 750,
+                letterSpacing: '0.08em',
+                fontSize: '0.62rem',
+                display: 'block',
+                mb: 0.5
+              }}
+            >
+              {stat.label}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: '1.4rem', sm: '1.8rem' },
+                fontWeight: 850,
+                color: tokens.text.primary,
+                lineHeight: 1,
+                letterSpacing: '-0.02em'
+              }}
+            >
+              {stat.val}
+            </Typography>
+            {stat.sub && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: tokens.text.muted,
+                  fontWeight: 600,
+                  mt: 0.5,
+                  display: 'block',
+                  fontSize: '0.68rem',
+                }}
+              >
+                {stat.sub}
+              </Typography>
+            )}
+          </Box>
+        </Grid>
+      ))}
+    </Grid>
+  );
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -227,13 +430,13 @@ export const AdminDashboard = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                Team pipeline · All leads
+                {pipelineExpanded ? 'Team pipeline · Both channels' : 'Team pipeline · Summary'}
               </Typography>
             </Box>
           </Box>
 
-          {/* Quick Actions Buttons */}
-          <Box sx={{ display: 'flex', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+          {/* Channel select + expand + Open Sales */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
               onClick={() => navigate('/sales')}
@@ -257,79 +460,86 @@ export const AdminDashboard = () => {
             >
               Open Sales ↗
             </Button>
+            <IconButton
+              onClick={handlePipelineExpandedToggle}
+              aria-label={pipelineExpanded ? 'Collapse pipeline overview' : 'Expand pipeline overview'}
+              size="small"
+              sx={{
+                ml: { xs: 'auto', sm: 0 },
+                color: tokens.text.secondary,
+                bgcolor: 'rgba(0,0,0,0.03)',
+                border: `1px solid ${tokens.surface.border}`,
+                borderRadius: '12px',
+                width: 34,
+                height: 34,
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.06)', color: tokens.brand.primary },
+              }}
+            >
+              {pipelineExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
           </Box>
         </Box>
 
-        {/* Inline statistics counters (Admin stats) - Soft UI card style */}
-        <Grid container spacing={2.5}>
-          {pipelineStats.map((stat) => (
-            <Grid item xs={6} sm={4} md={2} key={stat.label}>
-              <Box
-                onClick={() => {
-                  if (stat.action === 'scroll' && stat.target) {
-                    document.getElementById(stat.target)?.scrollIntoView({ behavior: 'smooth' });
-                  } else if (stat.action === 'navigate' && stat.target) {
-                    navigate(stat.target);
-                  }
-                }}
+        {/* Collapsed: single channel row */}
+        {!pipelineExpanded && (
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                mb: 1.25,
+                fontWeight: 750,
+                color: tokens.text.muted,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                fontSize: '0.68rem',
+              }}
+            >
+              All channels · unique leads
+            </Typography>
+            {renderStatsGrid(collapsedUnifiedStats, 'unified')}
+          </Box>
+        )}
+
+        {/* Expanded: LinkedIn then Cold calling stacked */}
+        <Collapse in={pipelineExpanded} timeout={280}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box>
+              <Typography
+                variant="caption"
                 sx={{
-                  p: 2.2,
-                  borderRadius: '16px',
-                  bgcolor: 'rgba(0,0,0,0.008)',
-                  border: '1px solid rgba(0,0,0,0.015)',
-                  cursor: stat.action ? 'pointer' : 'default',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  height: '100%',
-                  '&:hover': {
-                    bgcolor: stat.action ? 'rgba(59, 130, 246, 0.04)' : 'rgba(0,0,0,0.015)',
-                    borderColor: stat.action ? 'rgba(59, 130, 246, 0.15)' : 'rgba(0,0,0,0.03)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: stat.action ? '0 6px 16px rgba(59, 130, 246, 0.08)' : '0 4px 12px rgba(0,0,0,0.01)'
-                  }
+                  display: 'block',
+                  mb: 1.25,
+                  fontWeight: 750,
+                  color: tokens.text.muted,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  fontSize: '0.68rem',
                 }}
               >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: tokens.text.muted,
-                    fontWeight: 750,
-                    letterSpacing: '0.08em',
-                    fontSize: '0.62rem',
-                    display: 'block',
-                    mb: 0.5
-                  }}
-                >
-                  {stat.label}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: { xs: '1.4rem', sm: '1.8rem' },
-                    fontWeight: 850,
-                    color: tokens.text.primary,
-                    lineHeight: 1,
-                    letterSpacing: '-0.02em'
-                  }}
-                >
-                  {stat.val}
-                </Typography>
-                {stat.sub && (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: tokens.text.muted,
-                      fontWeight: 600,
-                      mt: 0.5,
-                      display: 'block',
-                      fontSize: '0.68rem',
-                    }}
-                  >
-                    {stat.sub}
-                  </Typography>
-                )}
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
+                LinkedIn reach
+              </Typography>
+              {renderStatsGrid(linkedInStats, 'linkedin')}
+            </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  mb: 1.25,
+                  fontWeight: 750,
+                  color: tokens.text.muted,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  fontSize: '0.68rem',
+                }}
+              >
+                Cold calling
+              </Typography>
+              {renderStatsGrid(coldCallingStats, 'cold')}
+            </Box>
+          </Box>
+        </Collapse>
       </Box>
 
       {/* 2. Tasks Overview, Upcoming Meetings & Deadlines Bento Grid */}
