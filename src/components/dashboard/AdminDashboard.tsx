@@ -4,11 +4,8 @@ import {
   Box,
   Typography,
   Button,
-  MenuItem,
   Chip,
   CircularProgress,
-  FormControl,
-  Select,
   IconButton,
   Collapse,
 } from '@mui/material';
@@ -33,8 +30,6 @@ import { TeamConnectionsSplitView } from './TeamConnectionsSplitView';
 import { MeetingDetailModal } from '@/components/meetings/MeetingDetailModal';
 import type { Meeting } from '@/types';
 
-type PipelineChannel = 'linkedin' | 'cold_calling';
-
 type PipelineStat = {
   label: string;
   val: number;
@@ -43,16 +38,7 @@ type PipelineStat = {
   target?: string;
 };
 
-const PIPELINE_CHANNEL_KEY = 'dashboard.pipelineChannel';
 const PIPELINE_EXPANDED_KEY = 'dashboard.pipelineExpanded';
-
-const readStoredChannel = (): PipelineChannel => {
-  try {
-    const raw = localStorage.getItem(PIPELINE_CHANNEL_KEY);
-    if (raw === 'linkedin' || raw === 'cold_calling') return raw;
-  } catch { /* ignore */ }
-  return 'linkedin';
-};
 
 const readStoredExpanded = (): boolean => {
   try {
@@ -115,6 +101,56 @@ const buildLinkedInStats = (stats?: SalesPipelineStats | null): PipelineStat[] =
       label: 'POSITIVE',
       val: stats?.positive ?? 0,
       sub: pctLabel(rates?.positiveRate),
+      action: 'navigate',
+      target: '/sales',
+    },
+  ];
+};
+
+/** Collapsed dashboard row: unique leads across LinkedIn + cold calling. */
+const buildCollapsedUnifiedStats = (stats?: SalesPipelineStats | null): PipelineStat[] => {
+  const total = stats?.totalProspects ?? 0;
+  const u = stats?.unifiedSummary;
+  const rate = (n: number) => (total > 0 ? `${Math.round((n / total) * 100)}%` : undefined);
+  return [
+    {
+      label: 'TOTAL LEADS',
+      val: total,
+      action: 'scroll',
+      target: 'team-connections-split',
+    },
+    {
+      label: 'CONTACTED',
+      val: u?.contacted ?? 0,
+      sub: rate(u?.contacted ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'IN CONVERSATION',
+      val: u?.inConversation ?? 0,
+      sub: rate(u?.inConversation ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'FOLLOW UP',
+      val: u?.followUp ?? 0,
+      sub: rate(u?.followUp ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'POSITIVE',
+      val: u?.positive ?? 0,
+      sub: rate(u?.positive ?? 0),
+      action: 'navigate',
+      target: '/sales',
+    },
+    {
+      label: 'NEGATIVE',
+      val: u?.negative ?? 0,
+      sub: rate(u?.negative ?? 0),
       action: 'navigate',
       target: '/sales',
     },
@@ -211,7 +247,6 @@ export const AdminDashboard = () => {
   const { data: allMeetings = [] } = useMeetings();
   const { data: dashboardTasksData, isLoading: isTasksLoading } = useMyDashboardTasks();
   const [selectedMeetingModal, setSelectedMeetingModal] = useState<Meeting | null>(null);
-  const [pipelineChannel, setPipelineChannel] = useState<PipelineChannel>(readStoredChannel);
   const [pipelineExpanded, setPipelineExpanded] = useState(readStoredExpanded);
 
   const userTimeZone = useMemo(() => getUserTimeZone(user), [user]);
@@ -235,11 +270,10 @@ export const AdminDashboard = () => {
 
   const linkedInStats = useMemo(() => buildLinkedInStats(pipelineStats), [pipelineStats]);
   const coldCallingStats = useMemo(() => buildColdCallingStats(pipelineStats), [pipelineStats]);
-
-  const handlePipelineChannelChange = useCallback((channel: PipelineChannel) => {
-    setPipelineChannel(channel);
-    try { localStorage.setItem(PIPELINE_CHANNEL_KEY, channel); } catch { /* ignore */ }
-  }, []);
+  const collapsedUnifiedStats = useMemo(
+    () => buildCollapsedUnifiedStats(pipelineStats),
+    [pipelineStats],
+  );
 
   const handlePipelineExpandedToggle = useCallback(() => {
     setPipelineExpanded((prev) => {
@@ -347,8 +381,6 @@ export const AdminDashboard = () => {
     </Grid>
   );
 
-  const channelLabel = pipelineChannel === 'cold_calling' ? 'Cold calling' : 'LinkedIn reach';
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {/* 1. Today in Pipeline Card (Team Admin Context) */}
@@ -398,32 +430,13 @@ export const AdminDashboard = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: tokens.text.primary, letterSpacing: '-0.01em' }}>
-                {pipelineExpanded ? 'Team pipeline · Both channels' : `Team pipeline · ${channelLabel}`}
+                {pipelineExpanded ? 'Team pipeline · Both channels' : 'Team pipeline · Summary'}
               </Typography>
             </Box>
           </Box>
 
           {/* Channel select + expand + Open Sales */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
-            {!pipelineExpanded && (
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <Select
-                  value={pipelineChannel}
-                  onChange={(e) => handlePipelineChannelChange(e.target.value as PipelineChannel)}
-                  sx={{
-                    height: 34,
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(0,0,0,0.015)',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: tokens.surface.border },
-                  }}
-                >
-                  <MenuItem value="linkedin" sx={{ fontSize: '0.8rem', fontWeight: 650 }}>LinkedIn reach</MenuItem>
-                  <MenuItem value="cold_calling" sx={{ fontSize: '0.8rem', fontWeight: 650 }}>Cold calling</MenuItem>
-                </Select>
-              </FormControl>
-            )}
             <Button
               variant="outlined"
               onClick={() => navigate('/sales')}
@@ -482,12 +495,9 @@ export const AdminDashboard = () => {
                 fontSize: '0.68rem',
               }}
             >
-              {channelLabel}
+              All channels · unique leads
             </Typography>
-            {renderStatsGrid(
-              pipelineChannel === 'cold_calling' ? coldCallingStats : linkedInStats,
-              pipelineChannel,
-            )}
+            {renderStatsGrid(collapsedUnifiedStats, 'unified')}
           </Box>
         )}
 

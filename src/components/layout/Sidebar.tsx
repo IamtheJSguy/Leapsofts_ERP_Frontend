@@ -112,20 +112,26 @@ const navGroups: NavGroup[] = [
 
 const BrandMark = () => (
   <Box
-    component="img"
-    src="/logo/leapsofts.png"
-    alt=""
-    aria-hidden
-    sx={{
-      width: 36,
-      height: 36,
-      borderRadius: '8px',
-      objectFit: 'contain',
-      flexShrink: 0,
-      
-      // boxShadow: `0 4px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
-    }}
-  />
+    component="picture"
+    sx={{ width: 36, height: 36, flexShrink: 0, display: 'block', lineHeight: 0 }}
+  >
+    <source srcSet="/logo/leapsofts.webp" type="image/webp" />
+    <Box
+      component="img"
+      src="/logo/leapsofts.png"
+      alt=""
+      aria-hidden
+      width={36}
+      height={36}
+      sx={{
+        width: 36,
+        height: 36,
+        borderRadius: '8px',
+        objectFit: 'contain',
+        display: 'block',
+      }}
+    />
+  </Box>
 );
 
 export const Sidebar = () => {
