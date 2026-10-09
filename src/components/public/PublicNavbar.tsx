@@ -25,6 +25,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { optimizeCloudinaryAvatarUrl } from '@/utils/cloudinaryUrl';
 
 const DRAWER_LINKS = [
   { label: 'Platform & Velocity', href: '#features' },
@@ -367,7 +368,7 @@ export const PublicNavbar = () => {
             onClick={() => navigate('/dashboard')}
             startIcon={
               <Avatar
-                src={user?.avatarUrl}
+                src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 48)}
                 sx={{
                   width: 24,
                   height: 24,
