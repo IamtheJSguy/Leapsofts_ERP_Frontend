@@ -110,23 +110,25 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-const BrandMark = () => (
-  <Box
-    component="img"
-    src="/logo/leapsofts.png"
-    alt=""
-    aria-hidden
-    sx={{
-      width: 36,
-      height: 36,
-      borderRadius: '8px',
-      objectFit: 'contain',
-      flexShrink: 0,
-      
-      // boxShadow: `0 4px 10px ${`color-mix(in srgb, ${tokens.brand.primary} 35%, transparent)`}`,
-    }}
-  />
-);
+const BrandMark = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  return (
+    <Box
+      component="img"
+      src={isDark ? '/logo/leapsofts-white.png' : '/logo/leapsofts.png'}
+      alt=""
+      aria-hidden
+      sx={{
+        width: 36,
+        height: 36,
+        borderRadius: '8px',
+        objectFit: 'contain',
+        flexShrink: 0,
+      }}
+    />
+  );
+};
 
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();

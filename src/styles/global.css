@@ -221,10 +221,8 @@ html {
   }
 }
 
-/* GPU-Accelerated Section Virtualization for 90 FPS Scrolling */
+/* Smooth Hardware-Accelerated Section Layering (No Layout Virtualization Jumps) */
 .section-gpu-accelerated {
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 700px;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
 }

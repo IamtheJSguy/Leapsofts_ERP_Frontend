@@ -47,29 +47,71 @@ export const PublicFooter = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
               <Box
                 component="img"
-                src="/logo/leapsofts.png"
+                src={isDark ? '/logo/leapsofts-white.png' : '/logo/leapsofts.png'}
                 alt="Leapsofts"
                 sx={{
                   width: 40,
                   height: 40,
                   borderRadius: '12px',
                   objectFit: 'contain',
-                  boxShadow: '0 4px 16px rgba(93, 26, 137, 0.3)',
+                  boxShadow: isDark
+                    ? '0 4px 16px rgba(168, 85, 247, 0.25)'
+                    : '0 4px 16px rgba(93, 26, 137, 0.3)',
                 }}
               />
               <Box>
                 <Typography
-                  variant="h6"
+                  component="div"
                   sx={{
-                    fontWeight: 850,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.1,
-                    color: isDark ? '#FFFFFF' : tokens.text.primary,
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    fontWeight: 900,
+                    fontSize: '1.2rem',
+                    letterSpacing: '-0.035em',
+                    lineHeight: 1.15,
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 0.2,
                   }}
                 >
-                  LEAPSOFTS ERP
+                  <Box component="span" sx={{ color: isDark ? '#FFFFFF' : '#1A1625' }}>
+                    Leap
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      background: isDark
+                        ? 'linear-gradient(135deg, #C084FC 0%, #A855F7 50%, #E879F9 100%)'
+                        : 'linear-gradient(135deg, #7B3DA8 0%, #9333EA 55%, #C026D3 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    softs
+                  </Box>
+                  <Box component="span" sx={{ color: '#FF7F11' }}>
+                    .
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: '0.66rem',
+                      fontWeight: 850,
+                      ml: 0.6,
+                      px: 0.7,
+                      py: 0.15,
+                      borderRadius: '999px',
+                      background: isDark
+                        ? 'linear-gradient(135deg, rgba(255, 127, 17, 0.18), rgba(168, 85, 247, 0.16))'
+                        : 'linear-gradient(135deg, rgba(255, 127, 17, 0.12), rgba(93, 26, 137, 0.1))',
+                      color: isDark ? '#FFA756' : '#E66D00',
+                      border: '1px solid',
+                      borderColor: isDark ? 'rgba(255, 127, 17, 0.35)' : 'rgba(255, 127, 17, 0.28)',
+                    }}
+                  >
+                    ERP
+                  </Box>
                 </Typography>
-                <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'text.secondary', fontWeight: 600 }}>
+                <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.55)' : 'text.secondary', fontWeight: 650 }}>
                   Enterprise Operating System
                 </Typography>
               </Box>
@@ -242,6 +284,7 @@ export const PublicFooter = () => {
                   key={item.label}
                   component={Link}
                   to={item.path}
+                  onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
                   underline="none"
                   sx={{
                     color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'text.secondary',
@@ -274,8 +317,17 @@ export const PublicFooter = () => {
                   Enterprise Grade Security
                 </Typography>
               </Box>
-              <Typography variant="caption" color={isDark ? 'rgba(255, 255, 255, 0.5)' : 'text.secondary'} display="block" fontSize="0.72rem">
+              <Typography variant="caption" color={isDark ? 'rgba(255, 255, 255, 0.5)' : 'text.secondary'} display="block" fontSize="0.72rem" sx={{ mb: 1 }}>
                 2FA/TOTP enforced, TLS 1.3 encryption, and GDPR compliant telemetry consent.
+              </Typography>
+              <Typography variant="caption" sx={{ color: isDark ? '#E9D5FF' : tokens.brand.primaryDark, fontWeight: 700, fontSize: '0.74rem', display: 'block' }}>
+                Contact:{' '}
+                <a
+                  href="mailto:contact@leapsofts.com"
+                  style={{ color: tokens.brand.accent, textDecoration: 'none', fontWeight: 750 }}
+                >
+                  contact@leapsofts.com
+                </a>
               </Typography>
             </Box>
           </Grid>
@@ -309,6 +361,7 @@ export const PublicFooter = () => {
             <MuiLink
               component={Link}
               to="/privacy"
+              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
               underline="none"
               sx={{
                 color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'text.secondary',
@@ -321,6 +374,7 @@ export const PublicFooter = () => {
             <MuiLink
               component={Link}
               to="/terms"
+              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
               underline="none"
               sx={{
                 color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'text.secondary',
