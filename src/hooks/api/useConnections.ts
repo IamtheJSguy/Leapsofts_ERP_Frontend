@@ -37,6 +37,13 @@ export interface SalesPipelineStats {
     qualifiedRate?: number;
   };
   messageStats?: Record<string, number>;
+  unifiedSummary?: {
+    contacted: number;
+    inConversation: number;
+    followUp: number;
+    positive: number;
+    negative: number;
+  };
   coldCalling: {
     outreachStats: Record<string, number>;
     responseStats: Record<string, number>;
