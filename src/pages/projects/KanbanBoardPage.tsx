@@ -36,6 +36,9 @@ import LinkIcon from '@mui/icons-material/Link';
 import EventIcon from '@mui/icons-material/Event';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import { tokens } from '@/styles/tokens';
 import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
@@ -86,6 +89,7 @@ import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
+import { TransferCopyCardDialog } from '@/components/kanban/TransferCopyCardDialog';
 
 const getLinkHostname = (url: string) => {
   try {
@@ -2059,6 +2063,30 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 <DeleteIcon fontSize="small" />
               </IconButton>
             )}
+            {isSalesBoard && canEdit && (
+              <>
+                <IconButton onClick={handleCardMenuOpen} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+                <Menu
+                  anchorEl={cardMenuAnchor}
+                  open={Boolean(cardMenuAnchor)}
+                  onClose={handleCardMenuClose}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  PaperProps={{ sx: { borderRadius: '12px', minWidth: 180, mt: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+                >
+                  <MenuItem onClick={() => { handleCardMenuClose(); setTransferDialogOpen(true); }}>
+                    <ListItemIcon><DriveFileMoveIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Transfer to Board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+                  </MenuItem>
+                  <MenuItem onClick={() => { handleCardMenuClose(); setCopyDialogOpen(true); }}>
+                    <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Copy to Board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+                  </MenuItem>
+                </Menu>
+              </>
+            )}
             <IconButton onClick={onClose} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
               <CloseIcon fontSize="small" />
             </IconButton>
@@ -3189,6 +3217,22 @@ export const KanbanBoardPage = () => {
 
   // Rename Column Dialog
   const [isRenameColumnOpen, setIsRenameColumnOpen] = useState(false);
+
+  // Transfer & Copy Card Dialogs
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const isSalesBoard = board?.category === 'sales';
+
+  const { mutateAsync: transferCardMutate } = useTransferCard(activeBoardId);
+  const { mutateAsync: copyCardMutate } = useCopyCard(activeBoardId);
+
+  const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setCardMenuAnchor(event.currentTarget);
+  };
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
   const [renameColumnText, setRenameColumnText] = useState('');
 
   // Direct Card Creation Dialog
@@ -4488,6 +4532,44 @@ export const KanbanBoardPage = () => {
           />
         );
       })()}
+
+      {/* Transfer & Copy Dialogs */}
+      {board && activeCardData && isSalesBoard && (
+        <>
+          <TransferCopyCardDialog
+            open={transferDialogOpen}
+            onClose={() => setTransferDialogOpen(false)}
+            title="Transfer Card"
+            submitLabel="Transfer"
+            sourceBoard={board}
+            cardAssigneeIds={activeCardData.assignedTo || []}
+            onSubmit={async (targetBoardId, targetColumnId) => {
+              const res = await transferCardMutate({
+                cardId: activeCardData._id,
+                data: { targetBoardId, targetColumnId }
+              });
+              onCloseCardDrawer();
+              return res;
+            }}
+          />
+          <TransferCopyCardDialog
+            open={copyDialogOpen}
+            onClose={() => setCopyDialogOpen(false)}
+            title="Copy Card"
+            submitLabel="Copy"
+            sourceBoard={board}
+            cardAssigneeIds={activeCardData.assignedTo || []}
+            onSubmit={async (targetBoardId, targetColumnId) => {
+              const res = await copyCardMutate({
+                cardId: activeCardData._id,
+                data: { targetBoardId, targetColumnId }
+              });
+              onCloseCardDrawer();
+              return res;
+            }}
+          />
+        </>
+      )}
     </Box>
   );
 };
