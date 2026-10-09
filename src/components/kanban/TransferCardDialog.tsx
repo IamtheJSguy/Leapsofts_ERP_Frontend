@@ -8,7 +8,7 @@ import { useSalesBoards } from '@/hooks/api/useKanban';
 import type { KanbanBoard } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 
-interface TransferCopyCardDialogProps {
+interface TransferCardDialogProps {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -18,7 +18,7 @@ interface TransferCopyCardDialogProps {
   onSubmit: (targetBoardId: string, targetColumnId: string) => Promise<any>;
 }
 
-export const TransferCopyCardDialog: React.FC<TransferCopyCardDialogProps> = ({
+export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
   open,
   onClose,
   title,

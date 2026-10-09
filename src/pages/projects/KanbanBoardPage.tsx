@@ -89,7 +89,7 @@ import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
-import { TransferCopyCardDialog } from '@/components/kanban/TransferCopyCardDialog';
+import { TransferCardDialog } from '@/components/kanban/TransferCardDialog';
 
 const getLinkHostname = (url: string) => {
   try {
@@ -2080,10 +2080,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     <ListItemIcon><DriveFileMoveIcon fontSize="small" /></ListItemIcon>
                     <ListItemText primary="Transfer to Board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
                   </MenuItem>
-                  <MenuItem onClick={() => { handleCardMenuClose(); setCopyDialogOpen(true); }}>
-                    <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Copy to Board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
-                  </MenuItem>
+
                 </Menu>
               </>
             )}
@@ -3220,12 +3217,10 @@ export const KanbanBoardPage = () => {
 
   // Transfer & Copy Card Dialogs
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
   const isSalesBoard = board?.category === 'sales';
 
   const { mutateAsync: transferCardMutate } = useTransferCard(activeBoardId);
-  const { mutateAsync: copyCardMutate } = useCopyCard(activeBoardId);
 
   const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setCardMenuAnchor(event.currentTarget);
@@ -4536,7 +4531,7 @@ export const KanbanBoardPage = () => {
       {/* Transfer & Copy Dialogs */}
       {board && activeCardData && isSalesBoard && (
         <>
-          <TransferCopyCardDialog
+          <TransferCardDialog
             open={transferDialogOpen}
             onClose={() => setTransferDialogOpen(false)}
             title="Transfer Card"
@@ -4545,22 +4540,6 @@ export const KanbanBoardPage = () => {
             cardAssigneeIds={activeCardData.assignedTo || []}
             onSubmit={async (targetBoardId, targetColumnId) => {
               const res = await transferCardMutate({
-                cardId: activeCardData._id,
-                data: { targetBoardId, targetColumnId }
-              });
-              onCloseCardDrawer();
-              return res;
-            }}
-          />
-          <TransferCopyCardDialog
-            open={copyDialogOpen}
-            onClose={() => setCopyDialogOpen(false)}
-            title="Copy Card"
-            submitLabel="Copy"
-            sourceBoard={board}
-            cardAssigneeIds={activeCardData.assignedTo || []}
-            onSubmit={async (targetBoardId, targetColumnId) => {
-              const res = await copyCardMutate({
                 cardId: activeCardData._id,
                 data: { targetBoardId, targetColumnId }
               });
