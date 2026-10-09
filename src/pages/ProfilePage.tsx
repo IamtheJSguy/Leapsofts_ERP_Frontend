@@ -56,6 +56,7 @@ import { tokens } from '@/styles/tokens';
 import { getDisplayName } from '@/utils/formatters';
 import { changePasswordSchema } from '@/utils/validators';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
+import { optimizeCloudinaryAvatarUrl } from '@/utils/cloudinaryUrl';
 
 export default function ProfilePage() {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -435,7 +436,7 @@ export default function ProfilePage() {
             onChange={handleAvatarChange}
           />
           <Avatar
-            src={user?.avatarUrl}
+            src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 192)}
             sx={{
               width: 84,
               height: 84,

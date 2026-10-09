@@ -40,6 +40,7 @@ import { useSwitchOrganization } from '@/hooks/api/useAuth';
 import { countConversationsWithUnread } from '@/utils/chatUnreadUtils';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
+import { optimizeCloudinaryAvatarUrl } from '@/utils/cloudinaryUrl';
 
 const DRAWER_WIDTH = 260;
 
@@ -460,7 +461,7 @@ export const Sidebar = () => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
           <Avatar
-            src={user?.avatarUrl}
+            src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 64)}
             sx={{
               width: 32,
               height: 32,

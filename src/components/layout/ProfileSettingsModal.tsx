@@ -18,6 +18,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import { showApiError } from '@/utils/apiError';
+import { optimizeCloudinaryAvatarUrl } from '@/utils/cloudinaryUrl';
 
 interface ProfileSettingsModalProps {
   open: boolean;
@@ -118,7 +119,7 @@ export const ProfileSettingsModal = ({ open, onClose }: ProfileSettingsModalProp
                   '&:hover .avatar-upload-overlay': { opacity: 1 },
                 }}
               >
-                <Avatar src={user?.avatarUrl} sx={{ width: 64, height: 64, fontWeight: 700 }}>
+                <Avatar src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 128)} sx={{ width: 64, height: 64, fontWeight: 700 }}>
                   {(user?.firstName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
                 </Avatar>
                 <Box
