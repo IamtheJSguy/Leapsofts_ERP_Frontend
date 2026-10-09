@@ -5,12 +5,14 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import SparklesIcon from '@mui/icons-material/AutoAwesome';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import { useNavigate } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
 import { useAuthStore } from '@/store/useAuthStore';
 import { RealErpShowcaseWindow } from './showcase/RealErpShowcaseWindow';
 import { ScrollReveal } from './scroll/ScrollReveal';
+import { FlipCalendarWord } from './FlipCalendarWord';
+import { TypingOperatingSystem } from './TypingOperatingSystem';
 
 export const HeroSection = () => {
   const theme = useTheme();
@@ -48,57 +50,7 @@ export const HeroSection = () => {
               mb: 3,
             }}
           >
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 1.25,
-              px: 2.25,
-              py: 0.75,
-              borderRadius: '999px',
-              bgcolor: isDark ? 'rgba(93, 26, 137, 0.22)' : 'rgba(93, 26, 137, 0.08)',
-              border: '1px solid',
-              borderColor: isDark ? 'rgba(168, 85, 247, 0.35)' : 'rgba(93, 26, 137, 0.2)',
-              boxShadow: '0 4px 20px rgba(93, 26, 137, 0.15)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-1px)',
-                borderColor: tokens.brand.accent,
-              },
-            }}
-          >
-            <SparklesIcon sx={{ fontSize: 16, color: tokens.brand.accent }} />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 750,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                fontSize: '0.74rem',
-                color: isDark ? '#E9D5FF' : tokens.brand.primaryDark,
-              }}
-            >
-              Enterprise Operating System v2.0
-            </Typography>
-            <Box
-              sx={{
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                bgcolor: tokens.brand.accent,
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 650,
-                fontSize: '0.74rem',
-                color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary',
-              }}
-            >
-              All Modules Integrated
-            </Typography>
-            </Box>
+            <TypingOperatingSystem isDark={isDark} />
           </Box>
         </ScrollReveal>
 
@@ -110,7 +62,7 @@ export const HeroSection = () => {
               sx={{
                 fontWeight: 850,
                 fontSize: { xs: '2.4rem', sm: '3.6rem', md: '4.4rem' },
-                lineHeight: { xs: 1.15, sm: 1.1 },
+                lineHeight: { xs: 1.18, sm: 1.12 },
                 letterSpacing: { xs: '-0.03em', md: '-0.04em' },
                 color: isDark ? '#FFFFFF' : '#14111B',
                 mb: 2.5,
@@ -126,7 +78,12 @@ export const HeroSection = () => {
                   display: 'inline-block',
                 }}
               >
-                Automate Finance.
+                Empower{' '}
+                <FlipCalendarWord
+                  words={['Operations', 'Workflows', 'Execution', 'Performance', 'Delivery']}
+                  intervalMs={2800}
+                />
+                .
               </Box>
               <br />
               Orchestrate Your Entire Team.
@@ -143,7 +100,7 @@ export const HeroSection = () => {
                 fontWeight: 450,
               }}
             >
-              The unified enterprise platform bridging LinkedIn & cold outbound CRM, multi-currency invoicing, departmental Kanban boards, and real-time shift telemetry into a single, high-velocity workspace.
+              The unified enterprise platform bridging LinkedIn & cold outbound CRM, automated daily KPI tracking, departmental Kanban boards, and real-time shift telemetry into a single, high-velocity workspace.
             </Typography>
           </Box>
         </ScrollReveal>
@@ -163,23 +120,30 @@ export const HeroSection = () => {
             <Button
               variant="contained"
               onClick={handlePrimaryClick}
-              endIcon={<ArrowForwardIcon />}
+              startIcon={!isAuthenticated ? <AutoAwesomeOutlinedIcon sx={{ fontSize: 18, color: '#FFD79E' }} /> : undefined}
+              endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: 18 }} />}
               sx={{
                 width: { xs: '100%', sm: 'auto' },
                 px: 4,
-                py: 1.6,
+                py: 1.5,
                 fontSize: '1rem',
                 fontWeight: 800,
                 borderRadius: '999px',
-                bgcolor: tokens.brand.primary,
+                background: 'linear-gradient(135deg, #7C3AED 0%, #581C87 50%, #3B0764 100%)',
                 color: '#FFFFFF',
                 boxShadow: '0 8px 32px rgba(93, 26, 137, 0.45)',
                 textTransform: 'none',
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                '& .btn-arrow': {
+                  transition: 'transform 0.2s ease',
+                },
                 '&:hover': {
-                  bgcolor: tokens.brand.primaryLight,
+                  background: 'linear-gradient(135deg, #8B5CF6 0%, #6B21A8 50%, #4C1D95 100%)',
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 12px 40px rgba(93, 26, 137, 0.65)',
+                  boxShadow: '0 12px 40px rgba(124, 58, 237, 0.65)',
+                  '& .btn-arrow': {
+                    transform: 'translateX(4px)',
+                  },
                 },
               }}
             >

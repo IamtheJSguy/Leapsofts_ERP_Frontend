@@ -121,49 +121,50 @@ export const SecurityComplianceSection = () => {
                   height: '100%',
                   p: { xs: 3, md: 3.5 },
                   borderRadius: '24px',
-                bgcolor: isDark ? 'rgba(255, 255, 255, 0.025)' : 'rgba(255, 255, 255, 0.65)',
-                backgroundImage: isDark
-                  ? `radial-gradient(circle at 15% 15%, ${pillar.ambientGlow} 0%, transparent 65%)`
-                  : `radial-gradient(circle at 15% 15%, ${pillar.ambientGlow} 0%, transparent 60%)`,
-                border: '1px solid',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(93, 26, 137, 0.09)',
-                boxShadow: isDark
-                  ? '0 16px 40px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
-                  : '0 16px 40px -15px rgba(93, 26, 137, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(16px)',
-                position: 'relative',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                transform: 'translate3d(0, 0, 0)',
-                backfaceVisibility: 'hidden',
-                willChange: 'transform',
-                transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                // Hardware-Accelerated Sweeping Shimmer Beam on Top Edge
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '60%',
-                  height: '2px',
-                  background: `linear-gradient(90deg, transparent, ${pillar.color}, #FFFFFF, ${pillar.color}, transparent)`,
-                  animation: `shimmerSweep ${4 + idx * 0.4}s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
-                  willChange: 'transform',
-                  pointerEvents: 'none',
-                },
-                '&:hover': {
-                  transform: 'translateY(-6px)',
-                  borderColor: pillar.color,
+                  bgcolor: isDark ? 'rgba(23, 18, 32, 0.92)' : 'rgba(255, 255, 255, 0.9)',
+                  backgroundImage: isDark
+                    ? `radial-gradient(circle at 15% 15%, ${pillar.ambientGlow} 0%, transparent 65%)`
+                    : `radial-gradient(circle at 15% 15%, ${pillar.ambientGlow} 0%, transparent 60%)`,
+                  border: '1px solid',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(93, 26, 137, 0.09)',
                   boxShadow: isDark
-                    ? `0 24px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px -8px ${pillar.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
-                    : `0 24px 45px -12px rgba(93, 26, 137, 0.15), 0 0 30px -8px ${pillar.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 1)`,
-                  '& .pillar-icon-badge': {
-                    transform: 'scale(1.08)',
-                    boxShadow: `0 8px 24px -4px ${pillar.color}70`,
+                    ? '0 16px 40px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
+                    : '0 16px 40px -15px rgba(93, 26, 137, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
+                  // Light beam on top edge: sweeps across on hover
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '60%',
+                    height: '2px',
+                    background: `linear-gradient(90deg, transparent, ${pillar.color}, #FFFFFF, ${pillar.color}, transparent)`,
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    transform: 'translate3d(-100%, 0, 0)',
+                    transition: 'opacity 0.2s ease',
                   },
-                },
-              }}
+                  '&:hover': {
+                    transform: 'translateY(-6px)',
+                    borderColor: pillar.color,
+                    boxShadow: isDark
+                      ? `0 24px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px -8px ${pillar.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+                      : `0 24px 45px -12px rgba(93, 26, 137, 0.15), 0 0 30px -8px ${pillar.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 1)`,
+                    '&::after': {
+                      opacity: 1,
+                      animation: 'shimmerSweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) 1',
+                    },
+                    '& .pillar-icon-badge': {
+                      transform: 'scale(1.08)',
+                      boxShadow: `0 8px 24px -4px ${pillar.color}70`,
+                    },
+                  },
+                }}
             >
               {/* Header inside card: Icon badge and mini badge chip */}
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>

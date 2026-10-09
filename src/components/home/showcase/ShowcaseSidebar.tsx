@@ -9,6 +9,7 @@ import {
   ListItemText,
   Avatar,
   IconButton,
+  useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ChecklistIcon from '@mui/icons-material/Checklist';
@@ -52,6 +53,9 @@ interface NavGroup {
 }
 
 export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, onSelectPage }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   const navGroups: NavGroup[] = [
     {
       title: 'WORKSPACE',
@@ -103,9 +107,14 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: '#191522',
+        background: isDark
+          ? 'linear-gradient(180deg, #131117 0%, #1a1721 65%, #0f0d12 100%)'
+          : 'linear-gradient(180deg, #1c1825 0%, #24202e 65%, #18151f 100%)',
         color: '#E8E4EF',
-        borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+        borderRight: isDark
+          ? '1px solid rgba(255, 255, 255, 0.05)'
+          : '1px solid rgba(0, 0, 0, 0.08)',
+        transition: 'background 0.25s ease, border-color 0.25s ease',
         userSelect: 'none',
       }}
     >
@@ -124,7 +133,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
         >
           <Box
             component="img"
-            src="/logo/leapsofts.png"
+            src="/logo/leapsofts-white.png"
             alt="Leapsofts"
             sx={{ width: 22, height: 22, borderRadius: '5px', objectFit: 'contain' }}
           />
@@ -177,7 +186,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
                 fontWeight: 750,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                color: 'rgba(255, 255, 255, 0.3)',
+                color: 'rgba(255, 255, 255, 0.32)',
               }}
             >
               {group.title}
@@ -195,14 +204,18 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
                         py: 0.45,
                         px: 1,
                         color: isSelected ? '#FFFFFF' : 'rgba(232, 228, 239, 0.65)',
-                        bgcolor: isSelected ? 'rgba(93, 26, 137, 0.35)' : 'transparent',
+                        bgcolor: isSelected
+                          ? 'rgba(93, 26, 137, 0.28)'
+                          : 'transparent',
                         border: '1px solid',
-                        borderColor: isSelected ? 'rgba(168, 85, 247, 0.35)' : 'transparent',
+                        borderColor: isSelected
+                          ? 'rgba(168, 85, 247, 0.35)'
+                          : 'transparent',
                         transition: 'all 0.15s ease',
                         cursor: 'pointer',
                         '&:hover': {
                           bgcolor: isSelected
-                            ? 'rgba(93, 26, 137, 0.45)'
+                            ? 'rgba(93, 26, 137, 0.38)'
                             : 'rgba(255, 255, 255, 0.05)',
                           color: '#FFFFFF',
                         },
@@ -242,7 +255,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: 'rgba(0, 0, 0, 0.25)',
+          bgcolor: isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.12)',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.9, minWidth: 0 }}>
@@ -262,20 +275,37 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
             <Typography
-              sx={{ color: '#FFFFFF', fontWeight: 750, fontSize: '0.7rem', lineHeight: 1.15 }}
+              sx={{
+                color: '#FFFFFF',
+                fontWeight: 750,
+                fontSize: '0.7rem',
+                lineHeight: 1.15,
+              }}
               noWrap
             >
               Huzaifa Rasheed
             </Typography>
             <Typography
-              sx={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.58rem', display: 'block' }}
+              sx={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: '0.58rem',
+                display: 'block',
+              }}
               noWrap
             >
               huzaifa@leapsofts.com
             </Typography>
           </Box>
         </Box>
-        <IconButton size="small" sx={{ color: 'rgba(255, 255, 255, 0.45)', p: 0.25 }}>
+        <IconButton
+          size="small"
+          sx={{
+            color: 'rgba(255, 255, 255, 0.45)',
+            p: 0.25,
+            transition: 'color 0.2s',
+            '&:hover': { color: '#FFFFFF' },
+          }}
+        >
           <SettingsOutlinedIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Box>

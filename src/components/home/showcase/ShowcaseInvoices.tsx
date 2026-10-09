@@ -98,7 +98,7 @@ export const ShowcaseInvoices = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 0.5 }}>
               <Box
                 component="img"
-                src="/logo/leapsofts.png"
+                src={isDark ? '/logo/leapsofts-white.png' : '/logo/leapsofts.png'}
                 alt="Leapsofts"
                 sx={{ width: 34, height: 34, borderRadius: '8px' }}
               />
