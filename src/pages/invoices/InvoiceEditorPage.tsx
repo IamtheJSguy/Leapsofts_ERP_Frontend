@@ -40,32 +40,11 @@ import { useInvoiceLeave } from '@/components/invoices/InvoiceLeaveGuard';
 import { InvoiceTemplatePicker, InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import { InvoiceSendConfirmModal } from '@/components/invoices/InvoiceSendConfirmModal';
 import { InvoiceDisputeModal } from '@/components/invoices/InvoiceDisputeModal';
-import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings, useInvoices } from '@/hooks/api/useInvoices';
+import { useInvoice, useInvoiceClients, useInvoiceMutations, useInvoiceSettings, useInvoices, checkInvoiceNumberApi } from '@/hooks/api/useInvoices';
 import { showApiError, useApiErrorToast } from '@/utils/apiError';
 import { useUIStore } from '@/store/useUIStore';
 
-const generateNextInvoiceNumber = (invoices: any[], targetClientId?: string, targetIssueDate?: string) => {
-  const year = targetIssueDate ? new Date(targetIssueDate).getFullYear() : new Date().getFullYear();
-  const format = `${year}-`;
 
-  if (!targetClientId || !invoices?.length) return `${format}001`;
-
-  const clientInvoices = invoices.filter((inv) => inv.clientId === targetClientId);
-  if (clientInvoices.length === 0) return `${format}001`;
-
-  // Most recently created invoice for this client (createdAt, else ObjectId order)
-  const lastCreated = [...clientInvoices].sort((a, b) => {
-    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    if (aTime !== bTime) return bTime - aTime;
-    return String(b._id || '').localeCompare(String(a._id || ''));
-  })[0];
-
-  const match = String(lastCreated?.invoiceNumber || '').match(/(\d{1,})$/);
-  const lastSeq = match ? parseInt(match[1], 10) : 0;
-  const nextNumStr = (Number.isFinite(lastSeq) ? lastSeq + 1 : 1).toString().padStart(3, '0');
-  return `${format}${nextNumStr}`;
-};
 import { downloadStoredInvoicePdf, exportInvoiceElementToPdf, invoiceElementToPdfBlob, previewDataFromInvoice, renderInvoicePreviewToBlob } from '@/lib/invoicePdfExport';
 import {
   emptyClientForm,
@@ -168,6 +147,59 @@ const InvoiceEditorPage = () => {
   const [disputing, setDisputing] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  const [isDuplicateNumberState, setIsDuplicateNumberState] = useState(false);
+
+  const generateNextInvoiceNumber = (targetClientId: string, targetIssueDate: string) => {
+    const currentYear = new Date(targetIssueDate || Date.now()).getFullYear();
+    let baseNumber = `${currentYear}-001`;
+
+    if (targetClientId && allInvoices.data) {
+      const clientInvoices = allInvoices.data.filter(inv => inv.clientId === targetClientId);
+
+      if (clientInvoices.length > 0) {
+        const sorted = [...clientInvoices].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          
+          if (dateA !== dateB) return dateB - dateA;
+          return a._id < b._id ? 1 : -1;
+        });
+
+        const latestInvoice = sorted[0];
+
+        if (latestInvoice && latestInvoice.invoiceNumber) {
+          const match = latestInvoice.invoiceNumber.match(/(\d+)$/);
+          if (match) {
+            const numStr = match[1];
+            const nextNum = parseInt(numStr, 10) + 1;
+            const padding = Math.max(3, numStr.length);
+            baseNumber = `${currentYear}-${String(nextNum).padStart(padding, '0')}`;
+          }
+        }
+      }
+    }
+
+    return baseNumber;
+  };
+
+  useEffect(() => {
+    if (!invoiceNumber.trim() || !clientId) {
+      setIsDuplicateNumberState(false);
+      return;
+    }
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await checkInvoiceNumberApi(clientId, invoiceNumber.trim(), id);
+        if (!cancelled) setIsDuplicateNumberState(res.isDuplicate);
+      } catch (e) {
+        // ignore
+      }
+    };
+    const t = setTimeout(check, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [invoiceNumber, clientId, id]);
+
   useEffect(() => {
     setHydrated(false);
   }, [id]);
@@ -201,7 +233,7 @@ const InvoiceEditorPage = () => {
         ? { name: match.name, ntn: match.ntn, address: match.address, email: match.email }
         : emptyParty();
       const nextClientId = match?._id || '';
-      const nextInvoiceNumber = generateNextInvoiceNumber(allInvoices.data || [], nextClientId, issueDate);
+      const nextInvoiceNumber = generateNextInvoiceNumber(nextClientId, issueDate);
       setInvoiceNumber(nextInvoiceNumber);
       setTemplateId(nextTemplate);
       setTaxRate(nextTax);
@@ -286,6 +318,11 @@ const InvoiceEditorPage = () => {
     } else if (!nextId) {
       setClient(emptyParty());
     }
+    
+    if (isNew) {
+      const nextInvoiceNumber = generateNextInvoiceNumber(nextId, issueDate);
+      setInvoiceNumber(nextInvoiceNumber);
+    }
   };
 
   const draftKey = JSON.stringify({
@@ -294,14 +331,7 @@ const InvoiceEditorPage = () => {
   const bankDirty = bankOpen && Object.values(newBank).some((value) => value.trim());
   const invoiceDirty = hydrated && baseline !== '' && draftKey !== baseline;
 
-  const isDuplicateNumber = (num: string) => {
-    if (!num.trim()) return false;
-    return (allInvoices.data || []).some(inv => 
-      inv.invoiceNumber === num.trim() && 
-      inv._id !== id && 
-      inv.clientId === clientId
-    );
-  };
+  // Removed local isDuplicateNumber function
 
   const payload = (override?: Partial<Pick<SaveInvoicePayload, 'clientId' | 'client' | 'bankAccountIds'>>): SaveInvoicePayload | null => {
     const nextClientId = override?.clientId ?? clientId;
@@ -358,7 +388,7 @@ const InvoiceEditorPage = () => {
       showFormError('Fill the invoice number, select a client, and enter valid line items before saving.');
       return false;
     }
-    if (isDuplicateNumber(body.invoiceNumber || invoiceNumber)) {
+    if (isDuplicateNumberState) {
       showFormError('Invoice number already exists.');
       return false;
     }
@@ -678,8 +708,8 @@ const InvoiceEditorPage = () => {
                       }
                       setInvoiceNumber(val);
                     }}
-                    error={isDuplicateNumber(invoiceNumber)}
-                    helperText={isDuplicateNumber(invoiceNumber) ? 'Invoice number already exists' : ''}
+                    error={isDuplicateNumberState}
+                    helperText={isDuplicateNumberState ? 'Invoice number already exists' : ''}
                     sx={inputStyle}
                   />
                 </Grid>
@@ -861,7 +891,7 @@ const InvoiceEditorPage = () => {
                         type="text"
                         placeholder={ccEmails.length === 0 ? "Type email and press Enter" : ""}
                         error={Boolean(ccError)}
-                        helperText={ccError || "Up to 10 emails. Press Enter after each email."}
+                        helperText={ccError}
                         sx={inputStyle}
                         onPaste={(e) => {
                           e.preventDefault();

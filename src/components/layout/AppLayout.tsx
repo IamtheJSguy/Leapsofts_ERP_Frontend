@@ -9,7 +9,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSocket } from '@/hooks/useSocket';
-import { useConversations } from '@/hooks/api/useChat';
+import { useConversations, warmMessagesForConversations } from '@/hooks/api/useChat';
 import { useMe } from '@/hooks/api/useUsers';
 import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
@@ -85,6 +85,18 @@ export const AppLayout = () => {
       syncUnreadFromConversations(conversations);
     }
   }, [conversations, syncUnreadFromConversations]);
+
+  // Prefetch latest message pages into React Query / IndexedDB so chats open instantly.
+  useEffect(() => {
+    if (!chatEnabled || !conversations.length) return;
+    let cancelled = false;
+    void warmMessagesForConversations(queryClient, conversations, organizationId).then(() => {
+      if (cancelled) return;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatEnabled, conversations, organizationId, queryClient]);
 
   useEffect(() => {
     if (!isCheckedIn || user?.role === 'admin') return;
