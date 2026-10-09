@@ -9,20 +9,20 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { normalizeMessageReceipts } from '@/utils/chatMessageUtils';
 import {
   appendMessageToCache,
-  CHAT_MESSAGE_PAGE_SIZE,
   flattenMessagePages,
   mapMessageCache,
+  messagesQueryKey,
+  MESSAGES_STALE_TIME_MS,
   type MessagesInfiniteData,
   type MessagesPage,
 } from '@/utils/chatMessageCache';
+import { fetchMessagesPage } from '@/utils/fetchMessagesPage';
+import { warmConversationMessagesCache } from '@/utils/warmConversationMessages';
+
+export { fetchMessagesPage } from '@/utils/fetchMessagesPage';
 
 const chatApi = {
   getConversations: () => api.get<{ data: Conversation[] }>('/chat/conversations'),
-  getMessages: (conversationId: string, params: Record<string, string>) =>
-    api.get<{ data: Message[]; meta?: { page: number; limit: number; total: number; hasMore?: boolean } }>(
-      `/chat/conversations/${conversationId}/messages`,
-      { params },
-    ),
   sendMessage: (data: {
     conversationId: string;
     content: string;
@@ -156,26 +156,22 @@ export const useConversations = (options?: { enabled?: boolean }) => {
   });
 };
 
+/** Background-warm latest message pages into the React Query / IndexedDB cache. */
+export const warmMessagesForConversations = (
+  queryClient: QueryClient,
+  conversations: Conversation[],
+  organizationId: string | undefined | null,
+) =>
+  warmConversationMessagesCache(queryClient, conversations, organizationId, (conversationId) =>
+    fetchMessagesPage(conversationId),
+  );
+
 export const useMessages = (conversationId: string | null) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const query = useInfiniteQuery({
-    queryKey: ['messages', conversationId, organizationId],
-    queryFn: async ({ pageParam }: { pageParam: string | undefined }): Promise<MessagesPage> => {
-      const params: Record<string, string> = { limit: String(CHAT_MESSAGE_PAGE_SIZE) };
-      if (pageParam) params.before = pageParam;
-      try {
-        const r = await chatApi.getMessages(conversationId!, params);
-        const messages = (r.data.data || []).map(normalizeMessageReceipts);
-        const hasMore = r.data.meta?.hasMore ?? messages.length === CHAT_MESSAGE_PAGE_SIZE;
-        return { messages, hasMore };
-      } catch (err) {
-        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-        if (conversationId && (status === 403 || status === 404)) {
-          closeRemovedConversation(conversationId);
-        }
-        throw err;
-      }
-    },
+    queryKey: messagesQueryKey(conversationId, organizationId),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }): Promise<MessagesPage> =>
+      fetchMessagesPage(conversationId!, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore || lastPage.messages.length === 0) return undefined;
@@ -183,6 +179,9 @@ export const useMessages = (conversationId: string | null) => {
     },
     enabled: !!conversationId,
     refetchOnWindowFocus: false,
+    // IDB + sockets keep data current; open chat from cache without a network wait.
+    staleTime: MESSAGES_STALE_TIME_MS,
+    refetchOnMount: false,
   });
 
   const messages = useMemo(
