@@ -30,6 +30,7 @@ export const LEAD_EXPORT_FIELDS = [
   { key: 'isQualified', label: 'Qualified', defaultSelected: false },
   { key: 'leadComment', label: 'Lead Comment', defaultSelected: false },
   { key: 'leadCommentLevel', label: 'Lead Comment Level', defaultSelected: false },
+  { key: 'leadCommentsAll', label: 'All Lead Comments', defaultSelected: false },
   { key: 'salesNavigatorUrl', label: 'Sales Navigator URL', defaultSelected: false },
   { key: 'createdAt', label: 'Created At', defaultSelected: false },
   { key: 'updatedAt', label: 'Updated At', defaultSelected: false },

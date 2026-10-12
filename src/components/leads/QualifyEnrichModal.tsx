@@ -18,7 +18,15 @@ import LinkIcon from '@mui/icons-material/Link';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useNavigate } from 'react-router-dom';
-import { useQualifyLead, useUpdateLead } from '@/hooks/api/useLeads';
+import {
+  useQualifyLead,
+  useUpdateLead,
+  useAddLeadComment,
+  useUpdateLeadComment,
+  useDeleteLeadComment,
+} from '@/hooks/api/useLeads';
+import { LeadCommentsPanel } from './LeadCommentsPanel';
+import type { LeadCommentDraft } from './LeadCommentComposer';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useSalesBoards } from '@/hooks/api/useKanban';
@@ -331,6 +339,11 @@ const SharingMeetingsColumn = memo(({
   notes,
   onNotesChange,
   showNotes,
+  commentLead,
+  onAddComment,
+  onUpdateComment,
+  onDeleteComment,
+  commentsBusy,
 }: {
   isDarkMode: boolean;
   isPending: boolean;
@@ -350,6 +363,11 @@ const SharingMeetingsColumn = memo(({
   notes: string;
   onNotesChange: (value: string) => void;
   showNotes: boolean;
+  commentLead?: Lead;
+  onAddComment?: (draft: LeadCommentDraft) => Promise<void>;
+  onUpdateComment?: (commentId: string, draft: LeadCommentDraft) => Promise<void>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
+  commentsBusy?: boolean;
 }) => {
   const fieldSx = {
     borderRadius: '16px',
@@ -415,6 +433,16 @@ const SharingMeetingsColumn = memo(({
             InputProps={{ sx: { ...fieldSx, borderRadius: '14px' } }}
             sx={{ mb: 2 }}
           />
+          {commentLead && onAddComment && onUpdateComment && onDeleteComment && (
+            <LeadCommentsPanel
+              lead={commentLead}
+              disabled={isPending || commentsBusy}
+              mentionableUsers={dbUsers}
+              onAdd={onAddComment}
+              onUpdate={onUpdateComment}
+              onDelete={onDeleteComment}
+            />
+          )}
         </>
       )}
 
@@ -585,7 +613,11 @@ export const QualifyEnrichModal = ({
   const navigate = useNavigate();
   const qualifyLead = useQualifyLead();
   const updateLead = useUpdateLead();
+  const addLeadComment = useAddLeadComment();
+  const updateLeadComment = useUpdateLeadComment();
+  const deleteLeadComment = useDeleteLeadComment();
   const createMeeting = useCreateMeeting();
+  const [commentLead, setCommentLead] = useState<Lead>(lead);
   const { data: usersData } = useUsers({}, { enabled: open });
   const dbUsers = Array.isArray(usersData) ? usersData : [];
   const { data: salesBoards = [] } = useSalesBoards({ enabled: open });
@@ -636,6 +668,7 @@ export const QualifyEnrichModal = ({
 
   useEffect(() => {
     if (lead && open) {
+      setCommentLead(lead);
       setLeadData({
         firstName: lead.firstName || '',
         lastName: lead.lastName || '',
@@ -821,6 +854,48 @@ export const QualifyEnrichModal = ({
   };
 
   const isPending = qualifyLead.isPending || updateLead.isPending;
+  const commentsBusy =
+    addLeadComment.isPending || updateLeadComment.isPending || deleteLeadComment.isPending;
+
+  const handleAddComment = useCallback(
+    async (draft: LeadCommentDraft) => {
+      const res = await addLeadComment.mutateAsync({
+        id: leadId,
+        text: draft.text.trim(),
+        level: draft.level,
+        format: draft.format,
+      });
+      if (res.data.data) setCommentLead(res.data.data);
+    },
+    [addLeadComment, leadId],
+  );
+
+  const handleUpdateComment = useCallback(
+    async (commentId: string, draft: LeadCommentDraft) => {
+      const res = await updateLeadComment.mutateAsync({
+        id: leadId,
+        commentId,
+        text: draft.text.trim(),
+        level: draft.level,
+        format: draft.format,
+      });
+      if (res.data.data) setCommentLead(res.data.data);
+    },
+    [updateLeadComment, leadId],
+  );
+
+  const handleDeleteComment = useCallback(
+    async (commentId: string) => {
+      try {
+        const res = await deleteLeadComment.mutateAsync({ id: leadId, commentId });
+        if (res.data.data) setCommentLead(res.data.data);
+      } catch (err) {
+        showApiError(err);
+        throw err;
+      }
+    },
+    [deleteLeadComment, leadId],
+  );
 
   const sharingMeetingsProps = {
     isDarkMode,
@@ -841,6 +916,11 @@ export const QualifyEnrichModal = ({
     creatingMeeting: createMeeting.isPending,
     notes,
     onNotesChange: handleNotesChange,
+    commentLead,
+    onAddComment: handleAddComment,
+    onUpdateComment: handleUpdateComment,
+    onDeleteComment: handleDeleteComment,
+    commentsBusy,
   };
 
   // Update mode: sharing + meetings replace enrichment. Qualify mode: enrichment first, then sharing/meetings.
