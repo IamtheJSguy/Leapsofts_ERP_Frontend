@@ -36,6 +36,9 @@ import LinkIcon from '@mui/icons-material/Link';
 import EventIcon from '@mui/icons-material/Event';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import { tokens } from '@/styles/tokens';
 import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
@@ -71,8 +74,9 @@ import {
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
-  useUpdateBoard,
+  useUpdateBoard, useTransferCard, useCopyCard,
 } from '@/hooks/api/useKanban';
+import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanban';
 import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
@@ -86,6 +90,7 @@ import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
+import { TransferCardDialog, type TransferCardContext } from '@/components/kanban/TransferCardDialog';
 
 const getLinkHostname = (url: string) => {
   try {
@@ -1628,8 +1633,16 @@ const CardMeetingsSection = ({
   );
 };
 
-const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard, onViewLead }: any) => {
+const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard, onViewLead, onTransferClick }: any) => {
   const [searchParams] = useSearchParams();
+  const isSalesBoard = actualBoard?.category === 'sales';
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setCardMenuAnchor(event.currentTarget);
+  };
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -2058,6 +2071,27 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
               <IconButton onClick={triggerDeleteCardConfirm} sx={{ color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.08)', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)' } }}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
+            )}
+            {canEdit && (
+              <>
+                <IconButton onClick={handleCardMenuOpen} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+                <Menu
+                  anchorEl={cardMenuAnchor}
+                  open={Boolean(cardMenuAnchor)}
+                  onClose={handleCardMenuClose}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  PaperProps={{ sx: { borderRadius: '12px', minWidth: 180, mt: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+                >
+                  <MenuItem onClick={() => { handleCardMenuClose(); onTransferClick?.(); }}>
+                    <ListItemIcon><DriveFileMoveIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Move or copy to board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+                  </MenuItem>
+
+                </Menu>
+              </>
             )}
             <IconButton onClick={onClose} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
               <CloseIcon fontSize="small" />
@@ -3189,6 +3223,23 @@ export const KanbanBoardPage = () => {
 
   // Rename Column Dialog
   const [isRenameColumnOpen, setIsRenameColumnOpen] = useState(false);
+
+  // Transfer & Copy Card Dialogs
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferCardContext, setTransferCardContext] = useState<TransferCardContext | null>(null);
+  const isSalesBoard = actualBoard?.category === 'sales';
+
+  const { mutateAsync: transferCardMutate } = useTransferCard(activeBoardId);
+  const { mutateAsync: copyCardMutate } = useCopyCard(activeBoardId);
+
+  const handleCloseCardDrawer = () => {
+    setDrawerTaskId(null);
+    setSearchParams((prev) => {
+      prev.delete('card');
+      prev.delete('comment');
+      return prev;
+    });
+  };
   const [renameColumnText, setRenameColumnText] = useState('');
 
   // Direct Card Creation Dialog
@@ -4310,20 +4361,29 @@ export const KanbanBoardPage = () => {
       <TaskDetailDrawer
         task={drawerTask}
         open={Boolean(drawerTask)}
-        onClose={() => {
-          setDrawerTaskId(null);
-          setSearchParams((prev) => {
-            prev.delete('card');
-            prev.delete('comment');
-            return prev;
-          });
-        }}
+        onClose={handleCloseCardDrawer}
         isDarkMode={isDarkMode}
         allUsers={allUsers}
         boardMembers={boardMembers}
         boardId={activeBoardId}
         actualBoard={actualBoard}
         onViewLead={handleViewLead}
+        onTransferClick={() => {
+          if (!drawerTask) return;
+          setTransferCardContext({
+            cardId: drawerTask.id,
+            title: drawerTask.title || drawerTask.rawCard?.title || '',
+            description: drawerTask.description || drawerTask.rawCard?.description,
+            priority: drawerTask.rawCard?.priority,
+            dueDate: drawerTask.rawCard?.dueDate,
+            assigneeIds: Array.isArray(drawerTask.rawCard?.assignedTo)
+              ? drawerTask.rawCard.assignedTo.map((u: { _id?: string } | string) =>
+                  typeof u === 'object' ? u._id : u,
+                ).filter(Boolean) as string[]
+              : [],
+          });
+          setTransferDialogOpen(true);
+        }}
       />
 
       <Dialog
@@ -4488,6 +4548,34 @@ export const KanbanBoardPage = () => {
           />
         );
       })()}
+
+      {/* Transfer & Copy Dialogs */}
+      {actualBoard && transferCardContext && (
+        <TransferCardDialog
+          open={transferDialogOpen}
+          onClose={() => {
+            setTransferDialogOpen(false);
+            setTransferCardContext(null);
+          }}
+          sourceBoard={actualBoard}
+          card={transferCardContext}
+          onSubmit={async (mode: MoveCopyCardMode, payload: MoveCopyCardPayload) => {
+            const { cardId } = transferCardContext;
+            if (mode === 'move') {
+              await transferCardMutate({ cardId, data: payload });
+              setTransferDialogOpen(false);
+              setTransferCardContext(null);
+              handleCloseCardDrawer();
+              addToast({ message: 'Card moved to the other board', severity: 'success' });
+            } else {
+              await copyCardMutate({ cardId, data: payload });
+              setTransferDialogOpen(false);
+              setTransferCardContext(null);
+              addToast({ message: 'Card copied to the other board', severity: 'success' });
+            }
+          }}
+        />
+      )}
     </Box>
   );
 };

@@ -10,11 +10,20 @@ import {
   ListItemText,
   Select,
   MenuItem,
+  Menu,
+  ListItemIcon,
+  Dialog,
+  DialogContent,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import { useLeadHistory, useQualifyLead, useDisqualifyLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import { useSalesBoards, useTransferCard, useCopyCard, useCard } from '@/hooks/api/useKanban';
+import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanban';
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -23,6 +32,7 @@ import { showApiError } from '@/utils/apiError';
 import { useState } from 'react';
 import type { Lead } from '@/types';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
+import { TransferCardDialog } from '@/components/kanban/TransferCardDialog';
 
 interface LeadDetailDrawerProps {
   lead: Lead | null;
@@ -47,6 +57,25 @@ export const LeadDetailDrawer = ({
   const [confirmQualifyOpen, setConfirmQualifyOpen] = useState(false);
   const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
   const [pushModalOpen, setPushModalOpen] = useState(false);
+
+  const { data: salesBoards = [] } = useSalesBoards({ enabled: open });
+  const transferCardMutate = useTransferCard();
+  const copyCardMutate = useCopyCard();
+  const [activePlacement, setActivePlacement] = useState<any>(null);
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const { data: activeCard } = useCard(
+    transferDialogOpen && activePlacement?.cardId ? activePlacement.cardId : undefined,
+  );
+
+  const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>, placement: any) => {
+    setActivePlacement(placement);
+    setCardMenuAnchor(event.currentTarget);
+  };
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
+  const sourceBoardForActive = salesBoards.find(b => b._id === activePlacement?.boardId);
 
   const handleConfirmQualify = () => {
     if (!lead) return;
@@ -196,7 +225,15 @@ export const LeadDetailDrawer = ({
             </Typography>
             <List dense>
               {[...lead.salesBoardPlacements].reverse().map((placement, idx) => (
-                <ListItem key={placement._id || idx} disableGutters>
+                <ListItem 
+                  key={placement._id || idx} 
+                  disableGutters
+                  secondaryAction={
+                    <IconButton edge="end" onClick={(e) => handleCardMenuOpen(e, placement)}>
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  }
+                >
                   <ListItemText
                     primary={`${placement.boardName || placement.boardId}${placement.columnName ? ` → ${placement.columnName}` : ''}`}
                     secondary={formatDateTime(placement.pushedAt)}
@@ -271,6 +308,59 @@ export const LeadDetailDrawer = ({
           open={pushModalOpen}
           lead={lead}
           onClose={() => setPushModalOpen(false)}
+        />
+      )}
+
+      <Menu
+        anchorEl={cardMenuAnchor}
+        open={Boolean(cardMenuAnchor)}
+        onClose={handleCardMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { borderRadius: '12px', minWidth: 180, mt: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+      >
+        <MenuItem onClick={() => { handleCardMenuClose(); setTransferDialogOpen(true); }}>
+          <ListItemIcon><DriveFileMoveIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary="Move or copy to board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+        </MenuItem>
+      </Menu>
+
+      {sourceBoardForActive && activePlacement && transferDialogOpen && !activeCard && (
+        <Dialog open PaperProps={{ sx: { borderRadius: '20px', p: 3 } }}>
+          <DialogContent sx={{ display: 'flex', justifyContent: 'center' }}>
+            <CircularProgress />
+          </DialogContent>
+        </Dialog>
+      )}
+      {sourceBoardForActive && activePlacement && activeCard && (
+        <TransferCardDialog
+          open={transferDialogOpen}
+          onClose={() => setTransferDialogOpen(false)}
+          sourceBoard={sourceBoardForActive}
+          card={{
+            title: activeCard.title || 'Card',
+            description: activeCard.description,
+            priority: (activeCard.priority as 'low' | 'medium' | 'high' | 'urgent' | undefined) || 'medium',
+            dueDate: activeCard.dueDate,
+            assigneeIds: Array.isArray(activeCard.assignedTo)
+              ? activeCard.assignedTo.map((u) => (typeof u === 'object' ? u._id : u)).filter(Boolean)
+              : [],
+          }}
+          onSubmit={async (mode: MoveCopyCardMode, payload: MoveCopyCardPayload) => {
+            if (mode === 'move') {
+              await transferCardMutate.mutateAsync({
+                cardId: activePlacement.cardId,
+                data: payload,
+              });
+              addToast({ message: 'Card moved to the other board', severity: 'success' });
+            } else {
+              await copyCardMutate.mutateAsync({
+                cardId: activePlacement.cardId,
+                data: payload,
+              });
+              addToast({ message: 'Card copied to the other board', severity: 'success' });
+            }
+          }}
         />
       )}
     </Drawer>

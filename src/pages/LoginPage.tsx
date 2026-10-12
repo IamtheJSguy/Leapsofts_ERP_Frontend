@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -26,6 +26,8 @@ import { useLogin } from '@/hooks/api/useAuth';
 import { showApiError } from '@/utils/apiError';
 import { APP_NAME } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getPostLoginRedirectPath } from '@/utils/navigation';
 
 const shakeAnimation = keyframes`
   0%, 100% { transform: translateX(0); }
@@ -40,6 +42,8 @@ const LoginPage = () => {
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const isDarkMode = theme.palette.mode === 'dark';
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
 
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
@@ -51,34 +55,35 @@ const LoginPage = () => {
     formState: { errors },
   } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
-  const onSubmit = (data: LoginFormData) => {
-    login.mutate(data, {
-      onSuccess: (res) => {
-        const payload = res.data.data;
-        const fromObj = location.state?.from as { pathname?: string; search?: string; hash?: string } | undefined;
-        let from = '/';
-        if (fromObj?.pathname) {
-          from = `${fromObj.pathname}${fromObj.search || ''}${fromObj.hash || ''}`;
-        }
-        
-        if (payload.requires2FA && payload.tempToken) {
-          sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa', { state: { tempToken: payload.tempToken, from: fromObj } });
-          return;
-        }
-        if (payload.requires2FASetup && payload.tempToken) {
-          sessionStorage.setItem('2faTempToken', payload.tempToken);
-          navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken, from: fromObj } });
-          return;
-        }
-        navigate(from);
-      },
-      onError: (err) => {
-        showApiError(err);
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-      },
-    });
+  if (isAuthenticated || hasToken) {
+    const destination = getPostLoginRedirectPath(location.state?.from);
+    return <Navigate to={destination} replace />;
+  }
+
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      const res = await login.mutateAsync(data);
+      const payload = res.data.data;
+      const fromState = location.state?.from;
+
+      if (payload.requires2FA && payload.tempToken) {
+        sessionStorage.setItem('2faTempToken', payload.tempToken);
+        navigate('/login/2fa', { state: { tempToken: payload.tempToken, from: fromState } });
+        return;
+      }
+      if (payload.requires2FASetup && payload.tempToken) {
+        sessionStorage.setItem('2faTempToken', payload.tempToken);
+        navigate('/login/2fa-setup', { state: { tempToken: payload.tempToken, from: fromState } });
+        return;
+      }
+
+      const destination = getPostLoginRedirectPath(fromState);
+      navigate(destination, { replace: true });
+    } catch (err) {
+      showApiError(err);
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
   };
 
   return (

@@ -18,6 +18,7 @@ import { tokens } from '@/styles/tokens';
 import { APP_NAME } from '@/lib/constants';
 import { markMonitoringPromptPendingForLogin } from '@/utils/monitoringPromptSession';
 import { useApiErrorToast } from '@/utils/apiError';
+import { getPostLoginRedirectPath } from '@/utils/navigation';
 
 const TEMP_TOKEN_KEY = '2faTempToken';
 
@@ -56,12 +57,9 @@ const TwoFactorVerifyPage = () => {
           markMonitoringPromptPendingForLogin();
           setAuth(data.user as Parameters<typeof setAuth>[0]);
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
-          const fromObj = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
-          let from = '/';
-          if (fromObj?.pathname) {
-            from = `${fromObj.pathname}${fromObj.search || ''}${fromObj.hash || ''}`;
-          }
-          navigate(from, { replace: true });
+          const fromState = (location.state as { from?: unknown } | null)?.from;
+          const destination = getPostLoginRedirectPath(fromState);
+          navigate(destination, { replace: true });
         },
       },
     );

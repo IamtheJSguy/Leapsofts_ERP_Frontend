@@ -847,6 +847,8 @@ export interface KanbanCard {
   description?: string;
   priority?: string;
   dueDate?: string;
+  /** Admin override for KPI generation end (falls back to due date) */
+  kpiEndDate?: string;
   /** Explicit done status on the card (independent of column) */
   isDone?: boolean;
   completedAt?: string | null;
