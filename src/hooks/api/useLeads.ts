@@ -8,6 +8,8 @@ import type {
   BulkCreateResponse,
   BulkUploadResponse,
   Lead,
+  LeadCommentFormat,
+  LeadCommentLevel,
   LeadExportPreview,
   LeadExportRequest,
   LeadFilters,
@@ -41,6 +43,37 @@ const leadApi = {
       ...(note ? { note } : {}),
       ...(number !== undefined ? { number } : {}),
     }),
+  addLeadComment: ({
+    id,
+    text,
+    level,
+    format,
+  }: {
+    id: string;
+    text: string;
+    level: LeadCommentLevel;
+    format?: LeadCommentFormat;
+  }) => api.post<ApiResponse<Lead>>(`/leads/${id}/comments`, { text, level, ...(format ? { format } : {}) }),
+  updateLeadComment: ({
+    id,
+    commentId,
+    text,
+    level,
+    format,
+  }: {
+    id: string;
+    commentId: string;
+    text?: string;
+    level?: LeadCommentLevel;
+    format?: LeadCommentFormat;
+  }) =>
+    api.patch<ApiResponse<Lead>>(`/leads/${id}/comments/${commentId}`, {
+      ...(text !== undefined ? { text } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(format !== undefined ? { format } : {}),
+    }),
+  deleteLeadComment: ({ id, commentId }: { id: string; commentId: string }) =>
+    api.delete<ApiResponse<Lead>>(`/leads/${id}/comments/${commentId}`),
   getLeadHistory: (id: string) =>
     api.get<ApiResponse<LeadTimelineEvent[]>>(`/leads/${id}/history`),
   previewLeadExport: (body: LeadExportRequest) =>
@@ -240,6 +273,60 @@ export const useLogFollowUp = () => {
       queryClient.invalidateQueries({ queryKey: ['salesPipelineStats'] });
       queryClient.invalidateQueries({ queryKey: ['salesKpis'] });
       queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
+    },
+  });
+};
+
+const refreshLeadCommentQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  leadId: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: ['leads'] });
+  queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+};
+
+export const useAddLeadComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.addLeadComment,
+    onMutate: () => getLeadUpdateScope(),
+    onSuccess: async (response, variables, scope) => {
+      const saved = response.data.data;
+      if (saved?._id === variables.id && scope) {
+        if (!await applyLeadUpdateResponse(queryClient, saved, scope)) return;
+      }
+      scheduleSalesKpiRefresh(queryClient);
+      refreshLeadCommentQueries(queryClient, variables.id);
+    },
+  });
+};
+
+export const useUpdateLeadComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.updateLeadComment,
+    onMutate: () => getLeadUpdateScope(),
+    onSuccess: async (response, variables, scope) => {
+      const saved = response.data.data;
+      if (saved?._id === variables.id && scope) {
+        if (!await applyLeadUpdateResponse(queryClient, saved, scope)) return;
+      }
+      refreshLeadCommentQueries(queryClient, variables.id);
+    },
+  });
+};
+
+export const useDeleteLeadComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: leadApi.deleteLeadComment,
+    onMutate: () => getLeadUpdateScope(),
+    onSuccess: async (response, variables, scope) => {
+      const saved = response.data.data;
+      if (saved?._id === variables.id && scope) {
+        if (!await applyLeadUpdateResponse(queryClient, saved, scope)) return;
+      }
+      refreshLeadCommentQueries(queryClient, variables.id);
     },
   });
 };

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import api from '@/lib/axios';
-import type { ApiResponse, ColdCallingState, ConnectionStatus, Lead, LeadComment, MessageStatus } from '@/types';
+import type { ApiResponse, ColdCallingState, ConnectionStatus, Lead, LeadComment, LeadCommentEntry, MessageStatus } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
+import { getLatestLeadComment } from '@/utils/getLatestLeadComment';
 
 export type EditableLeadData = {
   firstName: string;
@@ -21,7 +22,11 @@ export type EditableLeadData = {
   messageStatus: MessageStatus;
   linkedinMsg: string;
   futureLeadDate?: string;
+  /** Latest mirror for invalid-lead validation (not synced via PUT). */
   leadComment?: LeadComment | null;
+  leadComments?: LeadCommentEntry[];
+  /** One-shot comment included on the next PUT (inline edit before API append). */
+  pendingLeadComment?: LeadComment | null;
   coldCalling: ColdCallingState;
 };
 
@@ -47,7 +52,6 @@ const EDITABLE_FIELDS = [
   'messageStatus',
   'linkedinMsg',
   'futureLeadDate',
-  'leadComment',
   'coldCalling',
 ] as const;
 
@@ -69,11 +73,6 @@ const normalizeValue = (field: EditableField, value: unknown): string => {
     } catch {
       return String(value);
     }
-  }
-  if (field === 'leadComment') {
-    if (!value || typeof value !== 'object') return '';
-    const comment = value as LeadComment;
-    return `${comment.level}:${comment.text}`;
   }
   if (field === 'coldCalling') return JSON.stringify(value ?? {});
   return value == null ? '' : String(value);
@@ -102,7 +101,8 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
     futureLeadDate: prospect.futureLeadDate
       ? format(new Date(prospect.futureLeadDate), 'yyyy-MM-dd')
       : undefined,
-    leadComment: prospect.leadComment || undefined,
+    leadComments: prospect.leadComments ?? [],
+    leadComment: getLatestLeadComment(prospect) ?? undefined,
     coldCalling: {
       outreachStatus: prospect.coldCalling?.outreachStatus || 'pending',
       responseStatus: prospect.coldCalling?.responseStatus || 'no_response',
@@ -114,7 +114,9 @@ export const buildEditDataFromProspect = (prospect: Lead | Record<string, any>):
 export const cloneEditData = (data: EditableLeadData): EditableLeadData => ({
   ...data,
   futureLeadDate: data.futureLeadDate || undefined,
+  leadComments: data.leadComments ? [...data.leadComments] : [],
   leadComment: data.leadComment ? { ...data.leadComment } : undefined,
+  pendingLeadComment: data.pendingLeadComment ? { ...data.pendingLeadComment } : undefined,
   coldCalling: { ...data.coldCalling },
 });
 
@@ -139,9 +141,13 @@ export const getChangedLeadIds = (
 
 const isValidForSync = (data: EditableLeadData): boolean => {
   if (data.messageStatus === 'future_lead' && !data.futureLeadDate) return false;
-  if (data.messageStatus === 'invalid_lead' && !data.leadComment?.text?.trim()) return false;
+  const hasComment =
+    !!data.leadComment?.text?.trim()
+    || !!data.pendingLeadComment?.text?.trim()
+    || (data.leadComments ?? []).some((c) => c.text?.trim());
+  if (data.messageStatus === 'invalid_lead' && !hasComment) return false;
   if (data.coldCalling.responseStatus === 'future_lead' && !data.coldCalling.futureLeadAt) return false;
-  if (data.coldCalling.responseStatus === 'invalid_lead' && !data.leadComment?.text?.trim()) return false;
+  if (data.coldCalling.responseStatus === 'invalid_lead' && !hasComment) return false;
   return true;
 };
 
@@ -252,14 +258,31 @@ export const useLeadAutoSync = ({
             const nameParts = splitProspectName(
               data.prospectName || composeProspectName(data),
             );
+            const {
+              leadComments: _lc,
+              leadComment: _mirror,
+              pendingLeadComment,
+              ...syncBody
+            } = data;
             const response = await api.put<ApiResponse<Lead>>(`/leads/${id}`, {
-              ...data,
+              ...syncBody,
               firstName: nameParts.firstName,
               lastName: nameParts.lastName,
               prospectName: nameParts.prospectName.trim(),
+              ...(pendingLeadComment?.text?.trim()
+                ? { leadComment: pendingLeadComment }
+                : {}),
             });
             if (response.data.data?._id === id) await applyLeadUpdateResponse(queryClient, response.data.data, scope);
-            snapshotRef.current[id] = cloneEditData(data);
+            const saved = response.data.data;
+            const syncedRow = cloneEditData({
+              ...data,
+              pendingLeadComment: undefined,
+              leadComments: saved?.leadComments ?? data.leadComments,
+              leadComment: saved ? getLatestLeadComment(saved) ?? undefined : data.leadComment,
+            });
+            snapshotRef.current[id] = syncedRow;
+            setEditingLeads((prev) => (prev[id] ? { ...prev, [id]: syncedRow } : prev));
             failedIdsRef.current.delete(id);
             synced += 1;
             syncedCountRef.current += 1;
@@ -296,7 +319,7 @@ export const useLeadAutoSync = ({
 
       return { synced, failed, skipped };
     },
-    [invalidateLeadQueries, clearSession, queryClient],
+    [invalidateLeadQueries, clearSession, queryClient, setEditingLeads],
   );
 
   useEffect(() => {

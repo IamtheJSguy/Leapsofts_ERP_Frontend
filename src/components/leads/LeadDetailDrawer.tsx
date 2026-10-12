@@ -26,6 +26,8 @@ import { useSalesBoards, useTransferCard, useCopyCard, useCard } from '@/hooks/a
 import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanban';
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
+import { LeadCommentBody } from './LeadCommentBody';
+import { leadCommentLevelTokens } from '@/styles/tokens';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
@@ -163,6 +165,31 @@ export const LeadDetailDrawer = ({
         {lead.linkedinMsg && <Typography variant="body2"><strong>LinkedIn Msg (Raw):</strong> {lead.linkedinMsg}</Typography>}
         {lead.commentsAfterCall && <Typography variant="body2"><strong>Comments after call:</strong> {lead.commentsAfterCall}</Typography>}
         {lead.notes && <Typography variant="body2"><strong>Notes:</strong> {lead.notes}</Typography>}
+
+        {(lead.leadComments?.length ?? 0) > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+              Lead comments
+            </Typography>
+            <List dense>
+              {[...(lead.leadComments ?? [])]
+                .sort(
+                  (a, b) =>
+                    new Date(b.updatedAt || b.createdAt || 0).getTime()
+                    - new Date(a.updatedAt || a.createdAt || 0).getTime(),
+                )
+                .map((entry) => (
+                  <ListItem key={entry._id || entry.text} disableGutters sx={{ display: 'block', mb: 1 }}>
+                    <Typography variant="caption" sx={{ color: leadCommentLevelTokens[entry.level], fontWeight: 700 }}>
+                      {entry.level} · {formatDateTime(entry.updatedAt || entry.createdAt || '')}
+                    </Typography>
+                    <LeadCommentBody text={entry.text} format={entry.format} />
+                  </ListItem>
+                ))}
+            </List>
+          </>
+        )}
 
         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="outlined" onClick={onEdit}>Edit</Button>

@@ -33,7 +33,8 @@ import { tokens } from '@/styles/tokens';
 import type { ColdCallingState, ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, Lead, LeadComment, MessageStatus, OutreachChannel } from '@/types';
 import { splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
-import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
+import { LeadCommentButton, type LeadCommentAddPayload } from '@/components/leads/LeadCommentButton';
+import { leadHasComment } from '@/utils/getLatestLeadComment';
 
 const INITIAL_ROWS = 100;
 const GROW_BY = 20;
@@ -145,11 +146,11 @@ const validateRow = (row: BulkLeadRow): RowErrors => {
   if (row.messageStatus === 'future_lead' && !row.futureLeadDate) {
     errors.futureLeadDate = true;
   }
-  if (row.messageStatus === 'invalid_lead' && !row.leadComment?.text?.trim()) {
+  if (row.messageStatus === 'invalid_lead' && !leadHasComment(row)) {
     errors.leadComment = true;
   }
   if (row.coldCalling.responseStatus === 'future_lead' && !row.coldCalling.futureLeadAt) errors.coldFutureLeadAt = true;
-  if (row.coldCalling.responseStatus === 'invalid_lead' && !row.leadComment?.text?.trim()) errors.leadComment = true;
+  if (row.coldCalling.responseStatus === 'invalid_lead' && !leadHasComment(row)) errors.leadComment = true;
   return errors;
 };
 
@@ -239,7 +240,9 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
           </div>
           <LeadCommentButton
             comment={row.leadComment}
-            onSave={(comment) => onUpdate(index, { leadComment: comment })}
+            onAdd={(payload: LeadCommentAddPayload) =>
+              onUpdate(index, { leadComment: { text: payload.text, level: payload.level } })
+            }
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
             requireReason={row.messageStatus === 'invalid_lead' || row.coldCalling.responseStatus === 'invalid_lead'}
