@@ -2,12 +2,18 @@ import React from 'react';
 import { Box, Typography, IconButton, Badge, Avatar, useTheme } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import { tokens } from '@/styles/tokens';
 
-export const ShowcaseHeader: React.FC = () => {
+interface ShowcaseHeaderProps {
+  onToggleTheme?: () => void;
+  demoTheme?: 'dark' | 'light';
+}
+
+export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, demoTheme }) => {
   const theme = useTheme();
-  const isDarkMode = theme.palette.mode === 'dark';
+  const isDarkMode = demoTheme !== undefined ? demoTheme === 'dark' : theme.palette.mode === 'dark';
 
   return (
     <Box
@@ -64,12 +70,27 @@ export const ShowcaseHeader: React.FC = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton
           size="small"
+          onClick={onToggleTheme}
+          title={isDarkMode ? 'Switch demo to Light Mode' : 'Switch demo to Dark Mode'}
           sx={{
-            color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'text.secondary',
+            color: isDarkMode ? '#FCD34D' : '#5D1A89',
             p: 0.5,
+            borderRadius: '8px',
+            border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'}`,
+            bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(93, 26, 137, 0.04)',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(93, 26, 137, 0.08)',
+              transform: 'scale(1.08)',
+            },
           }}
         >
-          <DarkModeOutlinedIcon sx={{ fontSize: 16 }} />
+          {isDarkMode ? (
+            <LightModeOutlinedIcon sx={{ fontSize: 16, color: '#FCD34D' }} />
+          ) : (
+            <DarkModeOutlinedIcon sx={{ fontSize: 16, color: '#5D1A89' }} />
+          )}
         </IconButton>
 
         <IconButton

@@ -94,19 +94,24 @@ export const PrivacyPage = () => {
       <Box id="retention-rights">
         <h2>7. Data Retention & Your Rights</h2>
         <p>
-          Organizational records are retained for the duration of the active subscription agreement. Individual users may request access, rectification, or export of their profile data by contacting their organization administrator or our Data Protection Officer.
+          Organizational records are retained for the duration of the active subscription agreement. Individual users may request access, rectification, or export of their profile data by contacting their organization administrator or our compliance department.
         </p>
       </Box>
 
       <Box id="contact">
         <h2>8. Contact Information</h2>
         <p>
-          If you have questions regarding this Privacy Policy or your organization&apos;s data processing practices, please reach out to:
+          If you have questions regarding this Privacy Policy or your organization&apos;s data processing practices, please reach out directly to:
         </p>
         <p>
           <strong>Leapsofts Privacy & Compliance Team</strong><br />
-          Email: <a href="mailto:privacy@leapsofts.com" style={{ color: '#A855F7' }}>privacy@leapsofts.com</a><br />
-          Support: <a href="mailto:support@leapsofts.com" style={{ color: '#A855F7' }}>support@leapsofts.com</a>
+          Official Contact Email:{' '}
+          <a
+            href="mailto:contact@leapsofts.com"
+            style={{ color: '#A855F7', fontWeight: 700, textDecoration: 'none' }}
+          >
+            contact@leapsofts.com
+          </a>
         </p>
       </Box>
     </LegalDocumentLayout>

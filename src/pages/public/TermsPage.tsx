@@ -10,6 +10,7 @@ const TOC = [
   { id: 'intellectual-property', title: '6. Intellectual Property & Assets' },
   { id: 'sla-liability', title: '7. System Uptime & Liability' },
   { id: 'termination', title: '8. Termination & Revocation' },
+  { id: 'contact', title: '9. Contact Information' },
 ];
 
 export const TermsPage = () => {
@@ -92,6 +93,23 @@ export const TermsPage = () => {
         <h2>8. Termination & Revocation</h2>
         <p>
           Either party may terminate subscription agreements according to commercial contract terms. Upon termination, organization data may be exported within thirty (30) days, after which it will be permanently expunged in accordance with our data retention schedule.
+        </p>
+      </Box>
+
+      <Box id="contact">
+        <h2>9. Contact Information</h2>
+        <p>
+          For legal inquiries, terms interpretation, or notices regarding these Terms of Service, please reach out directly to:
+        </p>
+        <p>
+          <strong>Leapsofts Legal & Corporate Affairs</strong><br />
+          Official Contact Email:{' '}
+          <a
+            href="mailto:contact@leapsofts.com"
+            style={{ color: '#A855F7', fontWeight: 700, textDecoration: 'none' }}
+          >
+            contact@leapsofts.com
+          </a>
         </p>
       </Box>
     </LegalDocumentLayout>

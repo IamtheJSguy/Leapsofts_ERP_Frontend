@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Box, useTheme } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import { PublicNavbar } from '@/components/public/PublicNavbar';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import { CosmicStarfieldBackground } from '@/components/home/CosmicStarfieldBackground';
+import { EnterpriseDoodleBackground } from '@/components/home/EnterpriseDoodleBackground';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -10,6 +13,12 @@ interface PublicLayoutProps {
 export const PublicLayout = ({ children }: PublicLayoutProps) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const { pathname } = useLocation();
+
+  // Instantly scroll to top whenever the public route changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
 
   return (
     <Box
@@ -25,6 +34,9 @@ export const PublicLayout = ({ children }: PublicLayoutProps) => {
     >
       {/* Full-Page Interactive Cosmic Starfield & Nebula Gradients */}
       <CosmicStarfieldBackground />
+
+      {/* WhatsApp-Style Enterprise Doodle Pattern Background */}
+      <EnterpriseDoodleBackground />
 
       {/* Top Navigation */}
       <PublicNavbar />

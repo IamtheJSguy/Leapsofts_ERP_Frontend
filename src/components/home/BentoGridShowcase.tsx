@@ -22,20 +22,16 @@ export const BentoGridShowcase = () => {
     borderRadius: '24px',
     position: 'relative' as const,
     overflow: 'hidden' as const,
-    bgcolor: isDark ? 'rgba(23, 18, 32, 0.82)' : '#FFFFFF',
+    bgcolor: isDark ? 'rgba(23, 18, 32, 0.94)' : '#FFFFFF',
     backgroundImage: isDark
-      ? `radial-gradient(circle at 15% 15%, ${accentGlow} 0%, transparent 65%), linear-gradient(145deg, rgba(28, 22, 39, 0.85) 0%, rgba(16, 13, 24, 0.95) 100%)`
-      : `radial-gradient(circle at 12% 12%, ${accentGlow} 0%, transparent 60%), linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 247, 255, 0.9) 100%)`,
+      ? `radial-gradient(circle at 15% 15%, ${accentGlow} 0%, transparent 65%), linear-gradient(145deg, rgba(28, 22, 39, 0.95) 0%, rgba(16, 13, 24, 0.98) 100%)`
+      : `radial-gradient(circle at 12% 12%, ${accentGlow} 0%, transparent 60%), linear-gradient(145deg, rgba(255, 255, 255, 1) 0%, rgba(250, 247, 255, 0.96) 100%)`,
     border: '1px solid',
     borderColor: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(93, 26, 137, 0.08)',
     boxShadow: isDark
       ? '0 16px 40px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
       : '0 12px 35px -10px rgba(93, 26, 137, 0.07), 0 2px 6px rgba(0, 0, 0, 0.02)',
-    backdropFilter: 'blur(16px)',
-    transform: 'translate3d(0, 0, 0)',
-    backfaceVisibility: 'hidden',
-    willChange: 'transform',
-    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+    transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease',
     // Light-refracting top glass edge
     '&::before': {
       content: '""',

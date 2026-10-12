@@ -83,7 +83,7 @@ export const MetricCounterBar: React.FC = () => {
                   flexDirection: 'column',
                   p: { xs: 3, md: 3.5 },
                   borderRadius: '24px',
-                  bgcolor: isDark ? 'rgba(255, 255, 255, 0.025)' : 'rgba(255, 255, 255, 0.65)',
+                  bgcolor: isDark ? 'rgba(23, 18, 32, 0.92)' : 'rgba(255, 255, 255, 0.9)',
                   backgroundImage: isDark
                     ? `radial-gradient(circle at 15% 15%, ${item.ambientGlow} 0%, transparent 65%)`
                     : `radial-gradient(circle at 15% 15%, ${item.ambientGlow} 0%, transparent 60%)`,
@@ -92,14 +92,10 @@ export const MetricCounterBar: React.FC = () => {
                   boxShadow: isDark
                     ? '0 16px 40px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
                     : '0 16px 40px -15px rgba(93, 26, 137, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
-                  backdropFilter: 'blur(16px)',
                   position: 'relative',
                   overflow: 'hidden',
-                  transform: 'translate3d(0, 0, 0)',
-                  backfaceVisibility: 'hidden',
-                  willChange: 'transform',
-                  transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                  // Hardware-Accelerated Sweeping Shimmer Beam on Top Edge
+                  transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
+                  // Light beam on top edge: ambient subtle highlight, sweeps across on hover
                   '&::after': {
                     content: '""',
                     position: 'absolute',
@@ -108,9 +104,10 @@ export const MetricCounterBar: React.FC = () => {
                     width: '60%',
                     height: '2px',
                     background: `linear-gradient(90deg, transparent, ${item.color}, #FFFFFF, ${item.color}, transparent)`,
-                    animation: `shimmerSweep ${4 + idx * 0.4}s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
-                    willChange: 'transform',
+                    opacity: 0,
                     pointerEvents: 'none',
+                    transform: 'translate3d(-100%, 0, 0)',
+                    transition: 'opacity 0.2s ease',
                   },
                   '&:hover': {
                     transform: 'translateY(-6px)',
@@ -118,6 +115,10 @@ export const MetricCounterBar: React.FC = () => {
                     boxShadow: isDark
                       ? `0 24px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px -8px ${item.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
                       : `0 24px 45px -12px rgba(93, 26, 137, 0.15), 0 0 30px -8px ${item.ambientGlow}, inset 0 1px 0 rgba(255, 255, 255, 1)`,
+                    '&::after': {
+                      opacity: 1,
+                      animation: 'shimmerSweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) 1',
+                    },
                     '& .metric-icon-badge': {
                       transform: 'scale(1.08)',
                       boxShadow: `0 8px 24px -4px ${item.color}70`,

@@ -2,6 +2,7 @@ import axios from 'axios';
 import { queryClient } from './queryClient';
 import { useAuthStore } from '@/store/useAuthStore';
 import { disconnectSocket, refreshSocketAuth } from '@/lib/socket';
+import { rewriteAvatarUrlsInPlace } from '@/utils/cloudinaryUrl';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -30,7 +31,10 @@ const onRefreshed = (token: string) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data) rewriteAvatarUrlsInPlace(response.data);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
