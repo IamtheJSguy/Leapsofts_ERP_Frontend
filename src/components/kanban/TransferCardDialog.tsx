@@ -4,9 +4,9 @@ import {
   Button, FormControl, InputLabel, Select, MenuItem,
   Typography, Box, CircularProgress, Alert
 } from '@mui/material';
-import { useSalesBoards } from '@/hooks/api/useKanban';
+import { useProjectBoards } from '@/hooks/api/useProjects';
+import { useKanbanBoards } from '@/hooks/api/useKanban';
 import type { KanbanBoard } from '@/types';
-import { useAuthStore } from '@/store/useAuthStore';
 
 interface TransferCardDialogProps {
   open: boolean;
@@ -18,6 +18,14 @@ interface TransferCardDialogProps {
   onSubmit: (targetBoardId: string, targetColumnId: string) => Promise<any>;
 }
 
+const getProjectId = (board?: KanbanBoard | null): string => {
+  if (!board?.projectId) return '';
+  if (typeof board.projectId === 'object' && (board.projectId as any)._id) {
+    return String((board.projectId as any)._id);
+  }
+  return String(board.projectId);
+};
+
 export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
   open,
   onClose,
@@ -27,42 +35,54 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
   cardAssigneeIds,
   onSubmit,
 }) => {
-  const { data: allSalesBoards, isLoading: isBoardsLoading } = useSalesBoards({ enabled: open });
+  const projectId = useMemo(() => getProjectId(sourceBoard), [sourceBoard]);
+  const { data: projectBoards, isLoading: isProjectBoardsLoading } = useProjectBoards(
+    open && projectId ? projectId : undefined
+  );
+  const { data: allKanbanBoards, isLoading: isAllBoardsLoading } = useKanbanBoards({
+    enabled: open && !projectId,
+  });
+
+  const isBoardsLoading = projectId ? isProjectBoardsLoading : isAllBoardsLoading;
+  const boardsList = (projectId ? projectBoards : allKanbanBoards) || [];
+
   const [selectedBoardId, setSelectedBoardId] = useState<string>('');
   const [selectedColumnId, setSelectedColumnId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const availableBoards = useMemo(() => {
-    if (!allSalesBoards) return [];
-    return allSalesBoards.filter(b => b.projectId === sourceBoard.projectId && b._id !== sourceBoard._id);
-  }, [allSalesBoards, sourceBoard]);
+    if (!boardsList || boardsList.length === 0) return [];
+    const sourceBoardId = String(sourceBoard._id);
+    return boardsList.filter(b => {
+      const bProjId = getProjectId(b);
+      return (
+        b.isActive !== false &&
+        bProjId &&
+        projectId &&
+        bProjId === projectId &&
+        String(b._id) !== sourceBoardId
+      );
+    });
+  }, [boardsList, sourceBoard._id, projectId]);
 
   const selectedBoard = useMemo(() => {
-    return availableBoards.find(b => b._id === selectedBoardId);
+    return availableBoards.find(b => String(b._id) === String(selectedBoardId));
   }, [availableBoards, selectedBoardId]);
 
   const removedAssigneesCount = useMemo(() => {
     if (!selectedBoard || cardAssigneeIds.length === 0) return 0;
-    const destMemberIds = selectedBoard.members.map(m => m.userId.toString());
-    if (selectedBoard.ownerId) destMemberIds.push(selectedBoard.ownerId.toString());
-    const validCount = cardAssigneeIds.filter(id => destMemberIds.includes(id)).length;
+    const destMemberIds = (selectedBoard.members || []).map((m: any) => {
+      const u = m.userId;
+      return typeof u === 'object' && u !== null && u._id ? String(u._id) : String(u || '');
+    }).filter(Boolean);
+    if (selectedBoard.ownerId) {
+      const owner = selectedBoard.ownerId;
+      destMemberIds.push(typeof owner === 'object' && (owner as any)._id ? String((owner as any)._id) : String(owner));
+    }
+    const validCount = cardAssigneeIds.filter(id => destMemberIds.includes(String(id))).length;
     return cardAssigneeIds.length - validCount;
   }, [selectedBoard, cardAssigneeIds]);
-
-  const handleSubmit = async () => {
-    if (!selectedBoardId || !selectedColumnId) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await onSubmit(selectedBoardId, selectedColumnId);
-      onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -70,6 +90,20 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
     setSelectedColumnId('');
     setError(null);
     onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedBoardId || !selectedColumnId) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(selectedBoardId, selectedColumnId);
+      handleClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'An error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,10 +122,10 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
           </Box>
         ) : availableBoards.length === 0 ? (
           <Typography color="text.secondary" p={2} textAlign="center">
-            No other Sales boards available in this project.
+            No other boards available in this project.
           </Typography>
         ) : (
-          <Box sx={{ mt: 1, display: 'flex', flexDir: 'column', gap: 3 }}>
+          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <FormControl fullWidth>
               <InputLabel>Destination Board</InputLabel>
               <Select
@@ -120,11 +154,13 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
                   onChange={(e) => setSelectedColumnId(e.target.value as string)}
                   disabled={isSubmitting}
                 >
-                  {selectedBoard.columns.filter(c => c.isActive !== false).map(col => (
-                    <MenuItem key={col._id} value={col._id}>
-                      {col.name}
-                    </MenuItem>
-                  ))}
+                  {(selectedBoard.columns || [])
+                    .filter((c: any) => c.isActive !== false)
+                    .map((col: any) => (
+                      <MenuItem key={col._id} value={col._id}>
+                        {col.name}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             )}
