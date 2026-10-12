@@ -121,7 +121,7 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
                   disabled={isSubmitting}
                 >
                   {selectedBoard.columns.filter(c => c.isActive !== false).map(col => (
-                    <MenuItem key={col._id || col.id} value={col._id || col.id as string}>
+                    <MenuItem key={col._id} value={col._id}>
                       {col.name}
                     </MenuItem>
                   ))}

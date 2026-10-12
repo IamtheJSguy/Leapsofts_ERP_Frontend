@@ -74,7 +74,7 @@ import {
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
-  useUpdateBoard,
+  useUpdateBoard, useTransferCard,
 } from '@/hooks/api/useKanban';
 import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
@@ -1632,8 +1632,16 @@ const CardMeetingsSection = ({
   );
 };
 
-const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard, onViewLead }: any) => {
+const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boardMembers = [], boardId, actualBoard, onViewLead, onTransferClick }: any) => {
   const [searchParams] = useSearchParams();
+  const isSalesBoard = actualBoard?.category === 'sales';
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setCardMenuAnchor(event.currentTarget);
+  };
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -2076,7 +2084,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                   transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                   PaperProps={{ sx: { borderRadius: '12px', minWidth: 180, mt: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
                 >
-                  <MenuItem onClick={() => { handleCardMenuClose(); setTransferDialogOpen(true); }}>
+                  <MenuItem onClick={() => { handleCardMenuClose(); onTransferClick?.(); }}>
                     <ListItemIcon><DriveFileMoveIcon fontSize="small" /></ListItemIcon>
                     <ListItemText primary="Transfer to Board" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
                   </MenuItem>
@@ -3217,16 +3225,17 @@ export const KanbanBoardPage = () => {
 
   // Transfer & Copy Card Dialogs
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
-  const isSalesBoard = board?.category === 'sales';
+  const isSalesBoard = actualBoard?.category === 'sales';
 
   const { mutateAsync: transferCardMutate } = useTransferCard(activeBoardId);
 
-  const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setCardMenuAnchor(event.currentTarget);
-  };
-  const handleCardMenuClose = () => {
-    setCardMenuAnchor(null);
+  const handleCloseCardDrawer = () => {
+    setDrawerTaskId(null);
+    setSearchParams((prev) => {
+      prev.delete('card');
+      prev.delete('comment');
+      return prev;
+    });
   };
   const [renameColumnText, setRenameColumnText] = useState('');
 
@@ -4349,20 +4358,14 @@ export const KanbanBoardPage = () => {
       <TaskDetailDrawer
         task={drawerTask}
         open={Boolean(drawerTask)}
-        onClose={() => {
-          setDrawerTaskId(null);
-          setSearchParams((prev) => {
-            prev.delete('card');
-            prev.delete('comment');
-            return prev;
-          });
-        }}
+        onClose={handleCloseCardDrawer}
         isDarkMode={isDarkMode}
         allUsers={allUsers}
         boardMembers={boardMembers}
         boardId={activeBoardId}
         actualBoard={actualBoard}
         onViewLead={handleViewLead}
+        onTransferClick={() => setTransferDialogOpen(true)}
       />
 
       <Dialog
@@ -4529,25 +4532,27 @@ export const KanbanBoardPage = () => {
       })()}
 
       {/* Transfer & Copy Dialogs */}
-      {board && activeCardData && isSalesBoard && (
-        <>
-          <TransferCardDialog
-            open={transferDialogOpen}
-            onClose={() => setTransferDialogOpen(false)}
-            title="Transfer Card"
-            submitLabel="Transfer"
-            sourceBoard={board}
-            cardAssigneeIds={activeCardData.assignedTo || []}
-            onSubmit={async (targetBoardId, targetColumnId) => {
-              const res = await transferCardMutate({
-                cardId: activeCardData._id,
-                data: { targetBoardId, targetColumnId }
-              });
-              onCloseCardDrawer();
-              return res;
-            }}
-          />
-        </>
+      {actualBoard && drawerTask && isSalesBoard && (
+        <TransferCardDialog
+          open={transferDialogOpen}
+          onClose={() => setTransferDialogOpen(false)}
+          title="Transfer Card"
+          submitLabel="Transfer"
+          sourceBoard={actualBoard}
+          cardAssigneeIds={
+            Array.isArray(drawerTask.rawCard?.assignedTo)
+              ? drawerTask.rawCard.assignedTo.map((u: any) => (typeof u === 'object' ? u._id : u))
+              : []
+          }
+          onSubmit={async (targetBoardId, targetColumnId) => {
+            const res = await transferCardMutate({
+              cardId: drawerTask.id,
+              data: { targetBoardId, targetColumnId }
+            });
+            handleCloseCardDrawer();
+            return res;
+          }}
+        />
       )}
     </Box>
   );
