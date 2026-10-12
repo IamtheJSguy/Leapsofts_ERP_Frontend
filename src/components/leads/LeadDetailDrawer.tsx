@@ -325,7 +325,11 @@ export const LeadDetailDrawer = ({
             title="Transfer Card"
             submitLabel="Transfer"
             sourceBoard={sourceBoardForActive}
-            cardAssigneeIds={lead?.assignedTo ? [lead.assignedTo] : []}
+            cardAssigneeIds={
+              lead?.assignedTo
+                ? [typeof lead.assignedTo === 'string' ? lead.assignedTo : lead.assignedTo._id]
+                : []
+            }
             onSubmit={async (targetBoardId, targetColumnId) => {
               const res = await transferCardMutate.mutateAsync({
                 cardId: activePlacement.cardId,

@@ -21,11 +21,10 @@ export const useLogin = () => {
   const queryClient = useQueryClient();
   const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
-    mutationFn: authApi.login,
-    onSuccess: async (res) => {
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      const res = await authApi.login(credentials);
       const data = res.data.data;
-      if (data.requires2FA || data.requires2FASetup) return;
-      if (data.accessToken && data.user) {
+      if (!data.requires2FA && !data.requires2FASetup && data.accessToken && data.user) {
         const previousUserId = useAuthStore.getState().user?._id;
         localStorage.setItem('accessToken', data.accessToken);
         await queryClient.cancelQueries();
@@ -33,6 +32,7 @@ export const useLogin = () => {
         markMonitoringPromptPendingForLogin();
         setAuth(data.user);
       }
+      return res;
     },
   });
 };
