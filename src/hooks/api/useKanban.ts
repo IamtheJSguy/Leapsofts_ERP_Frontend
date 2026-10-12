@@ -22,6 +22,10 @@ const kanbanApi = {
     api.post(`/kanban/boards/${boardId}/columns`, { name }),
   moveCard: ({ cardId, data }: { cardId: string; data: { columnId: string; position: number } }) =>
     api.patch(`/kanban/cards/${cardId}/move`, { columnId: data.columnId, order: data.position }),
+  transferCard: ({ cardId, data }: { cardId: string; data: { targetBoardId: string; targetColumnId: string } }) =>
+    api.patch<{ data: { card: KanbanCard; removedAssigneesCount: number } }>(`/kanban/cards/${cardId}/transfer`, data),
+  copyCard: ({ cardId, data }: { cardId: string; data: { targetBoardId: string; targetColumnId: string } }) =>
+    api.post<{ data: { card: KanbanCard; removedAssigneesCount: number } }>(`/kanban/cards/${cardId}/copy`, data),
   addComment: ({ cardId, data }: { cardId: string; data: { text: string; mentions?: string[] } }) =>
     api.post(`/kanban/cards/${cardId}/comments`, data),
   updateCardMembers: ({ cardId, data }: { cardId: string; data: { members: string[] } }) =>
@@ -339,6 +343,31 @@ export const useMoveCard = (boardId?: string) => {
       if (context?.key) {
         queryClient.invalidateQueries({ queryKey: context.key });
       }
+    },
+  });
+};
+
+export const useTransferCard = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.transferCard,
+    onSuccess: (response, variables) => {
+      invalidateBoard(queryClient, boardId);
+      invalidateBoard(queryClient, variables.data.targetBoardId);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
+    },
+  });
+};
+
+export const useCopyCard = (boardId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: kanbanApi.copyCard,
+    onSuccess: (response, variables) => {
+      invalidateBoard(queryClient, variables.data.targetBoardId);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
   });
 };
