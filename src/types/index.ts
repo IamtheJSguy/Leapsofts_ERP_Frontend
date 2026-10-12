@@ -31,11 +31,24 @@ export interface ColdCallingState {
 }
 
 export type LeadCommentLevel = 'red' | 'yellow' | 'green';
+export type LeadCommentFormat = 'plain' | 'markdown' | 'html';
 
 export interface LeadComment {
   text: string;
   level: LeadCommentLevel;
+  format?: LeadCommentFormat;
   updatedAt?: string;
+  updatedBy?: string | User;
+}
+
+export interface LeadCommentEntry {
+  _id?: string;
+  text: string;
+  level: LeadCommentLevel;
+  format?: LeadCommentFormat;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string | User;
   updatedBy?: string | User;
 }
 
@@ -185,6 +198,7 @@ export interface Lead {
   futureLeadDate?: string;
   futureLeadRemindersSent?: Record<string, string>;
   leadComment?: LeadComment | null;
+  leadComments?: LeadCommentEntry[];
   coldCalling?: ColdCallingState;
   /** Full audit trail of every sales board push (append-only). */
   salesBoardPlacements?: SalesBoardPlacement[];

@@ -50,7 +50,8 @@ import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens, coldOutreachStatusTokens, coldResponseStatusTokens } from '@/styles/tokens';
 import type { Lead, OutreachChannel } from '@/types';
-import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp } from '@/hooks/api/useLeads';
+import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp, useAddLeadComment } from '@/hooks/api/useLeads';
+import { getLatestLeadComment, leadHasComment } from '@/utils/getLatestLeadComment';
 import {
   useLeadAutoSync,
   buildEditDataFromProspect,
@@ -67,7 +68,7 @@ import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow';
-import { LeadCommentButton } from '@/components/leads/LeadCommentButton';
+import { LeadCommentButton, type LeadCommentAddPayload } from '@/components/leads/LeadCommentButton';
 import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import { ExportLeadsDialog } from '@/components/leads/ExportLeadsDialog';
 import {
@@ -181,7 +182,8 @@ export const SalesPage = () => {
           linkedinMsg: current.linkedinMsg,
           futureLeadDate: current.futureLeadDate,
           coldCalling: current.coldCalling,
-          leadComment: current.leadComment,
+          leadComments: refreshed.leadComments,
+          leadComment: refreshed.leadComment,
         },
       };
     });
@@ -395,11 +397,11 @@ export const SalesPage = () => {
     if (newLeadData.messageStatus === 'future_lead' && !newLeadData.futureLeadDate) {
       errors.futureLeadDate = true;
     }
-    if (newLeadData.messageStatus === 'invalid_lead' && !newLeadData.leadComment?.text?.trim()) {
+    if (newLeadData.messageStatus === 'invalid_lead' && !leadHasComment(newLeadData)) {
       errors.leadComment = true;
     }
     if (newLeadData.coldCalling?.responseStatus === 'future_lead' && !newLeadData.coldCalling.futureLeadAt) errors.coldFutureLeadAt = true;
-    if (newLeadData.coldCalling?.responseStatus === 'invalid_lead' && !newLeadData.leadComment?.text?.trim()) errors.leadComment = true;
+    if (newLeadData.coldCalling?.responseStatus === 'invalid_lead' && !leadHasComment(newLeadData)) errors.leadComment = true;
 
     if (Object.keys(errors).length > 0) {
       setAddLeadErrors(errors);
@@ -451,6 +453,37 @@ export const SalesPage = () => {
   const persistEnabledRef = useRef(true);
   const prospectsByIdRef = useRef<Record<string, any>>({});
   const updateLead = useUpdateLead();
+  const addLeadComment = useAddLeadComment();
+
+  const handleAddLeadComment = useCallback(
+    (leadId: string, payload: LeadCommentAddPayload) => {
+      addLeadComment.mutate(
+        { id: leadId, text: payload.text, level: payload.level, format: payload.format },
+        {
+          onSuccess: (res) => {
+            const saved = res.data.data;
+            if (saved?._id === leadId) {
+              setEditingLeads((prev) => {
+                const row = prev[leadId];
+                if (!row) return prev;
+                return {
+                  ...prev,
+                  [leadId]: {
+                    ...row,
+                    leadComments: saved.leadComments ?? row.leadComments,
+                    leadComment: getLatestLeadComment(saved) ?? undefined,
+                  },
+                };
+              });
+            }
+            addToast({ message: 'Comment added', severity: 'success' });
+          },
+          onError: (err) => showApiError(err),
+        },
+      );
+    },
+    [addLeadComment, addToast, setEditingLeads],
+  );
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
   const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
 
@@ -584,14 +617,14 @@ export const SalesPage = () => {
       addToast({ message: 'Please select a Future Lead date.', severity: 'error' });
       return;
     }
-    if (dataToSave.messageStatus === 'invalid_lead' && !dataToSave.leadComment?.text?.trim()) {
+    if (dataToSave.messageStatus === 'invalid_lead' && !leadHasComment(dataToSave)) {
       addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' });
       return;
     }
     if (dataToSave.coldCalling.responseStatus === 'future_lead' && !dataToSave.coldCalling.futureLeadAt) {
       addToast({ message: 'Please select a cold-call Future Lead date and time.', severity: 'error' }); return;
     }
-    if (dataToSave.coldCalling.responseStatus === 'invalid_lead' && !dataToSave.leadComment?.text?.trim()) {
+    if (dataToSave.coldCalling.responseStatus === 'invalid_lead' && !leadHasComment(dataToSave)) {
       addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' }); return;
     }
 
@@ -2261,6 +2294,9 @@ export const SalesPage = () => {
                           onFollowUpChange={handleFollowUpChange}
                           outreachChannel={outreachChannel}
                           onOpenProfile={handleOpenUpdateLead}
+                          onAddLeadComment={handleAddLeadComment}
+                          addCommentPending={addLeadComment.isPending}
+                          mentionableUsers={Array.isArray(usersData) ? usersData : []}
                         />
                       );
                     }
@@ -2472,16 +2508,16 @@ export const SalesPage = () => {
                             </Box>
                             <Box onClick={(e) => e.stopPropagation()}>
                               <LeadCommentButton
+                                comments={prospect.leadComments}
                                 comment={prospect.leadComment}
-                                onSave={(comment) =>
-                                  updateLead.mutate(
-                                    { id: prospect._id, data: { leadComment: comment } },
+                                mentionableUsers={Array.isArray(usersData) ? usersData : []}
+                                saving={addLeadComment.isPending}
+                                onAdd={(payload) =>
+                                  addLeadComment.mutate(
+                                    { id: prospect._id, ...payload },
                                     {
                                       onSuccess: () =>
-                                        addToast({
-                                          message: comment ? 'Comment saved' : 'Comment removed',
-                                          severity: 'success',
-                                        }),
+                                        addToast({ message: 'Comment added', severity: 'success' }),
                                       onError: (err) => showApiError(err),
                                     },
                                   )

@@ -11,10 +11,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { tokens } from '@/styles/tokens';
 import type { EditableLeadData } from '@/hooks/useLeadAutoSync';
-import type { ColdCallingState, ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, LeadComment, MessageStatus, OutreachChannel } from '@/types';
+import type { ColdCallingState, ColdOutreachStatus, ColdResponseStatus, ConnectionStatus, LeadComment, MessageStatus, OutreachChannel, User } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { nativeFieldStyle } from './nativeFieldStyles';
-import { LeadCommentButton } from './LeadCommentButton';
+import { LeadCommentButton, type LeadCommentAddPayload } from './LeadCommentButton';
 import { ColdFutureDateTimeField } from './ColdFutureDateTimeField';
 
 type OptionItem = { _id: string; name: string };
@@ -37,6 +37,9 @@ type SalesEditRowProps = {
   onFollowUpChange?: (id: string, number: number) => void;
   outreachChannel: OutreachChannel;
   onOpenProfile: (id: string) => void;
+  onAddLeadComment?: (id: string, payload: LeadCommentAddPayload) => void;
+  addCommentPending?: boolean;
+  mentionableUsers?: User[];
 };
 
 export const SalesEditRow = memo(function SalesEditRow({
@@ -57,6 +60,9 @@ export const SalesEditRow = memo(function SalesEditRow({
   onFollowUpChange,
   outreachChannel,
   onOpenProfile,
+  onAddLeadComment,
+  addCommentPending,
+  mentionableUsers = [],
 }: SalesEditRowProps) {
   const field = nativeFieldStyle(isDarkMode);
   const [promptInvalidComment, setPromptInvalidComment] = useState(false);
@@ -128,8 +134,19 @@ export const SalesEditRow = memo(function SalesEditRow({
             />
           </Box>
           <LeadCommentButton
+            comments={editData.leadComments}
             comment={editData.leadComment}
-            onSave={(comment) => onUpdate(leadId, { leadComment: comment })}
+            mentionableUsers={mentionableUsers}
+            onAdd={(payload) => {
+              if (onAddLeadComment) {
+                onAddLeadComment(leadId, payload);
+                return;
+              }
+              onUpdate(leadId, {
+                pendingLeadComment: { text: payload.text, level: payload.level },
+              });
+            }}
+            saving={addCommentPending}
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
             requireReason={editData.messageStatus === 'invalid_lead' || editData.coldCalling.responseStatus === 'invalid_lead'}
@@ -413,7 +430,11 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
           </Box>
           <LeadCommentButton
             comment={data.leadComment}
-            onSave={(comment) => onUpdate({ leadComment: comment })}
+            onAdd={(payload) =>
+              onUpdate({
+                leadComment: { text: payload.text, level: payload.level },
+              })
+            }
             promptOpen={promptInvalidComment}
             onPromptHandled={() => setPromptInvalidComment(false)}
             requireReason={data.messageStatus === 'invalid_lead' || data.coldCalling?.responseStatus === 'invalid_lead'}
