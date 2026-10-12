@@ -53,6 +53,8 @@ import { conversationBoardId, getConversationTitle } from '@/utils/chatUnreadUti
 import { useKanbanBoard, useKanbanBoards } from '@/hooks/api/useKanban';
 import type { DriveFile, Message, PresenceStatus, User } from '@/types';
 import { showApiError } from '@/utils/apiError';
+import { useChatDraft } from '@/hooks/useChatDraft';
+import { isDraftEmpty } from '@/utils/chatDraftStorage';
 
 const SMALL_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
 const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
@@ -93,13 +95,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const driveAuth = useDriveAuthUrl();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const text = activeConversationId ? (drafts[activeConversationId] || '') : '';
-  const setText = (newText: string) => {
-    if (activeConversationId) {
-      setDrafts(prev => ({ ...prev, [activeConversationId]: newText }));
-    }
-  };
+  const { text, setText, removeDraft } = useChatDraft(activeConversationId);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -415,23 +411,46 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const handleSend = () => {
     if (!activeConversationId) return;
+    if (
+      sendMessage.isPending ||
+      sendChatImage.isPending ||
+      uploadDriveFile.isPending ||
+      createConversation.isPending
+    ) {
+      return;
+    }
     shouldStickToBottomRef.current = true;
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
     const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string) => {
-      sendMessage.mutate({
-        conversationId,
-        content: content || file.name,
-        type: 'drive_file',
-        driveFileId: file.id,
-        driveFileName: file.name,
-        driveMimeType: file.mimeType,
-        driveWebViewLink: httpUrl(file.webViewLink),
-        driveIconLink: httpUrl(file.iconLink),
-        driveThumbnailLink: httpUrl(file.thumbnailLink),
-        ...(replyTo ? { replyTo } : {}),
-      });
+      sendMessage.mutate(
+        {
+          conversationId,
+          content: content || file.name,
+          type: 'drive_file',
+          driveFileId: file.id,
+          driveFileName: file.name,
+          driveMimeType: file.mimeType,
+          driveWebViewLink: httpUrl(file.webViewLink),
+          driveIconLink: httpUrl(file.iconLink),
+          driveThumbnailLink: httpUrl(file.thumbnailLink),
+          ...(replyTo ? { replyTo } : {}),
+        },
+        {
+          onSuccess: () => {
+            removeDraft(conversationId);
+            if (activeConversationId.startsWith('mock-conv-')) {
+              removeDraft(activeConversationId);
+            }
+            setReplyingTo(null);
+            clearPendingFile();
+          },
+          onError: (err) => {
+            showApiError(err);
+          },
+        }
+      );
     };
 
     const sendAttachment = (conversationId: string) => {
@@ -442,15 +461,27 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       const replyToIdToUpload = replyToId;
 
       if (isSmallChatImage(fileToUpload)) {
-        setText('');
-        setReplyingTo(null);
-        clearPendingFile();
-        sendChatImage.mutate({
-          conversationId,
-          file: fileToUpload,
-          content: contentToUpload || undefined,
-          replyTo: replyToIdToUpload,
-        });
+        sendChatImage.mutate(
+          {
+            conversationId,
+            file: fileToUpload,
+            content: contentToUpload || undefined,
+            replyTo: replyToIdToUpload,
+          },
+          {
+            onSuccess: () => {
+              removeDraft(conversationId);
+              if (activeConversationId.startsWith('mock-conv-')) {
+                removeDraft(activeConversationId);
+              }
+              setReplyingTo(null);
+              clearPendingFile();
+            },
+            onError: (err) => {
+              showApiError(err);
+            },
+          }
+        );
         return;
       }
 
@@ -459,11 +490,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         return;
       }
 
-      setText('');
-      setReplyingTo(null);
-      clearPendingFile();
       uploadDriveFile.mutate(fileToUpload, {
         onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload),
+        onError: (err) => {
+          showApiError(err);
+        },
       });
     };
 
@@ -481,6 +512,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 sendAttachment(newConvId);
               }
             },
+            onError: (err) => {
+              showApiError(err);
+            },
           },
         );
         return;
@@ -489,7 +523,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return;
     }
 
-    if (!caption) return;
+    if (isDraftEmpty(text)) return;
     const payload = {
       content: text,
       ...(replyToId ? { replyTo: replyToId } : {}),
@@ -505,19 +539,40 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             if (newConvId) {
               setActiveConversation(newConvId);
               navigate(`/chat/${newConvId}`, { replace: true });
-              sendMessage.mutate({ conversationId: newConvId, ...payload });
+              sendMessage.mutate(
+                { conversationId: newConvId, ...payload },
+                {
+                  onSuccess: () => {
+                    removeDraft(newConvId);
+                    removeDraft(activeConversationId);
+                    setReplyingTo(null);
+                  },
+                  onError: (err) => {
+                    showApiError(err);
+                  },
+                }
+              );
             }
           },
           onError: (err) => {
             showApiError(err);
-          }
+          },
         }
       );
     } else {
-      sendMessage.mutate({ conversationId: activeConversationId, ...payload });
+      sendMessage.mutate(
+        { conversationId: activeConversationId, ...payload },
+        {
+          onSuccess: () => {
+            removeDraft(activeConversationId);
+            setReplyingTo(null);
+          },
+          onError: (err) => {
+            showApiError(err);
+          },
+        }
+      );
     }
-    setText('');
-    setReplyingTo(null);
   };
 
   // Resolve current active conversation details
@@ -1113,7 +1168,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
           <IconButton
             onClick={handleSend}
-            disabled={(!text.trim() && !pendingFile) || uploadDriveFile.isPending}
+            disabled={
+              (!pendingFile && isDraftEmpty(text)) ||
+              uploadDriveFile.isPending ||
+              sendMessage.isPending ||
+              sendChatImage.isPending ||
+              createConversation.isPending
+            }
             sx={{
               width: 44,
               height: 44,
