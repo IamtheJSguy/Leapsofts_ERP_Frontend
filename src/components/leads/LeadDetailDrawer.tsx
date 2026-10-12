@@ -335,6 +335,7 @@ export const LeadDetailDrawer = ({
                 cardId: activePlacement.cardId,
                 data: { targetBoardId, targetColumnId }
               });
+              addToast({ message: 'Card transferred successfully', severity: 'success' });
               return res;
             }}
           />

@@ -2071,7 +2071,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 <DeleteIcon fontSize="small" />
               </IconButton>
             )}
-            {isSalesBoard && canEdit && (
+            {canEdit && (
               <>
                 <IconButton onClick={handleCardMenuOpen} sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
                   <MoreVertIcon fontSize="small" />
@@ -4532,7 +4532,7 @@ export const KanbanBoardPage = () => {
       })()}
 
       {/* Transfer & Copy Dialogs */}
-      {actualBoard && drawerTask && isSalesBoard && (
+      {actualBoard && drawerTask && (
         <TransferCardDialog
           open={transferDialogOpen}
           onClose={() => setTransferDialogOpen(false)}
@@ -4550,6 +4550,7 @@ export const KanbanBoardPage = () => {
               data: { targetBoardId, targetColumnId }
             });
             handleCloseCardDrawer();
+            addToast({ message: 'Card transferred successfully', severity: 'success' });
             return res;
           }}
         />

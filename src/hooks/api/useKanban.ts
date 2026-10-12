@@ -351,9 +351,37 @@ export const useTransferCard = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.transferCard,
-    onSuccess: (response, variables) => {
-      invalidateBoard(queryClient, boardId);
-      invalidateBoard(queryClient, variables.data.targetBoardId);
+    onMutate: async ({ cardId }) => {
+      if (boardId) {
+        const key = kanbanBoardKey(boardId);
+        await queryClient.cancelQueries({ queryKey: key });
+        const previousBoard = queryClient.getQueryData(key);
+        queryClient.setQueryData(key, (old: any) => {
+          if (!old?.cards) return old;
+          return {
+            ...old,
+            cards: old.cards.filter((c: any) => (c._id || c.id) !== cardId),
+          };
+        });
+        return { previousBoard, key };
+      }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousBoard && context.key) {
+        queryClient.setQueryData(context.key, context.previousBoard);
+      }
+    },
+    onSettled: (_data, _err, variables) => {
+      if (boardId) {
+        invalidateBoard(queryClient, boardId);
+      }
+      if (variables?.data?.targetBoardId) {
+        invalidateBoard(queryClient, variables.data.targetBoardId);
+      }
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['kanbanSalesBoards'] });
+      queryClient.invalidateQueries({ queryKey: ['projectBoards'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
