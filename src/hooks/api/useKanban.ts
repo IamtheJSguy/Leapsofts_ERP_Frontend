@@ -12,6 +12,20 @@ export type CreateMeetingOnCardPayload = {
   leadId?: string;
 };
 
+export type MoveCopyCardMode = 'move' | 'copy';
+
+export type MoveCopyCardPayload = {
+  targetBoardId: string;
+  targetColumnId: string;
+  title?: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  dueDate?: string;
+  kpiEndDate?: string;
+  assignedTo?: string[];
+  addMemberUserIds?: string[];
+};
+
 const kanbanApi = {
   getBoards: () => api.get<{ data: KanbanBoard[] }>('/kanban/boards'),
   getBoard: (id: string) => api.get<{ data: KanbanBoardResponse }>(`/kanban/board/${id}`),
@@ -22,10 +36,10 @@ const kanbanApi = {
     api.post(`/kanban/boards/${boardId}/columns`, { name }),
   moveCard: ({ cardId, data }: { cardId: string; data: { columnId: string; position: number } }) =>
     api.patch(`/kanban/cards/${cardId}/move`, { columnId: data.columnId, order: data.position }),
-  transferCard: ({ cardId, data }: { cardId: string; data: { targetBoardId: string; targetColumnId: string } }) =>
-    api.patch<{ data: { card: KanbanCard; removedAssigneesCount: number } }>(`/kanban/cards/${cardId}/transfer`, data),
-  copyCard: ({ cardId, data }: { cardId: string; data: { targetBoardId: string; targetColumnId: string } }) =>
-    api.post<{ data: { card: KanbanCard; removedAssigneesCount: number } }>(`/kanban/cards/${cardId}/copy`, data),
+  transferCard: ({ cardId, data }: { cardId: string; data: MoveCopyCardPayload }) =>
+    api.patch<{ data: { card: KanbanCard; addedMemberUserIds: string[] } }>(`/kanban/cards/${cardId}/transfer`, data),
+  copyCard: ({ cardId, data }: { cardId: string; data: MoveCopyCardPayload }) =>
+    api.post<{ data: { card: KanbanCard; addedMemberUserIds: string[] } }>(`/kanban/cards/${cardId}/copy`, data),
   addComment: ({ cardId, data }: { cardId: string; data: { text: string; mentions?: string[] } }) =>
     api.post(`/kanban/cards/${cardId}/comments`, data),
   updateCardMembers: ({ cardId, data }: { cardId: string; data: { members: string[] } }) =>
@@ -351,26 +365,6 @@ export const useTransferCard = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.transferCard,
-    onMutate: async ({ cardId }) => {
-      if (boardId) {
-        const key = kanbanBoardKey(boardId);
-        await queryClient.cancelQueries({ queryKey: key });
-        const previousBoard = queryClient.getQueryData(key);
-        queryClient.setQueryData(key, (old: any) => {
-          if (!old?.cards) return old;
-          return {
-            ...old,
-            cards: old.cards.filter((c: any) => (c._id || c.id) !== cardId),
-          };
-        });
-        return { previousBoard, key };
-      }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousBoard && context.key) {
-        queryClient.setQueryData(context.key, context.previousBoard);
-      }
-    },
     onSettled: (_data, _err, variables) => {
       if (boardId) {
         invalidateBoard(queryClient, boardId);
@@ -378,10 +372,6 @@ export const useTransferCard = (boardId?: string) => {
       if (variables?.data?.targetBoardId) {
         invalidateBoard(queryClient, variables.data.targetBoardId);
       }
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard'] });
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoards'] });
-      queryClient.invalidateQueries({ queryKey: ['kanbanSalesBoards'] });
-      queryClient.invalidateQueries({ queryKey: ['projectBoards'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
@@ -392,8 +382,13 @@ export const useCopyCard = (boardId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: kanbanApi.copyCard,
-    onSuccess: (response, variables) => {
-      invalidateBoard(queryClient, variables.data.targetBoardId);
+    onSettled: (_data, _err, variables) => {
+      if (boardId) {
+        invalidateBoard(queryClient, boardId);
+      }
+      if (variables?.data?.targetBoardId) {
+        invalidateBoard(queryClient, variables.data.targetBoardId);
+      }
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead'] });
     },
