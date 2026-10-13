@@ -24,7 +24,7 @@ export interface UseChatDraftResult {
 export function useChatDraft(activeConversationId: string | null): UseChatDraftResult {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{ id: string; text: string } | null>(null);
   const prevConversationIdRef = useRef<string | null>(activeConversationId);
 
