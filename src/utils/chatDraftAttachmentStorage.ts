@@ -9,6 +9,14 @@ const DB_NAME = 'leapsoft-chat-drafts';
 const DB_VERSION = 1;
 const STORE_NAME = 'draft_attachments';
 
+/** Time-to-live for draft attachments: 24 hours (1 day). */
+export const DRAFT_ATTACHMENT_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function isAttachmentExpired(updatedAt: number): boolean {
+  if (!updatedAt || typeof updatedAt !== 'number') return false;
+  return Date.now() - updatedAt > DRAFT_ATTACHMENT_TTL_MS;
+}
+
 export interface StoredDraftAttachment {
   conversationId: string;
   blob: Blob | File;
@@ -89,6 +97,7 @@ export async function saveDraftAttachment(conversationId: string, file: File): P
 
 /**
  * Loads the saved draft attachment for a conversation from browser IndexedDB.
+ * Automatically cleans up and discards the attachment if it is older than 24 hours.
  */
 export async function loadDraftAttachment(conversationId: string): Promise<File | null> {
   if (!conversationId || typeof window === 'undefined' || !window.indexedDB) return null;
@@ -97,6 +106,12 @@ export async function loadDraftAttachment(conversationId: string): Promise<File 
       store.get(conversationId)
     );
     if (!record || !record.blob) return null;
+
+    // Check 1-day (24h) auto-expiry
+    if (isAttachmentExpired(record.updatedAt)) {
+      void removeDraftAttachment(conversationId);
+      return null;
+    }
 
     if (record.blob instanceof File) {
       return record.blob;
@@ -124,15 +139,23 @@ export async function removeDraftAttachment(conversationId: string): Promise<voi
 }
 
 /**
- * Loads all draft attachments currently saved in browser IndexedDB.
+ * Loads all active draft attachments from browser IndexedDB.
+ * Automatically discards and purges any attachments older than 24 hours (1 day).
  */
 export async function loadAllDraftAttachments(): Promise<Record<string, File>> {
   if (typeof window === 'undefined' || !window.indexedDB) return {};
   try {
     const records = await runStore<StoredDraftAttachment[]>('readonly', (store) => store.getAll());
     const result: Record<string, File> = {};
+    const expiredIds: string[] = [];
+
     for (const record of records || []) {
       if (record?.conversationId && record.blob) {
+        if (isAttachmentExpired(record.updatedAt)) {
+          expiredIds.push(record.conversationId);
+          continue;
+        }
+
         if (record.blob instanceof File) {
           result[record.conversationId] = record.blob;
         } else {
@@ -143,9 +166,36 @@ export async function loadAllDraftAttachments(): Promise<Record<string, File>> {
         }
       }
     }
+
+    // Auto-clean any expired attachments found in background
+    if (expiredIds.length > 0) {
+      void Promise.all(expiredIds.map((id) => removeDraftAttachment(id))).catch(() => {
+        /* ignore */
+      });
+    }
+
     return result;
   } catch (err) {
     console.warn('Failed to load all draft attachments from IndexedDB', err);
     return {};
+  }
+}
+
+/**
+ * Manually cleans up all draft attachments older than 24 hours from IndexedDB.
+ */
+export async function cleanupExpiredDraftAttachments(): Promise<number> {
+  if (typeof window === 'undefined' || !window.indexedDB) return 0;
+  try {
+    const records = await runStore<StoredDraftAttachment[]>('readonly', (store) => store.getAll());
+    const expiredIds = (records || [])
+      .filter((r) => r && isAttachmentExpired(r.updatedAt))
+      .map((r) => r.conversationId);
+
+    await Promise.all(expiredIds.map((id) => removeDraftAttachment(id)));
+    return expiredIds.length;
+  } catch (err) {
+    console.warn('Failed to cleanup expired draft attachments', err);
+    return 0;
   }
 }
