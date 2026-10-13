@@ -48,6 +48,7 @@ import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
+import { useSocket } from '@/hooks/useSocket';
 import type { PresenceStatus } from '@/types';
 import {
   getAllDrafts,
