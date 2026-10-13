@@ -48,8 +48,15 @@ import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
-import { useSocket } from '@/hooks/useSocket';
 import type { PresenceStatus } from '@/types';
+import {
+  getAllDrafts,
+  isDraftEmpty,
+  CHAT_DRAFT_CHANGED_EVENT,
+  isDraftStorageKey,
+  getConversationIdFromKey,
+  extractDraftText,
+} from '@/utils/chatDraftStorage';
 
 export const ChatSidebar = () => {
   const { user: currentUser } = useAuth();
@@ -70,6 +77,49 @@ export const ChatSidebar = () => {
   const [newChatSearch, setNewChatSearch] = useState('');
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
+
+  // Track unsent chat drafts across conversations
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => getAllDrafts());
+
+  useEffect(() => {
+    const handleDraftChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ conversationId: string; text: string }>;
+      if (customEvent.detail) {
+        const { conversationId, text } = customEvent.detail;
+        setDrafts((prev) => {
+          if (isDraftEmpty(text)) {
+            const next = { ...prev };
+            delete next[conversationId];
+            return next;
+          }
+          return { ...prev, [conversationId]: text };
+        });
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || !isDraftStorageKey(event.key)) return;
+      const convId = getConversationIdFromKey(event.key);
+      if (!convId) return;
+      const text = event.newValue ? extractDraftText(event.newValue) : '';
+      setDrafts((prev) => {
+        if (isDraftEmpty(text)) {
+          const next = { ...prev };
+          delete next[convId];
+          return next;
+        }
+        return { ...prev, [convId]: text };
+      });
+    };
+
+    window.addEventListener(CHAT_DRAFT_CHANGED_EVENT, handleDraftChange);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(CHAT_DRAFT_CHANGED_EVENT, handleDraftChange);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   // Group chat states
   const [chatTab, setChatTab] = useState(0); // 0 = Direct, 1 = Group
@@ -164,19 +214,44 @@ export const ChatSidebar = () => {
     };
   };
 
-  // Filter existing conversations based on search query
+  // Filter existing conversations based on search query and sort drafts to the top
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conv) => {
-      const names = conv.isGroup
-        ? (getConversationTitle(conv, conversationBoardId(conv) ? boardNameById[conversationBoardId(conv)!] : undefined) || conv.name || '')
-        : conv.participants
-          .filter((p: any) => p._id !== currentUser?._id)
-          .map((p: any) => getDisplayName(p))
-          .join(', ');
-      return names.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (conv.lastMessage?.content && stripHtml(conv.lastMessage.content).toLowerCase().includes(searchQuery.toLowerCase()));
-    }).map(conv => ({ ...conv, details: getChatDetails(conv) }));
-  }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById, avatarByUserId]);
+    const list = conversations
+      .filter((conv) => {
+        const names = conv.isGroup
+          ? (getConversationTitle(conv, conversationBoardId(conv) ? boardNameById[conversationBoardId(conv)!] : undefined) || conv.name || '')
+          : conv.participants
+            .filter((p: any) => p._id !== currentUser?._id)
+            .map((p: any) => getDisplayName(p))
+            .join(', ');
+        return (
+          names.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (conv.lastMessage?.content && stripHtml(conv.lastMessage.content).toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      })
+      .map((conv) => {
+        const draft = drafts[conv._id] || '';
+        return {
+          ...conv,
+          details: getChatDetails(conv),
+          draft: !isDraftEmpty(draft) ? draft : '',
+        };
+      });
+
+    return list.sort((a, b) => {
+      const aHasDraft = Boolean(a.draft);
+      const bHasDraft = Boolean(b.draft);
+
+      // Conversations with an unsent draft go to the top
+      if (aHasDraft && !bHasDraft) return -1;
+      if (!aHasDraft && bHasDraft) return 1;
+
+      // Otherwise retain existing time-based order
+      const aTime = new Date(a.lastMessageAt || a.updatedAt || 0).getTime();
+      const bTime = new Date(b.lastMessageAt || b.updatedAt || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById, avatarByUserId, drafts]);
 
   const handleSetPresence = (status: 'away' | 'offline' | null) => {
     updatePresence.mutate(status);
@@ -557,6 +632,27 @@ export const ChatSidebar = () => {
                             noWrap
                           >
                             Typing...
+                          </Typography>
+                        ) : conv.draft ? (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '0.76rem',
+                              fontWeight: 500,
+                              maxWidth: unreadCount > 0 ? '80%' : '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              color: 'text.secondary',
+                            }}
+                            noWrap
+                          >
+                            <Box component="span" sx={{ color: '#ef4444', fontWeight: 800 }}>
+                              Draft:
+                            </Box>
+                            <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {stripHtml(conv.draft)}
+                            </Box>
                           </Typography>
                         ) : (
                           <Typography

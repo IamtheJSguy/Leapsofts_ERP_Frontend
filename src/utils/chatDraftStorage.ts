@@ -1,4 +1,18 @@
 export const DRAFT_STORAGE_PREFIX = 'chat_draft:';
+export const CHAT_DRAFT_CHANGED_EVENT = 'chat-draft-changed';
+
+/**
+ * Dispatches a custom window event when a draft changes locally within the current tab.
+ */
+export const dispatchDraftChangeEvent = (conversationId: string, text: string) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent(CHAT_DRAFT_CHANGED_EVENT, {
+        detail: { conversationId, text },
+      })
+    );
+  }
+};
 
 /**
  * Returns the unique localStorage key for a given conversation or recipient ID.
@@ -98,6 +112,32 @@ export const loadDraft = (conversationId: string): string => {
 };
 
 /**
+ * Loads all active drafts currently stored in localStorage.
+ */
+export const getAllDrafts = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  const drafts: Record<string, string> = {};
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && isDraftStorageKey(key)) {
+        const convId = getConversationIdFromKey(key);
+        if (convId) {
+          const raw = window.localStorage.getItem(key);
+          const text = extractDraftText(raw);
+          if (!isDraftEmpty(text)) {
+            drafts[convId] = text;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load all chat drafts from localStorage', err);
+  }
+  return drafts;
+};
+
+/**
  * Saves a draft for a conversation ID to browser localStorage.
  * If the draft is empty or whitespace-only, the key is removed instead.
  */
@@ -107,8 +147,10 @@ export const saveDraft = (conversationId: string, content: string): void => {
     const key = getDraftStorageKey(conversationId);
     if (isDraftEmpty(content)) {
       window.localStorage.removeItem(key);
+      dispatchDraftChangeEvent(conversationId, '');
     } else {
       window.localStorage.setItem(key, content);
+      dispatchDraftChangeEvent(conversationId, content);
     }
   } catch (err) {
     console.error('Failed to save chat draft to localStorage', err);
@@ -123,6 +165,7 @@ export const clearDraft = (conversationId: string): void => {
   try {
     const key = getDraftStorageKey(conversationId);
     window.localStorage.removeItem(key);
+    dispatchDraftChangeEvent(conversationId, '');
   } catch (err) {
     console.error('Failed to remove chat draft from localStorage', err);
   }
