@@ -1714,7 +1714,7 @@ export const SalesPage = () => {
             {/* Search Input */}
             <TextField
               size="small"
-              placeholder="Search name, company, headline..."
+              placeholder="Search name, company, email, phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{

@@ -20,6 +20,7 @@ import {
   Avatar,
   useTheme,
   Collapse,
+  Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -171,6 +172,20 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
   };
 
   const placements: SalesBoardPlacement[] = lead.salesBoardPlacements ?? [];
+  const boardIdsWithLeadCard = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of placements) {
+      const raw = p.boardId;
+      const id =
+        typeof raw === 'object' && raw !== null && '_id' in raw
+          ? String((raw as { _id: string })._id)
+          : String(raw || '');
+      if (id) ids.add(id);
+    }
+    return ids;
+  }, [placements]);
+  const selectedBoardAlreadyHasCard =
+    !!selectedBoardId && boardIdsWithLeadCard.has(selectedBoardId);
   const isPending = pushMutation.isPending;
 
   const borderColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
@@ -274,24 +289,40 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                 return salesBoards.find((b) => b._id === val)?.name ?? val;
               }}
             >
-              {salesBoards.map((board) => (
-                <MenuItem key={board._id} value={board._id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                    <DashboardIcon sx={{ fontSize: 16, color: tokens.brand.accent }} />
-                    <span>{board.name}</span>
-                    <Chip label={`${board.columns.length} col`} size="small" sx={{
-                      ml: 'auto', height: 18, fontSize: '0.65rem',
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-                    }} />
-                  </Box>
-                </MenuItem>
-              ))}
+              {salesBoards.map((board) => {
+                const onBoard = boardIdsWithLeadCard.has(board._id);
+                return (
+                  <MenuItem key={board._id} value={board._id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                      <DashboardIcon sx={{ fontSize: 16, color: tokens.brand.accent }} />
+                      <span>{board.name}</span>
+                      {onBoard && (
+                        <Chip label="On board" size="small" sx={{
+                          height: 18, fontSize: '0.65rem',
+                          bgcolor: isDarkMode ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.15)',
+                          color: isDarkMode ? '#fbbf24' : '#b45309',
+                        }} />
+                      )}
+                      <Chip label={`${board.columns.length} col`} size="small" sx={{
+                        ml: 'auto', height: 18, fontSize: '0.65rem',
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+                      }} />
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
         )}
 
+        {selectedBoardAlreadyHasCard && (
+          <Alert severity="warning" sx={{ mt: 2, borderRadius: '14px' }}>
+            This lead already has a card on this board. Open the board to move or edit that card.
+          </Alert>
+        )}
+
         {/* ── Step 2: Column ── */}
-        <Collapse in={!!selectedBoardId && columns.length > 0} timeout={220}>
+        <Collapse in={!!selectedBoardId && columns.length > 0 && !selectedBoardAlreadyHasCard} timeout={220}>
           <Box sx={{ mt: 3 }}>
             <Typography variant="caption" sx={{
               color: tokens.text.muted, fontWeight: 750, textTransform: 'uppercase',
@@ -564,7 +595,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
         <Button
           onClick={handlePush}
           variant="contained"
-          disabled={isPending || !selectedBoardId || !selectedColumnId}
+          disabled={isPending || !selectedBoardId || !selectedColumnId || selectedBoardAlreadyHasCard}
           startIcon={isPending ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <ArrowForwardIcon />}
           sx={{
             fontWeight: 800, borderRadius: '12px', px: 3, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
