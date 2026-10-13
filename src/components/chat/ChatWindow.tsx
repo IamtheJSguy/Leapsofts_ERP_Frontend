@@ -96,8 +96,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
   const { text, setText, removeDraft } = useChatDraft(activeConversationId);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [pendingFilesByConv, setPendingFilesByConv] = useState<
+    Record<string, { file: File; previewUrl: string | null }>
+  >({});
+
+  const currentPending = activeConversationId ? pendingFilesByConv[activeConversationId] : null;
+  const pendingFile = currentPending?.file || null;
+  const pendingPreviewUrl = currentPending?.previewUrl || null;
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [drivePromptOpen, setDrivePromptOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -211,22 +216,34 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  const clearPendingFile = useCallback(() => {
-    setPendingFile(null);
-    setPendingPreviewUrl((url) => {
-      if (url) URL.revokeObjectURL(url);
-      return null;
+  const clearPendingFile = useCallback((targetConvId?: string) => {
+    const id = targetConvId || activeConversationId;
+    if (!id) return;
+    setPendingFilesByConv((prev) => {
+      const existing = prev[id];
+      if (existing?.previewUrl) {
+        URL.revokeObjectURL(existing.previewUrl);
+      }
+      const next = { ...prev };
+      delete next[id];
+      return next;
     });
-  }, []);
+  }, [activeConversationId]);
 
   const stageFile = useCallback((file: File | undefined | null) => {
-    if (!file) return;
-    setPendingFile(file);
-    setPendingPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    if (!file || !activeConversationId) return;
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    setPendingFilesByConv((prev) => {
+      const existing = prev[activeConversationId];
+      if (existing?.previewUrl) {
+        URL.revokeObjectURL(existing.previewUrl);
+      }
+      return {
+        ...prev,
+        [activeConversationId]: { file, previewUrl },
+      };
     });
-  }, []);
+  }, [activeConversationId]);
 
   const connectDrive = useCallback(() => {
     driveAuth.mutate(undefined, {
@@ -240,9 +257,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   useEffect(() => {
     return () => {
-      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+      Object.values(pendingFilesByConv).forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
     };
-  }, [pendingPreviewUrl]);
+  }, [pendingFilesByConv]);
+
+  // Reset reply when switching conversation so replies don't cross conversations
+  useEffect(() => {
+    setReplyingTo(null);
+  }, [activeConversationId, setReplyingTo]);
 
   // Mark as read when new messages arrive while this conversation is open
   const lastMarkedMessageId = useRef<string | null>(null);
@@ -444,7 +468,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               removeDraft(activeConversationId);
             }
             setReplyingTo(null);
-            clearPendingFile();
+            clearPendingFile(conversationId);
           },
           onError: (err) => {
             showApiError(err);
@@ -475,7 +499,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 removeDraft(activeConversationId);
               }
               setReplyingTo(null);
-              clearPendingFile();
+              clearPendingFile(conversationId);
             },
             onError: (err) => {
               showApiError(err);
@@ -1061,7 +1085,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                   : 'This file will be saved to your Google Drive'}
               </Typography>
             </Box>
-            <IconButton size="small" onClick={clearPendingFile} aria-label="Remove file">
+            <IconButton size="small" onClick={() => clearPendingFile()} aria-label="Remove file">
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>

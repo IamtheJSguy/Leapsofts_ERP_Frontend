@@ -69,6 +69,7 @@ export const RichTextEditor = ({
   const maxH = typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight;
 
   const editor = useEditor({
+    autofocus: autoFocus ? 'end' : false,
     extensions: [
       StarterKit.configure({
         bulletList: { keepMarks: true, keepAttributes: false },
@@ -149,13 +150,16 @@ export const RichTextEditor = ({
       const currentHtml = editor.getHTML();
       if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
         editor.commands.setContent(value || '');
+        if (autoFocus || editor.isFocused) {
+          editor.commands.focus('end');
+        }
       }
     }
-  }, [value, editor]);
+  }, [value, editor, autoFocus]);
 
   useEffect(() => {
     if (editor && autoFocus) {
-      editor.commands.focus();
+      editor.commands.focus('end');
     }
   }, [editor, autoFocus]);
 
