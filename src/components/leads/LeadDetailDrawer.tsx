@@ -27,7 +27,9 @@ import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanba
 import { useUIStore } from '@/store/useUIStore';
 import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { LeadCommentBody } from './LeadCommentBody';
+import { RichTextContent } from '@/components/common/RichTextContent';
 import { leadCommentLevelTokens } from '@/styles/tokens';
+import { getLeadCommentLevelLabel } from './LeadCommentComposer';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
@@ -164,7 +166,14 @@ export const LeadDetailDrawer = ({
         </Typography>
         {lead.linkedinMsg && <Typography variant="body2"><strong>LinkedIn Msg (Raw):</strong> {lead.linkedinMsg}</Typography>}
         {lead.commentsAfterCall && <Typography variant="body2"><strong>Comments after call:</strong> {lead.commentsAfterCall}</Typography>}
-        {lead.notes && <Typography variant="body2"><strong>Notes:</strong> {lead.notes}</Typography>}
+        {lead.notes && (
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.25 }}>
+              Notes:
+            </Typography>
+            <RichTextContent content={lead.notes} />
+          </Box>
+        )}
 
         {(lead.leadComments?.length ?? 0) > 0 && (
           <>
@@ -182,7 +191,7 @@ export const LeadDetailDrawer = ({
                 .map((entry) => (
                   <ListItem key={entry._id || entry.text} disableGutters sx={{ display: 'block', mb: 1 }}>
                     <Typography variant="caption" sx={{ color: leadCommentLevelTokens[entry.level], fontWeight: 700 }}>
-                      {entry.level} · {formatDateTime(entry.updatedAt || entry.createdAt || '')}
+                      {getLeadCommentLevelLabel(entry.level)} · {formatDateTime(entry.updatedAt || entry.createdAt || '')}
                     </Typography>
                     <LeadCommentBody text={entry.text} format={entry.format} />
                   </ListItem>

@@ -55,6 +55,11 @@ import type { DriveFile, Message, PresenceStatus, User } from '@/types';
 import { showApiError } from '@/utils/apiError';
 import { useChatDraft } from '@/hooks/useChatDraft';
 import { isDraftEmpty } from '@/utils/chatDraftStorage';
+import {
+  saveDraftAttachment,
+  removeDraftAttachment,
+  loadAllDraftAttachments,
+} from '@/utils/chatDraftAttachmentStorage';
 
 const SMALL_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
 const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
@@ -216,6 +221,28 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
+  // Restore all persisted file attachments from IndexedDB on initial mount
+  useEffect(() => {
+    let isMounted = true;
+    loadAllDraftAttachments().then((allSaved) => {
+      if (!isMounted) return;
+      const initialMap: Record<string, { file: File; previewUrl: string | null }> = {};
+      for (const [convId, file] of Object.entries(allSaved)) {
+        initialMap[convId] = {
+          file,
+          previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+        };
+      }
+      setPendingFilesByConv((prev) => ({
+        ...initialMap,
+        ...prev,
+      }));
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const clearPendingFile = useCallback((targetConvId?: string) => {
     const id = targetConvId || activeConversationId;
     if (!id) return;
@@ -228,6 +255,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       delete next[id];
       return next;
     });
+    void removeDraftAttachment(id);
   }, [activeConversationId]);
 
   const stageFile = useCallback((file: File | undefined | null) => {
@@ -243,6 +271,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         [activeConversationId]: { file, previewUrl },
       };
     });
+    void saveDraftAttachment(activeConversationId, file);
   }, [activeConversationId]);
 
   const connectDrive = useCallback(() => {
@@ -466,6 +495,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             removeDraft(conversationId);
             if (activeConversationId.startsWith('mock-conv-')) {
               removeDraft(activeConversationId);
+              void removeDraftAttachment(activeConversationId);
             }
             setReplyingTo(null);
             clearPendingFile(conversationId);
@@ -497,6 +527,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               removeDraft(conversationId);
               if (activeConversationId.startsWith('mock-conv-')) {
                 removeDraft(activeConversationId);
+                void removeDraftAttachment(activeConversationId);
               }
               setReplyingTo(null);
               clearPendingFile(conversationId);

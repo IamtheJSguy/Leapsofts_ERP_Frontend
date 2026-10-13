@@ -26,6 +26,8 @@ import {
   useDeleteLeadComment,
 } from '@/hooks/api/useLeads';
 import { LeadCommentsPanel } from './LeadCommentsPanel';
+import { LeadNotesSection } from './LeadNotesSection';
+import { toPlainText } from '@/components/common/RichTextContent';
 import type { LeadCommentDraft } from './LeadCommentComposer';
 import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
@@ -239,7 +241,7 @@ const LeadSummaryColumn = memo(({
 
 // --- Subcomponent: Enrichment Column (Right, qualify mode) ---
 const EnrichmentColumn = memo(({
-  sections, onSectionChange, notes, onNotesChange, isPending, isDarkMode,
+  sections, onSectionChange, notes, onNotesChange, onSaveNotesInline, dbUsers, isPending, isDarkMode,
 }: any) => {
   return (
     <Box sx={{ p: { xs: 2, md: 2.5 }, pb: 1.5 }}>
@@ -284,34 +286,13 @@ const EnrichmentColumn = memo(({
         <Divider sx={{ my: 1, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
 
         <Box>
-          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1, display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
-            <DescriptionIcon sx={{ fontSize: 18 }} /> General Notes
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            size="small"
-            minRows={2}
-            maxRows={4}
-            placeholder="Any additional context or strategic notes..."
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
+          <LeadNotesSection
+            notes={notes}
+            onNotesChange={onNotesChange}
+            onSaveInline={onSaveNotesInline}
+            mentionableUsers={dbUsers}
             disabled={isPending}
-            InputProps={{
-              sx: {
-                borderRadius: '14px',
-                bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
-                transition: 'all 0.2s ease',
-                fontSize: '0.9rem',
-                lineHeight: 1.5,
-                '& fieldset': { border: 'none' },
-                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' },
-                '&.Mui-focused': {
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                  boxShadow: `0 0 0 2px ${tokens.brand.primary}22`,
-                },
-              },
-            }}
+            isDarkMode={isDarkMode}
           />
         </Box>
       </Box>
@@ -338,6 +319,7 @@ const SharingMeetingsColumn = memo(({
   creatingMeeting,
   notes,
   onNotesChange,
+  onSaveNotesInline,
   showNotes,
   commentLead,
   onAddComment,
@@ -362,6 +344,7 @@ const SharingMeetingsColumn = memo(({
   creatingMeeting: boolean;
   notes: string;
   onNotesChange: (value: string) => void;
+  onSaveNotesInline?: (updatedNotes: string) => Promise<void>;
   showNotes: boolean;
   commentLead?: Lead;
   onAddComment?: (draft: LeadCommentDraft) => Promise<void>;
@@ -418,20 +401,13 @@ const SharingMeetingsColumn = memo(({
       {showNotes && (
         <>
           <Divider sx={{ my: 1.5, borderColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }} />
-          <Typography variant="body2" sx={{ fontWeight: 750, color: tokens.text.secondary, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <DescriptionIcon sx={{ fontSize: 18 }} /> Notes
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            maxRows={4}
-            placeholder="Lead notes..."
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
+          <LeadNotesSection
+            notes={notes}
+            onNotesChange={onNotesChange}
+            onSaveInline={onSaveNotesInline}
+            mentionableUsers={dbUsers}
             disabled={isPending}
-            InputProps={{ sx: { ...fieldSx, borderRadius: '14px' } }}
-            sx={{ mb: 2 }}
+            isDarkMode={isDarkMode}
           />
           {commentLead && onAddComment && onUpdateComment && onDeleteComment && (
             <LeadCommentsPanel
@@ -769,7 +745,7 @@ export const QualifyEnrichModal = ({
       ...(email?.trim() ? { email: email.trim() } : { email: '' }),
       ...(website?.trim() ? { website: website.trim() } : { website: '' }),
       ...(profileUrl?.trim() ? { profileUrl: profileUrl.trim() } : { profileUrl: '' }),
-      ...(notes?.trim() ? { notes } : { notes: '' }),
+      ...(toPlainText(notes).trim() ? { notes } : { notes: '' }),
       sharedWith: sharedWith.map((u) => u._id),
     };
   };
@@ -897,6 +873,28 @@ export const QualifyEnrichModal = ({
     [deleteLeadComment, leadId],
   );
 
+  const handleSaveNotesInline = useCallback(
+    async (updatedNotes: string) => {
+      if (!leadId) return;
+      try {
+        const cleanNotes = toPlainText(updatedNotes).trim() ? updatedNotes : '';
+        const res = await updateLead.mutateAsync({
+          id: leadId,
+          data: { notes: cleanNotes },
+        });
+        if (res.data?.data) {
+          setCommentLead(res.data.data);
+          onSuccess(undefined, undefined, res.data.data);
+        }
+        addToast({ message: 'Notes saved successfully.', severity: 'success' });
+      } catch (err: any) {
+        showApiError(err);
+        throw err;
+      }
+    },
+    [leadId, updateLead, addToast, onSuccess],
+  );
+
   const sharingMeetingsProps = {
     isDarkMode,
     isPending,
@@ -916,6 +914,7 @@ export const QualifyEnrichModal = ({
     creatingMeeting: createMeeting.isPending,
     notes,
     onNotesChange: handleNotesChange,
+    onSaveNotesInline: handleSaveNotesInline,
     commentLead,
     onAddComment: handleAddComment,
     onUpdateComment: handleUpdateComment,
@@ -933,6 +932,8 @@ export const QualifyEnrichModal = ({
         onSectionChange={handleSectionChange}
         notes={notes}
         onNotesChange={handleNotesChange}
+        onSaveNotesInline={handleSaveNotesInline}
+        dbUsers={dbUsers}
         isPending={isPending}
         isDarkMode={isDarkMode}
       />

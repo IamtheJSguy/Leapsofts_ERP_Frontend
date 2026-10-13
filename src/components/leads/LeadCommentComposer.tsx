@@ -3,10 +3,21 @@ import { RichTextEditor } from '@/components/chat/RichTextEditor';
 import { leadCommentLevelTokens } from '@/styles/tokens';
 import type { LeadCommentFormat, LeadCommentLevel, User } from '@/types';
 
+export const LEAD_COMMENT_LEVEL_LABELS: Record<LeadCommentLevel, string> = {
+  red: 'High',
+  yellow: 'Medium',
+  green: 'Low',
+};
+
+export const getLeadCommentLevelLabel = (level?: LeadCommentLevel | string): string => {
+  if (!level) return '';
+  return LEAD_COMMENT_LEVEL_LABELS[level as LeadCommentLevel] || level;
+};
+
 const LEVELS: { value: LeadCommentLevel; label: string }[] = [
-  { value: 'green', label: 'Green' },
-  { value: 'yellow', label: 'Yellow' },
-  { value: 'red', label: 'Red' },
+  { value: 'red', label: LEAD_COMMENT_LEVEL_LABELS.red },
+  { value: 'yellow', label: LEAD_COMMENT_LEVEL_LABELS.yellow },
+  { value: 'green', label: LEAD_COMMENT_LEVEL_LABELS.green },
 ];
 
 export type LeadCommentDraft = {
