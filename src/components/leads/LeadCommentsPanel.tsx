@@ -19,7 +19,12 @@ import { leadCommentLevelTokens } from '@/styles/tokens';
 import type { Lead, LeadCommentEntry, User } from '@/types';
 import { formatDateTime } from '@/utils/formatters';
 import { toPlainText } from '@/components/common/RichTextContent';
-import { LeadCommentComposer, emptyCommentDraft, type LeadCommentDraft } from './LeadCommentComposer';
+import {
+  LeadCommentComposer,
+  emptyCommentDraft,
+  getLeadCommentLevelLabel,
+  type LeadCommentDraft,
+} from './LeadCommentComposer';
 import { LeadCommentBody } from './LeadCommentBody';
 
 const userName = (user?: string | User): string => {
@@ -164,7 +169,7 @@ export function LeadCommentsPanel({ lead, disabled, mentionableUsers = [], onAdd
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
                 <Chip
                   size="small"
-                  label={entry.level}
+                  label={getLeadCommentLevelLabel(entry.level)}
                   sx={{
                     height: 22,
                     bgcolor: `${leadCommentLevelTokens[entry.level]}22`,

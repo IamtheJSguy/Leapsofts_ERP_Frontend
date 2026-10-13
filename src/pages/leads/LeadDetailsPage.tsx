@@ -13,11 +13,22 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import DescriptionIcon from '@mui/icons-material/Description';
 
-import { useLead, useDisqualifyLead } from '@/hooks/api/useLeads';
+import {
+  useLead,
+  useDisqualifyLead,
+  useAddLeadComment,
+  useUpdateLeadComment,
+  useDeleteLeadComment,
+} from '@/hooks/api/useLeads';
+import { useUsers } from '@/hooks/api/useUsers';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { PushToSalesBoardModal } from '@/components/leads/PushToSalesBoardModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
+import { LeadCommentsPanel } from '@/components/leads/LeadCommentsPanel';
+import type { LeadCommentDraft } from '@/components/leads/LeadCommentComposer';
 import { tokens } from '@/styles/tokens';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -34,9 +45,59 @@ export const LeadDetailsPage = () => {
   const [pushModalOpen, setPushModalOpen] = useState(false);
   const [confirmDisqualifyOpen, setConfirmDisqualifyOpen] = useState(false);
   const disqualifyLead = useDisqualifyLead();
+  const addLeadComment = useAddLeadComment();
+  const updateLeadComment = useUpdateLeadComment();
+  const deleteLeadComment = useDeleteLeadComment();
+
+  const { data: usersData } = useUsers();
+  const mentionableUsers = Array.isArray(usersData) ? usersData : [];
 
   const { data: lead, isLoading, isError, error } = useLead(id);
   useApiErrorToast(error, isError);
+
+  const handleAddComment = async (draft: LeadCommentDraft) => {
+    if (!id) return;
+    try {
+      await addLeadComment.mutateAsync({
+        id,
+        text: draft.text,
+        level: draft.level,
+        format: draft.format,
+      });
+      addToast({ message: 'Comment added', severity: 'success' });
+    } catch (err) {
+      showApiError(err);
+      throw err;
+    }
+  };
+
+  const handleUpdateComment = async (commentId: string, draft: LeadCommentDraft) => {
+    if (!id) return;
+    try {
+      await updateLeadComment.mutateAsync({
+        id,
+        commentId,
+        text: draft.text,
+        level: draft.level,
+        format: draft.format,
+      });
+      addToast({ message: 'Comment updated', severity: 'success' });
+    } catch (err) {
+      showApiError(err);
+      throw err;
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id) return;
+    try {
+      await deleteLeadComment.mutateAsync({ id, commentId });
+      addToast({ message: 'Comment deleted', severity: 'success' });
+    } catch (err) {
+      showApiError(err);
+      throw err;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -204,31 +265,79 @@ export const LeadDetailsPage = () => {
           </Box>
 
           {/* Profile Sections & Enrichment */}
-          {(!!lead.profileSections?.length || !!lead.notes) && (
-            <Box sx={{
-              bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-              borderRadius: '24px', p: 3
-            }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FormatListBulletedIcon /> Profile Intelligence
-              </Typography>
+          {(() => {
+            const hasNotes = !!toPlainText(lead.notes).trim();
+            if (!lead.profileSections?.length && !hasNotes) return null;
 
-              {lead.notes && (
-                <Box sx={{ mb: 3, p: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '12px' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>Notes</Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}>{lead.notes}</Typography>
-                </Box>
-              )}
+            return (
+              <Box sx={{
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: '24px', p: 3
+              }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FormatListBulletedIcon /> Profile Intelligence
+                </Typography>
 
-              {lead.profileSections?.map((section, idx) => (
-                <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '12px' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: tokens.brand.primary }}>{section.title}</Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}>{section.content}</Typography>
-                </Box>
-              ))}
-            </Box>
-          )}
+                {hasNotes && (
+                  <Box sx={{
+                    mb: 3, p: 2.25,
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                    borderRadius: '16px'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <DescriptionIcon sx={{ fontSize: 18, color: tokens.brand.primary }} /> Notes
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => setEditModalOpen(true)}
+                        title="Edit Notes"
+                        sx={{ color: 'text.secondary', '&:hover': { color: tokens.brand.primary } }}
+                      >
+                        <EditIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Box>
+                    <RichTextContent
+                      content={lead.notes}
+                      mentionableUsers={mentionableUsers}
+                      sx={{
+                        fontSize: '0.88rem',
+                        lineHeight: 1.6,
+                        color: 'text.secondary',
+                        '& p': { m: 0, mb: 0.75 },
+                        '& p:last-child': { mb: 0 },
+                      }}
+                    />
+                  </Box>
+                )}
+
+                {lead.profileSections?.map((section, idx) => (
+                  <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '12px' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: tokens.brand.primary }}>{section.title}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}>{section.content}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            );
+          })()}
+
+          {/* Team Comments & Discussion */}
+          <Box sx={{
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+            borderRadius: '24px', p: 3
+          }}>
+            <LeadCommentsPanel
+              lead={lead}
+              mentionableUsers={mentionableUsers}
+              disabled={addLeadComment.isPending || updateLeadComment.isPending || deleteLeadComment.isPending}
+              onAdd={handleAddComment}
+              onUpdate={handleUpdateComment}
+              onDelete={handleDeleteComment}
+            />
+          </Box>
         </Box>
 
         {/* Right Column (1/3) */}
