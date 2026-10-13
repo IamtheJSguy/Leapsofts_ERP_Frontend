@@ -56,7 +56,8 @@ import {
   CHAT_DRAFT_CHANGED_EVENT,
   isDraftStorageKey,
   getConversationIdFromKey,
-  extractDraftText,
+  extractDraftData,
+  type ChatDraftItem,
 } from '@/utils/chatDraftStorage';
 
 export const ChatSidebar = () => {
@@ -80,20 +81,26 @@ export const ChatSidebar = () => {
   const navigate = useNavigate();
 
   // Track unsent chat drafts across conversations
-  const [drafts, setDrafts] = useState<Record<string, string>>(() => getAllDrafts());
+  const [drafts, setDrafts] = useState<Record<string, ChatDraftItem>>(() => getAllDrafts());
 
   useEffect(() => {
     const handleDraftChange = (event: Event) => {
-      const customEvent = event as CustomEvent<{ conversationId: string; text: string }>;
+      const customEvent = event as CustomEvent<{ conversationId: string; text: string; updatedAt?: number }>;
       if (customEvent.detail) {
-        const { conversationId, text } = customEvent.detail;
+        const { conversationId, text, updatedAt } = customEvent.detail;
         setDrafts((prev) => {
           if (isDraftEmpty(text)) {
             const next = { ...prev };
             delete next[conversationId];
             return next;
           }
-          return { ...prev, [conversationId]: text };
+          return {
+            ...prev,
+            [conversationId]: {
+              text,
+              updatedAt: typeof updatedAt === 'number' && updatedAt > 0 ? updatedAt : Date.now(),
+            },
+          };
         });
       }
     };
@@ -102,14 +109,14 @@ export const ChatSidebar = () => {
       if (!event.key || !isDraftStorageKey(event.key)) return;
       const convId = getConversationIdFromKey(event.key);
       if (!convId) return;
-      const text = event.newValue ? extractDraftText(event.newValue) : '';
+      const data = event.newValue ? extractDraftData(event.newValue) : { text: '', updatedAt: 0 };
       setDrafts((prev) => {
-        if (isDraftEmpty(text)) {
+        if (isDraftEmpty(data.text)) {
           const next = { ...prev };
           delete next[convId];
           return next;
         }
-        return { ...prev, [convId]: text };
+        return { ...prev, [convId]: data };
       });
     };
 
@@ -231,17 +238,24 @@ export const ChatSidebar = () => {
         );
       })
       .map((conv) => {
-        const draft = drafts[conv._id] || '';
+        const draftItem = drafts[conv._id];
+        const draftText = draftItem?.text || '';
         return {
           ...conv,
           details: getChatDetails(conv),
-          draft: !isDraftEmpty(draft) ? draft : '',
+          draft: !isDraftEmpty(draftText) ? draftText : '',
+          draftUpdatedAt: draftItem?.updatedAt || 0,
         };
       });
 
     return list.sort((a, b) => {
       const aHasDraft = Boolean(a.draft);
       const bHasDraft = Boolean(b.draft);
+
+      // If both conversations have an unsent draft, the most recently updated draft stays on top
+      if (aHasDraft && bHasDraft) {
+        return (b.draftUpdatedAt || 0) - (a.draftUpdatedAt || 0);
+      }
 
       // Conversations with an unsent draft go to the top
       if (aHasDraft && !bHasDraft) return -1;

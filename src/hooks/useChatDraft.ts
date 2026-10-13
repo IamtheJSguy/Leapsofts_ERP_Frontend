@@ -26,7 +26,7 @@ export function useChatDraft(activeConversationId: string | null): UseChatDraftR
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<{ id: string; text: string } | null>(null);
+  const pendingSaveRef = useRef<{ id: string; text: string; updatedAt: number } | null>(null);
   const prevConversationIdRef = useRef<string | null>(activeConversationId);
 
   // Synchronously compute the current text for the active conversation.
@@ -46,9 +46,9 @@ export function useChatDraft(activeConversationId: string | null): UseChatDraftR
       debounceTimerRef.current = null;
     }
     if (pendingSaveRef.current) {
-      const { id, text: pendingText } = pendingSaveRef.current;
+      const { id, text: pendingText, updatedAt } = pendingSaveRef.current;
       pendingSaveRef.current = null;
-      saveDraft(id, pendingText);
+      saveDraft(id, pendingText, updatedAt);
     }
   }, []);
 
@@ -120,16 +120,17 @@ export function useChatDraft(activeConversationId: string | null): UseChatDraftR
         pendingSaveRef.current = null;
         clearDraft(currentId);
       } else {
+        const now = Date.now();
         // Broadcast local draft change event immediately so sidebar reflects it without delay
-        dispatchDraftChangeEvent(currentId, newText);
+        dispatchDraftChangeEvent(currentId, newText, now);
 
         // Schedule debounced save
-        pendingSaveRef.current = { id: currentId, text: newText };
+        pendingSaveRef.current = { id: currentId, text: newText, updatedAt: now };
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
         }
         debounceTimerRef.current = setTimeout(() => {
-          saveDraft(currentId, newText);
+          saveDraft(currentId, newText, now);
           debounceTimerRef.current = null;
           pendingSaveRef.current = null;
         }, 250);

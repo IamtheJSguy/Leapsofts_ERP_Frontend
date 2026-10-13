@@ -1,14 +1,23 @@
 export const DRAFT_STORAGE_PREFIX = 'chat_draft:';
 export const CHAT_DRAFT_CHANGED_EVENT = 'chat-draft-changed';
 
+export interface ChatDraftItem {
+  text: string;
+  updatedAt: number;
+}
+
 /**
  * Dispatches a custom window event when a draft changes locally within the current tab.
  */
-export const dispatchDraftChangeEvent = (conversationId: string, text: string) => {
+export const dispatchDraftChangeEvent = (
+  conversationId: string,
+  text: string,
+  updatedAt: number = Date.now()
+) => {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent(CHAT_DRAFT_CHANGED_EVENT, {
-        detail: { conversationId, text },
+        detail: { conversationId, text, updatedAt },
       })
     );
   }
@@ -68,25 +77,40 @@ export const isDraftEmpty = (htmlOrText: string | null | undefined): boolean => 
 };
 
 /**
- * Extracts draft text from raw localStorage value, supporting both plain text and JSON.
+ * Extracts draft text and updatedAt timestamp from raw localStorage value.
+ * Supports both JSON `{ text, updatedAt }` and legacy plain text string.
  */
-export const extractDraftText = (rawValue: string | null | undefined): string => {
-  if (!rawValue || typeof rawValue !== 'string') return '';
+export const extractDraftData = (rawValue: string | null | undefined): ChatDraftItem => {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return { text: '', updatedAt: 0 };
+  }
   const trimmed = rawValue.trim();
-  if (!trimmed) return '';
+  if (!trimmed) {
+    return { text: '', updatedAt: 0 };
+  }
 
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === 'object' && typeof parsed.text === 'string') {
-        return parsed.text;
+        return {
+          text: parsed.text,
+          updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
+        };
       }
     } catch {
       // Not valid JSON, return as plain text
     }
   }
 
-  return rawValue;
+  return { text: rawValue, updatedAt: 0 };
+};
+
+/**
+ * Extracts draft text from raw localStorage value, supporting both plain text and JSON.
+ */
+export const extractDraftText = (rawValue: string | null | undefined): string => {
+  return extractDraftData(rawValue).text;
 };
 
 /**
@@ -97,14 +121,14 @@ export const loadDraft = (conversationId: string): string => {
   try {
     const key = getDraftStorageKey(conversationId);
     const raw = window.localStorage.getItem(key);
-    const text = extractDraftText(raw);
-    if (isDraftEmpty(text)) {
+    const data = extractDraftData(raw);
+    if (isDraftEmpty(data.text)) {
       if (raw !== null) {
         window.localStorage.removeItem(key);
       }
       return '';
     }
-    return text;
+    return data.text;
   } catch (err) {
     console.error('Failed to load chat draft from localStorage', err);
     return '';
@@ -112,11 +136,11 @@ export const loadDraft = (conversationId: string): string => {
 };
 
 /**
- * Loads all active drafts currently stored in localStorage.
+ * Loads all active drafts currently stored in localStorage, including their timestamps.
  */
-export const getAllDrafts = (): Record<string, string> => {
+export const getAllDrafts = (): Record<string, ChatDraftItem> => {
   if (typeof window === 'undefined') return {};
-  const drafts: Record<string, string> = {};
+  const drafts: Record<string, ChatDraftItem> = {};
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
@@ -124,9 +148,9 @@ export const getAllDrafts = (): Record<string, string> => {
         const convId = getConversationIdFromKey(key);
         if (convId) {
           const raw = window.localStorage.getItem(key);
-          const text = extractDraftText(raw);
-          if (!isDraftEmpty(text)) {
-            drafts[convId] = text;
+          const data = extractDraftData(raw);
+          if (!isDraftEmpty(data.text)) {
+            drafts[convId] = data;
           }
         }
       }
@@ -138,19 +162,24 @@ export const getAllDrafts = (): Record<string, string> => {
 };
 
 /**
- * Saves a draft for a conversation ID to browser localStorage.
+ * Saves a draft for a conversation ID to browser localStorage with updatedAt timestamp.
  * If the draft is empty or whitespace-only, the key is removed instead.
  */
-export const saveDraft = (conversationId: string, content: string): void => {
+export const saveDraft = (
+  conversationId: string,
+  content: string,
+  updatedAt: number = Date.now()
+): void => {
   if (!conversationId || typeof window === 'undefined') return;
   try {
     const key = getDraftStorageKey(conversationId);
     if (isDraftEmpty(content)) {
       window.localStorage.removeItem(key);
-      dispatchDraftChangeEvent(conversationId, '');
+      dispatchDraftChangeEvent(conversationId, '', 0);
     } else {
-      window.localStorage.setItem(key, content);
-      dispatchDraftChangeEvent(conversationId, content);
+      const payload = JSON.stringify({ text: content, updatedAt });
+      window.localStorage.setItem(key, payload);
+      dispatchDraftChangeEvent(conversationId, content, updatedAt);
     }
   } catch (err) {
     console.error('Failed to save chat draft to localStorage', err);
@@ -165,7 +194,7 @@ export const clearDraft = (conversationId: string): void => {
   try {
     const key = getDraftStorageKey(conversationId);
     window.localStorage.removeItem(key);
-    dispatchDraftChangeEvent(conversationId, '');
+    dispatchDraftChangeEvent(conversationId, '', 0);
   } catch (err) {
     console.error('Failed to remove chat draft from localStorage', err);
   }
