@@ -29,6 +29,7 @@ import { getLeadDisplayName, formatDateTime } from '@/utils/formatters';
 import { LeadCommentBody } from './LeadCommentBody';
 import { RichTextContent } from '@/components/common/RichTextContent';
 import { leadCommentLevelTokens } from '@/styles/tokens';
+import { getLeadCommentLevelLabel } from './LeadCommentComposer';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showApiError } from '@/utils/apiError';
@@ -190,7 +191,7 @@ export const LeadDetailDrawer = ({
                 .map((entry) => (
                   <ListItem key={entry._id || entry.text} disableGutters sx={{ display: 'block', mb: 1 }}>
                     <Typography variant="caption" sx={{ color: leadCommentLevelTokens[entry.level], fontWeight: 700 }}>
-                      {entry.level} · {formatDateTime(entry.updatedAt || entry.createdAt || '')}
+                      {getLeadCommentLevelLabel(entry.level)} · {formatDateTime(entry.updatedAt || entry.createdAt || '')}
                     </Typography>
                     <LeadCommentBody text={entry.text} format={entry.format} />
                   </ListItem>
