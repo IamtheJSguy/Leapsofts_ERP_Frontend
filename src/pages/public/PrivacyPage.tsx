@@ -43,7 +43,7 @@ export const PrivacyPage = () => {
       </Box>
 
       <Box id="google-api">
-        <h2>3. Google API & Google Drive Disclosures</h2>
+        <h2>3. Google API, Drive & Calendar Disclosures</h2>
         <Alert severity="info" sx={{ mb: 2, borderRadius: '14px' }}>
           <strong>Google OAuth Compliance:</strong> Leapsofts adheres strictly to the Google API Services User Data Policy, including the Limited Use requirements.
         </Alert>
@@ -54,6 +54,14 @@ export const PrivacyPage = () => {
           <li>We only access file metadata (file name, thumbnail, and web view link) for files explicitly selected by the user.</li>
           <li>We do <strong>not</strong> perform bulk background scanning of your Google Drive files or private folders.</li>
           <li>Google user data is never transferred to third parties, sold, or utilized for training artificial intelligence or advertising models.</li>
+        </ul>
+        <p>
+          When you connect <strong>Google Calendar</strong> to schedule meetings from Leapsofts:
+        </p>
+        <ul>
+          <li>We create, update, or cancel calendar events only when you schedule or change meetings in the app, using your connected account.</li>
+          <li>We send meeting invitations to attendees you select (team members, linked leads, and guest emails you provide).</li>
+          <li>We do not read your full calendar history, sell calendar data, or use it for advertising or unrelated analytics.</li>
         </ul>
       </Box>
 

@@ -133,6 +133,7 @@ export interface User {
     meetingReminders: boolean;
   };
   googleSheetId?: string;
+  timezone?: string;
   shiftStart?: string;
   shiftEnd?: string;
   idleTimeoutMinutes?: number;
@@ -163,6 +164,7 @@ export interface Lead {
   firstName?: string;
   lastName?: string;
   email?: string;
+  timezone?: string;
   profileUrl?: string;
   salesNavigatorUrl?: string;
   company?: string;
@@ -797,6 +799,8 @@ export interface MeetingLinkedCard {
   leadId?: string | Lead;
 }
 
+export type CalendarSyncStatus = 'not_requested' | 'pending' | 'synced' | 'failed';
+
 export interface Meeting {
   _id: string;
   title: string;
@@ -804,12 +808,24 @@ export interface Meeting {
   meetingLink?: string;
   link?: string; // legacy alias
   scheduledAt: string;
+  timeZone?: string;
+  durationMinutes?: number;
+  guestEmails?: string[];
   participants: string[] | User[];
   status?: 'scheduled' | 'completed' | 'cancelled';
   createdBy?: string | User; // the user who created this meeting
   leadId?: string | Lead;
   linkedCards?: MeetingLinkedCard[];
+  googleCalendarEventId?: string;
+  calendarHtmlLink?: string;
+  calendarSyncStatus?: CalendarSyncStatus;
+  calendarSyncError?: string;
 }
+
+export type CreateMeetingPayload = Partial<Meeting> & {
+  timeZone: string;
+  sendGoogleInvite?: boolean;
+};
 
 export interface KanbanLabel {
   _id: string;

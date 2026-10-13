@@ -18,9 +18,15 @@ import {
   Chip,
   Avatar,
   Grid,
+  FormControl,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
+import { GuestEmailChipInput } from '@/components/common/GuestEmailChipInput';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -39,9 +45,46 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { canEditOrDeleteMeeting } from '@/utils/meetingPermissions';
 import { showApiError } from '@/utils/apiError';
+import {
+  getDefaultMeetingTimeZone,
+  listCommonTimeZones,
+  utcToWallClock,
+  wallClockToUtcIso,
+  getCalendarEventEnd,
+} from '@/utils/meetingTimezone';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+
+const fieldCaptionSx = {
+  display: 'block',
+  mb: 0.75,
+  fontWeight: 700,
+  color: 'text.secondary',
+} as const;
+
+const modernSelectFieldSx = (isDarkMode: boolean) => ({
+  borderRadius: '12px',
+  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+  fontWeight: 600,
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+  },
+  '&:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: tokens.brand.primaryMuted,
+  },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: tokens.brand.primary,
+    borderWidth: 1,
+  },
+  '& .MuiSelect-select': {
+    py: 1.25,
+    px: 2,
+    display: 'flex',
+    alignItems: 'center',
+  },
+});
 
 interface MeetingSchedulerProps {
   dialogOpen: boolean;
@@ -65,6 +108,10 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const isDarkMode = theme.palette.mode === 'dark';
   const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarConnected = calendarStatus?.connected === true;
+  const defaultTimeZone = getDefaultMeetingTimeZone(currentUser ?? user);
+  const timeZoneOptions = useMemo(() => listCommonTimeZones(), []);
 
   // Filter meetings to only show those the current user is a participant of
   const myMeetings = meetings.filter((m: Meeting) => {
@@ -83,27 +130,41 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
   const { register, handleSubmit, reset, setValue, control, setError, formState: { errors } } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
+    defaultValues: {
+      durationMinutes: 30,
+      timeZone: defaultTimeZone,
+      guestEmails: [],
+      sendGoogleInvite: true,
+    },
   });
 
   const events = useMemo(
     () =>
-      myMeetings.map((m: Meeting) => ({
-        id: m._id,
-        title: m.title,
-        start: new Date(m.scheduledAt),
-        end: new Date(m.scheduledAt),
-        resource: m,
-      })),
+      myMeetings.map((m: Meeting) => {
+        const start = new Date(m.scheduledAt);
+        return {
+          id: m._id,
+          title: m.title,
+          start,
+          end: getCalendarEventEnd(start, m.durationMinutes),
+          resource: m,
+        };
+      }),
     [myMeetings],
   );
 
   useEffect(() => {
     if (dialogOpen) {
       if (editingMeeting) {
+        const tz = editingMeeting.timeZone || defaultTimeZone;
         setValue('title', editingMeeting.title);
         setValue('description', editingMeeting.description || '');
         setValue('meetingLink', editingMeeting.meetingLink || editingMeeting.link || '');
-        setValue('scheduledAt', format(new Date(editingMeeting.scheduledAt), "yyyy-MM-dd'T'HH:mm"));
+        setValue('scheduledAt', utcToWallClock(editingMeeting.scheduledAt, tz));
+        setValue('timeZone', tz);
+        setValue('durationMinutes', editingMeeting.durationMinutes ?? 30);
+        setValue('guestEmails', editingMeeting.guestEmails ?? []);
+        setValue('sendGoogleInvite', calendarConnected);
         const participantIds = (editingMeeting.participants || []).map((p: any) =>
           typeof p === 'string' ? p : p._id
         );
@@ -112,17 +173,20 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         setValue('title', '');
         setValue('description', '');
         setValue('meetingLink', '');
-        // Auto-add current user as first participant
+        setValue('timeZone', defaultTimeZone);
+        setValue('durationMinutes', 30);
+        setValue('guestEmails', []);
+        setValue('sendGoogleInvite', calendarConnected);
         const defaultParticipants = currentUser?._id ? [currentUser._id] : [];
         setValue('participants', defaultParticipants);
         if (selectedSlot) {
-          setValue('scheduledAt', format(selectedSlot, "yyyy-MM-dd'T'HH:mm"));
+          setValue('scheduledAt', utcToWallClock(selectedSlot, defaultTimeZone));
         } else {
-          setValue('scheduledAt', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+          setValue('scheduledAt', utcToWallClock(new Date(), defaultTimeZone));
         }
       }
     }
-  }, [dialogOpen, selectedSlot, editingMeeting, setValue, currentUser]);
+  }, [dialogOpen, selectedSlot, editingMeeting, setValue, currentUser, defaultTimeZone, calendarConnected]);
 
   const handleClose = () => {
     setDialogOpen(false);
@@ -156,20 +220,22 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   };
 
   const onSubmit = (data: MeetingFormData) => {
-    if (!editingMeeting) {
-      const scheduledDate = new Date(data.scheduledAt);
-      const now = new Date();
-      if (scheduledDate < now) {
-        setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
-        return;
-      }
+    const scheduledIso = wallClockToUtcIso(data.scheduledAt, data.timeZone);
+    if (!editingMeeting && new Date(scheduledIso) < new Date()) {
+      setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
+      return;
     }
 
+    const trimmedLink = data.meetingLink?.trim();
     const payload = {
       title: data.title,
       description: data.description,
-      meetingLink: data.meetingLink,
-      scheduledAt: new Date(data.scheduledAt).toISOString(),
+      ...(trimmedLink ? { meetingLink: trimmedLink } : {}),
+      scheduledAt: scheduledIso,
+      timeZone: data.timeZone,
+      durationMinutes: data.durationMinutes,
+      guestEmails: data.guestEmails ?? [],
+      sendGoogleInvite: calendarConnected ? data.sendGoogleInvite : false,
       participants: data.participants ?? [],
     };
 
@@ -458,13 +524,22 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             />
             <TextField
               {...register('meetingLink')}
-              label="Meeting Link (URL) *"
-              placeholder="https://meet.google.com/..."
+              label={calendarConnected ? 'Meeting Link (optional)' : 'Meeting Link (URL) *'}
+              placeholder={
+                calendarConnected
+                  ? 'Leave empty for Google Meet'
+                  : 'https://meet.google.com/...'
+              }
               fullWidth
               error={!!errors.meetingLink}
-              helperText={errors.meetingLink?.message}
+              helperText={
+                errors.meetingLink?.message ||
+                (calendarConnected
+                  ? 'When Google Calendar is connected, a Meet link is created automatically if you leave this blank.'
+                  : undefined)
+              }
               sx={{
-                mb: errors.meetingLink ? 1.5 : 3,
+                mb: errors.meetingLink ? 1.5 : calendarConnected ? 1 : 3,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '16px',
                 }
@@ -477,6 +552,25 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 ),
               }}
             />
+
+            {calendarConnected && (
+              <Controller
+                name="sendGoogleInvite"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    sx={{ mb: 3, display: 'block', ml: 0 }}
+                    control={
+                      <Switch
+                        checked={field.value ?? true}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    }
+                    label="Create on Google Calendar and send invites"
+                  />
+                )}
+              />
+            )}
 
             <Controller
               name="participants"
@@ -560,10 +654,10 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 let dateObj: Date | null = null;
                 let time24 = '09:00';
                 if (field.value) {
-                  const parsed = new Date(field.value);
-                  if (!isNaN(parsed.getTime())) {
-                    dateObj = parsed;
-                    time24 = format(parsed, 'HH:mm');
+                  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(field.value);
+                  if (match) {
+                    dateObj = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                    time24 = `${match[4]}:${match[5]}`;
                   }
                 }
 
@@ -584,8 +678,8 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
                 return (
                   <Box sx={{ mb: fieldState.error ? 1.5 : 2 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
+                    <Grid container spacing={2} alignItems="flex-start">
+                      <Grid item xs={12} sm={4}>
                         <ModernDatePicker
                           label="Meeting Date *"
                           value={dateObj}
@@ -593,11 +687,35 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                           minDate={!editingMeeting ? new Date() : undefined}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12} sm={4}>
                         <ModernTimePicker
                           label="Meeting Time *"
                           value={time24}
                           onChange={handleTimeChange}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <Controller
+                          name="durationMinutes"
+                          control={control}
+                          render={({ field: durField }) => (
+                            <Box sx={{ width: '100%' }}>
+                              <Typography variant="caption" sx={fieldCaptionSx}>
+                                Duration
+                              </Typography>
+                              <FormControl fullWidth>
+                                <Select
+                                  value={durField.value ?? 30}
+                                  onChange={(e) => durField.onChange(Number(e.target.value))}
+                                  sx={modernSelectFieldSx(isDarkMode)}
+                                >
+                                  {[15, 30, 45, 60, 90, 120].map((mins) => (
+                                    <MenuItem key={mins} value={mins}>{mins} min</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            </Box>
+                          )}
                         />
                       </Grid>
                     </Grid>
@@ -609,6 +727,42 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                   </Box>
                 );
               }}
+            />
+
+            <Controller
+              name="timeZone"
+              control={control}
+              render={({ field }) => (
+                <Box sx={{ width: '100%', mb: 3 }}>
+                  <Typography variant="caption" sx={fieldCaptionSx}>
+                    Timezone
+                  </Typography>
+                  <FormControl fullWidth>
+                    <Select
+                      value={field.value || defaultTimeZone}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      sx={modernSelectFieldSx(isDarkMode)}
+                    >
+                      {timeZoneOptions.map((tz) => (
+                        <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+            />
+
+            <Controller
+              name="guestEmails"
+              control={control}
+              render={({ field }) => (
+                <GuestEmailChipInput
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  helperText="Lead email is invited automatically when a lead is linked."
+                  sx={{ mb: 3 }}
+                />
+              )}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>

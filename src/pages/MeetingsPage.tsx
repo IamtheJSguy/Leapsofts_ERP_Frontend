@@ -147,8 +147,8 @@ const MeetingsPage = () => {
             transition: 'all 0.2s',
             '&:hover': {
               bgcolor: tab === 1
-                ? (isDarkMode ? 'rgba(255, 255, 255, 0.12)' : '#fff')
-                : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
+                ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
+                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
             }
           }}
         >
