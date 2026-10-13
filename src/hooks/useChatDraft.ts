@@ -7,6 +7,7 @@ import {
   isDraftStorageKey,
   getConversationIdFromKey,
   extractDraftText,
+  dispatchDraftChangeEvent,
 } from '@/utils/chatDraftStorage';
 
 export interface UseChatDraftResult {
@@ -119,6 +120,9 @@ export function useChatDraft(activeConversationId: string | null): UseChatDraftR
         pendingSaveRef.current = null;
         clearDraft(currentId);
       } else {
+        // Broadcast local draft change event immediately so sidebar reflects it without delay
+        dispatchDraftChangeEvent(currentId, newText);
+
         // Schedule debounced save
         pendingSaveRef.current = { id: currentId, text: newText };
         if (debounceTimerRef.current) {
