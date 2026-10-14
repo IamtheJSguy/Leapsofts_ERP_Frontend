@@ -258,10 +258,12 @@ export const setupSocketEventHandlers = (
         if (conv._id !== conversationId) return conv;
         const isActive = chatStore.activeConversationId === conversationId;
         const isOwn = senderId === currentUserId;
+        const messageTime = message.createdAt || new Date().toISOString();
         return {
           ...conv,
           lastMessage: message,
-          updatedAt: message.createdAt || conv.updatedAt,
+          lastMessageAt: messageTime,
+          updatedAt: messageTime,
           unreadCount: isActive || isOwn ? 0 : (conv.unreadCount || 0) + 1,
         };
       });
