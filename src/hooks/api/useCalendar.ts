@@ -17,10 +17,12 @@ export const openCalendarOAuthPopup = (url: string) => {
   return popup;
 };
 
+export const CALENDAR_DEFAULT_RETURN_PATH = '/meetings';
+
 export const consumeCalendarReturnPath = () => {
-  const path = localStorage.getItem(CALENDAR_RETURN_KEY) || '/profile';
+  const path = localStorage.getItem(CALENDAR_RETURN_KEY) || CALENDAR_DEFAULT_RETURN_PATH;
   localStorage.removeItem(CALENDAR_RETURN_KEY);
-  return path.startsWith('/') ? path : '/profile';
+  return path.startsWith('/') ? path : CALENDAR_DEFAULT_RETURN_PATH;
 };
 
 const calendarApi = {

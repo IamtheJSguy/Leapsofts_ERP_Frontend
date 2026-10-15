@@ -38,7 +38,6 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import DownloadIcon from '@mui/icons-material/Download';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ScheduleIcon from '@mui/icons-material/Schedule';
-import EventIcon from '@mui/icons-material/Event';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import WebAssetIcon from '@mui/icons-material/WebAsset';
@@ -51,14 +50,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUpdateMe, useMe, useChangePassword, useUploadAvatar } from '@/hooks/api/useUsers';
 import { useRegenerateBackupCodes, useEnrollTwoFactorSetup, useEnrollTwoFactorVerify } from '@/hooks/api/useTwoFactor';
 import { useSyncMySheet } from '@/hooks/api/useGoogleSheets';
-import {
-  useCalendarStatus,
-  useCalendarAuthUrl,
-  useDisconnectCalendar,
-  openCalendarOAuthPopup,
-  CALENDAR_CONNECTED_EVENT,
-  refreshCalendarConnection,
-} from '@/hooks/api/useCalendar';
 import { useUIStore } from '@/store/useUIStore';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { tokens } from '@/styles/tokens';
@@ -76,9 +67,6 @@ export default function ProfilePage() {
   const hasConnectedSheet = Boolean((user as any)?.googleSheetId);
 
   const syncMySheet = useSyncMySheet();
-  const { data: calendarStatus, refetch: refetchCalendarStatus } = useCalendarStatus();
-  const calendarAuth = useCalendarAuthUrl();
-  const disconnectCalendar = useDisconnectCalendar();
   const updateMeMutation = useUpdateMe();
   const uploadAvatarMutation = useUploadAvatar();
   const changePasswordMutation = useChangePassword();
@@ -154,28 +142,6 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!sheetsOn && activeTab === 'google-sheet') setActiveTab('profile');
   }, [sheetsOn, activeTab]);
-
-  useEffect(() => {
-    const onCalendarConnected = () => {
-      refreshCalendarConnection();
-      void refetchCalendarStatus();
-      addToast({ message: 'Google Calendar connected', severity: 'success' });
-    };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === CALENDAR_CONNECTED_EVENT) onCalendarConnected();
-    };
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin === window.location.origin && e.data?.type === CALENDAR_CONNECTED_EVENT) {
-        onCalendarConnected();
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('message', onMessage);
-    };
-  }, [addToast, refetchCalendarStatus]);
 
   const displayName = getDisplayName(user);
   const initials = displayName
@@ -965,59 +931,6 @@ export default function ProfilePage() {
                     >
                       Save Preferences
                     </Button>
-                  </Box>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} lg={6}>
-                <Card sx={{ ...cardSx, height: '100%' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, mb: 1, letterSpacing: '-0.015em' }}>
-                    Google Calendar
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-                    Connect your Google account to create meetings and send calendar invites from Leapsofts.
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                    <EventIcon sx={{ color: tokens.brand.primary }} />
-                    <Chip
-                      size="small"
-                      label={calendarStatus?.connected ? 'Connected' : 'Not connected'}
-                      color={calendarStatus?.connected ? 'success' : 'default'}
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                    {calendarStatus?.connected ? (
-                      <Button
-                        variant="outlined"
-                        color="inherit"
-                        disabled={disconnectCalendar.isPending}
-                        onClick={() => disconnectCalendar.mutate(undefined, {
-                          onSuccess: () => addToast({ message: 'Google Calendar disconnected', severity: 'info' }),
-                        })}
-                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
-                      >
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="contained"
-                        disabled={calendarAuth.isPending}
-                        onClick={() => {
-                          calendarAuth.mutate(undefined, {
-                            onSuccess: (url) => openCalendarOAuthPopup(url),
-                            onError: (err) => showApiError(err),
-                          });
-                        }}
-                        sx={{
-                          bgcolor: tokens.brand.primary,
-                          textTransform: 'none',
-                          fontWeight: 700,
-                          borderRadius: '12px',
-                        }}
-                      >
-                        Connect Google Calendar
-                      </Button>
-                    )}
                   </Box>
                 </Card>
               </Grid>

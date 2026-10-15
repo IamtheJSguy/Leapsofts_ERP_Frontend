@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import { MeetingScheduler } from '@/components/meetings/MeetingScheduler';
 import { MeetingList } from '@/components/meetings/MeetingList';
+import { GoogleCalendarConnectPanel } from '@/components/meetings/GoogleCalendarConnectPanel';
 import { tokens } from '@/styles/tokens';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -83,6 +84,8 @@ const MeetingsPage = () => {
           Schedule Meeting
         </Button>
       </Box>
+
+      <GoogleCalendarConnectPanel />
 
       {/* Translucent Tab Navigation Pill Switcher */}
       <Box
