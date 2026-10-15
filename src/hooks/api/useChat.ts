@@ -204,11 +204,18 @@ const applySentMessageToCache = (
       { queryKey: ['messages', conversationId] },
       (old) => appendMessageToCache(old, message),
     );
+    const messageTime = message.createdAt || new Date().toISOString();
     queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
       if (!old) return old;
       const updated = old.map((conv) =>
         conv._id === conversationId
-          ? { ...conv, lastMessage: message, updatedAt: message.createdAt, unreadCount: 0 }
+          ? {
+              ...conv,
+              lastMessage: message,
+              lastMessageAt: messageTime,
+              updatedAt: messageTime,
+              unreadCount: 0,
+            }
           : conv,
       );
       const idx = updated.findIndex((c) => c._id === conversationId);
@@ -281,6 +288,27 @@ export const useSendMessage = () => {
         (old) => appendMessageToCache(old, optimisticMessage),
       );
 
+      // Optimistically update conversation timestamp and move to top immediately
+      queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
+        if (!old) return old;
+        const updated = old.map((conv) =>
+          conv._id === variables.conversationId
+            ? {
+                ...conv,
+                lastMessage: optimisticMessage,
+                lastMessageAt: optimisticMessage.createdAt,
+                updatedAt: optimisticMessage.createdAt,
+              }
+            : conv,
+        );
+        const idx = updated.findIndex((c) => c._id === variables.conversationId);
+        if (idx > 0) {
+          const [item] = updated.splice(idx, 1);
+          updated.unshift(item);
+        }
+        return updated;
+      });
+
       return { previous, tempId };
     },
     onSuccess: (res, variables, context) => {
@@ -306,11 +334,18 @@ export const useSendMessage = () => {
             });
           }
         );
+        const messageTime = realMessage.createdAt || new Date().toISOString();
         queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) return old;
           const updated = old.map((conv) =>
             conv._id === variables.conversationId
-              ? { ...conv, lastMessage: realMessage, updatedAt: realMessage.createdAt, unreadCount: 0 }
+              ? {
+                  ...conv,
+                  lastMessage: realMessage,
+                  lastMessageAt: messageTime,
+                  updatedAt: messageTime,
+                  unreadCount: 0,
+                }
               : conv,
           );
           const idx = updated.findIndex((c) => c._id === variables.conversationId);
@@ -372,6 +407,27 @@ export const useSendChatImage = () => {
         (old) => appendMessageToCache(old, optimisticMessage),
       );
 
+      // Optimistically update conversation timestamp and move to top immediately
+      queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
+        if (!old) return old;
+        const updated = old.map((conv) =>
+          conv._id === variables.conversationId
+            ? {
+                ...conv,
+                lastMessage: optimisticMessage,
+                lastMessageAt: optimisticMessage.createdAt,
+                updatedAt: optimisticMessage.createdAt,
+              }
+            : conv,
+        );
+        const idx = updated.findIndex((c) => c._id === variables.conversationId);
+        if (idx > 0) {
+          const [item] = updated.splice(idx, 1);
+          updated.unshift(item);
+        }
+        return updated;
+      });
+
       return { previous, tempId };
     },
     onSuccess: (res, variables, context) => {
@@ -397,11 +453,18 @@ export const useSendChatImage = () => {
             });
           }
         );
+        const messageTime = realMessage.createdAt || new Date().toISOString();
         queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
           if (!old) return old;
           const updated = old.map((conv) =>
             conv._id === variables.conversationId
-              ? { ...conv, lastMessage: realMessage, updatedAt: realMessage.createdAt, unreadCount: 0 }
+              ? {
+                  ...conv,
+                  lastMessage: realMessage,
+                  lastMessageAt: messageTime,
+                  updatedAt: messageTime,
+                  unreadCount: 0,
+                }
               : conv,
           );
           const idx = updated.findIndex((c) => c._id === variables.conversationId);

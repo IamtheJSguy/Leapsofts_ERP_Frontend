@@ -262,8 +262,8 @@ export const ChatSidebar = () => {
       if (!aHasDraft && bHasDraft) return 1;
 
       // Otherwise retain existing time-based order
-      const aTime = new Date(a.lastMessageAt || a.updatedAt || 0).getTime();
-      const bTime = new Date(b.lastMessageAt || b.updatedAt || 0).getTime();
+      const aTime = new Date(a.lastMessage?.createdAt || a.lastMessageAt || a.updatedAt || 0).getTime();
+      const bTime = new Date(b.lastMessage?.createdAt || b.lastMessageAt || b.updatedAt || 0).getTime();
       return bTime - aTime;
     });
   }, [conversations, searchQuery, currentUser, presenceByUserId, boardNameById, avatarByUserId, drafts]);
@@ -597,7 +597,7 @@ export const ChatSidebar = () => {
                             />
                           )}
                         </Box>
-                        {(conv.lastMessageAt || conv.updatedAt) && (
+                        {(conv.lastMessage?.createdAt || conv.lastMessageAt || conv.updatedAt) && (
                           <Box
                             sx={{
                               bgcolor: active
@@ -626,7 +626,7 @@ export const ChatSidebar = () => {
                                 lineHeight: 1,
                               }}
                             >
-                              {formatRelativeChatDate(conv.lastMessageAt || conv.updatedAt)}
+                              {formatRelativeChatDate(conv.lastMessage?.createdAt || conv.lastMessageAt || conv.updatedAt)}
                             </Typography>
                           </Box>
                         )}
