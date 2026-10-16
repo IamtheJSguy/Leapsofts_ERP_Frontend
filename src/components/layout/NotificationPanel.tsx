@@ -416,7 +416,13 @@ export const NotificationPanel = () => {
                           color: 'text.secondary', 
                           lineHeight: 1.4,
                           mb: 1.5,
-                          fontSize: '0.84rem'
+                          fontSize: '0.84rem',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          wordBreak: 'break-word',
                         }}
                       >
                         {n.message}

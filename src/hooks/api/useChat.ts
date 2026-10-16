@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient } from '@tanstack/react-query';
 import axios, { type AxiosResponse } from 'axios';
 import api from '@/lib/axios';
+import { getSocket } from '@/lib/socket';
+import { SOCKET_EVENTS } from '@/lib/constants';
 import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
@@ -56,8 +58,20 @@ const chatApi = {
       `/chat/conversations/${data.conversationId}/messages/${data.messageId}/reaction`,
       { emoji: data.emoji },
     ),
-  markRead: (conversationId: string) =>
-    api.post(`/chat/conversations/${conversationId}/read`),
+  markRead: (conversationId: string) => {
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit(SOCKET_EVENTS.CHAT_READ, { conversationId });
+      return Promise.resolve({
+        data: { success: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      } as AxiosResponse<{ success: boolean }>);
+    }
+    return api.post(`/chat/conversations/${conversationId}/read`);
+  },
   updatePresence: (status: 'away' | 'offline' | null) =>
     api.patch('/chat/presence', { status }),
   createConversation: async (data: {
@@ -199,10 +213,11 @@ const applySentMessageToCache = (
   res: AxiosResponse,
 ) => {
   const message = normalizeMessageReceipts((res.data as { data: Message }).data);
+  const currentUserId = useAuthStore.getState().user?._id;
   if (message) {
     queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
       { queryKey: ['messages', conversationId] },
-      (old) => appendMessageToCache(old, message),
+      (old) => appendMessageToCache(old, message, { currentUserId }),
     );
     const messageTime = message.createdAt || new Date().toISOString();
     queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
@@ -229,6 +244,23 @@ const applySentMessageToCache = (
     queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   }
+};
+
+const reconcileSentMessageInCache = (
+  old: Message[] | MessagesInfiniteData | undefined,
+  realMessage: Message,
+  tempId?: string,
+) => {
+  const currentUserId = useAuthStore.getState().user?._id;
+  const merged = appendMessageToCache(old, realMessage, { currentUserId });
+  if (!tempId || !merged) return merged;
+  return mapMessageCache(merged, (messages) =>
+    messages
+      .filter((m) => m._id !== tempId)
+      .map((m) =>
+        m._id === realMessage._id ? { ...m, clientId: tempId, isPending: false } : m,
+      ),
+  );
 };
 
 const resolveOptimisticReplyTo = (
@@ -316,23 +348,7 @@ export const useSendMessage = () => {
       if (realMessage) {
         queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
           { queryKey: ['messages', variables.conversationId] },
-          (old) => {
-            return mapMessageCache(old, (messages) => {
-              const socketAppended = messages.some((m) => m._id === realMessage._id);
-              if (socketAppended) {
-                return messages
-                  .filter((m) => m._id !== context?.tempId)
-                  .map((m) =>
-                    m._id === realMessage._id ? { ...m, clientId: context?.tempId } : m
-                  );
-              }
-              return messages.map((m) =>
-                m._id === context?.tempId
-                  ? { ...m, ...realMessage, clientId: context?.tempId, isPending: false }
-                  : m,
-              );
-            });
-          }
+          (old) => reconcileSentMessageInCache(old, realMessage, context?.tempId),
         );
         const messageTime = realMessage.createdAt || new Date().toISOString();
         queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
@@ -435,23 +451,7 @@ export const useSendChatImage = () => {
       if (realMessage) {
         queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
           { queryKey: ['messages', variables.conversationId] },
-          (old) => {
-            return mapMessageCache(old, (messages) => {
-              const socketAppended = messages.some((m) => m._id === realMessage._id);
-              if (socketAppended) {
-                return messages
-                  .filter((m) => m._id !== context?.tempId)
-                  .map((m) =>
-                    m._id === realMessage._id ? { ...m, clientId: context?.tempId } : m
-                  );
-              }
-              return messages.map((m) =>
-                m._id === context?.tempId
-                  ? { ...m, ...realMessage, clientId: context?.tempId, isPending: false }
-                  : m,
-              );
-            });
-          }
+          (old) => reconcileSentMessageInCache(old, realMessage, context?.tempId),
         );
         const messageTime = realMessage.createdAt || new Date().toISOString();
         queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
