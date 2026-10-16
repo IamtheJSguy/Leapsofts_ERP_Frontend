@@ -15,6 +15,8 @@ interface UIState {
   theme: 'light' | 'dark';
   activeModal: string | null;
   notificationPanelOpen: boolean;
+  aiDrawerOpen: boolean;
+  aiContextLeadId: string | null;
   toastQueue: Toast[];
   toggleSidebar: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
@@ -22,6 +24,8 @@ interface UIState {
   closeModal: () => void;
   toggleNotificationPanel: () => void;
   setNotificationPanelOpen: (open: boolean) => void;
+  toggleAiDrawer: () => void;
+  setAiDrawerOpen: (open: boolean, contextLeadId?: string | null) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
 }
@@ -31,6 +35,8 @@ export const useUIStore = create<UIState>((set) => ({
   theme: 'light',
   activeModal: null,
   notificationPanelOpen: false,
+  aiDrawerOpen: false,
+  aiContextLeadId: null,
   toastQueue: [],
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setTheme: (theme) => set({ theme }),
@@ -39,6 +45,13 @@ export const useUIStore = create<UIState>((set) => ({
   toggleNotificationPanel: () =>
     set((s) => ({ notificationPanelOpen: !s.notificationPanelOpen })),
   setNotificationPanelOpen: (open) => set({ notificationPanelOpen: open }),
+  toggleAiDrawer: () =>
+    set((s) => ({ aiDrawerOpen: !s.aiDrawerOpen })),
+  setAiDrawerOpen: (open, contextLeadId) =>
+    set((s) => ({
+      aiDrawerOpen: open,
+      aiContextLeadId: contextLeadId !== undefined ? contextLeadId : s.aiContextLeadId,
+    })),
   addToast: (toast) =>
     set((s) => ({
       toastQueue: [...s.toastQueue, { ...toast, id: crypto.randomUUID() }],

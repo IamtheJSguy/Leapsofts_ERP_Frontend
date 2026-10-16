@@ -38,6 +38,8 @@ import type { Lead, Meeting, User, SalesBoardPlacement } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
+import { useEnrichLeadWithAi, type AiPendingAction } from '@/hooks/api/useAi';
+import { AiActionPreviewCard } from '@/components/ai/AiActionPreviewCard';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -626,6 +628,9 @@ export const QualifyEnrichModal = ({
   });
   const [meetingParticipants, setMeetingParticipants] = useState<User[]>([]);
   const [pushToSalesBoardOpen, setPushToSalesBoardOpen] = useState(false);
+  const [aiPendingAction, setAiPendingAction] = useState<AiPendingAction | null>(null);
+  const enrichLeadWithAi = useEnrichLeadWithAi();
+  const setAiDrawerOpen = useUIStore((s) => s.setAiDrawerOpen);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -688,8 +693,26 @@ export const QualifyEnrichModal = ({
       setShowMeetingForm(false);
       setMeetingForm({ title: '', scheduledAt: '', meetingLink: '', description: '' });
       setMeetingParticipants([]);
+      setAiPendingAction(null);
     }
   }, [lead, open, dbUsers]);
+
+  const handleRunAiEnrich = () => {
+    if (!leadId || enrichLeadWithAi.isPending) return;
+    enrichLeadWithAi.mutate(
+      { leadId },
+      {
+        onSuccess: (res) => {
+          setAiPendingAction(res.enrichment.pendingAction);
+          addToast({
+            message: `AI discovered ${Object.keys(res.enrichment.pendingAction.proposed).length} field(s) for ${res.enrichment.leadName}`,
+            severity: 'success',
+          });
+        },
+        onError: (err) => showApiError(err),
+      },
+    );
+  };
 
   const handleLeadDataChange = useCallback((field: keyof Lead, value: string) => {
     if (field === 'prospectName') {
@@ -986,24 +1009,96 @@ export const QualifyEnrichModal = ({
                 : 'Review and enrich the profile before pushing it to the pipeline.'}
             </Typography>
           </Box>
-          <IconButton
-            onClick={onClose}
-            disabled={isPending}
-            size="small"
-            sx={{
-              color: tokens.text.muted,
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              p: 1,
-              flexShrink: 0,
-              '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={
+                enrichLeadWithAi.isPending ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <AutoAwesomeIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              onClick={handleRunAiEnrich}
+              disabled={isPending || enrichLeadWithAi.isPending || !leadId}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                borderColor: tokens.brand.primary,
+                color: tokens.brand.primary,
+              }}
+            >
+              {enrichLeadWithAi.isPending ? 'Enriching...' : 'AI Enrich'}
+            </Button>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setAiDrawerOpen(true, leadId)}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                color: 'text.secondary',
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
+            >
+              Ask AI Agent
+            </Button>
+            <IconButton
+              onClick={onClose}
+              disabled={isPending}
+              size="small"
+              sx={{
+                color: tokens.text.muted,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                p: 1,
+                flexShrink: 0,
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {aiPendingAction && (
+          <Box sx={{ px: { xs: 2, md: 3 }, pt: 1.5, pb: 1, maxHeight: 280, overflowY: 'auto', borderBottom: `1px solid ${tokens.surface.border}` }}>
+            <AiActionPreviewCard
+              action={aiPendingAction}
+              onConfirmed={(confirmed, entityResult) => {
+                setAiPendingAction(confirmed);
+                const applied = confirmed.applied || confirmed.proposed || {};
+                setLeadData((prev) => ({
+                  ...prev,
+                  ...(applied.firstName ? { firstName: String(applied.firstName) } : {}),
+                  ...(applied.lastName ? { lastName: String(applied.lastName) } : {}),
+                  ...(applied.prospectName ? { prospectName: String(applied.prospectName) } : {}),
+                  ...(applied.jobTitle ? { title: String(applied.jobTitle) } : {}),
+                  ...(applied.company ? { company: String(applied.company) } : {}),
+                  ...(applied.email ? { email: String(applied.email) } : {}),
+                  ...(applied.phone ? { phone: String(applied.phone) } : {}),
+                  ...(applied.website ? { website: String(applied.website) } : {}),
+                  ...(applied.industry ? { industry: String(applied.industry) } : {}),
+                  ...(applied.location ? { location: String(applied.location) } : {}),
+                  ...(applied.companySize ? { companySize: String(applied.companySize) } : {}),
+                  ...(applied.profileUrl ? { profileUrl: String(applied.profileUrl) } : {}),
+                }));
+                if (applied.notes) {
+                  setNotes(String(applied.notes));
+                }
+                if (entityResult && typeof entityResult === 'object') {
+                  onSuccess(undefined, undefined, entityResult as Lead);
+                }
+              }}
+            />
+          </Box>
+        )}
         {(
           <Box sx={{
             display: 'flex',

@@ -17,6 +17,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,7 @@ import { tokens } from '@/styles/tokens';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
-  const { toggleSidebar, setNotificationPanelOpen, theme, setTheme } = useUIStore();
+  const { toggleSidebar, setNotificationPanelOpen, toggleAiDrawer, theme, setTheme } = useUIStore();
   const { user } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const logout = useLogout();
@@ -319,6 +320,22 @@ export const Header = () => {
           )}
           */}
 
+          <IconButton
+            onClick={() => toggleAiDrawer()}
+            aria-label="Open AI Assistant"
+            title="AI Agent Assistant"
+            sx={{
+              color: tokens.brand.primary,
+              bgcolor: theme === 'dark' ? 'rgba(138, 63, 252, 0.14)' : 'rgba(93, 26, 137, 0.08)',
+              border: `1px solid ${theme === 'dark' ? 'rgba(138, 63, 252, 0.3)' : 'rgba(93, 26, 137, 0.2)'}`,
+              mx: 0.5,
+              '&:hover': {
+                bgcolor: theme === 'dark' ? 'rgba(138, 63, 252, 0.22)' : 'rgba(93, 26, 137, 0.14)',
+              },
+            }}
+          >
+            <AutoAwesomeIcon fontSize="small" />
+          </IconButton>
           <IconButton
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"

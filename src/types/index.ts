@@ -1305,6 +1305,11 @@ export interface SystemSettings {
     kpiAlerts: boolean;
     meetingReminders: boolean;
   };
+  aiSettings?: {
+    defaultUserTokenLimit?: number;
+    defaultProvider?: 'gemini' | 'claude';
+    enrichmentEnabled?: boolean;
+  };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
 }
