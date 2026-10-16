@@ -21,7 +21,6 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import AddCommentOutlinedIcon from '@mui/icons-material/AddCommentOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
@@ -46,7 +45,11 @@ import { getApiErrorMessage, showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import { AiActionPreviewCard } from '@/components/ai/AiActionPreviewCard';
 import { AiApiKeyModal } from '@/components/ai/AiApiKeyModal';
-import { AI_STARTER_PROMPTS, formatTokenCount } from '@/components/ai/AiAssistantDrawer';
+import {
+  AiAgentPhaseTimeline,
+  AiCompletedPhasesSummary,
+} from '@/components/ai/AiAgentPhaseTimeline';
+import { AI_STARTER_PROMPTS, formatTokenCount } from '@/components/ai/aiUiConstants';
 
 const formatRelativeDate = (iso: string): string => {
   try {
@@ -80,6 +83,9 @@ export const AiAssistantPage = () => {
   const setProvider = useAiChatSessionStore((s) => s.setProvider);
   const ephemeralByConv = useAiChatSessionStore((s) => s.ephemeralByConv);
   const pendingByConv = useAiChatSessionStore((s) => s.pendingByConv);
+  const lastCompletedPhasesByConv = useAiChatSessionStore(
+    (s) => s.lastCompletedPhasesByConv,
+  );
   const appendEphemeralMessage = useAiChatSessionStore((s) => s.appendEphemeralMessage);
   const updateEphemeralMessages = useAiChatSessionStore((s) => s.updateEphemeralMessages);
   const clearConversationEphemeral = useAiChatSessionStore((s) => s.clearConversationEphemeral);
@@ -126,6 +132,7 @@ export const AiAssistantPage = () => {
     activeConversation?.messages?.length,
     currentEphemeral.length,
     Boolean(currentPendingOp),
+    currentPendingOp?.phases?.length,
   ]);
 
   const handleSelectConversation = (id: string | null) => {
@@ -179,6 +186,7 @@ export const AiAssistantPage = () => {
     const originKey = getConvKey(originConvId);
     const selectedProvider = provider;
     const tempUserMsgId = `temp-user-${Date.now()}`;
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const optimisticUserMsg: AiChatDisplayMessage = {
       _id: tempUserMsgId,
@@ -191,9 +199,11 @@ export const AiAssistantPage = () => {
     appendEphemeralMessage(originKey, optimisticUserMsg);
     setPendingOperation(originKey, {
       conversationKey: originKey,
+      requestId,
       provider: selectedProvider,
       kind: 'chat',
       startedAt: Date.now(),
+      phases: [],
     });
 
     sendMessage.mutate(
@@ -202,6 +212,7 @@ export const AiAssistantPage = () => {
         message: text,
         provider: selectedProvider,
         contextLeadId: aiContextLeadId ?? undefined,
+        requestId,
       },
       {
         onSuccess: (res) => {
@@ -247,6 +258,7 @@ export const AiAssistantPage = () => {
     const originKey = getConvKey(originConvId);
     const selectedProvider = provider;
     const tempUserMsgId = `temp-enrich-${Date.now()}`;
+    const requestId = `enrich-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     appendEphemeralMessage(originKey, {
       _id: tempUserMsgId,
@@ -257,9 +269,11 @@ export const AiAssistantPage = () => {
     });
     setPendingOperation(originKey, {
       conversationKey: originKey,
+      requestId,
       provider: selectedProvider,
       kind: 'enrich',
       startedAt: Date.now(),
+      phases: [],
     });
 
     enrichLeadWithAi.mutate(
@@ -267,6 +281,7 @@ export const AiAssistantPage = () => {
         leadId: aiContextLeadId,
         provider: selectedProvider,
         conversationId: originConvId ?? undefined,
+        requestId,
       },
       {
         onSuccess: (res) => {
@@ -848,26 +863,17 @@ export const AiAssistantPage = () => {
                       color: isUser ? '#fff' : 'text.primary',
                     }}
                   >
-                    {/* Tool execution badges */}
-                    {!isUser && m.toolCalls && m.toolCalls.length > 0 && (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 1.25 }}>
-                        {m.toolCalls.map((tc, tIdx) => (
-                          <Chip
-                            key={`${tc.name}-${tIdx}`}
-                            size="small"
-                            icon={<BuildCircleOutlinedIcon sx={{ fontSize: '13px !important' }} />}
-                            label={tc.summary || tc.name}
-                            sx={{
-                              height: 22,
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              bgcolor: isDarkMode
-                                ? 'rgba(255,255,255,0.08)'
-                                : 'rgba(93, 26, 137, 0.08)',
-                            }}
-                          />
-                        ))}
-                      </Box>
+                    {/* Completed Agent Phases & Tool execution badges */}
+                    {!isUser && (
+                      <AiCompletedPhasesSummary
+                        toolCalls={m.toolCalls}
+                        phases={
+                          idx === messages.length - 1
+                            ? lastCompletedPhasesByConv[currentConvKey]
+                            : undefined
+                        }
+                        provider={m.provider}
+                      />
                     )}
 
                     {isUser ? (
@@ -998,18 +1004,7 @@ export const AiAssistantPage = () => {
             })
           )}
 
-          {currentPendingOp && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1 }}>
-              <CircularProgress size={18} sx={{ color: tokens.brand.primary }} />
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                {currentPendingOp.kind === 'enrich'
-                  ? 'Searching the web & enriching lead data...'
-                  : `Running ${
-                      currentPendingOp.provider === 'claude' ? 'Claude' : 'Gemini'
-                    } agent...`}
-              </Typography>
-            </Box>
-          )}
+          {currentPendingOp && <AiAgentPhaseTimeline pendingOp={currentPendingOp} />}
 
           <div ref={messagesEndRef} />
         </Box>

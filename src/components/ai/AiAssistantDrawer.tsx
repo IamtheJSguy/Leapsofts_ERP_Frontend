@@ -22,7 +22,6 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import AddCommentOutlinedIcon from '@mui/icons-material/AddCommentOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded';
@@ -46,19 +45,11 @@ import { getApiErrorMessage, showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import { AiActionPreviewCard } from './AiActionPreviewCard';
 import { AiApiKeyModal } from './AiApiKeyModal';
-
-export const AI_STARTER_PROMPTS = [
-  'What meetings do I have scheduled this week?',
-  'Show me the sales team progress report for this week',
-  'Search leads and enrich missing phone, email & company details',
-  'Get my profile details and daily KPI summary',
-  'Book a meeting — ask me for time and participants',
-];
-
-export const formatTokenCount = (n: number): string => {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-};
+import {
+  AiAgentPhaseTimeline,
+  AiCompletedPhasesSummary,
+} from './AiAgentPhaseTimeline';
+import { AI_STARTER_PROMPTS, formatTokenCount } from './aiUiConstants';
 
 export const AiAssistantDrawer = () => {
   const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
@@ -74,6 +65,9 @@ export const AiAssistantDrawer = () => {
   const setProvider = useAiChatSessionStore((s) => s.setProvider);
   const ephemeralByConv = useAiChatSessionStore((s) => s.ephemeralByConv);
   const pendingByConv = useAiChatSessionStore((s) => s.pendingByConv);
+  const lastCompletedPhasesByConv = useAiChatSessionStore(
+    (s) => s.lastCompletedPhasesByConv,
+  );
   const appendEphemeralMessage = useAiChatSessionStore((s) => s.appendEphemeralMessage);
   const updateEphemeralMessages = useAiChatSessionStore((s) => s.updateEphemeralMessages);
   const clearConversationEphemeral = useAiChatSessionStore((s) => s.clearConversationEphemeral);
@@ -109,6 +103,7 @@ export const AiAssistantDrawer = () => {
     activeConversation?.messages?.length,
     currentEphemeral.length,
     Boolean(currentPendingOp),
+    currentPendingOp?.phases?.length,
   ]);
 
   useEffect(() => {
@@ -128,6 +123,7 @@ export const AiAssistantDrawer = () => {
     const originKey = getConvKey(originConvId);
     const selectedProvider = provider;
     const tempUserMsgId = `temp-user-${Date.now()}`;
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const optimisticUserMsg: AiChatDisplayMessage = {
       _id: tempUserMsgId,
@@ -140,9 +136,11 @@ export const AiAssistantDrawer = () => {
     appendEphemeralMessage(originKey, optimisticUserMsg);
     setPendingOperation(originKey, {
       conversationKey: originKey,
+      requestId,
       provider: selectedProvider,
       kind: 'chat',
       startedAt: Date.now(),
+      phases: [],
     });
 
     sendMessage.mutate(
@@ -151,6 +149,7 @@ export const AiAssistantDrawer = () => {
         message: text,
         provider: selectedProvider,
         contextLeadId: aiContextLeadId ?? undefined,
+        requestId,
       },
       {
         onSuccess: (res) => {
@@ -195,6 +194,7 @@ export const AiAssistantDrawer = () => {
     const originKey = getConvKey(originConvId);
     const selectedProvider = provider;
     const tempUserMsgId = `temp-enrich-${Date.now()}`;
+    const requestId = `enrich-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     appendEphemeralMessage(originKey, {
       _id: tempUserMsgId,
@@ -205,9 +205,11 @@ export const AiAssistantDrawer = () => {
     });
     setPendingOperation(originKey, {
       conversationKey: originKey,
+      requestId,
       provider: selectedProvider,
       kind: 'enrich',
       startedAt: Date.now(),
+      phases: [],
     });
 
     enrichLeadWithAi.mutate(
@@ -215,6 +217,7 @@ export const AiAssistantDrawer = () => {
         leadId: aiContextLeadId,
         provider: selectedProvider,
         conversationId: originConvId ?? undefined,
+        requestId,
       },
       {
         onSuccess: (res) => {
@@ -663,26 +666,17 @@ export const AiAssistantDrawer = () => {
                       color: isUser ? '#fff' : 'text.primary',
                     }}
                   >
-                    {/* Tool execution badges */}
-                    {!isUser && m.toolCalls && m.toolCalls.length > 0 && (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                        {m.toolCalls.map((tc, tIdx) => (
-                          <Chip
-                            key={`${tc.name}-${tIdx}`}
-                            size="small"
-                            icon={<BuildCircleOutlinedIcon sx={{ fontSize: '13px !important' }} />}
-                            label={tc.summary || tc.name}
-                            sx={{
-                              height: 20,
-                              fontSize: '0.68rem',
-                              fontWeight: 600,
-                              bgcolor: isDarkMode
-                                ? 'rgba(255,255,255,0.08)'
-                                : 'rgba(93, 26, 137, 0.08)',
-                            }}
-                          />
-                        ))}
-                      </Box>
+                    {/* Completed Agent Phases & Tool execution badges */}
+                    {!isUser && (
+                      <AiCompletedPhasesSummary
+                        toolCalls={m.toolCalls}
+                        phases={
+                          idx === messages.length - 1
+                            ? lastCompletedPhasesByConv[currentConvKey]
+                            : undefined
+                        }
+                        provider={m.provider}
+                      />
                     )}
 
                     {isUser ? (
@@ -814,16 +808,7 @@ export const AiAssistantDrawer = () => {
           )}
 
           {currentPendingOp && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1 }}>
-              <CircularProgress size={18} sx={{ color: tokens.brand.primary }} />
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                {currentPendingOp.kind === 'enrich'
-                  ? 'Searching the web & enriching lead data...'
-                  : `Running ${
-                      currentPendingOp.provider === 'claude' ? 'Claude' : 'Gemini'
-                    } agent...`}
-              </Typography>
-            </Box>
+            <AiAgentPhaseTimeline pendingOp={currentPendingOp} compact />
           )}
 
           <div ref={messagesEndRef} />

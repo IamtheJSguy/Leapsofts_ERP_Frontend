@@ -40,6 +40,8 @@ import { showApiError } from '@/utils/apiError';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
 import { useEnrichLeadWithAi, type AiPendingAction } from '@/hooks/api/useAi';
 import { AiActionPreviewCard } from '@/components/ai/AiActionPreviewCard';
+import { AiAgentPhaseTimeline } from '@/components/ai/AiAgentPhaseTimeline';
+import { useAiChatSessionStore } from '@/store/useAiChatSessionStore';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -631,6 +633,9 @@ export const QualifyEnrichModal = ({
   const [aiPendingAction, setAiPendingAction] = useState<AiPendingAction | null>(null);
   const enrichLeadWithAi = useEnrichLeadWithAi();
   const setAiDrawerOpen = useUIStore((s) => s.setAiDrawerOpen);
+  const modalEnrichPendingOp = useAiChatSessionStore(
+    (s) => s.pendingByConv[`modal_enrich_${leadId}`],
+  );
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -699,17 +704,35 @@ export const QualifyEnrichModal = ({
 
   const handleRunAiEnrich = () => {
     if (!leadId || enrichLeadWithAi.isPending) return;
+    const modalKey = `modal_enrich_${leadId}`;
+    const requestId = `enrich-modal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionStore = useAiChatSessionStore.getState();
+
+    setAiPendingAction(null);
+    sessionStore.setPendingOperation(modalKey, {
+      conversationKey: modalKey,
+      requestId,
+      provider: sessionStore.provider,
+      kind: 'enrich',
+      startedAt: Date.now(),
+      phases: [],
+    });
+
     enrichLeadWithAi.mutate(
-      { leadId },
+      { leadId, requestId },
       {
         onSuccess: (res) => {
+          useAiChatSessionStore.getState().setPendingOperation(modalKey, null);
           setAiPendingAction(res.enrichment.pendingAction);
           addToast({
             message: `AI discovered ${Object.keys(res.enrichment.pendingAction.proposed).length} field(s) for ${res.enrichment.leadName}`,
             severity: 'success',
           });
         },
-        onError: (err) => showApiError(err),
+        onError: (err) => {
+          useAiChatSessionStore.getState().setPendingOperation(modalKey, null);
+          showApiError(err);
+        },
       },
     );
   };
@@ -1067,6 +1090,11 @@ export const QualifyEnrichModal = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {modalEnrichPendingOp && (
+          <Box sx={{ px: { xs: 2, md: 3 }, pt: 1.5, pb: 1, borderBottom: `1px solid ${tokens.surface.border}` }}>
+            <AiAgentPhaseTimeline pendingOp={modalEnrichPendingOp} compact />
+          </Box>
+        )}
         {aiPendingAction && (
           <Box sx={{ px: { xs: 2, md: 3 }, pt: 1.5, pb: 1, maxHeight: 280, overflowY: 'auto', borderBottom: `1px solid ${tokens.surface.border}` }}>
             <AiActionPreviewCard

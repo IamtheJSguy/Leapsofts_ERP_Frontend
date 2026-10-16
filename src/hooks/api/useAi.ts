@@ -172,6 +172,7 @@ export const useSendAiMessage = () => {
       message: string;
       provider?: AiProviderType;
       contextLeadId?: string;
+      requestId?: string;
     }) =>
       api
         .post<
@@ -201,11 +202,13 @@ export const useEnrichLeadWithAi = () => {
       provider,
       extraInstructions,
       conversationId,
+      requestId,
     }: {
       leadId: string;
       provider?: AiProviderType;
       extraInstructions?: string;
       conversationId?: string;
+      requestId?: string;
     }) =>
       api
         .post<
@@ -224,6 +227,7 @@ export const useEnrichLeadWithAi = () => {
           provider,
           extraInstructions,
           conversationId,
+          requestId,
         })
         .then((r) => r.data.data),
     onSuccess: (data) => {
