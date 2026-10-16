@@ -494,7 +494,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
-    const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string) => {
+    const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string, fallbackFile?: File) => {
       sendMessage.mutate(
         {
           conversationId,
@@ -509,16 +509,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           ...(replyTo ? { replyTo } : {}),
         },
         {
-          onSuccess: () => {
-            removeDraft(conversationId);
-            if (activeConversationId.startsWith('mock-conv-')) {
-              removeDraft(activeConversationId);
-              void removeDraftAttachment(activeConversationId);
-            }
-            setReplyingTo(null);
-            clearPendingFile(conversationId);
-          },
           onError: (err) => {
+            if (content) setText(content);
+            if (fallbackFile) stageFile(fallbackFile);
             showApiError(err);
           },
         }
@@ -532,6 +525,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       const contentToUpload = caption;
       const replyToIdToUpload = replyToId;
 
+      // Immediately clear pending file, caption and reply state for snappy UX
+      clearPendingFile(activeConversationId);
+      if (conversationId !== activeConversationId) {
+        clearPendingFile(conversationId);
+      }
+      removeDraft(activeConversationId);
+      removeDraft(conversationId);
+      setReplyingTo(null);
+
       if (isSmallChatImage(fileToUpload)) {
         sendChatImage.mutate(
           {
@@ -541,16 +543,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             replyTo: replyToIdToUpload,
           },
           {
-            onSuccess: () => {
-              removeDraft(conversationId);
-              if (activeConversationId.startsWith('mock-conv-')) {
-                removeDraft(activeConversationId);
-                void removeDraftAttachment(activeConversationId);
-              }
-              setReplyingTo(null);
-              clearPendingFile(conversationId);
-            },
             onError: (err) => {
+              if (contentToUpload) setText(contentToUpload);
+              stageFile(fileToUpload);
               showApiError(err);
             },
           }
@@ -559,13 +554,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
 
       if (!driveStatus?.connected) {
+        if (contentToUpload) setText(contentToUpload);
+        stageFile(fileToUpload);
         setDrivePromptOpen(true);
         return;
       }
 
       uploadDriveFile.mutate(fileToUpload, {
-        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload),
+        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload, fileToUpload),
         onError: (err) => {
+          if (contentToUpload) setText(contentToUpload);
+          stageFile(fileToUpload);
           showApiError(err);
         },
       });
