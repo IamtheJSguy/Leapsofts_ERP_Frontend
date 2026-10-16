@@ -33,8 +33,10 @@ import { useMeetings, useCreateMeeting } from '@/hooks/api/useMeetings';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useSalesBoards } from '@/hooks/api/useKanban';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 import { tokens } from '@/styles/tokens';
-import type { Lead, Meeting, User, SalesBoardPlacement } from '@/types';
+import type { CreateMeetingPayload, Lead, Meeting, User, SalesBoardPlacement } from '@/types';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
@@ -176,6 +178,7 @@ const LeadSummaryColumn = memo(({
         {renderField('Industry', 'industry')}
         {renderField('Company Size', 'companySize')}
         {renderField('Location', 'location')}
+        {renderField('Client timezone (IANA)', 'timezone')}
       </Box>
 
       {salesBoardPlacements && salesBoardPlacements.length > 0 && (
@@ -317,6 +320,7 @@ const SharingMeetingsColumn = memo(({
   onMeetingParticipantsChange,
   onCreateMeeting,
   creatingMeeting,
+  calendarConnected,
   notes,
   onNotesChange,
   onSaveNotesInline,
@@ -342,6 +346,7 @@ const SharingMeetingsColumn = memo(({
   onMeetingParticipantsChange: (users: User[]) => void;
   onCreateMeeting: () => void;
   creatingMeeting: boolean;
+  calendarConnected?: boolean;
   notes: string;
   onNotesChange: (value: string) => void;
   onSaveNotesInline?: (updatedNotes: string) => Promise<void>;
@@ -467,8 +472,8 @@ const SharingMeetingsColumn = memo(({
           />
           <TextField
             fullWidth
-            label="Meeting Link"
-            placeholder="https://meet.google.com/..."
+            label={calendarConnected ? 'Meeting link (optional)' : 'Meeting link'}
+            placeholder={calendarConnected ? 'Leave empty for Google Meet' : 'https://meet.google.com/...'}
             value={meetingForm.meetingLink}
             onChange={(e) => onMeetingFormChange('meetingLink', e.target.value)}
             disabled={creatingMeeting}
@@ -509,7 +514,12 @@ const SharingMeetingsColumn = memo(({
           <Button
             variant="contained"
             onClick={onCreateMeeting}
-            disabled={creatingMeeting || !meetingForm.title || !meetingForm.scheduledAt || !meetingForm.meetingLink}
+            disabled={
+              creatingMeeting
+              || !meetingForm.title
+              || !meetingForm.scheduledAt
+              || (!meetingForm.meetingLink && !calendarConnected)
+            }
             sx={{
               alignSelf: 'flex-end',
               textTransform: 'none',
@@ -603,6 +613,9 @@ export const QualifyEnrichModal = ({
   );
   const leadMeetings = Array.isArray(meetingsData) ? meetingsData : [];
   const addToast = useUIStore((s) => s.addToast);
+  const authUser = useAuthStore((s) => s.user);
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarConnected = calendarStatus?.connected === true;
 
   const handleOpenPlacement = useCallback((placement: SalesBoardPlacement) => {
     if (!placement.boardId || !placement.cardId) return;
@@ -658,6 +671,7 @@ export const QualifyEnrichModal = ({
         companySize: lead.companySize || '',
         profileUrl: lead.profileUrl || '',
         location: lead.location || '',
+        timezone: lead.timezone || '',
       });
       setNotes(lead.notes || '');
       const newSections: Record<string, string> = {
@@ -794,14 +808,21 @@ export const QualifyEnrichModal = ({
     }
     try {
       const participantIds = meetingParticipants.map((u) => u._id);
+      const timeZone =
+        authUser?.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const link = meetingForm.meetingLink?.trim();
       await createMeeting.mutateAsync({
         title: meetingForm.title,
         description: meetingForm.description || undefined,
-        meetingLink: meetingForm.meetingLink,
+        ...(link ? { meetingLink: link } : {}),
         scheduledAt: scheduledDate.toISOString(),
+        timeZone,
+        durationMinutes: 30,
         participants: participantIds,
         leadId,
-      } as Partial<Meeting>);
+        sendGoogleInvite: calendarConnected,
+      } as CreateMeetingPayload);
 
       // Auto-sync meeting participants into lead sharedWith
       const existingIds = new Set(sharedWith.map((u) => u._id));
@@ -912,6 +933,7 @@ export const QualifyEnrichModal = ({
     onMeetingParticipantsChange: setMeetingParticipants,
     onCreateMeeting: handleCreateMeeting,
     creatingMeeting: createMeeting.isPending,
+    calendarConnected,
     notes,
     onNotesChange: handleNotesChange,
     onSaveNotesInline: handleSaveNotesInline,

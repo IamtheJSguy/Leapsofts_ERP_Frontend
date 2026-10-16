@@ -20,7 +20,9 @@ import BusinessIcon from '@mui/icons-material/Business';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import { format } from 'date-fns';
+import { formatMeetingInstant } from '@/utils/meetingTimezone';
+import { useRetryMeetingCalendarSync } from '@/hooks/api/useMeetings';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 
 import type { Meeting, User } from '@/types';
 import { tokens } from '@/styles/tokens';
@@ -53,8 +55,13 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
   const { data: allUsers = [] } = useUsers();
   const { data: leadsResponse } = useLeads();
   const allLeads = leadsResponse?.data || [];
+  const retryCalendarSync = useRetryMeetingCalendarSync();
+  const { data: calendarStatus } = useCalendarStatus();
 
   if (!meeting) return null;
+
+  const meetingTz = meeting.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const joinUrl = meeting.meetingLink || meeting.link || '';
 
@@ -76,12 +83,24 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     if (!leadId) return null;
     if (typeof leadId === 'object') {
       const name = `${leadId.firstName || ''} ${leadId.lastName || ''}`.trim() || leadId.company || 'Unknown Lead';
-      return { id: leadId._id, name, company: leadId.company, email: leadId.email };
+      return {
+        id: leadId._id,
+        name,
+        company: leadId.company,
+        email: leadId.email,
+        timezone: leadId.timezone,
+      };
     }
     const found = allLeads.find((l) => l._id === leadId);
     if (found) {
       const name = `${found.firstName || ''} ${found.lastName || ''}`.trim() || found.company || 'Unknown Lead';
-      return { id: found._id, name, company: found.company, email: found.email };
+      return {
+        id: found._id,
+        name,
+        company: found.company,
+        email: found.email,
+        timezone: found.timezone,
+      };
     }
     return null;
   };
@@ -172,7 +191,14 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               <CalendarTodayIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
               <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                {meeting.scheduledAt ? format(new Date(meeting.scheduledAt), 'eeee, MMM d, yyyy') : 'N/A'}
+                {meeting.scheduledAt
+                  ? formatMeetingInstant(meeting.scheduledAt, meetingTz, {
+                      weekday: 'long',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : 'N/A'}
               </Typography>
             </Box>
           </Box>
@@ -184,11 +210,71 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               <AccessTimeIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
               <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                {meeting.scheduledAt ? format(new Date(meeting.scheduledAt), 'h:mm a') : 'N/A'}
+                {meeting.scheduledAt
+                  ? formatMeetingInstant(meeting.scheduledAt, meetingTz, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })
+                  : 'N/A'}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                {meetingTz}
+                {viewerTz !== meetingTz && meeting.scheduledAt
+                  ? ` · Your time: ${formatMeetingInstant(meeting.scheduledAt, viewerTz, { hour: 'numeric', minute: '2-digit' })}`
+                  : ''}
               </Typography>
             </Box>
           </Box>
         </Box>
+
+        {meeting.durationMinutes ? (
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 600 }}>
+            Duration: {meeting.durationMinutes} minutes
+          </Typography>
+        ) : null}
+
+        {meeting.calendarSyncStatus && meeting.calendarSyncStatus !== 'not_requested' && (
+          <Box sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Chip
+              size="small"
+              label={
+                meeting.calendarSyncStatus === 'synced'
+                  ? 'Google Calendar synced'
+                  : meeting.calendarSyncStatus === 'pending'
+                    ? 'Syncing to Google Calendar…'
+                    : 'Calendar sync failed'
+              }
+              color={
+                meeting.calendarSyncStatus === 'synced'
+                  ? 'success'
+                  : meeting.calendarSyncStatus === 'failed'
+                    ? 'error'
+                    : 'default'
+              }
+            />
+            {meeting.calendarHtmlLink && (
+              <Button
+                size="small"
+                href={meeting.calendarHtmlLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+              >
+                Open in Google Calendar
+              </Button>
+            )}
+            {meeting.calendarSyncStatus === 'failed' && calendarStatus?.connected && (
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={retryCalendarSync.isPending}
+                onClick={() => retryCalendarSync.mutate(meeting._id)}
+              >
+                Retry sync
+              </Button>
+            )}
+          </Box>
+        )}
 
         {/* Linked Lead */}
         {(() => {
@@ -236,6 +322,17 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                       ) : (
                         linked.email
                       )}
+                    </Typography>
+                  )}
+                  {linked.timezone && meeting.scheduledAt && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                      Client local:{' '}
+                      {formatMeetingInstant(meeting.scheduledAt, linked.timezone, {
+                        weekday: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}{' '}
+                      ({linked.timezone})
                     </Typography>
                   )}
                 </Box>

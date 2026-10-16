@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import { MeetingScheduler } from '@/components/meetings/MeetingScheduler';
 import { MeetingList } from '@/components/meetings/MeetingList';
+import { GoogleCalendarConnectPanel } from '@/components/meetings/GoogleCalendarConnectPanel';
 import { tokens } from '@/styles/tokens';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -84,6 +85,8 @@ const MeetingsPage = () => {
         </Button>
       </Box>
 
+      <GoogleCalendarConnectPanel />
+
       {/* Translucent Tab Navigation Pill Switcher */}
       <Box
         sx={{
@@ -147,8 +150,8 @@ const MeetingsPage = () => {
             transition: 'all 0.2s',
             '&:hover': {
               bgcolor: tab === 1
-                ? (isDarkMode ? 'rgba(255, 255, 255, 0.12)' : '#fff')
-                : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
+                ? (isDarkMode ? 'rgba(255,255,255,0.12)' : '#fff')
+                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
             }
           }}
         >
