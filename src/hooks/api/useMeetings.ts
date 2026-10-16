@@ -1,16 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import type { Meeting } from '@/types';
+import type { CreateMeetingPayload, Meeting } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const meetingApi = {
   getMeetings: (params: Record<string, string>) =>
     api.get<{ data: Meeting[] }>('/meetings', { params }),
   getMeeting: (id: string) => api.get<{ data: Meeting }>(`/meetings/${id}`),
-  createMeeting: (data: Partial<Meeting>) => api.post('/meetings', data),
-  updateMeeting: ({ id, data }: { id: string; data: Partial<Meeting> }) =>
+  createMeeting: (data: CreateMeetingPayload) => api.post('/meetings', data),
+  updateMeeting: ({ id, data }: { id: string; data: CreateMeetingPayload }) =>
     api.put(`/meetings/${id}`, data),
   deleteMeeting: (id: string) => api.delete(`/meetings/${id}`),
+  retryCalendarSync: (id: string) => api.post(`/meetings/${id}/calendar/sync`),
 };
 
 export const useMeetings = (
@@ -64,5 +65,16 @@ export const useDeleteMeeting = () => {
   return useMutation({
     mutationFn: meetingApi.deleteMeeting,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meetings'] }),
+  });
+};
+
+export const useRetryMeetingCalendarSync = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => meetingApi.retryCalendarSync(id).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['meeting'] });
+    },
   });
 };

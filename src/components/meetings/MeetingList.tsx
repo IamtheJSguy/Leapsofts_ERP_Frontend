@@ -31,6 +31,7 @@ import { useMeetings, useDeleteMeeting, useUpdateMeeting } from '@/hooks/api/use
 import { useUsers } from '@/hooks/api/useUsers';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
 import { EmptyState } from '@/components/common/EmptyState';
+import { GuestEmailChipInput } from '@/components/common/GuestEmailChipInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { tokens } from '@/styles/tokens';
@@ -42,8 +43,10 @@ import type { Meeting, Lead } from '@/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { meetingSchema, type MeetingFormData } from '@/utils/validators';
+import { getDefaultMeetingTimeZone, utcToWallClock, wallClockToUtcIso } from '@/utils/meetingTimezone';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import BusinessIcon from '@mui/icons-material/Business';
 import { MeetingDetailModal } from './MeetingDetailModal';
@@ -644,6 +647,10 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { user } = useAuth();
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarConnected = calendarStatus?.connected === true;
+  const defaultTz = meeting.timeZone || getDefaultMeetingTimeZone(user ?? undefined);
 
   const { register, handleSubmit, control } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
@@ -651,7 +658,11 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
       title: meeting.title,
       description: meeting.description || '',
       meetingLink: meeting.meetingLink || meeting.link || '',
-      scheduledAt: format(new Date(meeting.scheduledAt), "yyyy-MM-dd'T'HH:mm"),
+      scheduledAt: utcToWallClock(meeting.scheduledAt, defaultTz),
+      timeZone: defaultTz,
+      durationMinutes: meeting.durationMinutes ?? 30,
+      guestEmails: meeting.guestEmails ?? [],
+      sendGoogleInvite: true,
       participants: (meeting.participants || []).map((p: any) =>
         typeof p === 'string' ? p : p._id
       ),
@@ -665,8 +676,12 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
         data: {
           title: data.title,
           description: data.description,
-          meetingLink: data.meetingLink,
-          scheduledAt: new Date(data.scheduledAt).toISOString(),
+          ...(data.meetingLink?.trim() ? { meetingLink: data.meetingLink.trim() } : {}),
+          scheduledAt: wallClockToUtcIso(data.scheduledAt, data.timeZone),
+          timeZone: data.timeZone,
+          durationMinutes: data.durationMinutes,
+          guestEmails: data.guestEmails ?? [],
+          sendGoogleInvite: data.sendGoogleInvite,
           participants: data.participants ?? [],
         }
       },
@@ -832,6 +847,19 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
                   );
                 })
               }
+            />
+          )}
+        />
+
+        <Controller
+          name="guestEmails"
+          control={control}
+          render={({ field }) => (
+            <GuestEmailChipInput
+              value={field.value ?? []}
+              onChange={field.onChange}
+              helperText="Press Enter to add each guest email. Remove with × on the chip."
+              sx={{ mb: 3 }}
             />
           )}
         />

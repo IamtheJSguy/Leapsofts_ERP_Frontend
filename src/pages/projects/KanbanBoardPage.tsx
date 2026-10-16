@@ -79,6 +79,7 @@ import {
 import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanban';
 import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -1326,6 +1327,8 @@ const CardMeetingsSection = ({
 }) => {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarConnected = calendarStatus?.connected === true;
   const needsMeetingLookup = Array.isArray(meetingIds) && meetingIds.some((m) => typeof m === 'string');
   const { data: allMeetings = [] } = useMeetings({}, { enabled: canEdit || needsMeetingLookup });
 
@@ -1408,19 +1411,36 @@ const CardMeetingsSection = ({
 
   const handleCreate = () => {
     const scheduledAt = buildScheduledAt();
-    if (!createTitle.trim() || !createLink.trim() || !scheduledAt || createParticipants.length === 0) {
-      addToast({ message: 'Title, meeting link, date, and at least one participant are required', severity: 'error' });
+    const linkTrimmed = createLink.trim();
+    if (
+      !createTitle.trim()
+      || !scheduledAt
+      || createParticipants.length === 0
+      || (!linkTrimmed && !calendarConnected)
+    ) {
+      addToast({
+        message: calendarConnected
+          ? 'Title, date, and at least one participant are required'
+          : 'Title, meeting link, date, and at least one participant are required',
+        severity: 'error',
+      });
       return;
     }
-    let meetingLink = createLink.trim();
-    if (!/^https?:\/\//i.test(meetingLink)) meetingLink = `https://${meetingLink}`;
+    let meetingLink = linkTrimmed;
+    if (meetingLink && !/^https?:\/\//i.test(meetingLink)) meetingLink = `https://${meetingLink}`;
+    const timeZone =
+      currentUser?.timezone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone;
     createOnCardMutation.mutate(
       {
         cardId,
         data: {
           title: createTitle.trim(),
-          meetingLink,
+          ...(meetingLink ? { meetingLink } : {}),
           scheduledAt,
+          timeZone,
+          durationMinutes: 30,
+          sendGoogleInvite: calendarConnected,
           participants: createParticipants,
           ...(leadId ? { leadId } : {}),
         },

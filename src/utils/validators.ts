@@ -75,13 +75,41 @@ export const kpiChangeRequestSchema = z.object({
   reason: z.string().min(1, 'Reason is required'),
 });
 
-export const meetingSchema = z.object({
-  title: z.string().min(1, 'Meeting title is required'),
-  description: z.string().optional(),
-  meetingLink: z.string().url('Must be a valid URL (e.g. https://meet.google.com/...)').min(1, 'Meeting link is required'),
-  scheduledAt: z.string().min(1, 'Date & time is required'),
-  participants: z.array(z.string()).min(1, 'At least one participant is required'),
-});
+export const meetingSchema = z
+  .object({
+    title: z.string().min(1, 'Meeting title is required'),
+    description: z.string().optional(),
+    meetingLink: z.string().optional(),
+    scheduledAt: z.string().min(1, 'Date & time is required'),
+    timeZone: z.string().min(1, 'Timezone is required'),
+    durationMinutes: z.coerce.number().int().min(15).max(480).optional(),
+    guestEmails: z.array(z.string().email()).optional(),
+    sendGoogleInvite: z.boolean().optional(),
+    participants: z.array(z.string()).min(1, 'At least one participant is required'),
+  })
+  .superRefine((data, ctx) => {
+    const link = data.meetingLink?.trim();
+    const useGoogleMeet = data.sendGoogleInvite === true;
+    if (!link && !useGoogleMeet) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Add a video link or turn on Google Calendar to generate Google Meet',
+        path: ['meetingLink'],
+      });
+    }
+    if (link) {
+      try {
+        // eslint-disable-next-line no-new
+        new URL(link);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Must be a valid URL (e.g. https://meet.google.com/...)',
+          path: ['meetingLink'],
+        });
+      }
+    }
+  });
 
 export const userSchema = z.object({
   email: z.string().email('Invalid email'),
