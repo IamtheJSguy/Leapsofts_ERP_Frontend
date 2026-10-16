@@ -133,6 +133,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
+  const pendingImageScrollRef = useRef(false);
+  const pendingImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPrependingRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
   const { joinChat, leaveChat, emitTyping, subscribePresence } = useSocket();
@@ -486,7 +488,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (!el) return;
     const observer = new ResizeObserver(() => {
       if (isPrependingRef.current) return;
-      if (shouldStickToBottomRef.current) {
+      if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
         scrollToBottom('auto');
       }
     });
@@ -494,12 +496,36 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     return () => observer.disconnect();
   }, [showLoader, scrollToBottom]);
 
+  // Jab image load ho jaye (FileMessage se 'chat-image-loaded' event aata hai),
+  // scroll neeche le jaao agar hum ne abhi image bheji hai
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const handleImageLoaded = () => {
+      if (pendingImageScrollRef.current || shouldStickToBottomRef.current) {
+        shouldStickToBottomRef.current = true;
+        requestAnimationFrame(() => scrollToBottom('auto'));
+      }
+    };
+    container.addEventListener('chat-image-loaded', handleImageLoaded);
+    return () => container.removeEventListener('chat-image-loaded', handleImageLoaded);
+  }, [scrollToBottom]);
+
   const handleSend = () => {
     if (!activeConversationId) return;
     if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
     shouldStickToBottomRef.current = true;
+    // Agar image bhej rahe hain toh pendingImageScrollRef set karo
+    // taake image load hone ke baad bhi scroll force ho
+    if (pendingFile) {
+      pendingImageScrollRef.current = true;
+      if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
+      pendingImageTimerRef.current = setTimeout(() => {
+        pendingImageScrollRef.current = false;
+      }, 8000);
+    }
     scrollToBottom('auto');
     requestAnimationFrame(() => scrollToBottom('auto'));
     const replyToId = replyingTo?._id;
