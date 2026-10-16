@@ -1,5 +1,77 @@
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message } from '@/types';
+import { stripHtml } from '@/utils/chatMessageUtils';
+
+const senderIdOf = (message: Message): string => {
+  if (message.senderId) {
+    return typeof message.senderId === 'string' ? message.senderId : message.senderId._id;
+  }
+  if (message.sender) {
+    return typeof message.sender === 'string' ? message.sender : message.sender._id;
+  }
+  return '';
+};
+
+const normalizeComparableContent = (content: string, type?: string): string => {
+  const raw = content || '';
+  if (type === 'text' || !type) {
+    const stripped = stripHtml(raw).trim().replace(/\s+/g, ' ');
+    if (stripped) return stripped;
+  }
+  return raw.trim();
+};
+
+/** Whether an optimistic row likely represents the same outgoing message as the server payload. */
+export const optimisticMatchesIncoming = (pending: Message, incoming: Message): boolean => {
+  if (!pending.isPending) return false;
+  const pendingType = pending.type || 'text';
+  const incomingType = incoming.type || 'text';
+  if (pendingType !== incomingType) return false;
+  if (pendingType === 'drive_file') {
+    return Boolean(pending.driveFileId && pending.driveFileId === incoming.driveFileId);
+  }
+  if (pendingType === 'file') {
+    return (
+      normalizeComparableContent(pending.content, 'file') ===
+      normalizeComparableContent(incoming.content, 'file')
+    );
+  }
+  return (
+    normalizeComparableContent(pending.content, 'text') ===
+    normalizeComparableContent(incoming.content, 'text')
+  );
+};
+
+const mergeIncomingIntoMessages = (
+  messages: Message[],
+  incoming: Message,
+  currentUserId?: string,
+): Message[] => {
+  if (messages.some((m) => m._id === incoming._id)) {
+    return messages.filter((m) => !(m.isPending && optimisticMatchesIncoming(m, incoming)));
+  }
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (optimisticMatchesIncoming(messages[i], incoming)) {
+      const next = [...messages];
+      next[i] = { ...incoming, clientId: messages[i]._id, isPending: false };
+      return next;
+    }
+  }
+
+  if (currentUserId && senderIdOf(incoming) === currentUserId) {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const pending = messages[i];
+      if (pending.isPending && senderIdOf(pending) === currentUserId) {
+        const next = [...messages];
+        next[i] = { ...incoming, clientId: pending._id, isPending: false };
+        return next;
+      }
+    }
+  }
+
+  return [...messages, incoming];
+};
 
 export const CHAT_MESSAGE_PAGE_SIZE = 30;
 
@@ -92,54 +164,46 @@ export const mapMessageCache = (
 export const appendMessageToCache = (
   old: Message[] | MessagesInfiniteData | undefined,
   message: Message,
+  options?: { currentUserId?: string },
 ): Message[] | MessagesInfiniteData => {
+  const currentUserId = options?.currentUserId;
+
   if (!old) {
     // Unknown prior history — allow scroll-back to load older pages.
     return { pages: [{ messages: [message], hasMore: true }], pageParams: [undefined] };
   }
 
-  const isDuplicate = (m: Message) => m._id === message._id;
-  
-  const isOptimisticMatch = (m: Message) => 
-    m.isPending && 
-    (
-      (m.type === 'text' && m.content === message.content) || 
-      (m.type === 'file' && message.type === 'file' && m.content === message.content)
-    );
-
   if (Array.isArray(old)) {
-    if (old.some(isDuplicate)) return old;
-    const optIdx = old.findIndex(isOptimisticMatch);
-    if (optIdx !== -1) {
-      const next = [...old];
-      next[optIdx] = { ...message, clientId: next[optIdx]._id };
-      return next;
-    }
-    return [...old, message];
+    return mergeIncomingIntoMessages(old, message, currentUserId);
   }
-  
+
   if (!isMessagesInfiniteData(old)) {
     return { pages: [{ messages: [message], hasMore: false }], pageParams: [undefined] };
   }
-  
-  if (old.pages.some((page) => page.messages.some(isDuplicate))) {
-    return old;
-  }
-  
+
   if (old.pages.length === 0) {
     return { pages: [{ messages: [message], hasMore: false }], pageParams: [undefined] };
   }
-  
-  const pages = [...old.pages];
-  const firstPageMessages = [...pages[0].messages];
-  
-  const optIdx = firstPageMessages.findIndex(isOptimisticMatch);
-  if (optIdx !== -1) {
-    firstPageMessages[optIdx] = { ...message, clientId: firstPageMessages[optIdx]._id };
-  } else {
-    firstPageMessages.push(message);
+
+  const hasRealId = old.pages.some((page) => page.messages.some((m) => m._id === message._id));
+  if (hasRealId) {
+    return {
+      ...old,
+      pages: old.pages.map((page) => ({
+        ...page,
+        messages: page.messages.filter(
+          (m) => !(m.isPending && optimisticMatchesIncoming(m, message)),
+        ),
+      })),
+    };
   }
-  
+
+  const pages = [...old.pages];
+  const firstPageMessages = mergeIncomingIntoMessages(
+    [...pages[0].messages],
+    message,
+    currentUserId,
+  );
   pages[0] = { ...pages[0], messages: firstPageMessages };
   return { ...old, pages };
 };

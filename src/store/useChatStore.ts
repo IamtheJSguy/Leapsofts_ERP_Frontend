@@ -59,9 +59,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     })),
   clearUnread: (conversationId) =>
-    set((s) => ({
-      unreadCounts: { ...s.unreadCounts, [conversationId]: 0 },
-    })),
+    set((s) => {
+      if ((s.unreadCounts[conversationId] || 0) === 0) return s;
+      return { unreadCounts: { ...s.unreadCounts, [conversationId]: 0 } };
+    }),
   addTypingUser: (conversationId, userId) =>
     set((s) => {
       const current = s.typingUsers[conversationId] || [];

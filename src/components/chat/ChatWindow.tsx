@@ -100,6 +100,25 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const driveAuth = useDriveAuthUrl();
   const createConversation = useCreateConversation();
   const markRead = useMarkConversationRead();
+  const markReadMutateRef = useRef(markRead.mutate);
+  markReadMutateRef.current = markRead.mutate;
+  const markReadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markReadInFlightRef = useRef<string | null>(null);
+  const scheduleMarkRead = useCallback((conversationId: string) => {
+    clearUnread(conversationId);
+    if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
+    markReadDebounceRef.current = setTimeout(() => {
+      if (markReadInFlightRef.current === conversationId) return;
+      markReadInFlightRef.current = conversationId;
+      markReadMutateRef.current(conversationId, {
+        onSettled: () => {
+          if (markReadInFlightRef.current === conversationId) {
+            markReadInFlightRef.current = null;
+          }
+        },
+      });
+    }, 400);
+  }, [clearUnread]);
   const { text, setText, removeDraft } = useChatDraft(activeConversationId);
   const [pendingFilesByConv, setPendingFilesByConv] = useState<
     Record<string, { file: File; previewUrl: string | null }>
@@ -139,12 +158,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (!activeConversationId || activeConversationId.startsWith('mock-')) return;
 
     joinChat(activeConversationId);
-    clearUnread(activeConversationId);
-    markRead.mutate(activeConversationId);
+    scheduleMarkRead(activeConversationId);
 
-    return () => leaveChat(activeConversationId);
+    return () => {
+      if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
+      leaveChat(activeConversationId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when conversation changes
-  }, [activeConversationId, joinChat, leaveChat, clearUnread]);
+  }, [activeConversationId, joinChat, leaveChat]);
 
   const otherParticipantIds = useMemo(() => {
     if (!activeConversationId || !user?._id) return [] as string[];
@@ -300,6 +321,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   // Mark as read when new messages arrive while this conversation is open
   const lastMarkedMessageId = useRef<string | null>(null);
   useEffect(() => {
+    lastMarkedMessageId.current = null;
+  }, [activeConversationId]);
+  useEffect(() => {
     if (!activeConversationId || activeConversationId.startsWith('mock-') || messages.length === 0) return;
     const last = messages[messages.length - 1] as any;
     if (!last?._id || last._id === lastMarkedMessageId.current) return;
@@ -307,11 +331,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const senderRef = last.senderId || last.sender;
     const senderId = typeof senderRef === 'object' ? senderRef?._id : senderRef;
     if (senderId !== user?._id) {
-      clearUnread(activeConversationId);
-      markRead.mutate(activeConversationId);
+      scheduleMarkRead(activeConversationId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, activeConversationId, user?._id, clearUnread]);
+  }, [messages, activeConversationId, user?._id]);
 
   // Intercept and generate mock messages if this is a mock conversation
   const mockMessages = useMemo(() => {
@@ -464,12 +487,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const handleSend = () => {
     if (!activeConversationId) return;
-    if (
-      sendMessage.isPending ||
-      sendChatImage.isPending ||
-      uploadDriveFile.isPending ||
-      createConversation.isPending
-    ) {
+    if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
     shouldStickToBottomRef.current = true;
@@ -1226,7 +1244,6 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             disabled={
               (!pendingFile && isDraftEmpty(text)) ||
               uploadDriveFile.isPending ||
-              sendMessage.isPending ||
               sendChatImage.isPending ||
               createConversation.isPending
             }
