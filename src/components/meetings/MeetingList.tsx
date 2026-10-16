@@ -460,45 +460,82 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                     )}
 
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {(!meeting.participants || meeting.participants.length === 0) ? (
-                        <Typography variant="caption" sx={{ color: 'text.muted', fontSize: '0.72rem', fontWeight: 550, fontStyle: 'italic' }}>
-                          None
-                        </Typography>
-                      ) : (
-                        <>
-                          {meeting.participants.slice(0, 3).map((p, idx) => {
-                            const details = getParticipantDetails(p);
-                            const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : '');
-                            const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+                      {(() => {
+                        const guestEmails = (meeting.guestEmails ?? []).filter(Boolean);
+                        const participants = meeting.participants ?? [];
+                        const preview = [
+                          ...participants.map((p) => ({ kind: 'user' as const, p })),
+                          ...guestEmails.map((email) => ({ kind: 'guest' as const, email })),
+                        ];
+                        const total = preview.length;
 
-                            return (
-                              <Tooltip key={idx} title={name}>
-                                <Avatar
-                                  src={details?.avatarUrl || undefined}
-                                  sx={{
-                                    width: 26,
-                                    height: 26,
-                                    bgcolor: tokens.brand.primary,
-                                    color: '#fff',
-                                    border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    marginLeft: idx > 0 ? '-8px' : 0,
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-                                  }}
-                                >
-                                  {initials}
-                                </Avatar>
-                              </Tooltip>
-                            );
-                          })}
-                          {meeting.participants.length > 3 && (
-                            <Typography variant="caption" sx={{ color: 'text.muted', ml: 1, fontSize: '0.72rem', fontWeight: 600 }}>
-                              +{meeting.participants.length - 3} others
+                        if (total === 0) {
+                          return (
+                            <Typography variant="caption" sx={{ color: 'text.muted', fontSize: '0.72rem', fontWeight: 550, fontStyle: 'italic' }}>
+                              None
                             </Typography>
-                          )}
-                        </>
-                      )}
+                          );
+                        }
+
+                        return (
+                          <>
+                            {preview.slice(0, 3).map((item, idx) => {
+                              if (item.kind === 'guest') {
+                                const initials = item.email.split('@')[0]?.slice(0, 2).toUpperCase() || '?';
+                                return (
+                                  <Tooltip key={`guest-${item.email}`} title={item.email}>
+                                    <Avatar
+                                      sx={{
+                                        width: 26,
+                                        height: 26,
+                                        bgcolor: isDarkMode ? 'rgba(148, 163, 184, 0.35)' : 'rgba(148, 163, 184, 0.55)',
+                                        color: '#fff',
+                                        border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        marginLeft: idx > 0 ? '-8px' : 0,
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                                      }}
+                                    >
+                                      {initials}
+                                    </Avatar>
+                                  </Tooltip>
+                                );
+                              }
+
+                              const details = getParticipantDetails(item.p);
+                              const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof item.p === 'string' ? item.p : '');
+                              const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+                              return (
+                                <Tooltip key={`user-${idx}`} title={name}>
+                                  <Avatar
+                                    src={details?.avatarUrl || undefined}
+                                    sx={{
+                                      width: 26,
+                                      height: 26,
+                                      bgcolor: tokens.brand.primary,
+                                      color: '#fff',
+                                      border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
+                                      fontSize: '0.65rem',
+                                      fontWeight: 800,
+                                      marginLeft: idx > 0 ? '-8px' : 0,
+                                      boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                                    }}
+                                  >
+                                    {initials}
+                                  </Avatar>
+                                </Tooltip>
+                              );
+                            })}
+                            {total > 3 && (
+                              <Typography variant="caption" sx={{ color: 'text.muted', ml: 1, fontSize: '0.72rem', fontWeight: 600 }}>
+                                +{total - 3} others
+                              </Typography>
+                            )}
+                          </>
+                        );
+                      })()}
                     </Box>
                   </Box>
                 </Box>

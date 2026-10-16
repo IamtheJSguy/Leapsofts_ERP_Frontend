@@ -120,6 +120,9 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
       return id !== createdById;
     }) || [];
 
+  const guestEmails = (meeting.guestEmails ?? []).filter(Boolean);
+  const attendeeCount = participantsToDisplay.length + guestEmails.length;
+
   return (
     <Dialog
       open={open}
@@ -404,16 +407,17 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 
         {/* Participants List */}
         <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.primary' }}>
-          Participants ({participantsToDisplay.length})
+          Participants ({attendeeCount})
         </Typography>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
-          {participantsToDisplay.length === 0 ? (
+          {attendeeCount === 0 ? (
             <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
               No participants added yet.
             </Typography>
           ) : (
-            participantsToDisplay.map((p, idx) => {
+            <>
+            {participantsToDisplay.map((p, idx) => {
               const details = getParticipantDetails(p);
               const name = details
                 ? `${details.firstName || ''} ${details.lastName || ''}`.trim()
@@ -463,7 +467,59 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                   />
                 </Box>
               );
-            })
+            })}
+            {guestEmails.map((guestEmail) => {
+              const initials =
+                guestEmail.split('@')[0]?.slice(0, 2).toUpperCase() || '?';
+
+              return (
+                <Box
+                  key={guestEmail}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    p: 1.25,
+                    borderRadius: '12px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                  }}
+                >
+                  <Avatar
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      bgcolor: 'action.selected',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    {initials}
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {guestEmail}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                      External guest
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label="GUEST"
+                    size="small"
+                    sx={{
+                      borderRadius: '8px',
+                      fontWeight: 750,
+                      fontSize: '0.62rem',
+                      bgcolor: 'rgba(148, 163, 184, 0.12)',
+                      color: 'text.secondary',
+                    }}
+                  />
+                </Box>
+              );
+            })}
+            </>
           )}
         </Box>
 
