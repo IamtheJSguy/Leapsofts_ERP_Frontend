@@ -597,10 +597,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }
 
     if (isDraftEmpty(text)) return;
+    const outgoingText = text;
     const payload = {
-      content: text,
+      content: outgoingText,
       ...(replyToId ? { replyTo: replyToId } : {}),
     };
+
+    // Immediately clear input bar so typing area clears instantaneously
+    removeDraft(activeConversationId);
+    setReplyingTo(null);
 
     if (activeConversationId.startsWith('mock-conv-')) {
       const targetUserId = activeConversationId.replace('mock-conv-', '');
@@ -612,15 +617,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             if (newConvId) {
               setActiveConversation(newConvId);
               navigate(`/chat/${newConvId}`, { replace: true });
+              removeDraft(newConvId);
               sendMessage.mutate(
                 { conversationId: newConvId, ...payload },
                 {
-                  onSuccess: () => {
-                    removeDraft(newConvId);
-                    removeDraft(activeConversationId);
-                    setReplyingTo(null);
-                  },
                   onError: (err) => {
+                    setText(outgoingText);
                     showApiError(err);
                   },
                 }
@@ -628,6 +630,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }
           },
           onError: (err) => {
+            setText(outgoingText);
             showApiError(err);
           },
         }
@@ -636,11 +639,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       sendMessage.mutate(
         { conversationId: activeConversationId, ...payload },
         {
-          onSuccess: () => {
-            removeDraft(activeConversationId);
-            setReplyingTo(null);
-          },
           onError: (err) => {
+            setText(outgoingText);
             showApiError(err);
           },
         }
