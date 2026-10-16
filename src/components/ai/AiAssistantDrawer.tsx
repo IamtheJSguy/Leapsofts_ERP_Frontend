@@ -23,6 +23,10 @@ import AddCommentOutlinedIcon from '@mui/icons-material/AddCommentOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined';
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
+import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded';
+import { useNavigate } from 'react-router-dom';
 import {
   useAiConfig,
   useAiConversations,
@@ -30,16 +34,20 @@ import {
   useSendAiMessage,
   useDeleteAiConversation,
   useEnrichLeadWithAi,
-  type AiProviderType,
-  type AiMessage,
 } from '@/hooks/api/useAi';
 import { useUIStore } from '@/store/useUIStore';
-import { showApiError } from '@/utils/apiError';
+import {
+  useAiChatSessionStore,
+  getConvKey,
+  NEW_CONV_KEY,
+  type AiChatDisplayMessage,
+} from '@/store/useAiChatSessionStore';
+import { getApiErrorMessage, showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
 import { AiActionPreviewCard } from './AiActionPreviewCard';
 import { AiApiKeyModal } from './AiApiKeyModal';
 
-const STARTER_PROMPTS = [
+export const AI_STARTER_PROMPTS = [
   'What meetings do I have scheduled this week?',
   'Show me the sales team progress report for this week',
   'Search leads and enrich missing phone, email & company details',
@@ -47,7 +55,7 @@ const STARTER_PROMPTS = [
   'Book a meeting — ask me for time and participants',
 ];
 
-const formatTokenCount = (n: number): string => {
+export const formatTokenCount = (n: number): string => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 };
@@ -56,14 +64,25 @@ export const AiAssistantDrawer = () => {
   const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
   const aiContextLeadId = useUIStore((s) => s.aiContextLeadId);
   const setAiDrawerOpen = useUIStore((s) => s.setAiDrawerOpen);
+  const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+
+  const activeConversationId = useAiChatSessionStore((s) => s.activeConversationId);
+  const setActiveConversationId = useAiChatSessionStore((s) => s.setActiveConversationId);
+  const provider = useAiChatSessionStore((s) => s.provider);
+  const setProvider = useAiChatSessionStore((s) => s.setProvider);
+  const ephemeralByConv = useAiChatSessionStore((s) => s.ephemeralByConv);
+  const pendingByConv = useAiChatSessionStore((s) => s.pendingByConv);
+  const appendEphemeralMessage = useAiChatSessionStore((s) => s.appendEphemeralMessage);
+  const updateEphemeralMessages = useAiChatSessionStore((s) => s.updateEphemeralMessages);
+  const clearConversationEphemeral = useAiChatSessionStore((s) => s.clearConversationEphemeral);
+  const moveConversationState = useAiChatSessionStore((s) => s.moveConversationState);
+  const setPendingOperation = useAiChatSessionStore((s) => s.setPendingOperation);
 
   const { data: config } = useAiConfig({ enabled: aiDrawerOpen });
   const { data: conversations = [] } = useAiConversations({ enabled: aiDrawerOpen });
 
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [provider, setProvider] = useState<AiProviderType>('gemini');
   const [input, setInput] = useState('');
   const [keyModalOpen, setKeyModalOpen] = useState(false);
 
@@ -74,64 +93,158 @@ export const AiAssistantDrawer = () => {
   const deleteConversation = useDeleteAiConversation();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastAutoEnrichedLeadRef = useRef<string | null>(null);
+  const currentConvKey = getConvKey(activeConversationId);
+  const currentEphemeral = ephemeralByConv[currentConvKey] ?? [];
+  const currentPendingOp = pendingByConv[currentConvKey];
 
   useEffect(() => {
     if (config?.preferredProvider) {
       setProvider(config.preferredProvider);
     }
-  }, [config?.preferredProvider]);
+  }, [config?.preferredProvider, setProvider]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeConversation?.messages?.length, sendMessage.isPending, enrichLeadWithAi.isPending]);
+  }, [
+    activeConversation?.messages?.length,
+    currentEphemeral.length,
+    Boolean(currentPendingOp),
+  ]);
 
-  // If opened with a specific contextLeadId, automatically select or start enrichment if requested
   useEffect(() => {
     if (!aiDrawerOpen || !aiContextLeadId) return;
     const existingForLead = conversations.find((c) => c.contextLeadId === aiContextLeadId);
     if (existingForLead) {
       setActiveConversationId(existingForLead._id);
     }
-  }, [aiDrawerOpen, aiContextLeadId, conversations]);
+  }, [aiDrawerOpen, aiContextLeadId, conversations, setActiveConversationId]);
 
   const handleSend = (promptOverride?: string) => {
     const text = (promptOverride ?? input).trim();
-    if (!text || sendMessage.isPending) return;
+    if (!text || Boolean(currentPendingOp)) return;
     if (!promptOverride) setInput('');
+
+    const originConvId = activeConversationId;
+    const originKey = getConvKey(originConvId);
+    const selectedProvider = provider;
+    const tempUserMsgId = `temp-user-${Date.now()}`;
+
+    const optimisticUserMsg: AiChatDisplayMessage = {
+      _id: tempUserMsgId,
+      role: 'user',
+      content: text,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    appendEphemeralMessage(originKey, optimisticUserMsg);
+    setPendingOperation(originKey, {
+      conversationKey: originKey,
+      provider: selectedProvider,
+      kind: 'chat',
+      startedAt: Date.now(),
+    });
 
     sendMessage.mutate(
       {
-        conversationId: activeConversationId ?? undefined,
+        conversationId: originConvId ?? undefined,
         message: text,
-        provider,
+        provider: selectedProvider,
         contextLeadId: aiContextLeadId ?? undefined,
       },
       {
         onSuccess: (res) => {
-          setActiveConversationId(res.conversation._id);
+          const resolvedId = res.conversation._id;
+          setPendingOperation(originKey, null);
+          updateEphemeralMessages(originKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId),
+          );
+          if (originKey === NEW_CONV_KEY) {
+            moveConversationState(NEW_CONV_KEY, resolvedId);
+          }
+          // Only switch active conversation if the user is still looking at the origin thread
+          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
+            setActiveConversationId(resolvedId);
+          }
         },
         onError: (err: unknown) => {
-          showApiError(err);
+          const errorText = getApiErrorMessage(err);
+          setPendingOperation(originKey, null);
+          updateEphemeralMessages(originKey, (prev) => [
+            ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
+            {
+              _id: `err-${Date.now()}`,
+              role: 'system',
+              content: errorText,
+              provider: selectedProvider,
+              createdAt: new Date().toISOString(),
+              isError: true,
+              retryPrompt: text,
+              failedUserMsgId: tempUserMsgId,
+            },
+          ]);
         },
       },
     );
   };
 
   const handleEnrichActiveLead = () => {
-    if (!aiContextLeadId || enrichLeadWithAi.isPending) return;
-    lastAutoEnrichedLeadRef.current = aiContextLeadId;
+    if (!aiContextLeadId || Boolean(currentPendingOp)) return;
+
+    const originConvId = activeConversationId;
+    const originKey = getConvKey(originConvId);
+    const selectedProvider = provider;
+    const tempUserMsgId = `temp-enrich-${Date.now()}`;
+
+    appendEphemeralMessage(originKey, {
+      _id: tempUserMsgId,
+      role: 'user',
+      content: 'Enrich lead data with missing phone, email, and company details.',
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    });
+    setPendingOperation(originKey, {
+      conversationKey: originKey,
+      provider: selectedProvider,
+      kind: 'enrich',
+      startedAt: Date.now(),
+    });
+
     enrichLeadWithAi.mutate(
       {
         leadId: aiContextLeadId,
-        provider,
-        conversationId: activeConversationId ?? undefined,
+        provider: selectedProvider,
+        conversationId: originConvId ?? undefined,
       },
       {
         onSuccess: (res) => {
-          setActiveConversationId(res.conversation._id);
+          const resolvedId = res.conversation._id;
+          setPendingOperation(originKey, null);
+          updateEphemeralMessages(originKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId),
+          );
+          if (originKey === NEW_CONV_KEY) {
+            moveConversationState(NEW_CONV_KEY, resolvedId);
+          }
+          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
+            setActiveConversationId(resolvedId);
+          }
         },
-        onError: (err) => showApiError(err),
+        onError: (err: unknown) => {
+          const errorText = getApiErrorMessage(err);
+          setPendingOperation(originKey, null);
+          updateEphemeralMessages(originKey, (prev) => [
+            ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
+            {
+              _id: `err-${Date.now()}`,
+              role: 'system',
+              content: errorText,
+              provider: selectedProvider,
+              createdAt: new Date().toISOString(),
+              isError: true,
+            },
+          ]);
+        },
       },
     );
   };
@@ -146,13 +259,23 @@ export const AiAssistantDrawer = () => {
     const idToRemove = activeConversationId;
     deleteConversation.mutate(idToRemove, {
       onSuccess: () => {
-        setActiveConversationId(null);
+        clearConversationEphemeral(idToRemove);
+        setPendingOperation(idToRemove, null);
+        if (useAiChatSessionStore.getState().activeConversationId === idToRemove) {
+          setActiveConversationId(null);
+        }
       },
       onError: (err) => showApiError(err),
     });
   };
 
-  const messages: AiMessage[] = activeConversation?.messages ?? [];
+  const handleOpenDedicatedPage = () => {
+    setAiDrawerOpen(false);
+    navigate(activeConversationId ? `/ai/${activeConversationId}` : '/ai');
+  };
+
+  const serverMessages: AiChatDisplayMessage[] = activeConversation?.messages ?? [];
+  const messages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeral];
   const hasActiveByok =
     provider === 'gemini' ? Boolean(config?.hasGeminiKey) : Boolean(config?.hasClaudeKey);
 
@@ -211,6 +334,11 @@ export const AiAssistantDrawer = () => {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Tooltip title="Open Full AI Workspace">
+                <IconButton size="small" onClick={handleOpenDedicatedPage}>
+                  <OpenInFullRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="New Conversation">
                 <IconButton size="small" onClick={handleNewChat}>
                   <AddCommentOutlinedIcon fontSize="small" />
@@ -227,7 +355,7 @@ export const AiAssistantDrawer = () => {
             </Box>
           </Box>
 
-          {/* Provider Switcher + Token Badge + Thread Selector */}
+          {/* Provider Switcher + Token Badge */}
           <Box
             sx={{
               display: 'flex',
@@ -299,11 +427,14 @@ export const AiAssistantDrawer = () => {
               <MenuItem value="">
                 <em>New AI Chat Session</em>
               </MenuItem>
-              {conversations.map((c) => (
-                <MenuItem key={c._id} value={c._id} sx={{ fontSize: '0.8rem' }}>
-                  {c.title} ({c.provider})
-                </MenuItem>
-              ))}
+              {conversations.map((c) => {
+                const isRunning = Boolean(pendingByConv[c._id]);
+                return (
+                  <MenuItem key={c._id} value={c._id} sx={{ fontSize: '0.8rem' }}>
+                    {c.title} ({c.provider}){isRunning ? ' • Running...' : ''}
+                  </MenuItem>
+                );
+              })}
             </Select>
             {activeConversationId && (
               <Tooltip title="Delete this conversation">
@@ -336,7 +467,7 @@ export const AiAssistantDrawer = () => {
                 variant="contained"
                 startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
                 onClick={handleEnrichActiveLead}
-                disabled={enrichLeadWithAi.isPending}
+                disabled={Boolean(currentPendingOp)}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 700,
@@ -345,7 +476,7 @@ export const AiAssistantDrawer = () => {
                   bgcolor: tokens.brand.primary,
                 }}
               >
-                {enrichLeadWithAi.isPending ? 'Enriching...' : 'Enrich This Lead Now'}
+                {currentPendingOp?.kind === 'enrich' ? 'Enriching...' : 'Enrich This Lead Now'}
               </Button>
             </Box>
           )}
@@ -362,7 +493,7 @@ export const AiAssistantDrawer = () => {
             gap: 2,
           }}
         >
-          {isLoadingConv && activeConversationId ? (
+          {isLoadingConv && activeConversationId && messages.length === 0 ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
               <CircularProgress size={28} />
             </Box>
@@ -380,7 +511,7 @@ export const AiAssistantDrawer = () => {
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {STARTER_PROMPTS.map((prompt) => (
+                {AI_STARTER_PROMPTS.map((prompt) => (
                   <Button
                     key={prompt}
                     variant="outlined"
@@ -406,6 +537,111 @@ export const AiAssistantDrawer = () => {
           ) : (
             messages.map((m, idx) => {
               const isUser = m.role === 'user';
+              const isErrorMsg = Boolean(m.isError || m.role === 'system');
+
+              if (isErrorMsg) {
+                const isKeyOrQuotaIssue =
+                  /key|quota|token|exhausted|configured/i.test(m.content);
+                return (
+                  <Box
+                    key={m._id || idx}
+                    sx={{
+                      alignSelf: 'flex-start',
+                      maxWidth: '96%',
+                      width: '100%',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: '14px',
+                        border: '1px solid rgba(211, 47, 47, 0.35)',
+                        bgcolor: isDarkMode
+                          ? 'rgba(211, 47, 47, 0.12)'
+                          : 'rgba(211, 47, 47, 0.06)',
+                        color: isDarkMode ? '#fca5a5' : '#b91c1c',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <ErrorOutlineRoundedIcon
+                          sx={{ fontSize: 18, mt: 0.2, flexShrink: 0 }}
+                        />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              display: 'block',
+                              mb: 0.25,
+                            }}
+                          >
+                            {m.provider === 'claude' ? 'Claude' : 'Gemini'} Error
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {m.content}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                            {m.retryPrompt && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<ReplayRoundedIcon sx={{ fontSize: 14 }} />}
+                                disabled={Boolean(currentPendingOp)}
+                                onClick={() => {
+                                  updateEphemeralMessages(currentConvKey, (prev) =>
+                                    prev.filter(
+                                      (item) =>
+                                        item._id !== m._id && item._id !== m.failedUserMsgId,
+                                    ),
+                                  );
+                                  handleSend(m.retryPrompt);
+                                }}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  py: 0.2,
+                                }}
+                              >
+                                Retry
+                              </Button>
+                            )}
+                            {isKeyOrQuotaIssue && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="error"
+                                startIcon={<KeyOutlinedIcon sx={{ fontSize: 14 }} />}
+                                onClick={() => setKeyModalOpen(true)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  py: 0.2,
+                                }}
+                              >
+                                Configure API Key
+                              </Button>
+                            )}
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              }
+
               return (
                 <Box
                   key={m._id || idx}
@@ -577,13 +813,15 @@ export const AiAssistantDrawer = () => {
             })
           )}
 
-          {(sendMessage.isPending || enrichLeadWithAi.isPending) && (
+          {currentPendingOp && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1 }}>
               <CircularProgress size={18} sx={{ color: tokens.brand.primary }} />
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                {enrichLeadWithAi.isPending
+                {currentPendingOp.kind === 'enrich'
                   ? 'Searching the web & enriching lead data...'
-                  : `Running ${provider === 'claude' ? 'Claude' : 'Gemini'} agent...`}
+                  : `Running ${
+                      currentPendingOp.provider === 'claude' ? 'Claude' : 'Gemini'
+                    } agent...`}
               </Typography>
             </Box>
           )}
@@ -618,7 +856,7 @@ export const AiAssistantDrawer = () => {
           <IconButton
             color="primary"
             onClick={() => handleSend()}
-            disabled={!input.trim() || sendMessage.isPending || enrichLeadWithAi.isPending}
+            disabled={!input.trim() || Boolean(currentPendingOp)}
             sx={{
               bgcolor: tokens.brand.primary,
               color: '#fff',

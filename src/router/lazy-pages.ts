@@ -34,3 +34,5 @@ export const HomePage = lazyRetry(() => import('@/pages/public/HomePage'));
 export const PrivacyPage = lazyRetry(() => import('@/pages/public/PrivacyPage'));
 export const TermsPage = lazyRetry(() => import('@/pages/public/TermsPage'));
 export const SecurityPolicyPage = lazyRetry(() => import('@/pages/public/SecurityPolicyPage'));
+export const AiAssistantPage = lazyRetry(() => import('@/pages/AiAssistantPage'));
+

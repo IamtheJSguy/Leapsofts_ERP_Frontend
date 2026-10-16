@@ -29,6 +29,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -95,6 +96,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
       { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'chat' },
+      { label: 'AI Assistant', path: '/ai', icon: <AutoAwesomeIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {

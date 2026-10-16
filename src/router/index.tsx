@@ -41,6 +41,7 @@ import {
   PrivacyPage,
   TermsPage,
   SecurityPolicyPage,
+  AiAssistantPage,
 } from './lazy-pages';
 
 const ALL_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER] as const;
@@ -171,6 +172,14 @@ export const router = createBrowserRouter([
         element: wrap(
           <ProtectedRoute allowedRoles={[...ALL_ROLES]} requireEntitlement="chat">
             <ChatPage />
+          </ProtectedRoute>,
+        ),
+      },
+      {
+        path: 'ai/:conversationId?',
+        element: wrap(
+          <ProtectedRoute allowedRoles={[...ALL_ROLES]}>
+            <AiAssistantPage />
           </ProtectedRoute>,
         ),
       },
