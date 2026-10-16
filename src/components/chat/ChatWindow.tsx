@@ -458,6 +458,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const contentWrapperRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior });
+    }
+  }, []);
+
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
     if (isPrependingRef.current && el) {
@@ -468,9 +477,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return;
     }
     if (shouldStickToBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollToBottom('auto');
     }
-  }, [enhancedMessages, isFetchingNextPage]);
+  }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
 
   useLayoutEffect(() => {
     const el = contentWrapperRef.current;
@@ -478,12 +487,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const observer = new ResizeObserver(() => {
       if (isPrependingRef.current) return;
       if (shouldStickToBottomRef.current) {
-        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+        scrollToBottom('auto');
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [showLoader]);
+  }, [showLoader, scrollToBottom]);
 
   const handleSend = () => {
     if (!activeConversationId) return;
@@ -491,6 +500,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return;
     }
     shouldStickToBottomRef.current = true;
+    scrollToBottom('auto');
+    requestAnimationFrame(() => scrollToBottom('auto'));
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
