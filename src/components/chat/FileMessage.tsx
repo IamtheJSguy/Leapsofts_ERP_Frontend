@@ -46,6 +46,11 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           component="img"
           src={message.fileUrl}
           alt={alt}
+          onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
+            e.currentTarget.dispatchEvent(
+              new CustomEvent('chat-image-loaded', { bubbles: true }),
+            );
+          }}
           sx={{
             display: 'block',
             width: '100%',
