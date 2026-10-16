@@ -127,6 +127,7 @@ export const SOCKET_EVENTS = {
   SHIFT_UPDATED: 'shift:updated',
   CHAT_JOIN: 'chat:join',
   CHAT_LEAVE: 'chat:leave',
+  CHAT_READ: 'chat:read',
   CHAT_TYPING: 'chat:typing',
   ORG_ENTITLEMENTS_UPDATED: 'org:entitlements_updated',
 } as const;

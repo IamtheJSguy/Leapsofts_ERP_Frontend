@@ -222,7 +222,7 @@ export const setupSocketEventHandlers = (
     // Update any existing message queries for this conversation.
     queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
       { queryKey: ['messages', conversationId] },
-      (old) => appendMessageToCache(old, message),
+      (old) => appendMessageToCache(old, message, { currentUserId }),
     );
 
     // Unopened chats have no query yet — setQueriesData won't create one.
@@ -231,7 +231,7 @@ export const setupSocketEventHandlers = (
       const organizationId = useAuthStore.getState().user?.organizationId;
       const key = messagesQueryKey(conversationId, organizationId);
       if (!queryClient.getQueryData(key)) {
-        queryClient.setQueryData(key, appendMessageToCache(undefined, message));
+        queryClient.setQueryData(key, appendMessageToCache(undefined, message, { currentUserId }));
         // Replace the one-message stub with the real latest page in the background.
         void fetchMessagesPage(conversationId)
           .then((page) => {
