@@ -208,7 +208,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
-                AI Agent & Lead Enrichment Quota
+                Lumi & Lead Enrichment Quota
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
                 Configure the default free token allocation per user and default LLM provider. Users can also add their own Gemini or Claude API key.

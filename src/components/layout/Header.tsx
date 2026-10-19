@@ -322,8 +322,8 @@ export const Header = () => {
 
           <IconButton
             onClick={() => toggleAiDrawer()}
-            aria-label="Open AI Assistant"
-            title="AI Agent Assistant"
+            aria-label="Open Lumi"
+            title="Lumi — Your AI Assistant"
             sx={{
               color: tokens.brand.primary,
               bgcolor: theme === 'dark' ? 'rgba(138, 63, 252, 0.14)' : 'rgba(93, 26, 137, 0.08)',

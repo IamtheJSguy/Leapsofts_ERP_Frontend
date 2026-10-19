@@ -176,8 +176,8 @@ export const AiAgentPhaseTimeline: React.FC<AiAgentPhaseTimelineProps> = ({
             <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography variant="caption" fontWeight={700} color="text.primary" noWrap sx={{ display: 'block' }}>
                 {pendingOp.kind === 'enrich'
-                  ? `${providerLabel} Web Enrichment — Live Phases (${phases.length})`
-                  : `${providerLabel} Agent — Live Execution Phases (${phases.length})`}
+                  ? `Lumi (${providerLabel}) Web Enrichment — Live Phases (${phases.length})`
+                  : `Lumi (${providerLabel}) — Live Execution Phases (${phases.length})`}
               </Typography>
               {!expanded && activePhase && (
                 <Typography

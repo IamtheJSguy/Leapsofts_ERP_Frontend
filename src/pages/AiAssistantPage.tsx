@@ -355,7 +355,7 @@ export const AiAssistantPage = () => {
             },
           }}
         >
-          New AI Chat
+          New Lumi Chat
         </Button>
       </Box>
 
@@ -414,7 +414,7 @@ export const AiAssistantPage = () => {
             fontSize: '0.68rem',
           }}
         >
-          Your Conversations ({conversations.length})
+          Your Lumi Chats ({conversations.length})
         </Typography>
 
         {isLoadingList ? (
@@ -430,7 +430,7 @@ export const AiAssistantPage = () => {
               No past chats yet
             </Typography>
             <Typography variant="caption" color="text.disabled">
-              Start a conversation to enrich leads or run sales reports.
+              Start a chat with Lumi to enrich leads or run sales reports.
             </Typography>
           </Box>
         ) : (
@@ -605,7 +605,7 @@ export const AiAssistantPage = () => {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-                {activeConversation?.title || 'New AI Agent Session'}
+                {activeConversation?.title || 'New Lumi Chat'}
               </Typography>
               <Typography variant="caption" color="text.secondary" noWrap>
                 Web-grounded B2B lead enrichment, sales analytics, meetings & profile management
@@ -698,7 +698,7 @@ export const AiAssistantPage = () => {
                 sx={{ fontSize: 48, color: tokens.brand.primary, opacity: 0.85, mb: 1.5 }}
               />
               <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.75 }}>
-                Leapsofts ERP AI Workspace
+                Hi, I’m Lumi, your ERP assistant
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5 }}>
                 Switch between Gemini and Claude at any time. Enrich leads with live web search,
@@ -1018,7 +1018,7 @@ export const AiAssistantPage = () => {
             multiline
             maxRows={5}
             size="small"
-            placeholder="Ask AI to enrich a lead, check sales progress, or book a meeting..."
+            placeholder="Ask Lumi to enrich a lead, check sales progress, or book a meeting..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

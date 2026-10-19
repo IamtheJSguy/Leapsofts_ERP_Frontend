@@ -1091,7 +1091,7 @@ export const QualifyEnrichModal = ({
                 display: { xs: 'none', sm: 'inline-flex' },
               }}
             >
-              Ask AI Agent
+              Ask Lumi
             </Button>
             <IconButton
               onClick={onClose}

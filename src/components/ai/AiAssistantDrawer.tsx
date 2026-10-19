@@ -328,7 +328,7 @@ export const AiAssistantDrawer = () => {
               </Box>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-                  ERP AI Agent
+                  Lumi
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Enrich leads, check sales reports & automate tasks
@@ -337,12 +337,12 @@ export const AiAssistantDrawer = () => {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Tooltip title="Open Full AI Workspace">
+              <Tooltip title="Open Full Lumi Workspace">
                 <IconButton size="small" onClick={handleOpenDedicatedPage}>
                   <OpenInFullRoundedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="New Conversation">
+              <Tooltip title="New Lumi Chat">
                 <IconButton size="small" onClick={handleNewChat}>
                   <AddCommentOutlinedIcon fontSize="small" />
                 </IconButton>
@@ -428,7 +428,7 @@ export const AiAssistantDrawer = () => {
               }}
             >
               <MenuItem value="">
-                <em>New AI Chat Session</em>
+                <em>New Lumi Chat</em>
               </MenuItem>
               {conversations.map((c) => {
                 const isRunning = Boolean(pendingByConv[c._id]);
@@ -506,7 +506,7 @@ export const AiAssistantDrawer = () => {
                 sx={{ fontSize: 42, color: tokens.brand.primary, opacity: 0.85, mb: 1 }}
               />
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
-                How can I help you today?
+                Hi, I’m Lumi. How can I help you today?
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Ask me to enrich B2B leads using live web grounding, check sales team progress,
@@ -823,7 +823,7 @@ export const AiAssistantDrawer = () => {
             multiline
             maxRows={4}
             size="small"
-            placeholder="Ask AI to enrich a lead, check sales progress, or book a meeting..."
+            placeholder="Ask Lumi to enrich a lead, check sales progress, or book a meeting..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

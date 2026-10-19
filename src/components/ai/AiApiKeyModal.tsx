@@ -81,7 +81,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
     updateKeys.mutate(payload, {
       onSuccess: () => {
         addToast({
-          message: 'AI preferences and API keys updated',
+          message: 'Lumi preferences and API keys updated',
           severity: 'success',
         });
         setGeminiKey('');
@@ -111,7 +111,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 800 }}>
         <KeyOutlinedIcon sx={{ color: tokens.brand.primary }} />
-        AI Token Quota & Personal API Keys
+        Lumi Token Quota & Personal API Keys
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
@@ -157,7 +157,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
         {/* Preferred Model Provider */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-            Default AI Agent Provider
+            Default Lumi Provider
           </Typography>
           <ToggleButtonGroup
             value={preferredProvider}

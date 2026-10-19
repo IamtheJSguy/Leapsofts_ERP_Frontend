@@ -96,7 +96,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
       { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'chat' },
-      { label: 'AI Assistant', path: '/ai', icon: <AutoAwesomeIcon sx={{ fontSize: 18 }} /> },
+      { label: 'Lumi', path: '/ai', icon: <AutoAwesomeIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {
