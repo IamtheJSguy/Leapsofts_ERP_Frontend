@@ -133,6 +133,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
+  const pendingImageScrollRef = useRef(false);
+  const pendingImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPrependingRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
   const { joinChat, leaveChat, emitTyping, subscribePresence } = useSocket();
@@ -458,6 +460,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const contentWrapperRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior });
+    }
+  }, []);
+
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
     if (isPrependingRef.current && el) {
@@ -468,22 +479,37 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return;
     }
     if (shouldStickToBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollToBottom('auto');
     }
-  }, [enhancedMessages, isFetchingNextPage]);
+  }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
 
   useLayoutEffect(() => {
     const el = contentWrapperRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
       if (isPrependingRef.current) return;
-      if (shouldStickToBottomRef.current) {
-        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
+        scrollToBottom('auto');
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [showLoader]);
+  }, [showLoader, scrollToBottom]);
+
+  // Jab image load ho jaye (FileMessage se 'chat-image-loaded' event aata hai),
+  // scroll neeche le jaao agar hum ne abhi image bheji hai
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const handleImageLoaded = () => {
+      if (pendingImageScrollRef.current || shouldStickToBottomRef.current) {
+        shouldStickToBottomRef.current = true;
+        requestAnimationFrame(() => scrollToBottom('auto'));
+      }
+    };
+    container.addEventListener('chat-image-loaded', handleImageLoaded);
+    return () => container.removeEventListener('chat-image-loaded', handleImageLoaded);
+  }, [scrollToBottom]);
 
   const handleSend = () => {
     if (!activeConversationId) return;
@@ -491,10 +517,21 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       return;
     }
     shouldStickToBottomRef.current = true;
+    // Agar image bhej rahe hain toh pendingImageScrollRef set karo
+    // taake image load hone ke baad bhi scroll force ho
+    if (pendingFile) {
+      pendingImageScrollRef.current = true;
+      if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
+      pendingImageTimerRef.current = setTimeout(() => {
+        pendingImageScrollRef.current = false;
+      }, 8000);
+    }
+    scrollToBottom('auto');
+    requestAnimationFrame(() => scrollToBottom('auto'));
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
-    const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string) => {
+    const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string, fallbackFile?: File) => {
       sendMessage.mutate(
         {
           conversationId,
@@ -509,16 +546,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           ...(replyTo ? { replyTo } : {}),
         },
         {
-          onSuccess: () => {
-            removeDraft(conversationId);
-            if (activeConversationId.startsWith('mock-conv-')) {
-              removeDraft(activeConversationId);
-              void removeDraftAttachment(activeConversationId);
-            }
-            setReplyingTo(null);
-            clearPendingFile(conversationId);
-          },
           onError: (err) => {
+            if (content) setText(content);
+            if (fallbackFile) stageFile(fallbackFile);
             showApiError(err);
           },
         }
@@ -532,6 +562,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       const contentToUpload = caption;
       const replyToIdToUpload = replyToId;
 
+      // Immediately clear pending file, caption and reply state for snappy UX
+      clearPendingFile(activeConversationId);
+      if (conversationId !== activeConversationId) {
+        clearPendingFile(conversationId);
+      }
+      removeDraft(activeConversationId);
+      removeDraft(conversationId);
+      setReplyingTo(null);
+
       if (isSmallChatImage(fileToUpload)) {
         sendChatImage.mutate(
           {
@@ -541,16 +580,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             replyTo: replyToIdToUpload,
           },
           {
-            onSuccess: () => {
-              removeDraft(conversationId);
-              if (activeConversationId.startsWith('mock-conv-')) {
-                removeDraft(activeConversationId);
-                void removeDraftAttachment(activeConversationId);
-              }
-              setReplyingTo(null);
-              clearPendingFile(conversationId);
-            },
             onError: (err) => {
+              if (contentToUpload) setText(contentToUpload);
+              stageFile(fileToUpload);
               showApiError(err);
             },
           }
@@ -559,13 +591,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
 
       if (!driveStatus?.connected) {
+        if (contentToUpload) setText(contentToUpload);
+        stageFile(fileToUpload);
         setDrivePromptOpen(true);
         return;
       }
 
       uploadDriveFile.mutate(fileToUpload, {
-        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload),
+        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload, fileToUpload),
         onError: (err) => {
+          if (contentToUpload) setText(contentToUpload);
+          stageFile(fileToUpload);
           showApiError(err);
         },
       });

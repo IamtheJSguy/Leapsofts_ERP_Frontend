@@ -31,6 +31,7 @@ import { useMeetings, useDeleteMeeting, useUpdateMeeting } from '@/hooks/api/use
 import { useUsers } from '@/hooks/api/useUsers';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
 import { EmptyState } from '@/components/common/EmptyState';
+import { GuestEmailChipInput } from '@/components/common/GuestEmailChipInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { tokens } from '@/styles/tokens';
@@ -42,8 +43,10 @@ import type { Meeting, Lead } from '@/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { meetingSchema, type MeetingFormData } from '@/utils/validators';
+import { getDefaultMeetingTimeZone, utcToWallClock, wallClockToUtcIso } from '@/utils/meetingTimezone';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useCalendarStatus } from '@/hooks/api/useCalendar';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import BusinessIcon from '@mui/icons-material/Business';
 import { MeetingDetailModal } from './MeetingDetailModal';
@@ -457,45 +460,82 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                     )}
 
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {(!meeting.participants || meeting.participants.length === 0) ? (
-                        <Typography variant="caption" sx={{ color: 'text.muted', fontSize: '0.72rem', fontWeight: 550, fontStyle: 'italic' }}>
-                          None
-                        </Typography>
-                      ) : (
-                        <>
-                          {meeting.participants.slice(0, 3).map((p, idx) => {
-                            const details = getParticipantDetails(p);
-                            const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof p === 'string' ? p : '');
-                            const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+                      {(() => {
+                        const guestEmails = (meeting.guestEmails ?? []).filter(Boolean);
+                        const participants = meeting.participants ?? [];
+                        const preview = [
+                          ...participants.map((p) => ({ kind: 'user' as const, p })),
+                          ...guestEmails.map((email) => ({ kind: 'guest' as const, email })),
+                        ];
+                        const total = preview.length;
 
-                            return (
-                              <Tooltip key={idx} title={name}>
-                                <Avatar
-                                  src={details?.avatarUrl || undefined}
-                                  sx={{
-                                    width: 26,
-                                    height: 26,
-                                    bgcolor: tokens.brand.primary,
-                                    color: '#fff',
-                                    border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    marginLeft: idx > 0 ? '-8px' : 0,
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-                                  }}
-                                >
-                                  {initials}
-                                </Avatar>
-                              </Tooltip>
-                            );
-                          })}
-                          {meeting.participants.length > 3 && (
-                            <Typography variant="caption" sx={{ color: 'text.muted', ml: 1, fontSize: '0.72rem', fontWeight: 600 }}>
-                              +{meeting.participants.length - 3} others
+                        if (total === 0) {
+                          return (
+                            <Typography variant="caption" sx={{ color: 'text.muted', fontSize: '0.72rem', fontWeight: 550, fontStyle: 'italic' }}>
+                              None
                             </Typography>
-                          )}
-                        </>
-                      )}
+                          );
+                        }
+
+                        return (
+                          <>
+                            {preview.slice(0, 3).map((item, idx) => {
+                              if (item.kind === 'guest') {
+                                const initials = item.email.split('@')[0]?.slice(0, 2).toUpperCase() || '?';
+                                return (
+                                  <Tooltip key={`guest-${item.email}`} title={item.email}>
+                                    <Avatar
+                                      sx={{
+                                        width: 26,
+                                        height: 26,
+                                        bgcolor: isDarkMode ? 'rgba(148, 163, 184, 0.35)' : 'rgba(148, 163, 184, 0.55)',
+                                        color: '#fff',
+                                        border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        marginLeft: idx > 0 ? '-8px' : 0,
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                                      }}
+                                    >
+                                      {initials}
+                                    </Avatar>
+                                  </Tooltip>
+                                );
+                              }
+
+                              const details = getParticipantDetails(item.p);
+                              const name = details ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : (typeof item.p === 'string' ? item.p : '');
+                              const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+                              return (
+                                <Tooltip key={`user-${idx}`} title={name}>
+                                  <Avatar
+                                    src={details?.avatarUrl || undefined}
+                                    sx={{
+                                      width: 26,
+                                      height: 26,
+                                      bgcolor: tokens.brand.primary,
+                                      color: '#fff',
+                                      border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
+                                      fontSize: '0.65rem',
+                                      fontWeight: 800,
+                                      marginLeft: idx > 0 ? '-8px' : 0,
+                                      boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                                    }}
+                                  >
+                                    {initials}
+                                  </Avatar>
+                                </Tooltip>
+                              );
+                            })}
+                            {total > 3 && (
+                              <Typography variant="caption" sx={{ color: 'text.muted', ml: 1, fontSize: '0.72rem', fontWeight: 600 }}>
+                                +{total - 3} others
+                              </Typography>
+                            )}
+                          </>
+                        );
+                      })()}
                     </Box>
                   </Box>
                 </Box>
@@ -644,6 +684,10 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { user } = useAuth();
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarConnected = calendarStatus?.connected === true;
+  const defaultTz = meeting.timeZone || getDefaultMeetingTimeZone(user ?? undefined);
 
   const { register, handleSubmit, control } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
@@ -651,7 +695,11 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
       title: meeting.title,
       description: meeting.description || '',
       meetingLink: meeting.meetingLink || meeting.link || '',
-      scheduledAt: format(new Date(meeting.scheduledAt), "yyyy-MM-dd'T'HH:mm"),
+      scheduledAt: utcToWallClock(meeting.scheduledAt, defaultTz),
+      timeZone: defaultTz,
+      durationMinutes: meeting.durationMinutes ?? 30,
+      guestEmails: meeting.guestEmails ?? [],
+      sendGoogleInvite: true,
       participants: (meeting.participants || []).map((p: any) =>
         typeof p === 'string' ? p : p._id
       ),
@@ -665,8 +713,12 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
         data: {
           title: data.title,
           description: data.description,
-          meetingLink: data.meetingLink,
-          scheduledAt: new Date(data.scheduledAt).toISOString(),
+          ...(data.meetingLink?.trim() ? { meetingLink: data.meetingLink.trim() } : {}),
+          scheduledAt: wallClockToUtcIso(data.scheduledAt, data.timeZone),
+          timeZone: data.timeZone,
+          durationMinutes: data.durationMinutes,
+          guestEmails: data.guestEmails ?? [],
+          sendGoogleInvite: data.sendGoogleInvite,
           participants: data.participants ?? [],
         }
       },
@@ -832,6 +884,19 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
                   );
                 })
               }
+            />
+          )}
+        />
+
+        <Controller
+          name="guestEmails"
+          control={control}
+          render={({ field }) => (
+            <GuestEmailChipInput
+              value={field.value ?? []}
+              onChange={field.onChange}
+              helperText="Press Enter to add each guest email. Remove with × on the chip."
+              sx={{ mb: 3 }}
             />
           )}
         />
