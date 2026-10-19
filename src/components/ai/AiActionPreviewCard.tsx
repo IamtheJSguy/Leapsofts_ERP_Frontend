@@ -122,16 +122,25 @@ export const AiActionPreviewCard = ({
       ? String(action.proposed.timeZone || getDefaultMeetingTimeZone(user ?? undefined))
       : '';
 
-  const proposedEntries = useMemo(
-    () =>
-      Object.entries(action.proposed || {}).filter(([k, v]) => {
+  const proposedEntries = useMemo(() => {
+    const contactFirst = ['email', 'phone'];
+    return Object.entries(action.proposed || {})
+      .filter(([k, v]) => {
         if (HIDDEN_PROPOSED_KEYS.has(k)) return false;
         if (v === undefined || v === null) return false;
         if (Array.isArray(v)) return v.length > 0;
         return String(v).trim() !== '';
-      }),
-    [action.proposed],
-  );
+      })
+      .sort(([a], [b]) => {
+        if (action.actionType !== 'enrich_lead') return 0;
+        const ai = contactFirst.indexOf(a);
+        const bi = contactFirst.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+  }, [action.actionType, action.proposed]);
 
   const [sendGoogleInvite, setSendGoogleInvite] = useState<boolean>(() => {
     if (action.actionType !== 'create_meeting') return false;
