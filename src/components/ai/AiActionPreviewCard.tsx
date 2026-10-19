@@ -9,6 +9,8 @@ import {
   Link,
   Divider,
   useTheme,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
@@ -22,6 +24,13 @@ import {
 import { useUIStore } from '@/store/useUIStore';
 import { showApiError } from '@/utils/apiError';
 import { tokens } from '@/styles/tokens';
+import { useCalendarStatus, useCalendarAuthUrl, openCalendarOAuthPopup } from '@/hooks/api/useCalendar';
+import { useAuthStore } from '@/store/useAuthStore';
+import {
+  formatMeetingInstant,
+  getDefaultMeetingTimeZone,
+  utcToWallClock,
+} from '@/utils/meetingTimezone';
 
 const FIELD_LABELS: Record<string, string> = {
   firstName: 'First Name',
@@ -44,10 +53,43 @@ const FIELD_LABELS: Record<string, string> = {
   shiftStart: 'Shift Start',
   shiftEnd: 'Shift End',
   title: 'Meeting Title',
-  scheduledAt: 'Scheduled Time',
+  scheduledAt: 'Scheduled Time (UTC)',
+  scheduledAtLocal: 'Scheduled Time (your timezone)',
   description: 'Description',
   meetingLink: 'Meeting Link',
   participantNames: 'Participants',
+  guestEmails: 'External guest emails',
+  timeZone: 'Timezone',
+  durationMinutes: 'Duration (minutes)',
+  sendGoogleInvite: 'Google Calendar',
+};
+
+const HIDDEN_PROPOSED_KEYS = new Set([
+  'participants',
+  'googleCalendarConnected',
+  'sendGoogleInvite',
+  'scheduledAt',
+]);
+
+const formatProposedFieldValue = (
+  fieldKey: string,
+  value: unknown,
+  action: AiPendingAction,
+  user?: { timezone?: string; timeZone?: string; organization?: { timezone?: string } },
+): string => {
+  if (fieldKey === 'guestEmails' && Array.isArray(value)) {
+    return value.map((e) => String(e)).join(', ');
+  }
+  if (fieldKey === 'scheduledAtLocal' && typeof value === 'string') {
+    return value;
+  }
+  if (fieldKey === 'scheduledAt' && typeof value === 'string') {
+    const tz = String(
+      action.proposed.timeZone || getDefaultMeetingTimeZone(user),
+    );
+    return utcToWallClock(value, tz);
+  }
+  return String(value);
 };
 
 const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
@@ -71,14 +113,32 @@ export const AiActionPreviewCard = ({
   const addToast = useUIStore((s) => s.addToast);
   const confirmAction = useConfirmAiAction();
   const rejectAction = useRejectAiAction();
+  const { data: calendarStatus } = useCalendarStatus();
+  const calendarAuth = useCalendarAuthUrl();
+  const calendarConnected = calendarStatus?.connected === true;
+  const user = useAuthStore((s) => s.user);
+  const meetingTimeZone =
+    action.actionType === 'create_meeting'
+      ? String(action.proposed.timeZone || getDefaultMeetingTimeZone(user ?? undefined))
+      : '';
 
   const proposedEntries = useMemo(
     () =>
-      Object.entries(action.proposed || {}).filter(
-        ([k, v]) => k !== 'participants' && v !== undefined && v !== null && String(v).trim() !== '',
-      ),
+      Object.entries(action.proposed || {}).filter(([k, v]) => {
+        if (HIDDEN_PROPOSED_KEYS.has(k)) return false;
+        if (v === undefined || v === null) return false;
+        if (Array.isArray(v)) return v.length > 0;
+        return String(v).trim() !== '';
+      }),
     [action.proposed],
   );
+
+  const [sendGoogleInvite, setSendGoogleInvite] = useState<boolean>(() => {
+    if (action.actionType !== 'create_meeting') return false;
+    if (action.proposed.sendGoogleInvite === true) return true;
+    if (action.proposed.sendGoogleInvite === false) return false;
+    return Boolean(action.proposed.googleCalendarConnected);
+  });
 
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -91,7 +151,7 @@ export const AiActionPreviewCard = ({
   const [editedValues, setEditedValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const [k, v] of proposedEntries) {
-      initial[k] = String(v);
+      initial[k] = formatProposedFieldValue(k, v, action, user ?? undefined);
     }
     return initial;
   });
@@ -102,11 +162,45 @@ export const AiActionPreviewCard = ({
     const overrides: Record<string, unknown> = {};
     for (const [k] of proposedEntries) {
       if (selectedFields[k]) {
-        overrides[k] = editedValues[k];
+        if (k === 'durationMinutes') {
+          const n = Number(editedValues[k]);
+          overrides[k] = Number.isFinite(n) ? n : action.proposed.durationMinutes;
+        } else {
+          overrides[k] = editedValues[k];
+        }
       }
     }
     if (action.actionType === 'create_meeting' && action.proposed.participants) {
       overrides.participants = action.proposed.participants;
+      overrides.sendGoogleInvite = sendGoogleInvite;
+      overrides.timeZone =
+        editedValues.timeZone || meetingTimeZone || action.proposed.timeZone;
+      if (editedValues.scheduledAtLocal?.trim()) {
+        overrides.scheduledAtLocal = editedValues.scheduledAtLocal.trim();
+      }
+      if (editedValues.guestEmails?.trim()) {
+        overrides.guestEmails = editedValues.guestEmails
+          .split(/[,;\n]+/)
+          .map((e) => e.trim())
+          .filter(Boolean);
+      } else if (Array.isArray(action.proposed.guestEmails)) {
+        overrides.guestEmails = action.proposed.guestEmails;
+      }
+      const link = String(overrides.meetingLink ?? editedValues.meetingLink ?? '').trim();
+      if (sendGoogleInvite && !calendarConnected) {
+        addToast({
+          message: 'Connect Google Calendar first to book on Calendar and send invites.',
+          severity: 'warning',
+        });
+        return;
+      }
+      if (!sendGoogleInvite && !link) {
+        addToast({
+          message: 'Add a meeting link or enable Google Calendar for this booking.',
+          severity: 'warning',
+        });
+        return;
+      }
     }
 
     confirmAction.mutate(
@@ -186,6 +280,79 @@ export const AiActionPreviewCard = ({
         />
       </Box>
 
+      {action.actionType === 'create_meeting' && isPending && (
+        <Box
+          sx={{
+            mb: 1.25,
+            p: 1.25,
+            borderRadius: '12px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.15)'}`,
+            bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fff',
+          }}
+        >
+          {calendarConnected ? (
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={sendGoogleInvite}
+                  onChange={(e) => setSendGoogleInvite(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                  Create on Google Calendar and send invites
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', fontWeight: 500, mt: 0.25 }}
+                  >
+                    Generates a Google Meet link automatically if meeting link is left empty.
+                  </Typography>
+                </Typography>
+              }
+              sx={{ alignItems: 'flex-start', ml: 0, mr: 0 }}
+            />
+          ) : (
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem', mb: 0.75 }}>
+                Google Calendar is not connected
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Connect your account to book meetings on Google Calendar with email invites and
+                Meet links from AI booking.
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={calendarAuth.isPending}
+                onClick={() => {
+                  calendarAuth.mutate(undefined, {
+                    onSuccess: (url) => openCalendarOAuthPopup(url),
+                    onError: (err) => showApiError(err),
+                  });
+                }}
+                sx={{ textTransform: 'none', fontWeight: 700 }}
+              >
+                Connect Google Calendar
+              </Button>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {action.actionType === 'create_meeting' &&
+        !isPending &&
+        action.applied?.sendGoogleInvite === true && (
+        <Chip
+          size="small"
+          label="Booked on Google Calendar"
+          color="success"
+          sx={{ mb: 1, fontWeight: 700, fontSize: '0.7rem' }}
+        />
+      )}
+
       {/* Diff Rows */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, my: 1.5 }}>
         {proposedEntries.map(([fieldKey]) => {
@@ -259,8 +426,22 @@ export const AiActionPreviewCard = ({
                     fullWidth
                     size="small"
                     disabled={!checked}
-                    multiline={fieldKey === 'notes' || fieldKey === 'description'}
+                    multiline={
+                      fieldKey === 'notes' ||
+                      fieldKey === 'description' ||
+                      fieldKey === 'guestEmails'
+                    }
                     maxRows={3}
+                    placeholder={
+                      fieldKey === 'scheduledAtLocal' ? '2026-10-20T17:00' : undefined
+                    }
+                    helperText={
+                      fieldKey === 'scheduledAtLocal' && meetingTimeZone
+                        ? `Wall-clock time in ${meetingTimeZone}. Saved as UTC in the database.`
+                        : fieldKey === 'guestEmails'
+                        ? 'Comma-separated emails for people outside your ERP workspace'
+                        : undefined
+                    }
                     value={editedValues[fieldKey] ?? ''}
                     onChange={(e) =>
                       setEditedValues((prev) => ({ ...prev, [fieldKey]: e.target.value }))
@@ -274,7 +455,16 @@ export const AiActionPreviewCard = ({
                   />
                 ) : (
                   <Typography variant="body2" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-                    {String(action.applied?.[fieldKey] ?? action.proposed[fieldKey] ?? '')}
+                    {fieldKey === 'scheduledAtLocal' &&
+                    (action.applied?.scheduledAt || action.proposed.scheduledAt) &&
+                    meetingTimeZone
+                      ? formatMeetingInstant(
+                          String(action.applied?.scheduledAt ?? action.proposed.scheduledAt),
+                          meetingTimeZone,
+                        )
+                      : fieldKey === 'guestEmails' && Array.isArray(action.applied?.guestEmails)
+                      ? (action.applied.guestEmails as string[]).join(', ')
+                      : String(action.applied?.[fieldKey] ?? action.proposed[fieldKey] ?? '')}
                   </Typography>
                 )}
               </Box>
