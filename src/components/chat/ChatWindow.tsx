@@ -433,7 +433,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     });
   }, [displayMessages, userMap, user?._id]);
 
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef<string | null>(null);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+    bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
+  }, []);
 
   // When active conversation changes or resets, allow initial auto-scroll to bottom
   useEffect(() => {
@@ -482,16 +491,6 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       loadOlderMessages();
     }
   }, [loadOlderMessages]);
-
-  const contentWrapperRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const el = messagesContainerRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-    bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
-  }, []);
 
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
