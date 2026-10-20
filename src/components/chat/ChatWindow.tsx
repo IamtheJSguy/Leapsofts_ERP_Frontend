@@ -433,10 +433,33 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     });
   }, [displayMessages, userMap, user?._id]);
 
+  const initialScrollDoneRef = useRef<string | null>(null);
+
+  // When active conversation changes or resets, allow initial auto-scroll to bottom
   useEffect(() => {
     shouldStickToBottomRef.current = true;
     isPrependingRef.current = false;
+    initialScrollDoneRef.current = null;
   }, [activeConversationId]);
+
+  // Handle page reload / initial message render: Force scroll to bottom once messages finish initial loading
+  useEffect(() => {
+    if (!showLoader && displayMessages.length > 0 && messagesContainerRef.current) {
+      if (initialScrollDoneRef.current !== activeConversationId) {
+        initialScrollDoneRef.current = activeConversationId || null;
+        shouldStickToBottomRef.current = true;
+        scrollToBottom('auto');
+        const t1 = setTimeout(() => scrollToBottom('auto'), 50);
+        const t2 = setTimeout(() => scrollToBottom('auto'), 200);
+        const t3 = setTimeout(() => scrollToBottom('auto'), 450);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    }
+  }, [showLoader, displayMessages.length, activeConversationId, scrollToBottom]);
 
   const loadOlderMessages = useCallback(() => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -520,18 +543,20 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
+    // Force stick to bottom and lock it so any in-flight scroll or user position is overridden
     shouldStickToBottomRef.current = true;
-    // Agar image bhej rahe hain toh pendingImageScrollRef set karo
-    // taake image load hone ke baad bhi scroll force ho
-    if (pendingFile) {
-      pendingImageScrollRef.current = true;
-      if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
-      pendingImageTimerRef.current = setTimeout(() => {
-        pendingImageScrollRef.current = false;
-      }, 8000);
-    }
+    pendingImageScrollRef.current = true;
+    if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
+    pendingImageTimerRef.current = setTimeout(() => {
+      pendingImageScrollRef.current = false;
+    }, 5000);
+
     scrollToBottom('auto');
     requestAnimationFrame(() => scrollToBottom('auto'));
+    setTimeout(() => scrollToBottom('auto'), 40);
+    setTimeout(() => scrollToBottom('auto'), 120);
+    setTimeout(() => scrollToBottom('auto'), 300);
+
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
