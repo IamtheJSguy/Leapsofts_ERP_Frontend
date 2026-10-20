@@ -452,7 +452,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const el = messagesContainerRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    shouldStickToBottomRef.current = distanceFromBottom < 96;
+    if (!pendingImageScrollRef.current) {
+      shouldStickToBottomRef.current = distanceFromBottom < 100;
+    }
     if (el.scrollTop < 72) {
       loadOlderMessages();
     }
@@ -463,10 +465,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = messagesContainerRef.current;
     if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior });
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior });
+      el.scrollTop = el.scrollHeight;
     }
+    bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, []);
 
   useLayoutEffect(() => {
@@ -478,8 +479,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       if (!isFetchingNextPage) isPrependingRef.current = false;
       return;
     }
-    if (shouldStickToBottomRef.current) {
+    if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
       scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
     }
   }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
 
@@ -489,21 +491,23 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const observer = new ResizeObserver(() => {
       if (isPrependingRef.current) return;
       if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
-        scrollToBottom('auto');
+        requestAnimationFrame(() => {
+          scrollToBottom('auto');
+        });
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, [showLoader, scrollToBottom]);
 
-  // Jab image load ho jaye (FileMessage se 'chat-image-loaded' event aata hai),
-  // scroll neeche le jaao agar hum ne abhi image bheji hai
+  // When image loads (FileMessage dispatches 'chat-image-loaded'), ensure scroll stays at bottom
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
     const handleImageLoaded = () => {
       if (pendingImageScrollRef.current || shouldStickToBottomRef.current) {
         shouldStickToBottomRef.current = true;
+        scrollToBottom('auto');
         requestAnimationFrame(() => scrollToBottom('auto'));
       }
     };
@@ -984,7 +988,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         overflowY: 'auto',
         transform: 'translateZ(0)',
         willChange: 'transform',
-        p: { xs: 1.5, md: 3 },
+        px: { xs: 1.5, md: 3 },
+        pt: { xs: 1.5, md: 2 },
+        pb: 1,
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -1071,7 +1077,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 </Box>
               );
             })}
-            <div ref={bottomRef} />
+            <div
+              ref={bottomRef}
+              style={{
+                height: 0,
+                minHeight: 0,
+                maxHeight: 0,
+                marginTop: -12,
+                padding: 0,
+                pointerEvents: 'none',
+              }}
+            />
           </Box>
         )}
       </Box>
@@ -1088,7 +1104,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ p: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 2, md: 3 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+      <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 0.5, pb: { xs: 1.5, md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
         {replyingTo && (
           <Box
             sx={{
