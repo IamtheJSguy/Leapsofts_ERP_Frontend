@@ -37,6 +37,8 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const [aiDefaultUserTokenLimit, setAiDefaultUserTokenLimit] = useState<number>(10000);
   const [aiDefaultProvider, setAiDefaultProvider] = useState<'gemini' | 'claude'>('gemini');
   const [aiEnrichmentEnabled, setAiEnrichmentEnabled] = useState<boolean>(true);
+  const [defaultPaidLookupCap, setDefaultPaidLookupCap] = useState(25);
+  const [apolloApiKey, setApolloApiKey] = useState('');
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -57,6 +59,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         setAiDefaultUserTokenLimit(settings.aiSettings.defaultUserTokenLimit ?? 10000);
         setAiDefaultProvider(settings.aiSettings.defaultProvider ?? 'gemini');
         setAiEnrichmentEnabled(settings.aiSettings.enrichmentEnabled ?? true);
+        setDefaultPaidLookupCap(settings.aiSettings.defaultPaidLookupCap ?? 25);
       }
     }
   }, [settings]);
@@ -81,10 +84,15 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           defaultUserTokenLimit: Math.max(0, Number(aiDefaultUserTokenLimit) || 0),
           defaultProvider: aiDefaultProvider,
           enrichmentEnabled: aiEnrichmentEnabled,
+          defaultPaidLookupCap: Math.max(0, Number(defaultPaidLookupCap) || 0),
+          ...(apolloApiKey.trim() ? { apolloApiKey: apolloApiKey.trim() } : {}),
         },
       },
       {
-        onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
+        onSuccess: () => {
+          setApolloApiKey('');
+          addToast({ message: 'Settings saved successfully!', severity: 'success' });
+        },
         onError: (err) => showApiError(err),
       },
     );
@@ -251,6 +259,33 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                     disabled={readOnly}
                   />
                 </Box>
+
+                <TextField
+                  size="small"
+                  fullWidth
+                  type="number"
+                  label="Default max paid lookups per bulk run"
+                  value={defaultPaidLookupCap}
+                  disabled={readOnly}
+                  onChange={(e) => setDefaultPaidLookupCap(Math.max(0, Number(e.target.value) || 0))}
+                  helperText="Caps Apollo people-match calls per bulk enrichment job."
+                />
+
+                <TextField
+                  size="small"
+                  fullWidth
+                  type="password"
+                  label="Apollo API key"
+                  value={apolloApiKey}
+                  disabled={readOnly}
+                  onChange={(e) => setApolloApiKey(e.target.value)}
+                  placeholder={
+                    settings?.aiSettings?.apolloApiKeyConfigured
+                      ? 'Configured — enter a new key to replace'
+                      : 'Optional — for paid email/phone match'
+                  }
+                  helperText="Stored encrypted. Used only when free sources do not fill email or phone."
+                />
               </Box>
             </Box>
           </Grid>

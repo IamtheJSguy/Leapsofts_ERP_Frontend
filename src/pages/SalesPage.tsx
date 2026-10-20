@@ -71,6 +71,7 @@ import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow
 import { LeadCommentButton, type LeadCommentAddPayload } from '@/components/leads/LeadCommentButton';
 import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import { ExportLeadsDialog } from '@/components/leads/ExportLeadsDialog';
+import { BulkEnrichLeadsDialog } from '@/components/leads/BulkEnrichLeadsDialog';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
@@ -78,6 +79,7 @@ import {
 } from '@/lib/salesEditDraftDb';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined';
 import EventIcon from '@mui/icons-material/Event';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
@@ -317,6 +319,7 @@ export const SalesPage = () => {
     if (user?._id) localStorage.setItem(`sales-outreach-channel:${user._id}`, channel);
   };
   const [exportOpen, setExportOpen] = useState(false);
+  const [enrichOpen, setEnrichOpen] = useState(false);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
 
   const handleCopyName = (e: React.MouseEvent, id: string, name: string) => {
@@ -768,7 +771,12 @@ export const SalesPage = () => {
     return filters;
   }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
-  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
+  const {
+    data: leadsResponse,
+    isLoading: isLeadsLoading,
+    isFetching: isLeadsFetching,
+    refetch: refetchLeads,
+  } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
   const filterToolbarRef = useRef<HTMLDivElement>(null);
@@ -2127,6 +2135,27 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<AutoFixHighOutlinedIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => setEnrichOpen(true)}
+                  sx={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: isDarkMode ? '#fff' : tokens.text.primary,
+                    textTransform: 'none',
+                    borderRadius: '24px',
+                    height: 42,
+                    px: 3,
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                    },
+                  }}
+                >
+                  Enrich results
+                </Button>
                 {isAdmin && (
                   <Button
                     variant="outlined"
@@ -3008,6 +3037,14 @@ export const SalesPage = () => {
         }}
         onCancel={() => setDisqualifyLeadId('')}
         isPending={disqualifyLead.isPending}
+      />
+      <BulkEnrichLeadsDialog
+        open={enrichOpen}
+        onClose={() => setEnrichOpen(false)}
+        filters={leadFilters}
+        onComplete={() => {
+          void refetchLeads();
+        }}
       />
       {isAdmin && (
         <ExportLeadsDialog

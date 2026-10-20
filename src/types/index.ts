@@ -1325,6 +1325,8 @@ export interface SystemSettings {
     defaultUserTokenLimit?: number;
     defaultProvider?: 'gemini' | 'claude';
     enrichmentEnabled?: boolean;
+    defaultPaidLookupCap?: number;
+    apolloApiKeyConfigured?: boolean;
   };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
