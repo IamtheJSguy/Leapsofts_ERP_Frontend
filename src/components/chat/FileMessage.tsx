@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Box, IconButton, Modal, Typography, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Message, User } from '@/types';
@@ -13,6 +13,15 @@ interface FileMessageProps {
 
 export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: FileMessageProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      imgRef.current.dispatchEvent(
+        new CustomEvent('chat-image-loaded', { bubbles: true }),
+      );
+    }
+  }, [message.fileUrl]);
 
   if (!message.fileUrl) {
     return <Typography variant="body2">{message.content || 'Attachment'}</Typography>;
@@ -35,6 +44,8 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           border: 'none',
           background: 'transparent',
           width: '100%',
+          minWidth: 160,
+          minHeight: message.isPending ? 140 : 'auto',
           cursor: message.isPending ? 'default' : 'zoom-in',
           textAlign: 'left',
           position: 'relative',
@@ -44,6 +55,7 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
       >
         <Box
           component="img"
+          ref={imgRef}
           src={message.fileUrl}
           alt={alt}
           onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -56,6 +68,7 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
             width: '100%',
             maxWidth: '100%',
             maxHeight: 360,
+            minHeight: message.isPending ? 140 : 'auto',
             objectFit: 'cover',
             filter: message.isPending ? 'blur(3px) brightness(0.85)' : 'none',
             transition: 'filter 0.3s ease',

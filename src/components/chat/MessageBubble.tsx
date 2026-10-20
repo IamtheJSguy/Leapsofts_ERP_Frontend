@@ -247,7 +247,7 @@ export const MessageBubble = React.memo(({
         width: '100%',
         maxWidth: '100%',
         minWidth: 0,
-        mb: reactions.length ? 2.75 : 2,
+        mb: reactions.length ? 1.5 : 0,
         gap: 1.25,
         opacity: message.isPending ? 0.7 : 1,
         transition: 'opacity 0.2s ease',
