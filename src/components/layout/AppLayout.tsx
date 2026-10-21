@@ -5,6 +5,7 @@ import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { NotificationPanel } from './NotificationPanel';
+import { AiAssistantDrawer } from '@/components/ai/AiAssistantDrawer';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -214,6 +215,7 @@ export const AppLayout = () => {
         </Box>
       </Box>
       <NotificationPanel />
+      <AiAssistantDrawer />
       <Dialog open={monitoringOpen}>
         <DialogTitle>Workplace monitoring</DialogTitle>
         <DialogContent>

@@ -23,6 +23,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ShieldIcon from '@mui/icons-material/Shield';
 import PersonIcon from '@mui/icons-material/Person';
 import { useUsers, useDeleteUser } from '@/hooks/api/useUsers';
+import { useAdminUserAiQuotas } from '@/hooks/api/useAi';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getDisplayName } from '@/utils/formatters';
 import { RoleAssignmentModal } from './RoleAssignmentModal';
@@ -35,6 +36,7 @@ export const UserManagementTable = () => {
   const { data: users = [], isLoading } = useUsers();
   const deleteUser = useDeleteUser();
   const { canPromoteRoles, canDeactivateUsers } = usePermissions();
+  const { data: aiQuotasData } = useAdminUserAiQuotas(canPromoteRoles);
   const [roleUser, setRoleUser] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,6 +172,9 @@ export const UserManagementTable = () => {
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>Name</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Email Address</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>System Role</TableCell>
+                {canPromoteRoles && (
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>AI Token Usage</TableCell>
+                )}
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Account Status</TableCell>
                 {showActions && (
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, textAlign: 'right', pr: 4 }}>Actions</TableCell>
@@ -247,6 +252,30 @@ export const UserManagementTable = () => {
                         </Typography>
                       </Box>
                     </TableCell>
+
+                    {canPromoteRoles && (
+                      <TableCell sx={{ py: 1.75, borderBottom: 0 }}>
+                        {(() => {
+                          const q = aiQuotasData?.users?.find((u) => u.userId === user._id);
+                          const used = q?.tokensUsed ?? 0;
+                          const limit = q?.effectiveTokenLimit ?? aiQuotasData?.defaultUserTokenLimit ?? 10000;
+                          return (
+                            <Box>
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                                {used.toLocaleString()} / {limit.toLocaleString()}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
+                                {q?.hasCustomKey
+                                  ? 'Custom API Key Active'
+                                  : q?.tokenLimitOverride !== null && q?.tokenLimitOverride !== undefined
+                                  ? 'Custom Admin Limit'
+                                  : 'Default Quota'}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
+                      </TableCell>
+                    )}
 
                     {/* Status Dot */}
                     <TableCell sx={{ py: 1.75, borderBottom: 0 }}>

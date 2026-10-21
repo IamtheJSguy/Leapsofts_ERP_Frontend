@@ -80,7 +80,45 @@ const leadApi = {
     api.post<ApiResponse<LeadExportPreview>>('/leads/export', { ...body, format: 'preview' }),
   downloadLeadExport: (body: LeadExportRequest) =>
     api.post('/leads/export', { ...body, format: 'xlsx' }, { responseType: 'blob' }),
+  previewBulkEnrich: (body: {
+    filters?: LeadFilters;
+    leadIds?: string[];
+    reEnrichComplete?: boolean;
+    maxPaidLookups?: number;
+  }) => api.post<ApiResponse<BulkEnrichPreview>>('/leads/enrich/preview', body),
+  runBulkEnrich: (body: {
+    filters?: LeadFilters;
+    leadIds?: string[];
+    reEnrichComplete?: boolean;
+    maxPaidLookups?: number;
+  }) => api.post<ApiResponse<{ jobId: string; status: string }>>('/leads/enrich/run', body),
+  getBulkEnrichJob: (jobId: string) =>
+    api.get<ApiResponse<BulkEnrichJobStatus>>(`/leads/enrich/jobs/${jobId}`),
 };
+
+export interface BulkEnrichPreview {
+  total: number;
+  willProcess: number;
+  skipComplete: number;
+  missingEmailOrPhone: number;
+  maxPaidLookups: number;
+  cappedPaidEstimate: number;
+}
+
+export interface BulkEnrichJobStatus {
+  jobId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  totalLeads: number;
+  processed: number;
+  skipped: number;
+  foundEmail: number;
+  foundPhone: number;
+  internalCacheHits: number;
+  apolloCreditsUsed: number;
+  paidLookupsUsed: number;
+  maxPaidLookups: number;
+  lastError?: string;
+}
 
 export const useLeads = (filters: LeadFilters = {}) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
@@ -330,3 +368,40 @@ export const useDeleteLeadComment = () => {
     },
   });
 };
+
+export const usePreviewBulkEnrich = () =>
+  useMutation({
+    mutationFn: (body: {
+      filters?: LeadFilters;
+      leadIds?: string[];
+      reEnrichComplete?: boolean;
+      maxPaidLookups?: number;
+    }) => leadApi.previewBulkEnrich(body).then((r) => r.data.data),
+  });
+
+export const useRunBulkEnrich = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      filters?: LeadFilters;
+      leadIds?: string[];
+      reEnrichComplete?: boolean;
+      maxPaidLookups?: number;
+    }) => leadApi.runBulkEnrich(body).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+};
+
+export const useBulkEnrichJob = (jobId: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['bulkEnrichJob', jobId],
+    queryFn: () => leadApi.getBulkEnrichJob(jobId!).then((r) => r.data.data),
+    enabled: enabled && Boolean(jobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'completed' || status === 'failed') return false;
+      return 2000;
+    },
+  });
