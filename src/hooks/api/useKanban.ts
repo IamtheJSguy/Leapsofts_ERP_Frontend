@@ -7,7 +7,11 @@ export type CreateMeetingOnCardPayload = {
   title: string;
   meetingLink?: string;
   scheduledAt: string;
+  timeZone: string;
+  durationMinutes?: number;
   participants: string[];
+  guestEmails?: string[];
+  sendGoogleInvite?: boolean;
   description?: string;
   leadId?: string;
 };
