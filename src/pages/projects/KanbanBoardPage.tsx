@@ -43,7 +43,8 @@ import { tokens } from '@/styles/tokens';
 import { KANBAN_LABEL_COLORS } from '@/lib/constants';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
-import type { KanbanCardLink, KanbanLabel, Meeting } from '@/types';
+import type { CreateMeetingPayload, KanbanCardLink, KanbanLabel, Meeting } from '@/types';
+import { MeetingCreateFormBlock } from '@/components/meetings/MeetingCreateFormBlock';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import { RichTextEditor } from '@/components/chat/RichTextEditor';
 import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
@@ -1345,11 +1346,8 @@ const CardMeetingsSection = ({
 
   const [pickMeeting, setPickMeeting] = useState<Meeting | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createTitle, setCreateTitle] = useState('');
-  const [createLink, setCreateLink] = useState('');
-  const [createDate, setCreateDate] = useState<Date | null>(null);
-  const [createTime, setCreateTime] = useState('09:00');
-  const [createParticipants, setCreateParticipants] = useState<string[]>([]);
+  const { data: usersData } = useUsers({}, { enabled: canEdit });
+  const dbUsers = Array.isArray(usersData) ? usersData : [];
 
   const linkedIds = useMemo(
     () => new Set(linkedMeetings.map((m) => m._id)),
@@ -1401,47 +1399,12 @@ const CardMeetingsSection = ({
     );
   };
 
-  const buildScheduledAt = () => {
-    if (!createDate) return null;
-    const d = new Date(createDate);
-    const [hStr = '9', mStr = '0'] = createTime.split(':');
-    d.setHours(parseInt(hStr, 10) || 0, parseInt(mStr, 10) || 0, 0, 0);
-    return d.toISOString();
-  };
-
-  const handleCreate = () => {
-    const scheduledAt = buildScheduledAt();
-    const linkTrimmed = createLink.trim();
-    if (
-      !createTitle.trim()
-      || !scheduledAt
-      || createParticipants.length === 0
-      || (!linkTrimmed && !calendarConnected)
-    ) {
-      addToast({
-        message: calendarConnected
-          ? 'Title, date, and at least one participant are required'
-          : 'Title, meeting link, date, and at least one participant are required',
-        severity: 'error',
-      });
-      return;
-    }
-    let meetingLink = linkTrimmed;
-    if (meetingLink && !/^https?:\/\//i.test(meetingLink)) meetingLink = `https://${meetingLink}`;
-    const timeZone =
-      currentUser?.timezone ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const handleCreateMeeting = (payload: CreateMeetingPayload) => {
     createOnCardMutation.mutate(
       {
         cardId,
         data: {
-          title: createTitle.trim(),
-          ...(meetingLink ? { meetingLink } : {}),
-          scheduledAt,
-          timeZone,
-          durationMinutes: 30,
-          sendGoogleInvite: calendarConnected,
-          participants: createParticipants,
+          ...payload,
           ...(leadId ? { leadId } : {}),
         },
       },
@@ -1449,14 +1412,8 @@ const CardMeetingsSection = ({
         onSuccess: () => {
           addToast({ message: 'Meeting created and linked', severity: 'success' });
           setShowCreate(false);
-          setCreateTitle('');
-          setCreateLink('');
-          setCreateDate(null);
-          setCreateTime('09:00');
-          setCreateParticipants([]);
         },
-        onError: (err: any) =>
-          showApiError(err),
+        onError: (err: any) => showApiError(err),
       },
     );
   };
@@ -1590,61 +1547,16 @@ const CardMeetingsSection = ({
 
           <Collapse in={showCreate}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-              <TextField
-                size="small"
-                label="Title"
-                value={createTitle}
-                onChange={(e) => setCreateTitle(e.target.value)}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              <MeetingCreateFormBlock
+                calendarConnected={calendarConnected}
+                userOptions={dbUsers}
+                currentUser={currentUser}
+                resetKey={`${cardId}-${showCreate}`}
+                isPending={createOnCardMutation.isPending}
+                onSubmit={handleCreateMeeting}
+                submitLabel="Create & link"
+                density="compact"
               />
-              <TextField
-                size="small"
-                label="Meeting link"
-                value={createLink}
-                onChange={(e) => setCreateLink(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
-              <ModernDatePicker
-                label="Date"
-                value={createDate}
-                onChange={(d) => setCreateDate(d)}
-              />
-              <ModernTimePicker
-                label="Time"
-                value={createTime}
-                onChange={(t) => setCreateTime(t)}
-              />
-              <Autocomplete
-                multiple
-                size="small"
-                options={boardMembers}
-                value={boardMembers.filter((u: any) => createParticipants.includes(u._id))}
-                onChange={(_, selected) => setCreateParticipants(selected.map((u: any) => u._id))}
-                getOptionLabel={(u: any) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || u._id}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Participants"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                  />
-                )}
-              />
-              <Button
-                variant="contained"
-                size="small"
-                disabled={createOnCardMutation.isPending}
-                onClick={handleCreate}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 750,
-                  borderRadius: '10px',
-                  bgcolor: tokens.brand.primary,
-                  '&:hover': { bgcolor: tokens.brand.primaryDark },
-                }}
-              >
-                {createOnCardMutation.isPending ? 'Creating...' : 'Create & attach'}
-              </Button>
             </Box>
           </Collapse>
         </Box>
