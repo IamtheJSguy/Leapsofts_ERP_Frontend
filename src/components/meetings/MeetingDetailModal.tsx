@@ -236,6 +236,10 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
           </Typography>
         ) : null}
 
+        {meeting.source === 'google' && (
+          <Chip size="small" label="From Google Calendar" sx={{ mb: 1.5 }} variant="outlined" />
+        )}
+
         {meeting.calendarSyncStatus && meeting.calendarSyncStatus !== 'not_requested' && (
           <Box sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Chip
@@ -245,14 +249,18 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                   ? 'Google Calendar synced'
                   : meeting.calendarSyncStatus === 'pending'
                     ? 'Syncing to Google Calendar…'
-                    : 'Calendar sync failed'
+                    : meeting.calendarSyncStatus === 'detached'
+                      ? 'No longer linked to Google'
+                      : 'Calendar sync failed'
               }
               color={
                 meeting.calendarSyncStatus === 'synced'
                   ? 'success'
                   : meeting.calendarSyncStatus === 'failed'
                     ? 'error'
-                    : 'default'
+                    : meeting.calendarSyncStatus === 'detached'
+                      ? 'warning'
+                      : 'default'
               }
             />
             {meeting.calendarHtmlLink && (

@@ -5,10 +5,13 @@ import {
   useCalendarStatus,
   useCalendarAuthUrl,
   useDisconnectCalendar,
+  useSyncCalendar,
   openCalendarOAuthPopup,
   CALENDAR_CONNECTED_EVENT,
   refreshCalendarConnection,
 } from '@/hooks/api/useCalendar';
+import SyncIcon from '@mui/icons-material/Sync';
+import { formatDistanceToNow } from 'date-fns';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { showApiError } from '@/utils/apiError';
@@ -19,6 +22,7 @@ export const GoogleCalendarConnectPanel = () => {
   const { data: calendarStatus, refetch: refetchCalendarStatus } = useCalendarStatus();
   const calendarAuth = useCalendarAuthUrl();
   const disconnectCalendar = useDisconnectCalendar();
+  const syncCalendar = useSyncCalendar();
   const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
@@ -74,28 +78,74 @@ export const GoogleCalendarConnectPanel = () => {
               color={connected ? 'success' : 'default'}
             />
           </Box>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.86rem' }}>
-            {connected
-              ? 'Meetings can sync to Google Calendar with Meet links and email invites.'
-              : 'Connect to create events on Google Calendar, auto-generate Meet links, and send invites.'}
-          </Typography>
+          {!connected && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.86rem' }}>
+              Connect to sync your primary Google Calendar, auto-generate Meet links, and send invites.
+            </Typography>
+          )}
+          {connected && calendarStatus?.accountEmail && (
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+              Connected as {calendarStatus.accountEmail}
+            </Typography>
+          )}
+          {connected && calendarStatus?.lastSyncedAt && (
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+              Last synced {formatDistanceToNow(new Date(calendarStatus.lastSyncedAt), { addSuffix: true })}
+            </Typography>
+          )}
+          {connected && calendarStatus?.importError && (
+            <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mt: 0.5 }}>
+              Sync issue: {calendarStatus.importError}
+            </Typography>
+          )}
         </Box>
       </Box>
-      <Box sx={{ flexShrink: 0 }}>
+      <Box sx={{ flexShrink: 0, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         {connected ? (
-          <Button
-            variant="outlined"
-            color="inherit"
-            disabled={disconnectCalendar.isPending}
-            onClick={() =>
-              disconnectCalendar.mutate(undefined, {
-                onSuccess: () => addToast({ message: 'Google Calendar disconnected', severity: 'info' }),
-              })
-            }
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
-          >
-            Disconnect
-          </Button>
+          <>
+            <Button
+              variant="contained"
+              startIcon={<SyncIcon />}
+              disabled={syncCalendar.isPending}
+              onClick={() =>
+                syncCalendar.mutate(undefined, {
+                  onSuccess: (result) => {
+                    if (result.error) {
+                      addToast({ message: result.error, severity: 'error' });
+                      return;
+                    }
+                    addToast({
+                      message: `Calendar synced (${result.imported} new, ${result.updated} updated)`,
+                      severity: 'success',
+                    });
+                  },
+                  onError: (err) => showApiError(err),
+                })
+              }
+              sx={{
+                bgcolor: tokens.brand.primary,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: '12px',
+                '&:hover': { bgcolor: tokens.brand.primaryDark },
+              }}
+            >
+              Sync calendar
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              disabled={disconnectCalendar.isPending}
+              onClick={() =>
+                disconnectCalendar.mutate(undefined, {
+                  onSuccess: () => addToast({ message: 'Google Calendar disconnected', severity: 'info' }),
+                })
+              }
+              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
+            >
+              Disconnect
+            </Button>
+          </>
         ) : (
           <Button
             variant="contained"

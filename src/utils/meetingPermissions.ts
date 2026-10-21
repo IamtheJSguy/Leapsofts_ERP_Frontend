@@ -9,6 +9,7 @@ export const canEditOrDeleteMeeting = (
 ): boolean => {
   if (!currentUser || !meeting) return false;
   if (meeting.status === 'cancelled') return false;
+  if (meeting.calendarSyncStatus === 'detached') return false;
   if (isPast(new Date(meeting.scheduledAt))) return false;
   if (options?.isElevated) return true;
 

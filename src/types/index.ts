@@ -799,7 +799,9 @@ export interface MeetingLinkedCard {
   leadId?: string | Lead;
 }
 
-export type CalendarSyncStatus = 'not_requested' | 'pending' | 'synced' | 'failed';
+export type CalendarSyncStatus = 'not_requested' | 'pending' | 'synced' | 'failed' | 'detached';
+
+export type MeetingSource = 'erp' | 'google';
 
 export interface Meeting {
   _id: string;
@@ -820,11 +822,14 @@ export interface Meeting {
   calendarHtmlLink?: string;
   calendarSyncStatus?: CalendarSyncStatus;
   calendarSyncError?: string;
+  source?: MeetingSource;
+  googleImportedByAccountEmail?: string;
 }
 
 export type CreateMeetingPayload = Partial<Meeting> & {
   timeZone: string;
   sendGoogleInvite?: boolean;
+  allowSchedulingConflict?: boolean;
 };
 
 export interface KanbanLabel {

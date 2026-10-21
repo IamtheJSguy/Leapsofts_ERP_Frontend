@@ -59,9 +59,10 @@ export const PrivacyPage = () => {
           When you connect <strong>Google Calendar</strong> to schedule meetings from Leapsofts:
         </p>
         <ul>
-          <li>We create, update, or cancel calendar events only when you schedule or change meetings in the app, using your connected account.</li>
+          <li>We sync your <strong>primary Google Calendar</strong> on a schedule and when you tap Sync, so events appear in the ERP timeline and scheduling can detect conflicts.</li>
+          <li>We create, update, or cancel calendar events when you schedule or change meetings in the app, using your connected account.</li>
           <li>We send meeting invitations to attendees you select (team members, linked leads, and guest emails you provide).</li>
-          <li>We do not read your full calendar history, sell calendar data, or use it for advertising or unrelated analytics.</li>
+          <li>We do not sell calendar data or use it for advertising or unrelated analytics.</li>
         </ul>
       </Box>
 
