@@ -25,9 +25,25 @@ export const consumeCalendarReturnPath = () => {
   return path.startsWith('/') ? path : CALENDAR_DEFAULT_RETURN_PATH;
 };
 
+export type CalendarStatus = {
+  connected: boolean;
+  lastSyncedAt?: string | null;
+  importError?: string | null;
+  accountEmail?: string | null;
+};
+
+export type CalendarSyncResult = {
+  imported: number;
+  updated: number;
+  cancelled: number;
+  skipped: number;
+  error?: string;
+};
+
 const calendarApi = {
   getAuthUrl: () => api.get<{ data: { url: string } }>('/calendar/auth'),
-  getStatus: () => api.get<{ data: { connected: boolean } }>('/calendar/status'),
+  getStatus: () => api.get<{ data: CalendarStatus }>('/calendar/status'),
+  sync: () => api.post<{ data: CalendarSyncResult }>('/calendar/sync'),
   disconnect: () => api.delete<{ data: { connected: boolean } }>('/calendar/disconnect'),
 };
 
@@ -50,6 +66,17 @@ export const useDisconnectCalendar = () => {
     mutationFn: () => calendarApi.disconnect(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['calendarStatus'] });
+    },
+  });
+};
+
+export const useSyncCalendar = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => calendarApi.sync().then((r) => r.data.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['calendarStatus'] });
+      qc.invalidateQueries({ queryKey: ['meetings'] });
     },
   });
 };

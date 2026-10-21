@@ -44,7 +44,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { canEditOrDeleteMeeting } from '@/utils/meetingPermissions';
-import { showApiError } from '@/utils/apiError';
+import { getApiErrorMessage, showApiError } from '@/utils/apiError';
+import axios from 'axios';
 import {
   getDefaultMeetingTimeZone,
   listCommonTimeZones,
@@ -108,6 +109,9 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const isDarkMode = theme.palette.mode === 'dark';
   const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState('');
+  const [pendingSubmit, setPendingSubmit] = useState<MeetingFormData | null>(null);
   const { data: calendarStatus } = useCalendarStatus();
   const calendarConnected = calendarStatus?.connected === true;
   const defaultTimeZone = getDefaultMeetingTimeZone(currentUser ?? user);
@@ -219,7 +223,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
     });
   };
 
-  const onSubmit = (data: MeetingFormData) => {
+  const saveMeeting = (data: MeetingFormData, allowSchedulingConflict = false) => {
     const scheduledIso = wallClockToUtcIso(data.scheduledAt, data.timeZone);
     if (!editingMeeting && new Date(scheduledIso) < new Date()) {
       setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
@@ -237,6 +241,20 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
       guestEmails: data.guestEmails ?? [],
       sendGoogleInvite: calendarConnected ? data.sendGoogleInvite : false,
       participants: data.participants ?? [],
+      ...(allowSchedulingConflict ? { allowSchedulingConflict: true } : {}),
+    };
+
+    const onConflictError = (err: unknown, formData: MeetingFormData) => {
+      const code = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: { code?: string } })?.error?.code
+        : undefined;
+      if (code === 'MEETING_CONFLICT') {
+        setPendingSubmit(formData);
+        setConflictMessage(getApiErrorMessage(err));
+        setConflictDialogOpen(true);
+        return;
+      }
+      showApiError(err);
     };
 
     if (editingMeeting) {
@@ -247,20 +265,21 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             addToast({ message: 'Meeting updated successfully', severity: 'success' });
             handleClose();
           },
-        }
-      );
-    } else {
-      createMeeting.mutate(
-        payload,
-        {
-          onSuccess: () => {
-            addToast({ message: 'Meeting scheduled successfully', severity: 'success' });
-            handleClose();
-          },
+          onError: (err) => onConflictError(err, data),
         },
       );
+    } else {
+      createMeeting.mutate(payload, {
+        onSuccess: () => {
+          addToast({ message: 'Meeting scheduled successfully', severity: 'success' });
+          handleClose();
+        },
+        onError: (err) => onConflictError(err, data),
+      });
     }
   };
+
+  const onSubmit = (data: MeetingFormData) => saveMeeting(data, false);
 
   const eventPropGetter = (event: any) => {
     const meeting = event.resource as Meeting | undefined;
@@ -858,6 +877,29 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         isPending={deleteMeeting.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={conflictDialogOpen}
+        title="Scheduling conflict"
+        message={
+          conflictMessage ||
+          'Another meeting overlaps this time. Schedule anyway?'
+        }
+        confirmLabel="Schedule anyway"
+        cancelLabel="Change time"
+        isPending={createMeeting.isPending || updateMeeting.isPending}
+        onConfirm={() => {
+          if (pendingSubmit) {
+            setConflictDialogOpen(false);
+            saveMeeting(pendingSubmit, true);
+            setPendingSubmit(null);
+          }
+        }}
+        onCancel={() => {
+          setConflictDialogOpen(false);
+          setPendingSubmit(null);
+        }}
       />
     </Box>
   );
