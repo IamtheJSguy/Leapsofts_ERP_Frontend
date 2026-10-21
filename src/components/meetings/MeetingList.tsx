@@ -31,7 +31,8 @@ import { useMeetings, useDeleteMeeting, useUpdateMeeting } from '@/hooks/api/use
 import { useUsers } from '@/hooks/api/useUsers';
 import { MeetingReminderBadge } from './MeetingReminderBadge';
 import { EmptyState } from '@/components/common/EmptyState';
-import { GuestEmailChipInput } from '@/components/common/GuestEmailChipInput';
+import { MeetingFormFields } from '@/components/meetings/MeetingFormFields';
+import { buildMeetingSubmitPayload } from '@/utils/meetingForm';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { tokens } from '@/styles/tokens';
@@ -689,7 +690,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   const calendarConnected = calendarStatus?.connected === true;
   const defaultTz = meeting.timeZone || getDefaultMeetingTimeZone(user ?? undefined);
 
-  const { register, handleSubmit, control } = useForm<MeetingFormData>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
     defaultValues: {
       title: meeting.title,
@@ -710,17 +711,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
     updateMeeting.mutate(
       {
         id: meeting._id,
-        data: {
-          title: data.title,
-          description: data.description,
-          ...(data.meetingLink?.trim() ? { meetingLink: data.meetingLink.trim() } : {}),
-          scheduledAt: wallClockToUtcIso(data.scheduledAt, data.timeZone),
-          timeZone: data.timeZone,
-          durationMinutes: data.durationMinutes,
-          guestEmails: data.guestEmails ?? [],
-          sendGoogleInvite: data.sendGoogleInvite,
-          participants: data.participants ?? [],
-        }
+        data: buildMeetingSubmitPayload(data, calendarConnected),
       },
       {
         onSuccess: () => {
@@ -760,166 +751,15 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
           minHeight: 0,
         }}
       >
-        <TextField
-          {...register('title')}
-          label="Meeting Title"
-          placeholder="e.g. Sales Weekly Sync"
-          fullWidth
-          sx={{
-            mt: 1,
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <LabelIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-        <TextField
-          {...register('description')}
-          label="Description (optional)"
-          placeholder="e.g. Weekly sync to review pipeline progress..."
-          fullWidth
-          multiline
-          minRows={2}
-          maxRows={4}
-          sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
-            }
-          }}
-        />
-        <TextField
-          {...register('meetingLink')}
-          label="Meeting Link (URL)"
-          placeholder="https://meet.google.com/..."
-          fullWidth
-          sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <VideocamIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-
-        <Controller
-          name="participants"
+        <MeetingFormFields
           control={control}
-          render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={dbUsers}
-              getOptionLabel={(option) => {
-                const name = `${option.firstName || ''} ${option.lastName || ''}`.trim();
-                return name || option.email;
-              }}
-              value={dbUsers.filter(u => field.value?.includes(u._id))}
-              onChange={(_, newValue) => {
-                field.onChange(newValue.map(u => u._id));
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Participants"
-                  placeholder="Search team members..."
-                  sx={{
-                    mb: 3,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '16px',
-                    }
-                  }}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <>
-                        <InputAdornment position="start">
-                          <GroupIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                        </InputAdornment>
-                        {params.InputProps.startAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                const initials = `${option.firstName?.charAt(0) || ''}${option.lastName?.charAt(0) || ''}`.toUpperCase() || '?';
-                const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
-                return (
-                  <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-                    <Avatar src={option.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                      {initials}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 650 }}>{name}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>{option.email}</Typography>
-                    </Box>
-                  </Box>
-                );
-              }}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => {
-                  const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
-                  const { key, ...tagProps } = getTagProps({ index });
-                  return (
-                    <Chip
-                      key={option._id}
-                      label={name}
-                      size="small"
-                      {...tagProps}
-                      sx={{ borderRadius: '8px', fontWeight: 600 }}
-                    />
-                  );
-                })
-              }
-            />
-          )}
-        />
-
-        <Controller
-          name="guestEmails"
-          control={control}
-          render={({ field }) => (
-            <GuestEmailChipInput
-              value={field.value ?? []}
-              onChange={field.onChange}
-              helperText="Press Enter to add each guest email. Remove with × on the chip."
-              sx={{ mb: 3 }}
-            />
-          )}
-        />
-
-        <TextField
-          {...register('scheduledAt')}
-          label="Date & Time"
-          type="datetime-local"
-          fullWidth
-          InputLabelProps={{ shrink: true }}
-          sx={{
-            mb: 1,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <EventIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-              </InputAdornment>
-            ),
-          }}
+          register={register}
+          errors={errors}
+          calendarConnected={calendarConnected}
+          userOptions={dbUsers}
+          defaultTimeZone={defaultTz}
+          isCreate={false}
+          guestEmailsHelperText="Press Enter to add each guest email. Remove with × on the chip."
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
