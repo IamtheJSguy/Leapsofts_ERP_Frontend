@@ -8,7 +8,7 @@ import { closeRemovedConversation } from '@/utils/closeRemovedConversation';
 import type { Conversation, Message, MessageReaction, PresenceStatus, User } from '@/types';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { normalizeMessageReceipts, toReplySnippet } from '@/utils/chatMessageUtils';
+import { normalizeIdList, normalizeMessageReceipts, serializeReceiptMap, toReplySnippet } from '@/utils/chatMessageUtils';
 import {
   appendMessageToCache,
   findMessageInCache,
@@ -246,19 +246,51 @@ const applySentMessageToCache = (
   }
 };
 
+const mergeMessageReceipts = (target: Message, source?: Message): Message => {
+  if (!source) return target;
+  const deliveredTo = Array.from(
+    new Set([...normalizeIdList(target.deliveredTo), ...normalizeIdList(source.deliveredTo)]),
+  );
+  const readBy = Array.from(
+    new Set([...normalizeIdList(target.readBy), ...normalizeIdList(source.readBy)]),
+  );
+  const deliveredAt = {
+    ...serializeReceiptMap(source.deliveredAt as Record<string, unknown> | undefined),
+    ...serializeReceiptMap(target.deliveredAt as Record<string, unknown> | undefined),
+  };
+  const readAt = {
+    ...serializeReceiptMap(source.readAt as Record<string, unknown> | undefined),
+    ...serializeReceiptMap(target.readAt as Record<string, unknown> | undefined),
+  };
+  return {
+    ...target,
+    deliveredTo,
+    readBy,
+    deliveredAt,
+    readAt,
+  };
+};
+
 const reconcileSentMessageInCache = (
   old: Message[] | MessagesInfiniteData | undefined,
   realMessage: Message,
   tempId?: string,
 ) => {
   const currentUserId = useAuthStore.getState().user?._id;
-  const merged = appendMessageToCache(old, realMessage, { currentUserId });
+  const existingPending = tempId ? findMessageInCache(old, tempId) : undefined;
+  const existingReal = findMessageInCache(old, realMessage._id);
+  const mergedWithExisting = mergeMessageReceipts(
+    mergeMessageReceipts(realMessage, existingPending),
+    existingReal,
+  );
+
+  const merged = appendMessageToCache(old, mergedWithExisting, { currentUserId });
   if (!tempId || !merged) return merged;
   return mapMessageCache(merged, (messages) =>
     messages
       .filter((m) => m._id !== tempId)
       .map((m) =>
-        m._id === realMessage._id ? { ...m, clientId: tempId, isPending: false } : m,
+        m._id === realMessage._id ? { ...m, ...mergedWithExisting, clientId: tempId, isPending: false } : m,
       ),
   );
 };
