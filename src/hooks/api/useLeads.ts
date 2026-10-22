@@ -84,13 +84,11 @@ const leadApi = {
     filters?: LeadFilters;
     leadIds?: string[];
     reEnrichComplete?: boolean;
-    maxPaidLookups?: number;
   }) => api.post<ApiResponse<BulkEnrichPreview>>('/leads/enrich/preview', body),
   runBulkEnrich: (body: {
     filters?: LeadFilters;
     leadIds?: string[];
     reEnrichComplete?: boolean;
-    maxPaidLookups?: number;
   }) => api.post<ApiResponse<{ jobId: string; status: string }>>('/leads/enrich/run', body),
   getBulkEnrichJob: (jobId: string) =>
     api.get<ApiResponse<BulkEnrichJobStatus>>(`/leads/enrich/jobs/${jobId}`),
@@ -101,8 +99,6 @@ export interface BulkEnrichPreview {
   willProcess: number;
   skipComplete: number;
   missingEmailOrPhone: number;
-  maxPaidLookups: number;
-  cappedPaidEstimate: number;
 }
 
 export interface BulkEnrichJobStatus {
@@ -114,9 +110,7 @@ export interface BulkEnrichJobStatus {
   foundEmail: number;
   foundPhone: number;
   internalCacheHits: number;
-  apolloCreditsUsed: number;
-  paidLookupsUsed: number;
-  maxPaidLookups: number;
+  browserOutcomes?: Array<{ leadId: string; outcome: 'found' | 'no_direct_contact' | 'blocked' | 'timeout' | 'unavailable' }>;
   lastError?: string;
 }
 
@@ -375,7 +369,6 @@ export const usePreviewBulkEnrich = () =>
       filters?: LeadFilters;
       leadIds?: string[];
       reEnrichComplete?: boolean;
-      maxPaidLookups?: number;
     }) => leadApi.previewBulkEnrich(body).then((r) => r.data.data),
   });
 
@@ -386,7 +379,6 @@ export const useRunBulkEnrich = () => {
       filters?: LeadFilters;
       leadIds?: string[];
       reEnrichComplete?: boolean;
-      maxPaidLookups?: number;
     }) => leadApi.runBulkEnrich(body).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });

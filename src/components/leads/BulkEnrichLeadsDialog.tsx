@@ -10,7 +10,6 @@ import {
   DialogTitle,
   FormControlLabel,
   LinearProgress,
-  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -45,7 +44,6 @@ export const BulkEnrichLeadsDialog = ({
   const preview = usePreviewBulkEnrich();
   const run = useRunBulkEnrich();
   const [reEnrichComplete, setReEnrichComplete] = useState(false);
-  const [maxPaidLookups, setMaxPaidLookups] = useState(25);
   const [previewData, setPreviewData] = useState<BulkEnrichPreview | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
@@ -57,18 +55,17 @@ export const BulkEnrichLeadsDialog = ({
       setPreviewData(null);
       setJobId(null);
       setReEnrichComplete(false);
-      setMaxPaidLookups(25);
       return;
     }
     preview.mutate(
-      { filters, reEnrichComplete, maxPaidLookups },
+      { filters, reEnrichComplete },
       {
         onSuccess: (data) => setPreviewData(data),
         onError: (err) => showApiError(err),
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- previewKey triggers manual refresh
-  }, [open, filters, reEnrichComplete, maxPaidLookups, previewKey]);
+  }, [open, filters, reEnrichComplete, previewKey]);
 
   useEffect(() => {
     const status = jobQuery.data?.status;
@@ -89,7 +86,7 @@ export const BulkEnrichLeadsDialog = ({
 
   const handleConfirm = () => {
     run.mutate(
-      { filters, reEnrichComplete, maxPaidLookups },
+      { filters, reEnrichComplete },
       {
         onSuccess: (data) => {
           setJobId(data.jobId);
@@ -118,9 +115,8 @@ export const BulkEnrichLeadsDialog = ({
         ) : previewData ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Uses your organization&apos;s shared contact cache first, then public website data,
-              then Apollo (paid) for remaining email or phone gaps. Notes are generated fresh for
-              your team only.
+              Uses your organization&apos;s shared contact cache first, then public website data and
+              browser verification. Notes are generated fresh for your team only.
             </Typography>
             <Box
               sx={{
@@ -139,8 +135,7 @@ export const BulkEnrichLeadsDialog = ({
                 <strong>{previewData.skipComplete}</strong> already have email and phone (skipped)
               </Typography>
               <Typography variant="body2">
-                Up to <strong>{previewData.cappedPaidEstimate}</strong> paid Apollo lookups (cap{' '}
-                {previewData.maxPaidLookups})
+                <strong>{previewData.missingEmailOrPhone}</strong> missing email or phone
               </Typography>
             </Box>
             <FormControlLabel
@@ -156,17 +151,6 @@ export const BulkEnrichLeadsDialog = ({
               }
               label="Re-enrich leads that already have email and phone"
             />
-            <TextField
-              type="number"
-              size="small"
-              label="Maximum paid lookups"
-              value={maxPaidLookups}
-              disabled={Boolean(running)}
-              onBlur={refreshPreview}
-              onChange={(e) => setMaxPaidLookups(Math.max(0, Number(e.target.value) || 0))}
-              inputProps={{ min: 0, max: 500 }}
-              helperText="Limits Apollo API usage for this run."
-            />
             {job && (
               <Box>
                 <Typography variant="caption" color="text.secondary">
@@ -174,6 +158,15 @@ export const BulkEnrichLeadsDialog = ({
                   {job.totalLeads} ({job.foundEmail} emails, {job.foundPhone} phones,{' '}
                   {job.internalCacheHits} cache hits)
                 </Typography>
+                {Boolean(job.browserOutcomes?.length) && (
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    Browser checks: {job.browserOutcomes?.filter((r) => r.outcome === 'found').length} found,{' '}
+                    {job.browserOutcomes?.filter((r) => r.outcome === 'no_direct_contact').length} without direct contacts,{' '}
+                    {job.browserOutcomes?.filter((r) => r.outcome === 'blocked').length} blocked,{' '}
+                    {job.browserOutcomes?.filter((r) => r.outcome === 'timeout').length} timed out,{' '}
+                    {job.browserOutcomes?.filter((r) => r.outcome === 'unavailable').length} unavailable
+                  </Typography>
+                )}
                 <LinearProgress
                   variant="determinate"
                   value={job.status === 'completed' ? 100 : progressPct}
@@ -190,23 +183,11 @@ export const BulkEnrichLeadsDialog = ({
         </Button>
         <Button
           variant="contained"
-          startIcon={
-            run.isPending ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <AutoFixHighOutlinedIcon />
-            )
-          }
-          disabled={
-            !previewData ||
-            previewData.willProcess === 0 ||
-            run.isPending ||
-            Boolean(running && job?.status !== 'completed')
-          }
+          disabled={!previewData || previewData.willProcess === 0 || run.isPending || Boolean(running)}
           onClick={handleConfirm}
-          sx={{ bgcolor: tokens.brand.primary }}
+          startIcon={<AutoFixHighOutlinedIcon />}
         >
-          {jobId ? 'Running…' : 'Confirm & enrich'}
+          {run.isPending ? 'Starting…' : 'Start enrichment'}
         </Button>
       </DialogActions>
     </Dialog>
