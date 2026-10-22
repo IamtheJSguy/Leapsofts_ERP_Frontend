@@ -72,6 +72,7 @@ const patchMessagesReceipt = (
   const atIso = at || new Date().toISOString();
   const userKey = String(userId);
   const targetIds = messageIds?.length ? new Set(messageIds) : null;
+  const currentUserId = useAuthStore.getState().user?._id;
 
   queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
     { queryKey: ['messages', conversationId] },
@@ -80,7 +81,13 @@ const patchMessagesReceipt = (
       let changed = false;
       const next = mapMessageCache(old, (messages) =>
         messages.map((msg) => {
-          if (targetIds && !targetIds.has(msg._id)) return msg;
+          const isPendingSentByMe = Boolean(
+            msg.isPending &&
+              currentUserId &&
+              (msg.senderId === currentUserId ||
+                (typeof msg.sender === 'object' && (msg.sender as User)?._id === currentUserId)),
+          );
+          if (targetIds && !targetIds.has(msg._id) && !isPendingSentByMe) return msg;
           const current = msg[field];
           const alreadyHas = (current || []).some((id) =>
             typeof id === 'string' ? id === userKey : (id as User)?._id === userKey,

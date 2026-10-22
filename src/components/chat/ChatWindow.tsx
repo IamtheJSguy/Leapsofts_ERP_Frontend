@@ -104,10 +104,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   markReadMutateRef.current = markRead.mutate;
   const markReadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markReadInFlightRef = useRef<string | null>(null);
-  const scheduleMarkRead = useCallback((conversationId: string) => {
+  const scheduleMarkRead = useCallback((conversationId: string, immediate = false) => {
     clearUnread(conversationId);
-    if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
-    markReadDebounceRef.current = setTimeout(() => {
+    if (markReadDebounceRef.current) {
+      clearTimeout(markReadDebounceRef.current);
+      markReadDebounceRef.current = null;
+    }
+    const trigger = () => {
       if (markReadInFlightRef.current === conversationId) return;
       markReadInFlightRef.current = conversationId;
       markReadMutateRef.current(conversationId, {
@@ -117,7 +120,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           }
         },
       });
-    }, 400);
+    };
+    if (immediate) {
+      trigger();
+    } else {
+      markReadDebounceRef.current = setTimeout(trigger, 40);
+    }
   }, [clearUnread]);
   const { text, setText, removeDraft } = useChatDraft(activeConversationId);
   const [pendingFilesByConv, setPendingFilesByConv] = useState<
@@ -160,7 +168,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (!activeConversationId || activeConversationId.startsWith('mock-')) return;
 
     joinChat(activeConversationId);
-    scheduleMarkRead(activeConversationId);
+    scheduleMarkRead(activeConversationId, true);
 
     return () => {
       if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
@@ -333,10 +341,32 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const senderRef = last.senderId || last.sender;
     const senderId = typeof senderRef === 'object' ? senderRef?._id : senderRef;
     if (senderId !== user?._id) {
-      scheduleMarkRead(activeConversationId);
+      const isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+      if (isVisible) {
+        scheduleMarkRead(activeConversationId, true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, activeConversationId, user?._id]);
+
+  // Mark read when user focuses or returns to the browser tab
+  useEffect(() => {
+    const onVisibilityOrFocus = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        activeConversationId &&
+        !activeConversationId.startsWith('mock-')
+      ) {
+        scheduleMarkRead(activeConversationId, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+    window.addEventListener('focus', onVisibilityOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+    };
+  }, [activeConversationId, scheduleMarkRead]);
 
   // Intercept and generate mock messages if this is a mock conversation
   const mockMessages = useMemo(() => {
