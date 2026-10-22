@@ -246,6 +246,35 @@ const applySentMessageToCache = (
   }
 };
 
+const mergeReceiptTimeMaps = (
+  a?: Record<string, unknown> | null,
+  b?: Record<string, unknown> | null,
+  strategy: 'earliest' | 'latest' = 'earliest',
+): Record<string, string> => {
+  const mapA = serializeReceiptMap(a);
+  const mapB = serializeReceiptMap(b);
+  const allKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
+  const result: Record<string, string> = {};
+  for (const key of allKeys) {
+    const valA = mapA[key];
+    const valB = mapB[key];
+    if (valA && valB) {
+      const timeA = new Date(valA).getTime();
+      const timeB = new Date(valB).getTime();
+      if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) {
+        result[key] = strategy === 'earliest'
+          ? (timeA <= timeB ? valA : valB)
+          : (timeA >= timeB ? valA : valB);
+      } else {
+        result[key] = valA || valB;
+      }
+    } else {
+      result[key] = (valA || valB)!;
+    }
+  }
+  return result;
+};
+
 const mergeMessageReceipts = (target: Message, source?: Message): Message => {
   if (!source) return target;
   const deliveredTo = Array.from(
@@ -254,14 +283,16 @@ const mergeMessageReceipts = (target: Message, source?: Message): Message => {
   const readBy = Array.from(
     new Set([...normalizeIdList(target.readBy), ...normalizeIdList(source.readBy)]),
   );
-  const deliveredAt = {
-    ...serializeReceiptMap(source.deliveredAt as Record<string, unknown> | undefined),
-    ...serializeReceiptMap(target.deliveredAt as Record<string, unknown> | undefined),
-  };
-  const readAt = {
-    ...serializeReceiptMap(source.readAt as Record<string, unknown> | undefined),
-    ...serializeReceiptMap(target.readAt as Record<string, unknown> | undefined),
-  };
+  const deliveredAt = mergeReceiptTimeMaps(
+    source.deliveredAt as Record<string, unknown> | undefined,
+    target.deliveredAt as Record<string, unknown> | undefined,
+    'earliest',
+  );
+  const readAt = mergeReceiptTimeMaps(
+    source.readAt as Record<string, unknown> | undefined,
+    target.readAt as Record<string, unknown> | undefined,
+    'latest',
+  );
   return {
     ...target,
     deliveredTo,
