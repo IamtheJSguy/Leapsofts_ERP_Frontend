@@ -9,6 +9,8 @@ import {
   useTheme,
   Divider,
   Switch,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
@@ -32,6 +34,9 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
     kpiAlerts: true,
     meetingReminders: true,
   });
+  const [aiDefaultUserTokenLimit, setAiDefaultUserTokenLimit] = useState<number>(10000);
+  const [aiDefaultProvider, setAiDefaultProvider] = useState<'gemini' | 'claude'>('gemini');
+  const [aiEnrichmentEnabled, setAiEnrichmentEnabled] = useState<boolean>(true);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -47,6 +52,11 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           kpiAlerts: settings.notificationPreferences.kpiAlerts ?? true,
           meetingReminders: settings.notificationPreferences.meetingReminders ?? true,
         });
+      }
+      if (settings.aiSettings) {
+        setAiDefaultUserTokenLimit(settings.aiSettings.defaultUserTokenLimit ?? 10000);
+        setAiDefaultProvider(settings.aiSettings.defaultProvider ?? 'gemini');
+        setAiEnrichmentEnabled(settings.aiSettings.enrichmentEnabled ?? true);
       }
     }
   }, [settings]);
@@ -67,6 +77,11 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           weekly: weeklyReportEnabled,
         },
         notificationPreferences: notifPrefs,
+        aiSettings: {
+          defaultUserTokenLimit: Math.max(0, Number(aiDefaultUserTokenLimit) || 0),
+          defaultProvider: aiDefaultProvider,
+          enrichmentEnabled: aiEnrichmentEnabled,
+        },
       },
       {
         onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
@@ -183,6 +198,56 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                     color="primary"
                     checked={weeklyReportEnabled}
                     onChange={(e) => setWeeklyReportEnabled(e.target.checked)}
+                    disabled={readOnly}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: 'text.primary' }}>
+                Lumi & Lead Enrichment Quota
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
+                Configure the default free token allocation per user and default LLM provider. Users can also add their own Gemini or Claude API key.
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  type="number"
+                  size="small"
+                  fullWidth
+                  label="Default Token Limit Per User"
+                  value={aiDefaultUserTokenLimit}
+                  disabled={readOnly}
+                  onChange={(e) => setAiDefaultUserTokenLimit(Math.max(0, Number(e.target.value) || 0))}
+                  helperText="Platform tokens allocated to each user before requiring their own API key."
+                />
+
+                <TextField
+                  select
+                  size="small"
+                  fullWidth
+                  label="Default AI Provider"
+                  value={aiDefaultProvider}
+                  disabled={readOnly}
+                  onChange={(e) => setAiDefaultProvider(e.target.value as 'gemini' | 'claude')}
+                >
+                  <MenuItem value="gemini">Google Gemini (2.5 Flash)</MenuItem>
+                  <MenuItem value="claude">Anthropic Claude (Sonnet 4)</MenuItem>
+                </TextField>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)` }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Enable AI Lead Enrichment</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>Allow users to enrich leads using web search grounding.</Typography>
+                  </Box>
+                  <Switch
+                    color="primary"
+                    checked={aiEnrichmentEnabled}
+                    onChange={(e) => setAiEnrichmentEnabled(e.target.checked)}
                     disabled={readOnly}
                   />
                 </Box>

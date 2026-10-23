@@ -5,6 +5,7 @@ import type { Conversation, Message, MessageReaction, Notification, PresenceStat
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
+import { useAiChatSessionStore } from '@/store/useAiChatSessionStore';
 import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap, stripHtml } from '@/utils/chatMessageUtils';
 import { getDisplayName } from '@/utils/formatters';
 import {
@@ -588,6 +589,29 @@ export const setupSocketEventHandlers = (
         conversationId,
       });
     }
+  });
+
+  socket.on(SOCKET_EVENTS.AI_AGENT_PROGRESS, (raw: unknown) => {
+    if (!raw || typeof raw !== 'object') return;
+    const payload = raw as {
+      requestId?: string;
+      conversationId?: string;
+      stepId?: string;
+      status?: 'running' | 'completed' | 'error';
+      label?: string;
+      detail?: string;
+      timestamp?: string;
+    };
+    if (!payload.stepId || !payload.label || !payload.status) return;
+    useAiChatSessionStore.getState().recordPhaseEvent({
+      requestId: payload.requestId,
+      conversationId: payload.conversationId,
+      stepId: payload.stepId,
+      status: payload.status,
+      label: payload.label,
+      detail: payload.detail,
+      timestamp: payload.timestamp || new Date().toISOString(),
+    });
   });
 };
 
