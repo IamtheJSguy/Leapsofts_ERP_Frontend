@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
+import { CrmConnectionsPanel } from '@/components/admin/CrmConnectionsPanel';
 import { tokens } from '@/styles/tokens';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
@@ -106,7 +107,10 @@ const AdminPage = () => {
         {activeTab === 'users' && canManageUsers ? (
           <UserManagementTable />
         ) : activeTab === 'system' && canManageSystemSettings ? (
-          <SystemSettingsPanel readOnly={!canManageSystemSettings} />
+          <>
+            <CrmConnectionsPanel />
+            <SystemSettingsPanel readOnly={!canManageSystemSettings} />
+          </>
         ) : activeTab === 'usage' && canManageSystemSettings ? (
           <Box>
             <Typography sx={{ mb: 2 }}>

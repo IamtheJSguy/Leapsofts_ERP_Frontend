@@ -34,6 +34,7 @@ import {
   BulkAddLeadsPage,
   DriveConnectedPage,
   CalendarConnectedPage,
+  CrmConnectedPage,
   InvoicesPage,
   InvoiceEditorPage,
   InvoiceClientDetailPage,
@@ -81,6 +82,10 @@ export const router = createBrowserRouter([
   {
     path: '/calendar/connected',
     element: wrap(<CalendarConnectedPage />),
+  },
+  {
+    path: '/crm/connected',
+    element: wrap(<CrmConnectedPage />),
   },
   {
     path: '/login',

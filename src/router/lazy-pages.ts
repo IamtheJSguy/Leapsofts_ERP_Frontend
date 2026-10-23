@@ -27,6 +27,7 @@ export const LeadDetailsPage = lazyRetry(() => import('@/pages/leads/LeadDetails
 export const BulkAddLeadsPage = lazyRetry(() => import('@/pages/BulkAddLeadsPage'));
 export const DriveConnectedPage = lazyRetry(() => import('@/pages/DriveConnectedPage'));
 export const CalendarConnectedPage = lazyRetry(() => import('@/pages/CalendarConnectedPage'));
+export const CrmConnectedPage = lazyRetry(() => import('@/pages/CrmConnectedPage'));
 export const InvoicesPage = lazyRetry(() => import('@/pages/invoices/InvoicesPage'));
 export const InvoiceEditorPage = lazyRetry(() => import('@/pages/invoices/InvoiceEditorPage'));
 export const InvoiceClientDetailPage = lazyRetry(() => import('@/pages/invoices/InvoiceClientDetailPage'));
