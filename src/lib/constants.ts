@@ -108,6 +108,7 @@ export const SALES_DASHBOARD_DEPARTMENTS = [
 
 export const SOCKET_EVENTS = {
   MESSAGE_NEW: 'message:new',
+  MESSAGE_UPDATED: 'message:updated',
   MESSAGE_READ: 'message:read',
   MESSAGE_DELIVERED: 'message:delivered',
   MESSAGE_REACTION: 'message:reaction',
