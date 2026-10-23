@@ -40,6 +40,7 @@ import type { CreateMeetingPayload, Lead, Meeting, User, SalesBoardPlacement } f
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
+import { MeetingCreateFormBlock } from '@/components/meetings/MeetingCreateFormBlock';
 import { useEnrichLeadWithAi, type AiPendingAction } from '@/hooks/api/useAi';
 import { AiActionPreviewCard } from '@/components/ai/AiActionPreviewCard';
 import { AiAgentPhaseTimeline } from '@/components/ai/AiAgentPhaseTimeline';
@@ -65,13 +66,6 @@ const userIdOf = (u: string | User): string => (typeof u === 'string' ? u : u?._
 
 const userLabel = (u: User) =>
   `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'User';
-
-/** Local datetime-local min value (yyyy-MM-dd'T'HH:mm) so past times cannot be chosen. */
-const getMinDateTimeLocal = () => {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-};
 
 const formatMeetingWhen = (iso: string) => {
   try {
@@ -318,10 +312,8 @@ const SharingMeetingsColumn = memo(({
   meetingsLoading,
   showMeetingForm,
   onToggleMeetingForm,
-  meetingForm,
-  onMeetingFormChange,
-  meetingParticipants,
-  onMeetingParticipantsChange,
+  leadId,
+  currentUser,
   onCreateMeeting,
   creatingMeeting,
   calendarConnected,
@@ -344,11 +336,9 @@ const SharingMeetingsColumn = memo(({
   meetingsLoading: boolean;
   showMeetingForm: boolean;
   onToggleMeetingForm: () => void;
-  meetingForm: { title: string; scheduledAt: string; meetingLink: string; description: string };
-  onMeetingFormChange: (field: string, value: string) => void;
-  meetingParticipants: User[];
-  onMeetingParticipantsChange: (users: User[]) => void;
-  onCreateMeeting: () => void;
+  leadId?: string;
+  currentUser?: User | null;
+  onCreateMeeting: (payload: CreateMeetingPayload) => void | Promise<void>;
   creatingMeeting: boolean;
   calendarConnected?: boolean;
   notes: string;
@@ -366,8 +356,6 @@ const SharingMeetingsColumn = memo(({
     bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.015)',
     '& fieldset': { border: 'none' },
   };
-  const minDateTimeLocal = getMinDateTimeLocal();
-
   return (
     <Box sx={{ flex: 1, p: { xs: 2, md: 2.5 }, minHeight: 0, overflowY: 'auto' }}>
       {/* Shared with */}
@@ -453,87 +441,17 @@ const SharingMeetingsColumn = memo(({
         <Box sx={{
           p: 2.5, mb: 3, borderRadius: '20px',
           bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-          display: 'flex', flexDirection: 'column', gap: 2,
         }}>
-          <TextField
-            fullWidth
-            label="Title"
-            value={meetingForm.title}
-            onChange={(e) => onMeetingFormChange('title', e.target.value)}
-            disabled={creatingMeeting}
-            InputProps={{ sx: fieldSx }}
+          <MeetingCreateFormBlock
+            calendarConnected={calendarConnected === true}
+            userOptions={dbUsers}
+            currentUser={currentUser}
+            resetKey={leadId ?? 'lead-meeting'}
+            isPending={creatingMeeting}
+            onSubmit={onCreateMeeting}
+            density="compact"
+            guestEmailsHelperText="Lead email is invited automatically when this meeting is linked to the lead."
           />
-          <TextField
-            fullWidth
-            label="Date & Time"
-            type="datetime-local"
-            value={meetingForm.scheduledAt}
-            onChange={(e) => onMeetingFormChange('scheduledAt', e.target.value)}
-            disabled={creatingMeeting}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ min: minDateTimeLocal }}
-            InputProps={{ sx: fieldSx }}
-          />
-          <TextField
-            fullWidth
-            label={calendarConnected ? 'Meeting link (optional)' : 'Meeting link'}
-            placeholder={calendarConnected ? 'Leave empty for Google Meet' : 'https://meet.google.com/...'}
-            value={meetingForm.meetingLink}
-            onChange={(e) => onMeetingFormChange('meetingLink', e.target.value)}
-            disabled={creatingMeeting}
-            InputProps={{ sx: fieldSx }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={2}
-            label="Notes"
-            value={meetingForm.description}
-            onChange={(e) => onMeetingFormChange('description', e.target.value)}
-            disabled={creatingMeeting}
-            InputProps={{ sx: fieldSx }}
-          />
-          <Autocomplete
-            multiple
-            options={dbUsers}
-            value={meetingParticipants}
-            onChange={(_e, value) => onMeetingParticipantsChange(value)}
-            getOptionLabel={userLabel}
-            isOptionEqualToValue={(a, b) => a._id === b._id}
-            disabled={creatingMeeting}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip {...getTagProps({ index })} key={option._id} label={userLabel(option)} size="small" />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Participants"
-                placeholder="Add participants..."
-                InputProps={{ ...params.InputProps, sx: fieldSx }}
-              />
-            )}
-          />
-          <Button
-            variant="contained"
-            onClick={onCreateMeeting}
-            disabled={
-              creatingMeeting
-              || !meetingForm.title
-              || !meetingForm.scheduledAt
-              || (!meetingForm.meetingLink && !calendarConnected)
-            }
-            sx={{
-              alignSelf: 'flex-end',
-              textTransform: 'none',
-              fontWeight: 750,
-              borderRadius: '14px',
-              background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
-            }}
-          >
-            {creatingMeeting ? 'Creating...' : 'Create Meeting'}
-          </Button>
         </Box>
       </Collapse>
 
@@ -635,13 +553,6 @@ export const QualifyEnrichModal = ({
   const [errors, setErrors] = useState<{ email?: string; profileUrl?: string }>({});
   const [sharedWith, setSharedWith] = useState<User[]>([]);
   const [showMeetingForm, setShowMeetingForm] = useState(false);
-  const [meetingForm, setMeetingForm] = useState({
-    title: '',
-    scheduledAt: '',
-    meetingLink: '',
-    description: '',
-  });
-  const [meetingParticipants, setMeetingParticipants] = useState<User[]>([]);
   const [pushToSalesBoardOpen, setPushToSalesBoardOpen] = useState(false);
   const [aiPendingAction, setAiPendingAction] = useState<AiPendingAction | null>(null);
   const enrichLeadWithAi = useEnrichLeadWithAi();
@@ -710,8 +621,6 @@ export const QualifyEnrichModal = ({
       }
 
       setShowMeetingForm(false);
-      setMeetingForm({ title: '', scheduledAt: '', meetingLink: '', description: '' });
-      setMeetingParticipants([]);
       setAiPendingAction(null);
     }
   }, [lead, open, dbUsers]);
@@ -845,38 +754,30 @@ export const QualifyEnrichModal = ({
     }
   };
 
-  const handleCreateMeeting = async () => {
-    if (!leadId) return;
-    const scheduledDate = new Date(meetingForm.scheduledAt);
+  const handleCreateMeeting = async (payload: CreateMeetingPayload) => {
+    if (!leadId || !payload.scheduledAt) return;
+    const scheduledDate = new Date(payload.scheduledAt);
     if (Number.isNaN(scheduledDate.getTime()) || scheduledDate < new Date()) {
       addToast({ message: 'Cannot schedule meetings in the past.', severity: 'warning' });
       return;
     }
     try {
-      const participantIds = meetingParticipants.map((u) => u._id);
-      const timeZone =
-        authUser?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const link = meetingForm.meetingLink?.trim();
+      const participantIds = (payload.participants ?? []).map((p) =>
+        typeof p === 'string' ? p : p._id,
+      );
       await createMeeting.mutateAsync({
-        title: meetingForm.title,
-        description: meetingForm.description || undefined,
-        ...(link ? { meetingLink: link } : {}),
-        scheduledAt: scheduledDate.toISOString(),
-        timeZone,
-        durationMinutes: 30,
-        participants: participantIds,
+        ...payload,
         leadId,
-        sendGoogleInvite: calendarConnected,
-      } as CreateMeetingPayload);
+      });
 
-      // Auto-sync meeting participants into lead sharedWith
       const existingIds = new Set(sharedWith.map((u) => u._id));
       const mergedUsers = [...sharedWith];
-      for (const p of meetingParticipants) {
-        if (!existingIds.has(p._id)) {
-          mergedUsers.push(p);
-          existingIds.add(p._id);
+      for (const pid of participantIds) {
+        if (existingIds.has(pid)) continue;
+        const user = dbUsers.find((u) => u._id === pid);
+        if (user) {
+          mergedUsers.push(user);
+          existingIds.add(pid);
         }
       }
       if (mergedUsers.length !== sharedWith.length) {
@@ -889,8 +790,6 @@ export const QualifyEnrichModal = ({
 
       addToast({ message: 'Meeting scheduled and linked to lead.', severity: 'success' });
       setShowMeetingForm(false);
-      setMeetingForm({ title: '', scheduledAt: '', meetingLink: '', description: '' });
-      setMeetingParticipants([]);
     } catch (err: any) {
       showApiError(err);
     }
@@ -972,11 +871,8 @@ export const QualifyEnrichModal = ({
     meetingsLoading,
     showMeetingForm,
     onToggleMeetingForm: () => setShowMeetingForm((v) => !v),
-    meetingForm,
-    onMeetingFormChange: (field: string, value: string) =>
-      setMeetingForm((prev) => ({ ...prev, [field]: value })),
-    meetingParticipants,
-    onMeetingParticipantsChange: setMeetingParticipants,
+    leadId,
+    currentUser: authUser,
     onCreateMeeting: handleCreateMeeting,
     creatingMeeting: createMeeting.isPending,
     calendarConnected,

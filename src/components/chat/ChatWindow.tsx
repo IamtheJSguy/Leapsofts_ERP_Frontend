@@ -104,10 +104,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   markReadMutateRef.current = markRead.mutate;
   const markReadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markReadInFlightRef = useRef<string | null>(null);
-  const scheduleMarkRead = useCallback((conversationId: string) => {
+  const scheduleMarkRead = useCallback((conversationId: string, immediate = false) => {
     clearUnread(conversationId);
-    if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
-    markReadDebounceRef.current = setTimeout(() => {
+    if (markReadDebounceRef.current) {
+      clearTimeout(markReadDebounceRef.current);
+      markReadDebounceRef.current = null;
+    }
+    const trigger = () => {
       if (markReadInFlightRef.current === conversationId) return;
       markReadInFlightRef.current = conversationId;
       markReadMutateRef.current(conversationId, {
@@ -117,7 +120,12 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           }
         },
       });
-    }, 400);
+    };
+    if (immediate) {
+      trigger();
+    } else {
+      markReadDebounceRef.current = setTimeout(trigger, 40);
+    }
   }, [clearUnread]);
   const { text, setText, removeDraft } = useChatDraft(activeConversationId);
   const [pendingFilesByConv, setPendingFilesByConv] = useState<
@@ -160,7 +168,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (!activeConversationId || activeConversationId.startsWith('mock-')) return;
 
     joinChat(activeConversationId);
-    scheduleMarkRead(activeConversationId);
+    scheduleMarkRead(activeConversationId, true);
 
     return () => {
       if (markReadDebounceRef.current) clearTimeout(markReadDebounceRef.current);
@@ -333,10 +341,32 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const senderRef = last.senderId || last.sender;
     const senderId = typeof senderRef === 'object' ? senderRef?._id : senderRef;
     if (senderId !== user?._id) {
-      scheduleMarkRead(activeConversationId);
+      const isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+      if (isVisible) {
+        scheduleMarkRead(activeConversationId, true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, activeConversationId, user?._id]);
+
+  // Mark read when user focuses or returns to the browser tab
+  useEffect(() => {
+    const onVisibilityOrFocus = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        activeConversationId &&
+        !activeConversationId.startsWith('mock-')
+      ) {
+        scheduleMarkRead(activeConversationId, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+    window.addEventListener('focus', onVisibilityOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+    };
+  }, [activeConversationId, scheduleMarkRead]);
 
   // Intercept and generate mock messages if this is a mock conversation
   const mockMessages = useMemo(() => {
@@ -433,10 +463,42 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     });
   }, [displayMessages, userMap, user?._id]);
 
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
+  const initialScrollDoneRef = useRef<string | null>(null);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+    bottomRef.current?.scrollIntoView({ behavior, block: 'end' });
+  }, []);
+
+  // When active conversation changes or resets, allow initial auto-scroll to bottom
   useEffect(() => {
     shouldStickToBottomRef.current = true;
     isPrependingRef.current = false;
+    initialScrollDoneRef.current = null;
   }, [activeConversationId]);
+
+  // Handle page reload / initial message render: Force scroll to bottom once messages finish initial loading
+  useEffect(() => {
+    if (!showLoader && displayMessages.length > 0 && messagesContainerRef.current) {
+      if (initialScrollDoneRef.current !== activeConversationId) {
+        initialScrollDoneRef.current = activeConversationId || null;
+        shouldStickToBottomRef.current = true;
+        scrollToBottom('auto');
+        const t1 = setTimeout(() => scrollToBottom('auto'), 50);
+        const t2 = setTimeout(() => scrollToBottom('auto'), 200);
+        const t3 = setTimeout(() => scrollToBottom('auto'), 450);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    }
+  }, [showLoader, displayMessages.length, activeConversationId, scrollToBottom]);
 
   const loadOlderMessages = useCallback(() => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -452,22 +514,13 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const el = messagesContainerRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    shouldStickToBottomRef.current = distanceFromBottom < 96;
+    if (!pendingImageScrollRef.current) {
+      shouldStickToBottomRef.current = distanceFromBottom < 100;
+    }
     if (el.scrollTop < 72) {
       loadOlderMessages();
     }
   }, [loadOlderMessages]);
-
-  const contentWrapperRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const el = messagesContainerRef.current;
-    if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior });
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior });
-    }
-  }, []);
 
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
@@ -478,8 +531,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       if (!isFetchingNextPage) isPrependingRef.current = false;
       return;
     }
-    if (shouldStickToBottomRef.current) {
+    if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
       scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
     }
   }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
 
@@ -489,21 +543,23 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const observer = new ResizeObserver(() => {
       if (isPrependingRef.current) return;
       if (shouldStickToBottomRef.current || pendingImageScrollRef.current) {
-        scrollToBottom('auto');
+        requestAnimationFrame(() => {
+          scrollToBottom('auto');
+        });
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, [showLoader, scrollToBottom]);
 
-  // Jab image load ho jaye (FileMessage se 'chat-image-loaded' event aata hai),
-  // scroll neeche le jaao agar hum ne abhi image bheji hai
+  // When image loads (FileMessage dispatches 'chat-image-loaded'), ensure scroll stays at bottom
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
     const handleImageLoaded = () => {
       if (pendingImageScrollRef.current || shouldStickToBottomRef.current) {
         shouldStickToBottomRef.current = true;
+        scrollToBottom('auto');
         requestAnimationFrame(() => scrollToBottom('auto'));
       }
     };
@@ -516,18 +572,20 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
+    // Force stick to bottom and lock it so any in-flight scroll or user position is overridden
     shouldStickToBottomRef.current = true;
-    // Agar image bhej rahe hain toh pendingImageScrollRef set karo
-    // taake image load hone ke baad bhi scroll force ho
-    if (pendingFile) {
-      pendingImageScrollRef.current = true;
-      if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
-      pendingImageTimerRef.current = setTimeout(() => {
-        pendingImageScrollRef.current = false;
-      }, 8000);
-    }
+    pendingImageScrollRef.current = true;
+    if (pendingImageTimerRef.current) clearTimeout(pendingImageTimerRef.current);
+    pendingImageTimerRef.current = setTimeout(() => {
+      pendingImageScrollRef.current = false;
+    }, 5000);
+
     scrollToBottom('auto');
     requestAnimationFrame(() => scrollToBottom('auto'));
+    setTimeout(() => scrollToBottom('auto'), 40);
+    setTimeout(() => scrollToBottom('auto'), 120);
+    setTimeout(() => scrollToBottom('auto'), 300);
+
     const replyToId = replyingTo?._id;
     const caption = text.trim();
 
@@ -984,7 +1042,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         overflowY: 'auto',
         transform: 'translateZ(0)',
         willChange: 'transform',
-        p: { xs: 1.5, md: 3 },
+        px: { xs: 1.5, md: 3 },
+        pt: { xs: 1.5, md: 2 },
+        pb: 1,
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -1071,7 +1131,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 </Box>
               );
             })}
-            <div ref={bottomRef} />
+            <div
+              ref={bottomRef}
+              style={{
+                height: 0,
+                minHeight: 0,
+                maxHeight: 0,
+                marginTop: -12,
+                padding: 0,
+                pointerEvents: 'none',
+              }}
+            />
           </Box>
         )}
       </Box>
@@ -1088,7 +1158,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ p: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 2, md: 3 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+      <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 0.5, pb: { xs: 1.5, md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
         {replyingTo && (
           <Box
             sx={{

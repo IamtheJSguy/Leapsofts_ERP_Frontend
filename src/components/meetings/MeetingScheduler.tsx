@@ -9,25 +9,12 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  TextField,
   CircularProgress,
   useTheme,
   Typography,
-  InputAdornment,
-  Autocomplete,
-  Chip,
-  Avatar,
-  Grid,
-  FormControl,
-  Select,
-  MenuItem,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
-import { ModernDatePicker } from '@/components/common/ModernDatePicker';
-import { ModernTimePicker } from '@/components/common/ModernTimePicker';
-import { GuestEmailChipInput } from '@/components/common/GuestEmailChipInput';
-import { useForm, Controller } from 'react-hook-form';
+import { MeetingFormFields } from '@/components/meetings/MeetingFormFields';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useMeetings, useCreateMeeting, useUpdateMeeting, useDeleteMeeting } from '@/hooks/api/useMeetings';
@@ -36,55 +23,23 @@ import { meetingSchema, type MeetingFormData } from '@/utils/validators';
 import { useUIStore } from '@/store/useUIStore';
 import type { Meeting } from '@/types';
 import { tokens } from '@/styles/tokens';
-import LabelIcon from '@mui/icons-material/Label';
-import VideocamIcon from '@mui/icons-material/Videocam';
 import EventIcon from '@mui/icons-material/Event';
-import GroupIcon from '@mui/icons-material/Group';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { canEditOrDeleteMeeting } from '@/utils/meetingPermissions';
-import { showApiError } from '@/utils/apiError';
+import { getApiErrorMessage, showApiError } from '@/utils/apiError';
+import axios from 'axios';
 import {
   getDefaultMeetingTimeZone,
-  listCommonTimeZones,
   utcToWallClock,
-  wallClockToUtcIso,
   getCalendarEventEnd,
 } from '@/utils/meetingTimezone';
 import { useCalendarStatus } from '@/hooks/api/useCalendar';
+import { buildMeetingSubmitPayload } from '@/utils/meetingForm';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
-
-const fieldCaptionSx = {
-  display: 'block',
-  mb: 0.75,
-  fontWeight: 700,
-  color: 'text.secondary',
-} as const;
-
-const modernSelectFieldSx = (isDarkMode: boolean) => ({
-  borderRadius: '12px',
-  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-  fontWeight: 600,
-  '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-  },
-  '&:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: tokens.brand.primaryMuted,
-  },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: tokens.brand.primary,
-    borderWidth: 1,
-  },
-  '& .MuiSelect-select': {
-    py: 1.25,
-    px: 2,
-    display: 'flex',
-    alignItems: 'center',
-  },
-});
 
 interface MeetingSchedulerProps {
   dialogOpen: boolean;
@@ -108,11 +63,12 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const isDarkMode = theme.palette.mode === 'dark';
   const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState('');
+  const [pendingSubmit, setPendingSubmit] = useState<MeetingFormData | null>(null);
   const { data: calendarStatus } = useCalendarStatus();
   const calendarConnected = calendarStatus?.connected === true;
   const defaultTimeZone = getDefaultMeetingTimeZone(currentUser ?? user);
-  const timeZoneOptions = useMemo(() => listCommonTimeZones(), []);
-
   // Filter meetings to only show those the current user is a participant of
   const myMeetings = meetings.filter((m: Meeting) => {
     if (!currentUser) return false;
@@ -165,6 +121,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         setValue('durationMinutes', editingMeeting.durationMinutes ?? 30);
         setValue('guestEmails', editingMeeting.guestEmails ?? []);
         setValue('sendGoogleInvite', calendarConnected);
+        if (calendarConnected) setValue('meetingLink', '');
         const participantIds = (editingMeeting.participants || []).map((p: any) =>
           typeof p === 'string' ? p : p._id
         );
@@ -177,6 +134,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         setValue('durationMinutes', 30);
         setValue('guestEmails', []);
         setValue('sendGoogleInvite', calendarConnected);
+        if (calendarConnected) setValue('meetingLink', '');
         const defaultParticipants = currentUser?._id ? [currentUser._id] : [];
         setValue('participants', defaultParticipants);
         if (selectedSlot) {
@@ -219,24 +177,27 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
     });
   };
 
-  const onSubmit = (data: MeetingFormData) => {
-    const scheduledIso = wallClockToUtcIso(data.scheduledAt, data.timeZone);
-    if (!editingMeeting && new Date(scheduledIso) < new Date()) {
+  const saveMeeting = (data: MeetingFormData, allowSchedulingConflict = false) => {
+    const payload = buildMeetingSubmitPayload(data, calendarConnected, {
+      ...(allowSchedulingConflict ? { allowSchedulingConflict: true } : {}),
+    });
+    if (!payload.scheduledAt) return;
+    if (!editingMeeting && new Date(payload.scheduledAt) < new Date()) {
       setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
       return;
     }
 
-    const trimmedLink = data.meetingLink?.trim();
-    const payload = {
-      title: data.title,
-      description: data.description,
-      ...(trimmedLink ? { meetingLink: trimmedLink } : {}),
-      scheduledAt: scheduledIso,
-      timeZone: data.timeZone,
-      durationMinutes: data.durationMinutes,
-      guestEmails: data.guestEmails ?? [],
-      sendGoogleInvite: calendarConnected ? data.sendGoogleInvite : false,
-      participants: data.participants ?? [],
+    const onConflictError = (err: unknown, formData: MeetingFormData) => {
+      const code = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: { code?: string } })?.error?.code
+        : undefined;
+      if (code === 'MEETING_CONFLICT') {
+        setPendingSubmit(formData);
+        setConflictMessage(getApiErrorMessage(err));
+        setConflictDialogOpen(true);
+        return;
+      }
+      showApiError(err);
     };
 
     if (editingMeeting) {
@@ -247,20 +208,21 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             addToast({ message: 'Meeting updated successfully', severity: 'success' });
             handleClose();
           },
-        }
-      );
-    } else {
-      createMeeting.mutate(
-        payload,
-        {
-          onSuccess: () => {
-            addToast({ message: 'Meeting scheduled successfully', severity: 'success' });
-            handleClose();
-          },
+          onError: (err) => onConflictError(err, data),
         },
       );
+    } else {
+      createMeeting.mutate(payload, {
+        onSuccess: () => {
+          addToast({ message: 'Meeting scheduled successfully', severity: 'success' });
+          handleClose();
+        },
+        onError: (err) => onConflictError(err, data),
+      });
     }
   };
+
+  const onSubmit = (data: MeetingFormData) => saveMeeting(data, false);
 
   const eventPropGetter = (event: any) => {
     const meeting = event.resource as Meeting | undefined;
@@ -485,284 +447,14 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               minHeight: 0,
             }}
           >
-            <TextField
-              {...register('title')}
-              label="Meeting Title *"
-              placeholder="e.g. Sales Weekly Sync"
-              fullWidth
-              error={!!errors.title}
-              helperText={errors.title?.message}
-              sx={{
-                mt: 1,
-                mb: errors.title ? 1.5 : 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '16px',
-                }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LabelIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              {...register('description')}
-              label="Description (optional)"
-              placeholder="e.g. Weekly sync to review pipeline progress..."
-              fullWidth
-              multiline
-              minRows={2}
-              maxRows={4}
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '16px',
-                }
-              }}
-            />
-            <TextField
-              {...register('meetingLink')}
-              label={calendarConnected ? 'Meeting Link (optional)' : 'Meeting Link (URL) *'}
-              placeholder={
-                calendarConnected
-                  ? 'Leave empty for Google Meet'
-                  : 'https://meet.google.com/...'
-              }
-              fullWidth
-              error={!!errors.meetingLink}
-              helperText={
-                errors.meetingLink?.message ||
-                (calendarConnected
-                  ? 'When Google Calendar is connected, a Meet link is created automatically if you leave this blank.'
-                  : undefined)
-              }
-              sx={{
-                mb: errors.meetingLink ? 1.5 : calendarConnected ? 1 : 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '16px',
-                }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <VideocamIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            {calendarConnected && (
-              <Controller
-                name="sendGoogleInvite"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    sx={{ mb: 3, display: 'block', ml: 0 }}
-                    control={
-                      <Switch
-                        checked={field.value ?? true}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                      />
-                    }
-                    label="Create on Google Calendar and send invites"
-                  />
-                )}
-              />
-            )}
-
-            <Controller
-              name="participants"
+            <MeetingFormFields
               control={control}
-              render={({ field, fieldState }) => (
-                <Autocomplete
-                  multiple
-                  options={dbUsers}
-                  getOptionLabel={(option) => {
-                    const name = `${option.firstName || ''} ${option.lastName || ''}`.trim();
-                    return name || option.email;
-                  }}
-                  value={dbUsers.filter(u => field.value?.includes(u._id))}
-                  onChange={(_, newValue) => {
-                    field.onChange(newValue.map(u => u._id));
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Participants *"
-                      placeholder="Search team members..."
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={{
-                        mb: fieldState.error ? 1.5 : 3,
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '16px',
-                        }
-                      }}
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <InputAdornment position="start">
-                              <GroupIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                            </InputAdornment>
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
-                  renderOption={(props, option) => {
-                    const initials = `${option.firstName?.charAt(0) || ''}${option.lastName?.charAt(0) || ''}`.toUpperCase() || '?';
-                    const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
-                    return (
-                      <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-                        <Avatar src={option.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                          {initials}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 650 }}>{name}</Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{option.email}</Typography>
-                        </Box>
-                      </Box>
-                    );
-                  }}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => {
-                      const name = `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email;
-                      const { key, ...tagProps } = getTagProps({ index });
-                      return (
-                        <Chip
-                          key={option._id}
-                          label={name}
-                          size="small"
-                          {...tagProps}
-                          sx={{ borderRadius: '8px', fontWeight: 600 }}
-                        />
-                      );
-                    })
-                  }
-                />
-              )}
-            />
-
-            <Controller
-              name="scheduledAt"
-              control={control}
-              render={({ field, fieldState }) => {
-                let dateObj: Date | null = null;
-                let time24 = '09:00';
-                if (field.value) {
-                  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(field.value);
-                  if (match) {
-                    dateObj = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-                    time24 = `${match[4]}:${match[5]}`;
-                  }
-                }
-
-                const handleDateChange = (newDate: Date | null) => {
-                  if (!newDate) {
-                    field.onChange('');
-                    return;
-                  }
-                  const datePart = format(newDate, 'yyyy-MM-dd');
-                  field.onChange(`${datePart}T${time24}`);
-                };
-
-                const handleTimeChange = (newTime24: string) => {
-                  const currentDate = dateObj || new Date();
-                  const datePart = format(currentDate, 'yyyy-MM-dd');
-                  field.onChange(`${datePart}T${newTime24}`);
-                };
-
-                return (
-                  <Box sx={{ mb: fieldState.error ? 1.5 : 2 }}>
-                    <Grid container spacing={2} alignItems="flex-start">
-                      <Grid item xs={12} sm={4}>
-                        <ModernDatePicker
-                          label="Meeting Date *"
-                          value={dateObj}
-                          onChange={handleDateChange}
-                          minDate={!editingMeeting ? new Date() : undefined}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <ModernTimePicker
-                          label="Meeting Time *"
-                          value={time24}
-                          onChange={handleTimeChange}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <Controller
-                          name="durationMinutes"
-                          control={control}
-                          render={({ field: durField }) => (
-                            <Box sx={{ width: '100%' }}>
-                              <Typography variant="caption" sx={fieldCaptionSx}>
-                                Duration
-                              </Typography>
-                              <FormControl fullWidth>
-                                <Select
-                                  value={durField.value ?? 30}
-                                  onChange={(e) => durField.onChange(Number(e.target.value))}
-                                  sx={modernSelectFieldSx(isDarkMode)}
-                                >
-                                  {[15, 30, 45, 60, 90, 120].map((mins) => (
-                                    <MenuItem key={mins} value={mins}>{mins} min</MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
-                            </Box>
-                          )}
-                        />
-                      </Grid>
-                    </Grid>
-                    {fieldState.error && (
-                      <Typography variant="caption" sx={{ color: 'error.main', mt: 0.75, display: 'block', fontWeight: 600 }}>
-                        {fieldState.error.message}
-                      </Typography>
-                    )}
-                  </Box>
-                );
-              }}
-            />
-
-            <Controller
-              name="timeZone"
-              control={control}
-              render={({ field }) => (
-                <Box sx={{ width: '100%', mb: 3 }}>
-                  <Typography variant="caption" sx={fieldCaptionSx}>
-                    Timezone
-                  </Typography>
-                  <FormControl fullWidth>
-                    <Select
-                      value={field.value || defaultTimeZone}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      sx={modernSelectFieldSx(isDarkMode)}
-                    >
-                      {timeZoneOptions.map((tz) => (
-                        <MenuItem key={tz} value={tz}>{tz}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-              )}
-            />
-
-            <Controller
-              name="guestEmails"
-              control={control}
-              render={({ field }) => (
-                <GuestEmailChipInput
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                  helperText="Lead email is invited automatically when a lead is linked."
-                  sx={{ mb: 3 }}
-                />
-              )}
+              register={register}
+              errors={errors}
+              calendarConnected={calendarConnected}
+              userOptions={dbUsers}
+              defaultTimeZone={defaultTimeZone}
+              isCreate={!editingMeeting}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
@@ -858,6 +550,29 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
         isPending={deleteMeeting.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={conflictDialogOpen}
+        title="Scheduling conflict"
+        message={
+          conflictMessage ||
+          'Another meeting overlaps this time. Schedule anyway?'
+        }
+        confirmLabel="Schedule anyway"
+        cancelLabel="Change time"
+        isPending={createMeeting.isPending || updateMeeting.isPending}
+        onConfirm={() => {
+          if (pendingSubmit) {
+            setConflictDialogOpen(false);
+            saveMeeting(pendingSubmit, true);
+            setPendingSubmit(null);
+          }
+        }}
+        onCancel={() => {
+          setConflictDialogOpen(false);
+          setPendingSubmit(null);
+        }}
       />
     </Box>
   );
