@@ -30,6 +30,7 @@ const chatApi = {
     conversationId: string;
     content: string;
     type?: string;
+    clientMessageId?: string;
     fileUrl?: string;
     driveFileId?: string;
     driveFileName?: string;
@@ -38,7 +39,50 @@ const chatApi = {
     driveIconLink?: string;
     driveThumbnailLink?: string;
     replyTo?: string;
-  }) => api.post(`/chat/conversations/${data.conversationId}/messages`, data),
+  }): Promise<{ data: { data: Message } }> => {
+    const clientMessageId =
+      data.clientMessageId || `cmsg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const payload = { ...data, clientMessageId };
+
+    const socket = getSocket();
+    if (socket.connected) {
+      return new Promise<{ data: { data: Message } }>((resolve) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          // Fallback to HTTP POST on 3s timeout (guaranteed delivery)
+          api
+            .post<{ data: Message }>(`/chat/conversations/${data.conversationId}/messages`, payload)
+            .then(resolve)
+            .catch((err) => {
+              throw err;
+            });
+        }, 3000);
+
+        socket.emit(
+          SOCKET_EVENTS.MESSAGE_SEND,
+          payload,
+          (response?: { success: boolean; data?: Message; error?: string }) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (response?.success && response.data) {
+              resolve({ data: { data: response.data } });
+            } else {
+              // Socket error or rejected; fallback to HTTP POST
+              api
+                .post<{ data: Message }>(`/chat/conversations/${data.conversationId}/messages`, payload)
+                .then(resolve);
+            }
+          },
+        );
+      });
+    }
+
+    // Socket not connected; send via HTTP POST directly
+    return api.post<{ data: Message }>(`/chat/conversations/${data.conversationId}/messages`, payload);
+  },
   sendChatImage: (data: {
     conversationId: string;
     file: File;
@@ -353,7 +397,8 @@ export const useSendMessage = () => {
       });
 
       const user = useAuthStore.getState().user;
-      const tempId = `optimistic-${Date.now()}`;
+      const tempId = `cmsg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      (variables as { clientMessageId?: string }).clientMessageId = tempId;
       const replyTo = resolveOptimisticReplyTo(
         queryClient,
         variables.conversationId,
@@ -361,6 +406,7 @@ export const useSendMessage = () => {
       );
       const optimisticMessage: Message = {
         _id: tempId,
+        clientMessageId: tempId,
         conversationId: variables.conversationId,
         sender: user,
         senderId: user?._id,

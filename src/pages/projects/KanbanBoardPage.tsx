@@ -1588,9 +1588,21 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const openedCardIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!open) {
+      openedCardIdRef.current = null;
+      return;
+    }
+
     if (task && open) {
+      const isNewCardOpen = openedCardIdRef.current !== task.id;
+      if (isNewCardOpen) {
+        openedCardIdRef.current = task.id;
+        setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
+      }
+
       setEditTitle(task.title || '');
       setEditDesc(task.description || '');
       setPendingAssignees(Array.isArray(task.rawCard?.assignedTo)
@@ -1601,7 +1613,6 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       setPendingDueTime(dueParts.time);
       setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
       setPendingPriority(task.rawCard?.priority || 'medium');
-      setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
       setNewSubPriority((task.rawCard?.priority as keyof typeof PRIORITY_CONFIG) || 'medium');
     }
   }, [task, open, searchParams]);
@@ -1725,7 +1736,15 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const lead = task.lead;
   const rawCard = task.rawCard;
-  const commentsList = rawCard?.comments || [];
+  const commentsList = useMemo(() => {
+    const list = (rawCard?.comments || []).filter((c: any) => c.isActive !== false);
+    return [...list].sort((a: any, b: any) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
+  }, [rawCard?.comments]);
+  const commentsCount = commentsList.length;
   const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
     : [];
@@ -1742,15 +1761,15 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         : lead?._id;
 
   const handleSendComment = () => {
-    if (commentText.trim() && !addCommentMutation.isPending) {
+    const textToSend = commentText.trim();
+    if (textToSend && !addCommentMutation.isPending) {
+      setCommentText('');
       addCommentMutation.mutate({
         cardId: task.id,
-        data: { text: commentText.trim() }
+        data: { text: textToSend }
       }, {
-        onSuccess: () => {
-          setCommentText('');
-        },
         onError: (err: any) => {
+          setCommentText(textToSend);
           showApiError(err);
         },
       });
@@ -2045,7 +2064,10 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             {[
               { id: 'details', label: 'Details & Assignees' },
               { id: 'subtasks', label: 'Sub-tasks' },
-              { id: 'comments', label: 'Comments' },
+              {
+                id: 'comments',
+                label: commentsCount > 0 ? `Comments (${commentsCount})` : 'Comments',
+              },
             ].map((tab) => (
               <Button
                 key={tab.id}
@@ -2861,12 +2883,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {commentsList.map((comm: any, idx: number) => {
-                    const commentUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
-                    const isCommentAuthor = currentUser && currentUser._id === commentUserId;
+                    const rawUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
+                    const commentUserId = typeof rawUserId === 'object' && rawUserId ? rawUserId._id : rawUserId;
+                    const isCommentAuthor = Boolean(currentUser && commentUserId && currentUser._id === commentUserId);
 
                     let matchingUser: any = null;
                     if (typeof comm.author === 'object' && comm.author?.firstName) {
                       matchingUser = comm.author;
+                    }
+
+                    if (!matchingUser && typeof comm.userId === 'object' && comm.userId?.firstName) {
+                      matchingUser = comm.userId;
                     }
 
                     if (!matchingUser && commentUserId) {
@@ -2883,7 +2910,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     const initial = name.charAt(0).toUpperCase() || 'U';
 
                     return (
-                      <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
+                      <Box key={comm._id ? String(comm._id) : `comm-${idx}`} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
                         <Avatar src={matchingUser?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
