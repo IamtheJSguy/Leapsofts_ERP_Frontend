@@ -37,7 +37,6 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const [aiDefaultUserTokenLimit, setAiDefaultUserTokenLimit] = useState<number>(10000);
   const [aiDefaultProvider, setAiDefaultProvider] = useState<'gemini' | 'claude'>('gemini');
   const [aiEnrichmentEnabled, setAiEnrichmentEnabled] = useState<boolean>(true);
-
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -84,7 +83,9 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         },
       },
       {
-        onSuccess: () => addToast({ message: 'Settings saved successfully!', severity: 'success' }),
+        onSuccess: () => {
+          addToast({ message: 'Settings saved successfully!', severity: 'success' });
+        },
         onError: (err) => showApiError(err),
       },
     );
@@ -251,6 +252,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                     disabled={readOnly}
                   />
                 </Box>
+
               </Box>
             </Box>
           </Grid>
