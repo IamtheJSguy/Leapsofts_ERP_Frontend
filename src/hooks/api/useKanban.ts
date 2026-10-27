@@ -405,24 +405,29 @@ export const useAddComment = (boardId?: string) => {
     mutationFn: kanbanApi.addComment,
     onSuccess: (res, variables) => {
       const card = res?.data?.data || res?.data;
-      if (card?.comments && boardId) {
-        queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
-          if (!old?.cards) return old;
-          return {
-            ...old,
-            cards: old.cards.map((c: any) =>
-              c._id === variables.cardId
-                ? {
-                    ...c,
-                    ...card,
-                    comments: card.comments,
-                  }
-                : c
-            ),
-          };
+      if (card?.comments) {
+        if (boardId) {
+          queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
+            if (!old?.cards) return old;
+            return {
+              ...old,
+              cards: old.cards.map((c: any) =>
+                c._id === variables.cardId
+                  ? {
+                      ...c,
+                      ...card,
+                      comments: card.comments,
+                    }
+                  : c
+              ),
+            };
+          });
+        }
+        queryClient.setQueryData(kanbanCardKey(variables.cardId), (old: any) => {
+          if (!old) return card;
+          return { ...old, ...card, comments: card.comments };
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
     },
   });
@@ -595,24 +600,29 @@ export const useEditComment = (boardId?: string) => {
     mutationFn: kanbanApi.editComment,
     onSuccess: (res, variables) => {
       const card = res?.data?.data || res?.data;
-      if (card?.comments && boardId) {
-        queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
-          if (!old?.cards) return old;
-          return {
-            ...old,
-            cards: old.cards.map((c: any) =>
-              c._id === variables.cardId
-                ? {
-                    ...c,
-                    ...card,
-                    comments: card.comments,
-                  }
-                : c
-            ),
-          };
+      if (card?.comments) {
+        if (boardId) {
+          queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
+            if (!old?.cards) return old;
+            return {
+              ...old,
+              cards: old.cards.map((c: any) =>
+                c._id === variables.cardId
+                  ? {
+                      ...c,
+                      ...card,
+                      comments: card.comments,
+                    }
+                  : c
+              ),
+            };
+          });
+        }
+        queryClient.setQueryData(kanbanCardKey(variables.cardId), (old: any) => {
+          if (!old) return card;
+          return { ...old, ...card, comments: card.comments };
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
     },
   });
@@ -624,24 +634,29 @@ export const useDeleteComment = (boardId?: string) => {
     mutationFn: kanbanApi.deleteComment,
     onSuccess: (res, variables) => {
       const card = res?.data?.data || res?.data;
-      if (card?.comments && boardId) {
-        queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
-          if (!old?.cards) return old;
-          return {
-            ...old,
-            cards: old.cards.map((c: any) =>
-              c._id === variables.cardId
-                ? {
-                    ...c,
-                    ...card,
-                    comments: card.comments,
-                  }
-                : c
-            ),
-          };
+      if (card?.comments) {
+        if (boardId) {
+          queryClient.setQueryData(kanbanBoardKey(boardId), (old: any) => {
+            if (!old?.cards) return old;
+            return {
+              ...old,
+              cards: old.cards.map((c: any) =>
+                c._id === variables.cardId
+                  ? {
+                      ...c,
+                      ...card,
+                      comments: card.comments,
+                    }
+                  : c
+              ),
+            };
+          });
+        }
+        queryClient.setQueryData(kanbanCardKey(variables.cardId), (old: any) => {
+          if (!old) return card;
+          return { ...old, ...card, comments: card.comments };
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['kanbanBoard', boardId] });
       queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] });
     },
   });
