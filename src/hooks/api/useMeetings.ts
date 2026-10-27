@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { CreateMeetingPayload, Meeting } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,6 +12,16 @@ const meetingApi = {
     api.put(`/meetings/${id}`, data),
   deleteMeeting: (id: string) => api.delete(`/meetings/${id}`),
   retryCalendarSync: (id: string) => api.post(`/meetings/${id}/calendar/sync`),
+};
+
+export const prefetchMeetings = (client: QueryClient) => {
+  const organizationId = useAuthStore.getState().user?.organizationId;
+  const filters: Record<string, string> = {};
+  return client.prefetchQuery({
+    queryKey: ['meetings', organizationId, filters],
+    queryFn: () => meetingApi.getMeetings(filters).then((r) => r.data.data),
+    staleTime: 60_000,
+  });
 };
 
 export const useMeetings = (

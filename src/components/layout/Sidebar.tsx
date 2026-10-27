@@ -31,6 +31,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { prefetchNavRoute } from '@/router/prefetchRoute';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
@@ -371,6 +372,8 @@ export const Sidebar = () => {
                       <ListItemButton
                         component={NavLink}
                         to={item.path}
+                        onMouseEnter={() => prefetchNavRoute(item.path)}
+                        onFocus={() => prefetchNavRoute(item.path)}
                         onClick={() => isMobile && toggleSidebar()}
                         sx={{
                           borderRadius: '10px',

@@ -295,7 +295,7 @@ export const useKanbanBoard = (id: string | undefined) => {
     queryKey: ['kanbanBoard', id, organizationId],
     queryFn: () => kanbanApi.getBoard(id!).then((r) => r.data.data),
     enabled: !!id,
-    staleTime: 0,                  // Always re-fetch when invalidated
+    staleTime: 30_000,
     refetchOnWindowFocus: true,    // Catch missed socket updates when tab is refocused
   });
 };

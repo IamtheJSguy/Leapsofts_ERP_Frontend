@@ -49,6 +49,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens, coldOutreachStatusTokens, coldResponseStatusTokens } from '@/styles/tokens';
+import { PipelineRowSkeleton, SalesTableSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import type { Lead, OutreachChannel } from '@/types';
 import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp, useAddLeadComment } from '@/hooks/api/useLeads';
 import { getLatestLeadComment, leadHasComment } from '@/utils/getLatestLeadComment';
@@ -1307,10 +1308,8 @@ export const SalesPage = () => {
       </Box>
 
       {/* Stats Counter Row */}
-      {isPipelineLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, mb: 4.5 }}>
-          <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
-        </Box>
+      {isPipelineLoading && !pipelineStats ? (
+        <PipelineRowSkeleton />
       ) : (
         <>
         <Box
@@ -2155,9 +2154,7 @@ export const SalesPage = () => {
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-              <CircularProgress sx={{ color: tokens.brand.primary }} />
-            </Box>
+            <SalesTableSkeleton />
           ) : prospects.length === 0 && !isAddingInline ? (
             /* Unlinked Prospects View - Show Empty State Graphic below the toolbar */
             <Box

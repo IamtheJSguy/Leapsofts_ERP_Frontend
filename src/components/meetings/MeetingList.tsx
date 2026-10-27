@@ -18,6 +18,7 @@ import {
   InputAdornment,
   Autocomplete,
 } from '@mui/material';
+import { MeetingCardsSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -139,12 +140,8 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
     canEditOrDeleteMeeting(meeting, currentUser ?? user, { isElevated, allUsers: dbUsers });
 
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+  if (isLoading && myMeetings.length === 0) {
+    return <MeetingCardsSkeleton />;
   }
 
   if (myMeetings.length === 0) {
