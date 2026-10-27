@@ -48,17 +48,17 @@ const chatApi = {
     if (socket.connected) {
       return new Promise<{ data: { data: Message } }>((resolve) => {
         let settled = false;
+        // Fast 800ms fallback: WebSocket ACK should arrive in <100ms. If socket stalls, fallback quickly to HTTP
         const timer = setTimeout(() => {
           if (settled) return;
           settled = true;
-          // Fallback to HTTP POST on 3s timeout (guaranteed delivery)
           api
             .post<{ data: Message }>(`/chat/conversations/${data.conversationId}/messages`, payload)
             .then(resolve)
             .catch((err) => {
               throw err;
             });
-        }, 3000);
+        }, 800);
 
         socket.emit(
           SOCKET_EVENTS.MESSAGE_SEND,
@@ -78,6 +78,13 @@ const chatApi = {
           },
         );
       });
+    }
+
+    // Socket not connected; attempt eager reconnect in background so future messages use WebSocket
+    try {
+      socket.connect();
+    } catch {
+      // Ignore background connect attempt failure
     }
 
     // Socket not connected; send via HTTP POST directly
