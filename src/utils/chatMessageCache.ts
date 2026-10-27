@@ -24,6 +24,9 @@ const normalizeComparableContent = (content: string, type?: string): string => {
 /** Whether an optimistic row likely represents the same outgoing message as the server payload. */
 export const optimisticMatchesIncoming = (pending: Message, incoming: Message): boolean => {
   if (!pending.isPending) return false;
+  if (pending.clientMessageId && incoming.clientMessageId) {
+    return pending.clientMessageId === incoming.clientMessageId;
+  }
   const pendingType = pending.type || 'text';
   const incomingType = incoming.type || 'text';
   if (pendingType !== incomingType) return false;
