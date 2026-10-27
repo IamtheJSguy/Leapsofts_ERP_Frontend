@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Suspense, useState, useMemo, useEffect, useRef } from 'react';
 import {
   Typography,
   Box,
@@ -13,10 +13,14 @@ import {
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { ReportTable } from '@/components/reports/ReportTable';
 import { ReportExportButton } from '@/components/reports/ReportExportButton';
-import { AttendanceReportView } from '@/components/reports/AttendanceReportView';
-import { KpiPerformanceView } from '@/components/reports/KpiPerformanceView';
-import { CombinedKpiView, fromLegacyKpiPerformance } from '@/components/reports/CombinedKpiView';
-import { TeamOverviewView } from '@/components/reports/TeamOverviewView';
+import {
+  AttendanceReportView,
+  CombinedKpiView,
+  KpiPerformanceView,
+  TeamOverviewView,
+} from '@/components/reports/lazyReportViews';
+import { fromLegacyKpiPerformance } from '@/components/reports/combinedKpiLegacy';
+import { ReportResultSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useReport } from '@/hooks/api/useReports';
@@ -426,7 +430,7 @@ const ReportsPage = () => {
           />
 
           {/* Report Result View */}
-          {renderReportResult()}
+          <Suspense fallback={<ReportResultSkeleton />}>{renderReportResult()}</Suspense>
 
           {/* Export Toolbar */}
           {selectedReport && selectedReport.status === 'completed' && (

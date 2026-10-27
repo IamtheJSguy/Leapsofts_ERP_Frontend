@@ -10,7 +10,6 @@ import {
   IconButton,
   Avatar,
   AvatarGroup,
-  CircularProgress,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -25,6 +24,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FolderIcon from '@mui/icons-material/Folder';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { tokens } from '@/styles/tokens';
+import { ProjectsGridSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import type { ProjectFormData } from '@/components/projects/ProjectFormDialog';
@@ -307,9 +307,7 @@ const ProjectsPage = () => {
 
       {/* Grid or List representation */}
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
-          <CircularProgress sx={{ color: tokens.brand.primary }} />
-        </Box>
+        <ProjectsGridSkeleton />
       ) : viewMode === 'grid' ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(320px, 1fr))' }, gap: 3 }}>
           {filteredProjects.length === 0 && (

@@ -9,6 +9,7 @@ import {
   Popover, Checkbox, Autocomplete, Collapse,
 } from '@mui/material';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { KanbanPageSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -3688,12 +3689,8 @@ export const KanbanBoardPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
-    );
+  if (isLoading && !board) {
+    return <KanbanPageSkeleton />;
   }
 
   if (error || !actualBoard) {

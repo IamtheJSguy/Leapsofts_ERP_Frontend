@@ -71,7 +71,7 @@ export const NotificationPanel = () => {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
-  } = useInfiniteNotifications(30);
+  } = useInfiniteNotifications(30, { enabled: notificationPanelOpen });
   const { data: serverUnreadCount } = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();

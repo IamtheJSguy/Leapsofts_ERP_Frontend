@@ -1,7 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import html2pdf from 'html2pdf.js';
 import api from '@/lib/axios';
 import { InvoiceTemplatePreview, type InvoicePreviewData } from '@/components/invoices/InvoiceTemplatePreview';
 import type { InvoiceRecord, InvoiceBankAccount } from '@/types/invoice';
@@ -176,6 +175,7 @@ const elementToPdfBlobInBrowser = async (element: HTMLElement): Promise<Blob> =>
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
+    const { default: html2pdf } = await import('html2pdf.js');
     const blob = await html2pdf().set(pdfOptions).from(frame).outputPdf('blob');
     if (!(blob instanceof Blob) || blob.size < 100) {
       throw new Error('Could not render the invoice template to PDF.');

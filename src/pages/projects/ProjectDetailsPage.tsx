@@ -36,6 +36,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import WorkIcon from '@mui/icons-material/Work';
 
 import { tokens } from '@/styles/tokens';
+import { ProjectDetailsSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -332,12 +333,8 @@ export const ProjectDetailsPage = () => {
     return dbUsers.find((u) => u._id === id);
   }, [project?.ownerId, dbUsers]);
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
-    );
+  if (isLoading && !project) {
+    return <ProjectDetailsSkeleton />;
   }
 
   if (!project) {
