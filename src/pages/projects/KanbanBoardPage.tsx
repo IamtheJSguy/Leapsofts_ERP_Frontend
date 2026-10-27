@@ -2124,7 +2124,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         <Box sx={{ px: 3, pt: 3, pb: 1 }}>
           <Box
             sx={{
-              display: 'inline-flex',
+              display: 'flex',
+              width: '100%',
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
               borderRadius: '20px',
               p: 0.5,
@@ -2143,11 +2144,13 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as 'details' | 'subtasks' | 'comments')}
                 sx={{
-                  px: 3, py: 0.75,
+                  flex: 1,
+                  px: 1.5, py: 0.75,
                   borderRadius: '16px',
                   textTransform: 'none',
                   fontWeight: 700,
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
+                  whiteSpace: 'nowrap',
                   color: activeTab === tab.id
                     ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
