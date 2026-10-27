@@ -1732,10 +1732,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     runFieldUpdates(finishOk);
   };
 
-  if (!task) return null;
-
-  const lead = task.lead;
-  const rawCard = task.rawCard;
+  // NOTE: useMemo must come BEFORE any early return to obey the Rules of Hooks.
+  const rawCard = task?.rawCard;
   const commentsList = useMemo(() => {
     const list = (rawCard?.comments || []).filter((c: any) => c.isActive !== false);
     return [...list].sort((a: any, b: any) => {
@@ -1744,6 +1742,10 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       return timeA - timeB;
     });
   }, [rawCard?.comments]);
+
+  if (!task) return null;
+
+  const lead = task.lead;
   const commentsCount = commentsList.length;
   const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
