@@ -71,7 +71,7 @@ import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
-  useEditComment, useDeleteComment,
+  useEditComment, useDeleteComment, useCard,
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
@@ -1732,16 +1732,51 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     runFieldUpdates(finishOk);
   };
 
+  // Fetch detailed card data (including comments) directly from /kanban/cards/:cardId
+  const { data: cardDetail } = useCard(task?.id);
+  const [localComments, setLocalComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const incoming = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+    if (incoming.length > 0) {
+      setLocalComments((prev) => {
+        const map = new Map<string, any>();
+        prev.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        incoming.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [task?.id, cardDetail?.comments, task?.rawCard?.comments]);
+
+  useEffect(() => {
+    if (task?.id) {
+      const initial = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+      if (initial.length > 0) {
+        setLocalComments(initial);
+      }
+    }
+  }, [task?.id]);
+
   // NOTE: useMemo must come BEFORE any early return to obey the Rules of Hooks.
   const rawCard = task?.rawCard;
+  const rawComments = localComments.length > 0
+    ? localComments
+    : ((cardDetail?.comments?.length ? cardDetail.comments : rawCard?.comments) || []);
+
   const commentsList = useMemo(() => {
-    const list = (rawCard?.comments || []).filter((c: any) => c.isActive !== false);
+    const list = rawComments.filter((c: any) => c.isActive !== false);
     return [...list].sort((a: any, b: any) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeA - timeB;
     });
-  }, [rawCard?.comments]);
+  }, [rawComments]);
 
   if (!task) return null;
 
@@ -1766,11 +1801,28 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     const textToSend = commentText.trim();
     if (textToSend && !addCommentMutation.isPending) {
       setCommentText('');
+      const optimisticComment = {
+        _id: `temp-${Date.now()}`,
+        userId: currentUser?._id,
+        author: currentUser,
+        text: textToSend,
+        createdAt: new Date().toISOString(),
+        isActive: true,
+      };
+      setLocalComments((prev) => [...prev, optimisticComment]);
+
       addCommentMutation.mutate({
         cardId: task.id,
         data: { text: textToSend }
       }, {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
+        },
         onError: (err: any) => {
+          setLocalComments((prev) => prev.filter((c) => c._id !== optimisticComment._id));
           setCommentText(textToSend);
           showApiError(err);
         },
@@ -1780,12 +1832,20 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const handleSaveCommentEdit = (commentId: string) => {
     if (editCommentText.trim()) {
+      const newText = editCommentText.trim();
+      setLocalComments((prev) =>
+        prev.map((c) => (c._id === commentId ? { ...c, text: newText } : c))
+      );
       editCommentMutation.mutate({
         cardId: task.id,
         commentId,
-        text: editCommentText.trim()
+        text: newText
       }, {
-        onSuccess: () => {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
           setEditingCommentId(null);
           setEditCommentText('');
         },
@@ -1814,9 +1874,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const handleConfirmAction = () => {
     setConfirmOpen(false);
     if (confirmAction === 'deleteComment' && targetCommentId) {
+      setLocalComments((prev) => prev.filter((c) => c._id !== targetCommentId));
       deleteCommentMutation.mutate({
         cardId: task.id,
         commentId: targetCommentId
+      }, {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
+        }
       });
     } else if (confirmAction === 'deleteCard') {
       deleteCardMutation.mutate(task.id, {
