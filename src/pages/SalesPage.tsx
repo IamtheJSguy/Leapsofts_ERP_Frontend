@@ -487,59 +487,53 @@ export const SalesPage = () => {
   );
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
   const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
+  const markingSentInFlight = useRef(new Set<string>());
+  const markingAcceptedInFlight = useRef(new Set<string>());
 
-  const handleAdvanceConnectionStatus = useCallback((id: string, currentStatus?: string) => {
-    if (markingAcceptedIds[id]) return;
+  const handleAdvanceConnectionStatus = useCallback(async (id: string, currentStatus?: string) => {
+    if (markingAcceptedInFlight.current.has(id)) return;
     const nextStatus = currentStatus === 'sent' ? 'accepted' : currentStatus === 'pending' || !currentStatus
       ? 'sent'
       : null;
     if (!nextStatus) return;
+    markingAcceptedInFlight.current.add(id);
     setMarkingAcceptedIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { connectionStatus: nextStatus } },
-      {
-        onSuccess: () => {
-          addToast({
-            message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
-            severity: 'success',
-          });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingAcceptedIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingAcceptedIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { connectionStatus: nextStatus } });
+      addToast({
+        message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
+        severity: 'success',
+      });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingAcceptedInFlight.current.delete(id);
+      setMarkingAcceptedIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
 
-  const handleMarkMessageSent = useCallback((id: string) => {
-    if (markingSentIds[id]) return;
+  const handleMarkMessageSent = useCallback(async (id: string) => {
+    if (markingSentInFlight.current.has(id)) return;
+    markingSentInFlight.current.add(id);
     setMarkingSentIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } },
-      {
-        onSuccess: () => {
-          addToast({ message: 'Marked as sent', severity: 'success' });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingSentIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingSentIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } });
+      addToast({ message: 'Marked as sent', severity: 'success' });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingSentInFlight.current.delete(id);
+      setMarkingSentIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
   const handleAdvanceColdOutreach = useCallback((lead: Lead) => {
     const current = lead.coldCalling?.outreachStatus || 'pending';
     const next = current === 'pending' ? 'dialed_1' : current === 'dialed_1' ? 'dialed_2' : current === 'dialed_2' ? 'dialed_3' : null;
