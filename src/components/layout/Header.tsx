@@ -377,7 +377,7 @@ export const Header = () => {
               sx={{
                 width: { xs: 32, sm: 40 },
                 height: { xs: 32, sm: 40 },
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 fontSize: { xs: 12, sm: 14 },
                 fontWeight: 700,
               }}

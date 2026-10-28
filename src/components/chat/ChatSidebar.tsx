@@ -454,11 +454,11 @@ export const ChatSidebar = () => {
         <IconButton
           onClick={() => setIsNewChatModalOpen(true)}
           sx={{
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             width: 38,
             height: 38,
-            '&:hover': { bgcolor: tokens.brand.primary }
+            '&:hover': { bgcolor: tokens.brand.solid }
           }}
         >
           <AddCommentIcon sx={{ fontSize: 18 }} />
@@ -530,7 +530,7 @@ export const ChatSidebar = () => {
                       sx={{
                         width: 42,
                         height: 42,
-                        bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.05)'),
+                        bgcolor: active ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93, 26, 137, 0.05)'),
                         color: active ? '#fff' : tokens.brand.primary,
                         fontSize: '0.94rem',
                         fontWeight: 700,
@@ -591,7 +591,7 @@ export const ChatSidebar = () => {
                                 fontWeight: 800,
                                 ml: 0.75,
                                 flexShrink: 0,
-                                bgcolor: tokens.brand.primary + '22',
+                                bgcolor: 'rgba(var(--brand-primary-rgb), 0.13)',
                                 color: tokens.brand.primary,
                               }}
                             />
@@ -913,7 +913,7 @@ export const ChatSidebar = () => {
                       height: 34,
                       mr: 1.5,
                       fontSize: '0.8rem',
-                      bgcolor: isTopMatch ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6'),
+                      bgcolor: isTopMatch ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6'),
                       color: isTopMatch ? '#fff' : tokens.brand.primary,
                       fontWeight: 700,
                     }}
@@ -956,7 +956,7 @@ export const ChatSidebar = () => {
               disabled={isCreating || !groupName.trim() || selectedGroupMembers.length === 0}
               variant="contained"
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 borderRadius: '14px',
                 py: 1.1,
@@ -1000,7 +1000,7 @@ export const ChatSidebar = () => {
             sx={{
               width: 64,
               height: 64,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontSize: '1.5rem',
               fontWeight: 800,
@@ -1039,7 +1039,7 @@ export const ChatSidebar = () => {
               disabled={isCreating}
               variant="contained"
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 borderRadius: '16px',
                 py: 1.5,
                 fontWeight: 700,

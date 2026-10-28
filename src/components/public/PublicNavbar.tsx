@@ -356,7 +356,7 @@ export const PublicNavbar = () => {
             {isDark ? (
               <LightModeOutlinedIcon sx={{ fontSize: 18, color: '#FCD34D' }} />
             ) : (
-              <DarkModeOutlinedIcon sx={{ fontSize: 18, color: '#5D1A89' }} />
+              <DarkModeOutlinedIcon sx={{ fontSize: 18, color: tokens.brand.primary }} />
             )}
           </IconButton>
         </Tooltip>
@@ -690,7 +690,7 @@ export const PublicNavbar = () => {
               {isDark ? (
                 <LightModeOutlinedIcon sx={{ fontSize: 16, color: '#FCD34D' }} />
               ) : (
-                <DarkModeOutlinedIcon sx={{ fontSize: 16, color: '#5D1A89' }} />
+                <DarkModeOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
               )}
             </IconButton>
           </Box>

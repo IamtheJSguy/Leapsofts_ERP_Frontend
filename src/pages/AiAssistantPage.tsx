@@ -346,10 +346,10 @@ export const AiAssistantPage = () => {
             fontWeight: 700,
             borderRadius: '12px',
             py: 1,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             boxShadow: 'none',
             '&:hover': {
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               opacity: 0.92,
               boxShadow: 'none',
             },
@@ -667,7 +667,7 @@ export const AiAssistantPage = () => {
                   fontWeight: 700,
                   fontSize: '0.75rem',
                   borderRadius: '10px',
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                 }}
               >
                 {currentPendingOp?.kind === 'enrich' ? 'Enriching...' : 'Enrich Linked Lead'}
@@ -1038,12 +1038,12 @@ export const AiAssistantPage = () => {
             onClick={() => handleSend()}
             disabled={!input.trim() || Boolean(currentPendingOp)}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               width: 42,
               height: 42,
               '&:hover': {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 opacity: 0.9,
               },
               '&.Mui-disabled': {

@@ -613,7 +613,7 @@ const InvoiceClientDetailPage = () => {
                 ? 'linear-gradient(135deg, rgba(93, 26, 137, 0.5) 0%, rgba(155, 107, 184, 0.25) 100%)'
                 : 'linear-gradient(135deg, #F3E8FF 0%, #FFFFFF 100%)',
               border: `1.5px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
-              color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
+              color: tokens.brand.primary,
               fontWeight: 850,
               fontSize: '1.2rem',
               flexShrink: 0,
@@ -720,7 +720,7 @@ const InvoiceClientDetailPage = () => {
             onClick={() => navigate(`/invoices/new?clientId=${client._id}`)}
             sx={{
               ...headerButtonSx,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
               '&:hover': {
                 bgcolor: tokens.brand.primaryDark,
@@ -1172,7 +1172,7 @@ const InvoiceClientDetailPage = () => {
               textTransform: 'none',
               fontWeight: 800,
               borderRadius: '12px',
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               px: 3,
               py: 0.8,
               boxShadow: '0 4px 14px rgba(93,26,137,0.25)',

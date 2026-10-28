@@ -214,9 +214,9 @@ export const KPIChangeRequestModal = ({ open, mode, onClose }: Props) => {
             py: 1.25, 
             fontWeight: 700, 
             boxShadow: 'none',
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             '&:hover': {
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               transform: 'translateY(-1px)'
             },

@@ -84,7 +84,7 @@ export const SalesKpiPanel = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => { setEditing(null); setFormOpen(true); }}
-            sx={{ textTransform: 'none', borderRadius: '12px', fontWeight: 700, boxShadow: 'none', bgcolor: tokens.brand.primary, '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ textTransform: 'none', borderRadius: '12px', fontWeight: 700, boxShadow: 'none', bgcolor: tokens.brand.solid, '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             Create Template
           </Button>
@@ -217,7 +217,7 @@ export const SalesKpiPanel = () => {
             variant="contained"
             onClick={handleAssign}
             disabled={assignUsers.length === 0 || assignMutation.isPending}
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', boxShadow: 'none', bgcolor: tokens.brand.primary, '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', boxShadow: 'none', bgcolor: tokens.brand.solid, '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             {assignMutation.isPending ? 'Assigning...' : 'Assign'}
           </Button>

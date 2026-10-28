@@ -263,7 +263,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
             sx={{
               width: 24,
               height: 24,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               backgroundImage: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
               color: '#FFFFFF',
               fontWeight: 800,

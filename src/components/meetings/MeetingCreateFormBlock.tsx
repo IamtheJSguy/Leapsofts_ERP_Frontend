@@ -94,7 +94,7 @@ export const MeetingCreateFormBlock = ({
           ...(compact
             ? {}
             : {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }),
         }}

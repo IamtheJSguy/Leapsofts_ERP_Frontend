@@ -902,8 +902,8 @@ export const BulkAddLeadsPage = () => {
               fontWeight: 700,
               px: 3,
               height: 42,
-              bgcolor: tokens.brand.primary,
-              '&:hover': { bgcolor: tokens.brand.primary, filter: 'brightness(0.92)' },
+              bgcolor: tokens.brand.solid,
+              '&:hover': { bgcolor: tokens.brand.solid, filter: 'brightness(0.92)' },
             }}
           >
             {bulkCreate.isPending ? 'Adding…' : 'Add All Leads'}

@@ -91,7 +91,7 @@ export const LinkedKanbanCards: React.FC<LinkedKanbanCardsProps> = ({ cards, isD
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   color: '#fff',
                 }}
               >

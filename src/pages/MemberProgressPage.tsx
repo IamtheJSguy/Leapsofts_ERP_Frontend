@@ -219,7 +219,7 @@ export default function MemberProgressPage() {
             sx={{
               width: 80,
               height: 80,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               fontSize: '2rem',
               fontWeight: 800,
               boxShadow: '0 8px 30px rgba(0,0,0,0.15)',

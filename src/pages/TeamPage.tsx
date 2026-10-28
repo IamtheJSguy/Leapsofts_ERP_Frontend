@@ -1625,7 +1625,7 @@ const TeamPage = () => {
                 variant="contained"
                 disabled={updateUserMutation.isPending}
                 sx={{
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   color: '#fff',
                   fontWeight: 700,
                   borderRadius: '12px',
@@ -1737,7 +1737,7 @@ const TeamPage = () => {
               variant="contained"
               disabled={resetTwoFactorMutation.isPending}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 fontWeight: 700,
                 borderRadius: '12px',
@@ -1791,7 +1791,7 @@ const TeamPage = () => {
               variant="contained"
               disabled={resetPasswordMutation.isPending}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 fontWeight: 700,
                 borderRadius: '12px',

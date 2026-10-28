@@ -422,8 +422,8 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
               borderRadius: '12px',
               px: 3,
               boxShadow: 'none',
-              bgcolor: tokens.brand.primary,
-              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+              bgcolor: tokens.brand.solid,
+              '&:hover': { bgcolor: tokens.brand.solid, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
             }}
           >
             {updateMutation.isPending ? 'Saving...' : 'Save changes'}

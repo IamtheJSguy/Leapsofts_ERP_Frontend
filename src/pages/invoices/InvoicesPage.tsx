@@ -145,7 +145,7 @@ const InvoicesPage = () => {
                     color: tokens.brand.primary,
                   },
                   '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: tokens.brand.primary,
+                    backgroundColor: tokens.brand.solid,
                   },
                 }}
               />
@@ -171,7 +171,7 @@ const InvoicesPage = () => {
             startIcon={<AddIcon sx={{ fontSize: '18px !important' }} />}
             sx={{
               ...headerButtonSx,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: isDarkMode ? '0 4px 14px rgba(155,107,184,0.3)' : '0 4px 14px rgba(93,26,137,0.25)',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
@@ -271,7 +271,7 @@ const InvoicesPage = () => {
             fontWeight: 750,
             fontSize: '0.78rem',
             bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.12)' : 'rgba(93, 26, 137, 0.06)',
-            color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
+            color: tokens.brand.primary,
             borderRadius: '999px',
             border: `1px solid ${isDarkMode ? 'rgba(155, 107, 184, 0.25)' : 'rgba(93, 26, 137, 0.12)'}`,
           }}
@@ -341,7 +341,7 @@ const InvoicesPage = () => {
                 borderRadius: '12px',
                 textTransform: 'none',
                 fontWeight: 750,
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
               }}
             >
               Add First Client
@@ -401,7 +401,7 @@ const InvoicesPage = () => {
                           ? 'linear-gradient(135deg, rgba(93, 26, 137, 0.45) 0%, rgba(155, 107, 184, 0.25) 100%)'
                           : 'linear-gradient(135deg, #F3E8FF 0%, #FAF5FF 100%)',
                         border: `1.2px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
-                        color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
+                        color: tokens.brand.primary,
                         fontWeight: 850,
                         fontSize: '0.95rem',
                         flexShrink: 0,
@@ -644,7 +644,7 @@ const InvoicesPage = () => {
               textTransform: 'none',
               fontWeight: 800,
               borderRadius: '12px',
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               px: 3.5,
               py: 0.9,
               fontSize: '0.875rem',

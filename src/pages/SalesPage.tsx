@@ -2035,7 +2035,7 @@ export const SalesPage = () => {
                   sx={{
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                     color: isEditAllMode ? '#fff' : (isDarkMode ? '#fff' : tokens.text.primary),
-                    bgcolor: isEditAllMode ? tokens.brand.primary : 'transparent',
+                    bgcolor: isEditAllMode ? tokens.brand.solid : 'transparent',
                     textTransform: 'none',
                     borderRadius: '24px',
                     height: 42,
@@ -2639,6 +2639,7 @@ export const SalesPage = () => {
                                   fontSize: '0.64rem',
                                   height: 20,
                                   borderRadius: '6px',
+                                  border: `1px solid ${`color-mix(in srgb, ${messageStatusTokens.follow_up.color} 12%, transparent)`}`,
                                 }}
                               />
                             )}
@@ -2813,7 +2814,7 @@ export const SalesPage = () => {
                                       borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                                       color: 'text.secondary',
                                       '&:hover': {
-                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.primary,
+                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.solid,
                                         borderColor: !isElevated ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
                                         color: !isElevated ? 'text.secondary' : '#fff',
                                       },
@@ -2954,7 +2955,7 @@ export const SalesPage = () => {
               }
             }}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               textTransform: 'none',
               fontWeight: 700,

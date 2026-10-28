@@ -304,7 +304,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
           sx={{
             textTransform: 'none',
             fontWeight: 700,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
           }}
         >
           {updateKeys.isPending ? 'Saving...' : 'Save Preferences'}

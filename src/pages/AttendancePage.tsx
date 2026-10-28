@@ -836,7 +836,7 @@ export const AttendancePage = () => {
                     sx={{
                       width: 52,
                       height: 52,
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       fontWeight: 800,
                       fontSize: '1.2rem',
@@ -930,12 +930,12 @@ export const AttendancePage = () => {
                           height: 32,
                           px: 1,
                           borderRadius: '10px',
-                          bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                          bgcolor: active ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
                           color: active ? '#ffffff' : 'text.primary',
                           border: `1px solid ${active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
                           transition: 'all 0.2s ease',
                           '&:hover': {
-                            bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                            bgcolor: active ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
                           }
                         }}
                       />
@@ -1219,11 +1219,11 @@ export const AttendancePage = () => {
               }}
               sx={{
                 fontWeight: 700,
-                bgcolor: userFilterType === btn.id ? tokens.brand.primary : 'transparent',
+                bgcolor: userFilterType === btn.id ? tokens.brand.solid : 'transparent',
                 color: userFilterType === btn.id ? '#fff' : 'text.primary',
                 border: `1px solid ${userFilterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.12)'}`,
                 '&:hover': {
-                  bgcolor: userFilterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.04)',
+                  bgcolor: userFilterType === btn.id ? tokens.brand.solid : 'rgba(0,0,0,0.04)',
                 }
               }}
             />

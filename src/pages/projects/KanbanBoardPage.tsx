@@ -370,7 +370,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
               size="small"
               sx={{
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 fontWeight: 750,
                 fontSize: '0.68rem',
                 height: 22,
@@ -538,7 +538,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                     height: 22,
                     fontSize: '0.6rem',
                     fontWeight: 800,
-                    bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                    bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                     ...kanbanActiveMoverRingSx(createdByUser._id === lastMovedById),
                   }}
                 >
@@ -568,7 +568,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                 py: 0.25,
                 height: 24,
                 borderRadius: '8px',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
                 border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.2)' : 'rgba(93,26,137,0.12)'}`,
                 '&:hover': {
@@ -586,7 +586,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                   <Avatar
                     src={u.avatarUrl || undefined}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       ...kanbanActiveMoverRingSx(u._id === lastMovedById),
                     }}
                   >
@@ -1119,7 +1119,7 @@ const CardLabelsSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '8px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -1288,7 +1288,7 @@ const CardLinksSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '10px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -2349,7 +2349,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           ...kanbanActiveMoverRingSx(true),
                         }}
                       >
@@ -2374,7 +2374,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                          bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                         }}
                       >
                         {kanbanUserInitial(task.createdBy)}
@@ -2463,7 +2463,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         py: 1.5,
                         borderRadius: '12px',
                         fontWeight: 750,
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                         color: '#fff',
                         textTransform: 'none',
                         boxShadow: '0 4px 14px rgba(93, 26, 137, 0.4)',
@@ -4052,7 +4052,7 @@ export const KanbanBoardPage = () => {
             onClick={handleSaveBoardName}
             disabled={!editBoardNameValue.trim() || updateBoardMutation.isPending}
             variant="contained"
-            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ bgcolor: tokens.brand.solid, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
           </Button>
@@ -4371,7 +4371,7 @@ export const KanbanBoardPage = () => {
             disabled={!newCardTitle.trim() || createCardMutation.isPending || uploadCardImageMutation.isPending}
             variant="contained"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
@@ -4549,7 +4549,7 @@ export const KanbanBoardPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setIsShareDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
+          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.solid, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
             Invite
           </Button>
         </DialogActions>

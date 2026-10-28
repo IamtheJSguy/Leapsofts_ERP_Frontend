@@ -344,7 +344,7 @@ export const ShowcaseProjects: React.FC = () => {
                 />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.68rem', fontWeight: 800, bgcolor: tokens.brand.primary } }}>
+                  <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.68rem', fontWeight: 800, bgcolor: tokens.brand.solid } }}>
                     {project.members.map((m) => (
                       <Avatar key={m}>{m}</Avatar>
                     ))}

@@ -54,7 +54,7 @@ export const TeamOverviewView = ({ metrics }: TeamOverviewViewProps) => {
   return (
     <Box>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary }} />
+        <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.solid }} />
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.02em' }}>
             Team Overview

@@ -316,7 +316,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                   },
                 }}
               >
-                <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: tokens.brand.primary, color: '#fff' }}>
+                <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: tokens.brand.solid, color: '#fff' }}>
                   {initials}
                 </Avatar>
                 <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -651,7 +651,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                 textTransform: 'none',
                 fontWeight: 700,
                 fontSize: '0.85rem',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 '&:hover': {
                   bgcolor: tokens.brand.primaryDark,
@@ -685,7 +685,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                       },
                     }
                   : {
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       '&:hover': {
                         bgcolor: tokens.brand.primaryDark,

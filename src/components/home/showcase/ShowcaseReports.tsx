@@ -255,7 +255,7 @@ export const ShowcaseReports: React.FC = () => {
                 <TableRow key={agent.name} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: tokens.brand.primary, fontSize: '0.75rem', fontWeight: 800 }}>
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: tokens.brand.solid, fontSize: '0.75rem', fontWeight: 800 }}>
                         {agent.initials}
                       </Avatar>
                       <Box>

@@ -91,7 +91,7 @@ export function useInvoiceLeave(dirty: boolean, onSave: () => Promise<boolean>, 
             fontWeight: 800,
             borderRadius: '14px',
             py: 1.1,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             boxShadow: 'none',
             '&:hover': { bgcolor: tokens.brand.primaryDark },
           }}

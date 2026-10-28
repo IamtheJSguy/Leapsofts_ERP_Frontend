@@ -1,5 +1,5 @@
 import { createTheme, alpha, type ThemeOptions } from '@mui/material/styles';
-import { tokens } from './tokens';
+import { brandPalette, tokens } from './tokens';
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -29,90 +29,97 @@ declare module '@mui/material/Button' {
 }
 
 const buildPalette = (mode: 'light' | 'dark'): ThemeOptions['palette'] => {
+  const paint = brandPalette[mode];
+
   if (mode === 'light') {
     return {
       mode: 'light',
       primary: {
-        main: '#5D1A89',
-        light: '#7B3DA8',
-        dark: '#451366',
+        main: paint.primary,
+        light: paint.primaryLight,
+        dark: paint.primaryDark,
         contrastText: '#FFFFFF',
       },
       secondary: {
-        main: '#9B6BB8',
-        light: '#E8D9F2',
-        dark: '#451366',
+        main: paint.primaryMuted,
+        light: paint.primary50,
+        dark: paint.primaryDark,
         contrastText: '#FFFFFF',
       },
       accent: {
-        main: '#FF7F11',
-        light: '#FF9A44',
-        dark: '#E66D00',
+        main: paint.accent,
+        light: paint.accentLight,
+        dark: paint.accentDark,
         contrastText: '#FFFFFF',
       },
       error: { main: '#C44545', light: '#FCEEED' },
       warning: { main: '#B8860B', light: '#FBF5E6' },
       success: { main: '#2D8A5E', light: '#E8F5EE' },
-      info: { main: '#5D1A89', light: '#F5EFF9' },
+      info: { main: paint.primary, light: paint.primary50, dark: paint.primaryDark, contrastText: '#FFFFFF' },
       background: {
-        default: '#FAF8F5',
-        paper: '#FFFFFF',
+        default: paint.surfaceMain,
+        paper: paint.surfaceCard,
       },
       surface: {
-        sidebar: '#1E1B24',
-        main: '#FAF8F5',
-        card: '#FFFFFF',
-        border: '#E8E4DF',
+        sidebar: paint.surfaceSidebar,
+        main: paint.surfaceMain,
+        card: paint.surfaceCard,
+        border: paint.surfaceBorder,
       },
       text: {
-        primary: '#1A1625',
-        secondary: '#6B6578',
-        disabled: '#9A94A8',
+        primary: paint.textPrimary,
+        secondary: paint.textSecondary,
+        disabled: paint.textMuted,
       },
-      divider: '#E8E4DF',
+      divider: paint.surfaceBorder,
     };
   }
 
   return {
     mode: 'dark',
     primary: {
-      main: tokens.brand.primaryLight,
-      light: tokens.brand.primaryMuted,
-      dark: tokens.brand.primary,
-      contrastText: '#FFFFFF',
+      main: paint.primary,
+      light: paint.primaryLight,
+      dark: paint.primaryDark,
+      contrastText: '#1A1625',
     },
     secondary: {
-      main: tokens.brand.primaryMuted,
-      light: tokens.brand.primary50,
-      dark: tokens.brand.primaryDark,
-      contrastText: '#FFFFFF',
+      main: paint.primaryMuted,
+      light: paint.primary50,
+      dark: paint.primaryDark,
+      contrastText: '#1A1625',
     },
     accent: {
-      main: tokens.brand.accent,
-      light: tokens.brand.accentLight,
-      dark: tokens.brand.accentDark,
+      main: paint.accent,
+      light: paint.accentLight,
+      dark: paint.accentDark,
       contrastText: '#FFFFFF',
     },
-    error: { main: '#E57373', light: alpha(tokens.semantic.error, 0.15), dark: '#D32F2F' },
-    warning: { main: '#FFB74D', light: alpha(tokens.semantic.warning, 0.15), dark: '#F57C00' },
+    error: { main: '#E57373', light: alpha('#C44545', 0.15), dark: '#D32F2F' },
+    warning: { main: '#FFB74D', light: alpha('#B8860B', 0.15), dark: '#F57C00' },
     success: { main: '#81C784', light: 'rgba(45, 138, 94, 0.15)', dark: '#388E3C' },
-    info: { main: tokens.brand.primaryLight, light: 'rgba(93, 26, 137, 0.2)', dark: tokens.brand.primaryDark, contrastText: '#FFFFFF' },
+    info: {
+      main: paint.primary,
+      light: paint.primary50,
+      dark: paint.primaryDark,
+      contrastText: '#1A1625',
+    },
     background: {
-      default: '#141218',
-      paper: '#1E1B24',
+      default: paint.surfaceMain,
+      paper: paint.surfaceCard,
     },
     surface: {
-      sidebar: '#12101A',
-      main: '#141218',
-      card: '#1E1B24',
-      border: '#352F42',
+      sidebar: paint.surfaceSidebar,
+      main: paint.surfaceMain,
+      card: paint.surfaceCard,
+      border: paint.surfaceBorder,
     },
     text: {
-      primary: '#F5F3F8',
-      secondary: tokens.text.sidebarMuted,
-      disabled: '#6B6578',
+      primary: paint.textPrimary,
+      secondary: paint.textSecondary,
+      disabled: paint.textMuted,
     },
-    divider: '#352F42',
+    divider: paint.surfaceBorder,
   };
 };
 
@@ -147,8 +154,10 @@ const sharedComponents: ThemeOptions['components'] = {
         paddingRight: 20,
       },
       containedPrimary: {
+        backgroundColor: tokens.brand.solid,
+        color: '#FFFFFF',
         '&:hover': {
-          backgroundColor: tokens.brand.primaryDark,
+          backgroundColor: tokens.brand.solidHover,
         },
       },
       outlined: {
@@ -229,6 +238,13 @@ const sharedComponents: ThemeOptions['components'] = {
     styleOverrides: {
       root: {
         borderRadius: tokens.radius.md,
+      },
+    },
+  },
+  MuiLink: {
+    styleOverrides: {
+      root: {
+        color: tokens.brand.primary,
       },
     },
   },

@@ -215,7 +215,7 @@ export const TeamProgressView = () => {
                             borderRadius: 4,
                             backgroundColor: tokens.brand.primary100,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: tokens.brand.primary,
+                              backgroundColor: tokens.brand.solid,
                               borderRadius: 4,
                             },
                           }}

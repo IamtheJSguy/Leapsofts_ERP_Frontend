@@ -994,7 +994,7 @@ const TasksPage = () => {
                   left: '48px',
                   width: `${(wizardStep / 2) * 88}%`,
                   height: '2px',
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   zIndex: 0,
                   transform: 'translateY(-50%)',
                   transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1448,7 +1448,7 @@ const TasksPage = () => {
                     }
                   }}
                   sx={{
-                    bgcolor: wizardStep === 2 ? '#FFA08A' : tokens.brand.primary,
+                    bgcolor: wizardStep === 2 ? '#FFA08A' : tokens.brand.solid,
                     color: '#fff',
                     textTransform: 'none',
                     borderRadius: '20px',
@@ -1752,7 +1752,7 @@ const TasksPage = () => {
                                       width: 32,
                                       height: 32,
                                       fontSize: '0.75rem',
-                                      bgcolor: tokens.brand.primary,
+                                      bgcolor: tokens.brand.solid,
                                       color: '#fff',
                                       fontWeight: 700,
                                     }}
@@ -1889,7 +1889,7 @@ const TasksPage = () => {
                         borderRadius: 4,
                         bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                         '& .MuiLinearProgress-bar': {
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           borderRadius: 4,
                         },
                       }}
@@ -2107,7 +2107,7 @@ const TasksPage = () => {
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
                           }}
                         >
-                          <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primary, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
+                          <Avatar src={details.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.solid, width: 34, height: 34, fontSize: '0.85rem', fontWeight: 700 }}>
                             {details.initial}
                           </Avatar>
                           <Box sx={{ minWidth: 0 }}>
@@ -2344,7 +2344,7 @@ const TasksPage = () => {
                     setWizardStep(0);
                   }}
                   sx={{
-                    bgcolor: tokens.brand.primary,
+                    bgcolor: tokens.brand.solid,
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: '0.82rem',
@@ -2355,7 +2355,7 @@ const TasksPage = () => {
                     height: 42,
                     transition: 'all 0.2s ease',
                     '&:hover': {
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       transform: 'translateY(-1px)',
                       boxShadow: 'none',
                     },
@@ -2542,7 +2542,7 @@ const TasksPage = () => {
                               size="small"
                               onClick={() => handleOpenAssignModal(tpl)}
                               sx={{
-                                bgcolor: tokens.brand.primary,
+                                bgcolor: tokens.brand.solid,
                                 color: '#fff',
                                 borderRadius: '20px',
                                 textTransform: 'none',
@@ -2552,7 +2552,7 @@ const TasksPage = () => {
                                 ml: { xs: 0, sm: 'auto' },
                                 width: { xs: '100%', sm: 'auto' },
                                 '&:hover': {
-                                  bgcolor: tokens.brand.primary,
+                                  bgcolor: tokens.brand.solid,
                                   boxShadow: 'none',
                                 },
                               }}
@@ -3309,19 +3309,19 @@ const TasksPage = () => {
                           dialog: {
                             sx: {
                               '& .MuiPickersDay-root.Mui-selected': {
-                                bgcolor: tokens.brand.primary,
-                                '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                                bgcolor: tokens.brand.solid,
+                                '&:hover, &:focus': { bgcolor: tokens.brand.solid },
                               },
                               '& .MuiClock-pin, & .MuiClockPointer-root': {
-                                bgcolor: tokens.brand.primary,
+                                bgcolor: tokens.brand.solid,
                               },
                               '& .MuiClockPointer-thumb': {
                                 border: `16px solid ${tokens.brand.primary}`,
-                                bgcolor: tokens.brand.primary,
+                                bgcolor: tokens.brand.solid,
                               },
                               '& .MuiPickersYear-yearButton.Mui-selected, & .MuiPickersMonth-monthButton.Mui-selected': {
-                                bgcolor: tokens.brand.primary,
-                                '&:hover, &:focus': { bgcolor: tokens.brand.primary },
+                                bgcolor: tokens.brand.solid,
+                                '&:hover, &:focus': { bgcolor: tokens.brand.solid },
                               },
                               '& .MuiDialogActions-root .MuiButton-text': {
                                 color: tokens.brand.primary,
@@ -3433,7 +3433,7 @@ const TasksPage = () => {
             onClick={handleAssignTemplate}
             disabled={assignTemplateMutation.isPending || !selectedUserId}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               borderRadius: '20px',
               textTransform: 'none',

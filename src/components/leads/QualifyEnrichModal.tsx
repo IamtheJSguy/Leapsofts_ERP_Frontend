@@ -1110,7 +1110,7 @@ export const QualifyEnrichModal = ({
           disabled={isPending || !lead}
           variant="contained"
           sx={{
-            bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 800, borderRadius: '12px', px: 3.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
+            bgcolor: tokens.brand.solid, color: '#fff', fontWeight: 800, borderRadius: '12px', px: 3.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
             background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
             boxShadow: '0 6px 16px rgba(93, 26, 137, 0.25)',
             transition: 'all 0.3s ease',
