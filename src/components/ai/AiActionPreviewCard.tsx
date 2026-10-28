@@ -543,7 +543,7 @@ export const AiActionPreviewCard = ({
             sx={{
               textTransform: 'none',
               fontWeight: 700,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
             }}
           >
             {confirmAction.isPending ? 'Applying...' : 'Approve & Apply'}

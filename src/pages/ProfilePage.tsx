@@ -657,7 +657,7 @@ export default function ProfilePage() {
                     disabled={updateMeMutation.isPending}
                     startIcon={updateMeMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <SaveOutlinedIcon sx={{ fontSize: 18 }} />}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       fontWeight: 700,
                       px: { xs: 3, sm: 5 },
@@ -797,7 +797,7 @@ export default function ProfilePage() {
                     disabled={changePasswordMutation.isPending}
                     startIcon={changePasswordMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <LockOutlinedIcon sx={{ fontSize: 18 }} />}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       fontWeight: 700,
                       px: { xs: 3, sm: 5 },
@@ -862,7 +862,7 @@ export default function ProfilePage() {
                     textTransform: 'none',
                     fontWeight: 700,
                     borderRadius: '12px',
-                    bgcolor: tokens.brand.primary,
+                    bgcolor: tokens.brand.solid,
                     '&:hover': { bgcolor: tokens.brand.primaryLight },
                   }}
                 >
@@ -917,7 +917,7 @@ export default function ProfilePage() {
                       onClick={handlePreferencesSave}
                       disabled={updateMeMutation.isPending}
                       sx={{
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                         color: '#fff',
                         fontWeight: 700,
                         px: { xs: 3, sm: 4 },
@@ -1144,7 +1144,7 @@ export default function ProfilePage() {
                       disabled={isSyncing || updateMeMutation.isPending || syncMySheet.isPending}
                       startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <LinkIcon />}
                       sx={{
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                         color: '#fff',
                         fontWeight: 700,
                         px: { xs: 3, sm: 4 },

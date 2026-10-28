@@ -71,7 +71,7 @@ export const ShowcaseInvoices = () => {
               textTransform: 'none',
               fontWeight: 750,
               fontSize: '0.78rem',
-              bgcolor: activeTemplate === style.id ? tokens.brand.primary : 'transparent',
+              bgcolor: activeTemplate === style.id ? tokens.brand.solid : 'transparent',
               borderColor: activeTemplate === style.id ? tokens.brand.primary : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
               color: activeTemplate === style.id ? '#fff' : isDark ? '#fff' : tokens.text.primary,
             }}

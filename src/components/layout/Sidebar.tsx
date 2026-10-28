@@ -470,7 +470,7 @@ export const Sidebar = () => {
             sx={{
               width: 32,
               height: 32,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               backgroundImage: user?.avatarUrl
                 ? 'none'
                 : `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,

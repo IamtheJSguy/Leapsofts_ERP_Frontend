@@ -1,14 +1,23 @@
 @import 'tailwindcss';
 
 :root {
+  /* Brand paint — same hue as #5D1A89. --brand-primary is the on-surface accent
+     (links, icons, text). --brand-primary-solid is filled buttons/avatars. */
   --brand-primary: #5d1a89;
+  --brand-primary-rgb: 93, 26, 137;
   --brand-primary-light: #7b3da8;
   --brand-primary-dark: #451366;
   --brand-primary-muted: #9563b8;
-  --brand-primary-50: #FAF5FF;
-  --brand-primary-100: #F3E8FF;
-  --brand-primary-200: #E9D5FF;
+  --brand-primary-50: #faf5ff;
+  --brand-primary-100: #f3e8ff;
+  --brand-primary-200: #e9d5ff;
+  --brand-primary-solid: #5d1a89;
+  --brand-primary-solid-hover: #451366;
+  --brand-paint-deep: #451366;
   --brand-accent: #ff7f11;
+  --brand-accent-light: #ff9a44;
+  --brand-accent-dark: #e66d00;
+  --brand-accent-50: #fff4eb;
   --surface-sidebar: #1e1b24;
   --surface-sidebar-hover: #2a2633;
   --surface-sidebar-active: #352f42;
@@ -22,8 +31,13 @@
   --text-secondary: #6b6578;
   --text-muted: #9a94a8;
   --semantic-success: #2d8a5e;
+  --semantic-success-bg: #ecfdf5;
   --semantic-warning: #b8860b;
+  --semantic-warning-bg: #fbf5e6;
   --semantic-error: #c44545;
+  --semantic-error-bg: #fceeed;
+  --semantic-neutral: #8a8499;
+  --semantic-neutral-bg: #f3f1ee;
   --shadow-card: 0 1px 3px rgba(26, 22, 37, 0.06), 0 8px 24px rgba(26, 22, 37, 0.06);
   --radius-lg: 16px;
   --radius-pill: 9999px;
@@ -43,14 +57,33 @@
   --text-secondary: #9a94a8;
   --text-muted: #6b6578;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
-  --brand-primary: #a855f7;
-  --brand-primary-light: #C084FC;
-  --brand-primary-dark: #7E22CE;
-  --brand-primary-muted: #D8B4FE;
-  --brand-primary-50: rgba(168, 85, 247, 0.1);
-  --brand-primary-100: rgba(168, 85, 247, 0.15);
-  --brand-primary-200: rgba(168, 85, 247, 0.25);
-  --semantic-success: #10b981;
+  /* Same hue as #5D1A89, lifted so links/icons read on dark surfaces */
+  --brand-primary: #d4a6f0;
+  --brand-primary-rgb: 212, 166, 240;
+  --brand-primary-light: #e4c4f7;
+  --brand-primary-dark: #c084e8;
+  --brand-primary-muted: #dcb6f3;
+  --brand-primary-50: rgba(212, 166, 240, 0.14);
+  --brand-primary-100: rgba(212, 166, 240, 0.2);
+  --brand-primary-200: rgba(212, 166, 240, 0.32);
+  --brand-primary-solid: #5d1a89;
+  --brand-primary-solid-hover: #7b3da8;
+  --brand-accent-50: rgba(255, 127, 17, 0.14);
+  --brand-accent-dark: #ff9a44;
+  --semantic-success: #6ee7b7;
+  --semantic-success-bg: rgba(110, 231, 183, 0.12);
+  --semantic-warning: #fcd34d;
+  --semantic-warning-bg: rgba(252, 211, 77, 0.12);
+  --semantic-error: #fca5a5;
+  --semantic-error-bg: rgba(252, 165, 165, 0.12);
+  --semantic-neutral: #c4c0ce;
+  --semantic-neutral-bg: rgba(154, 148, 168, 0.12);
+}
+
+@theme inline {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-solid: var(--brand-primary-solid);
+  --color-brand-accent: var(--brand-accent);
 }
 
 html,
@@ -76,6 +109,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+a:not(.MuiButtonBase-root):not(.MuiButton-root) {
+  color: var(--brand-primary);
+}
+
+a:not(.MuiButtonBase-root):not(.MuiButton-root):hover {
+  color: var(--brand-primary-light);
+}
+
 /* AG Grid — premium warm theme */
 .ag-theme-leap {
   --ag-font-family: 'Plus Jakarta Sans', 'Inter', 'Roboto', sans-serif;
@@ -84,8 +125,8 @@ body {
   --ag-header-background-color: var(--surface-main);
   --ag-header-foreground-color: var(--text-secondary);
   --ag-border-color: var(--surface-border);
-  --ag-row-hover-color: #f5eff9;
-  --ag-selected-row-background-color: #e8d9f2;
+  --ag-row-hover-color: var(--brand-primary-50);
+  --ag-selected-row-background-color: var(--brand-primary-100);
   --ag-range-selection-border-color: var(--brand-primary);
   --ag-checkbox-checked-color: var(--brand-primary);
   --ag-font-size: 14px;
@@ -136,11 +177,16 @@ body {
 
 /* Login brand panel gradient */
 .login-brand-panel {
-  background: linear-gradient(145deg, #451366 0%, #5d1a89 45%, #7b3da8 100%);
+  background: linear-gradient(
+    145deg,
+    var(--brand-paint-deep) 0%,
+    var(--brand-primary-solid) 45%,
+    #7b3da8 100%
+  );
 }
 
 .login-accent-bar {
-  background: linear-gradient(90deg, #ff7f11, #ff9a44);
+  background: linear-gradient(90deg, var(--brand-accent), var(--brand-accent-light));
 }
 
 /* Premium Login Redesign Classes */

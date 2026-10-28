@@ -167,7 +167,7 @@ const ProjectsPage = () => {
               startIcon={<AddIcon />}
               onClick={() => setIsFormOpen(true)}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 fontWeight: 700,
                 borderRadius: '24px',
@@ -176,7 +176,7 @@ const ProjectsPage = () => {
                 px: 3,
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   transform: 'translateY(-1px)',
                   boxShadow: 'none',
                 },

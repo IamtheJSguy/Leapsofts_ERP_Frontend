@@ -302,7 +302,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
             textAlign: 'center',
             '&.rbc-now': {
               '& a': {
-                color: isDarkMode ? '#e0b3ff' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 bgcolor: isDarkMode ? 'rgba(123, 61, 168, 0.3)' : 'rgba(93, 26, 137, 0.08)',
                 px: 1,
                 py: 0.5,
@@ -360,7 +360,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 borderColor: tokens.brand.primaryMuted,
               },
               '&.rbc-active': {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 borderColor: tokens.brand.primary,
                 '&:hover': {
@@ -505,7 +505,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
                 borderRadius: '24px',
                 textTransform: 'none',
                 fontWeight: 700,
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 '&:hover': {
                   bgcolor: tokens.brand.primaryDark,

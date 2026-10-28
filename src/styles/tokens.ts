@@ -1,21 +1,68 @@
 /**
- * LEAP SOFTS brand design tokens — single source of truth for UI colors.
- * Primary purple #5D1A89, accent orange #FF7F11 (CTAs/highlights only).
+ * LEAP SOFTS brand design tokens — runtime values live in src/styles/global.css.
+ * --brand-primary is the on-surface accent (links, icons, text) and lightens in dark mode.
+ * --brand-primary-solid is the filled brand paint for buttons and avatars.
+ *
+ * brandPalette is the same colors as hex so MUI createTheme can parse them.
+ * Do not pass CSS variables into palette.primary / secondary / info.
  */
 
-export const tokens = {
-  brand: {
+export const brandPalette = {
+  light: {
     primary: '#5D1A89',
     primaryLight: '#7B3DA8',
     primaryDark: '#451366',
     primaryMuted: '#9563B8',
     primary50: '#FAF5FF',
-    primary100: '#F3E8FF',
-    primary200: '#E9D5FF',
+    solid: '#5D1A89',
+    solidHover: '#451366',
     accent: '#FF7F11',
     accentLight: '#FF9A44',
     accentDark: '#E66D00',
-    accent50: '#FFF4EB',
+    surfaceMain: '#FAF8F5',
+    surfaceCard: '#FFFFFF',
+    surfaceSidebar: '#1E1B24',
+    surfaceBorder: '#E8E4DF',
+    textPrimary: '#1A1625',
+    textSecondary: '#6B6578',
+    textMuted: '#9A94A8',
+  },
+  dark: {
+    primary: '#D4A6F0',
+    primaryLight: '#E4C4F7',
+    primaryDark: '#C084E8',
+    primaryMuted: '#DCB6F3',
+    primary50: 'rgba(212, 166, 240, 0.14)',
+    solid: '#5D1A89',
+    solidHover: '#7B3DA8',
+    accent: '#FF7F11',
+    accentLight: '#FF9A44',
+    accentDark: '#E66D00',
+    surfaceMain: '#141218',
+    surfaceCard: '#1E1B24',
+    surfaceSidebar: '#12101A',
+    surfaceBorder: '#352F42',
+    textPrimary: '#F5F3F8',
+    textSecondary: '#9A94A8',
+    textMuted: '#6B6578',
+  },
+} as const;
+
+export const tokens = {
+  brand: {
+    primary: 'var(--brand-primary)',
+    primaryLight: 'var(--brand-primary-light)',
+    primaryDark: 'var(--brand-primary-dark)',
+    primaryMuted: 'var(--brand-primary-muted)',
+    primary50: 'var(--brand-primary-50)',
+    primary100: 'var(--brand-primary-100)',
+    primary200: 'var(--brand-primary-200)',
+    solid: 'var(--brand-primary-solid)',
+    solidHover: 'var(--brand-primary-solid-hover)',
+    accent: 'var(--brand-accent)',
+    accentLight: 'var(--brand-accent-light)',
+    accentDark: 'var(--brand-accent-dark)',
+    accent50: 'var(--brand-accent-50)',
   },
   surface: {
     sidebar: 'var(--surface-sidebar)',
@@ -38,16 +85,16 @@ export const tokens = {
     sidebarMuted: '#9A94A8',
   },
   semantic: {
-    success: '#2D8A5E',
-    successBg: '#ECFDF5',
-    warning: '#B8860B',
-    warningBg: '#FBF5E6',
-    error: '#C44545',
-    errorBg: '#FCEEED',
-    info: '#A855F7',
-    infoBg: '#FAF5FF',
-    neutral: '#8A8499',
-    neutralBg: '#F3F1EE',
+    success: 'var(--semantic-success)',
+    successBg: 'var(--semantic-success-bg)',
+    warning: 'var(--semantic-warning)',
+    warningBg: 'var(--semantic-warning-bg)',
+    error: 'var(--semantic-error)',
+    errorBg: 'var(--semantic-error-bg)',
+    info: 'var(--brand-primary)',
+    infoBg: 'var(--brand-primary-50)',
+    neutral: 'var(--semantic-neutral)',
+    neutralBg: 'var(--semantic-neutral-bg)',
   },
   shadow: {
     card: '0 1px 3px rgba(26, 22, 37, 0.06), 0 8px 24px rgba(26, 22, 37, 0.06)',

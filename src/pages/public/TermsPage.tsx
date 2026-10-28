@@ -106,7 +106,7 @@ export const TermsPage = () => {
           Official Contact Email:{' '}
           <a
             href="mailto:contact@leapsofts.com"
-            style={{ color: '#A855F7', fontWeight: 700, textDecoration: 'none' }}
+            style={{ fontWeight: 700, textDecoration: 'none' }}
           >
             contact@leapsofts.com
           </a>

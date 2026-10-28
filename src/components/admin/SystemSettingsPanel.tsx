@@ -287,7 +287,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
             disabled={updateSettings.isPending}
             startIcon={updateSettings.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveOutlinedIcon />}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               fontSize: '0.92rem',
@@ -306,7 +306,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                 transform: 'translateY(0)',
               },
               '&.Mui-disabled': {
-                bgcolor: `color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`,
+                bgcolor: `color-mix(in srgb, ${tokens.brand.solid} 50%, transparent)`,
                 color: `color-mix(in srgb, #fff 70%, transparent)`,
               }
             }}

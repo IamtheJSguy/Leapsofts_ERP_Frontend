@@ -127,7 +127,7 @@ export const ShowcaseChat: React.FC = () => {
           <IconButton
             size="small"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#FFFFFF',
               p: 0.6,
               borderRadius: '10px',
@@ -306,7 +306,7 @@ export const ShowcaseChat: React.FC = () => {
                 sx={{
                   width: 38,
                   height: 38,
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   color: '#fff',
                   fontWeight: 800,
                   fontSize: '0.85rem',
@@ -366,7 +366,7 @@ export const ShowcaseChat: React.FC = () => {
               Sarah Jenkins · 04:45 PM
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-              <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primary, fontSize: '0.7rem', fontWeight: 800 }}>
+              <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.solid, fontSize: '0.7rem', fontWeight: 800 }}>
                 SJ
               </Avatar>
               <Box
@@ -417,7 +417,7 @@ export const ShowcaseChat: React.FC = () => {
               Sarah Jenkins · 04:52 PM
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-              <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.primary, fontSize: '0.7rem', fontWeight: 800 }}>
+              <Avatar sx={{ width: 28, height: 28, bgcolor: tokens.brand.solid, fontSize: '0.7rem', fontWeight: 800 }}>
                 SJ
               </Avatar>
               <Box
@@ -559,7 +559,7 @@ export const ShowcaseChat: React.FC = () => {
             <IconButton
               size="small"
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#FFFFFF',
                 p: 0.75,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },

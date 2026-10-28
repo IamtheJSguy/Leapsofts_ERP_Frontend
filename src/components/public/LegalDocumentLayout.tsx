@@ -265,7 +265,7 @@ export const LegalDocumentLayout = ({
                   fontSize: '1.2rem',
                   mt: 3,
                   mb: 1.5,
-                  color: isDark ? '#E9D5FF' : tokens.brand.primaryDark,
+                  color: tokens.brand.primary,
                 },
                 '& p': {
                   color: isDark ? 'rgba(255, 255, 255, 0.78)' : '#332E3F',
@@ -282,6 +282,12 @@ export const LegalDocumentLayout = ({
                 },
                 '& li': {
                   mb: 0.75,
+                },
+                '& a': {
+                  color: 'var(--brand-primary)',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  '&:hover': { color: 'var(--brand-primary-light)', textDecoration: 'underline' },
                 },
               }}
             >

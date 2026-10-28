@@ -123,7 +123,7 @@ export const GoogleCalendarConnectPanel = () => {
                 })
               }
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 textTransform: 'none',
                 fontWeight: 700,
                 borderRadius: '12px',
@@ -157,7 +157,7 @@ export const GoogleCalendarConnectPanel = () => {
               });
             }}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               textTransform: 'none',
               fontWeight: 700,
               borderRadius: '12px',

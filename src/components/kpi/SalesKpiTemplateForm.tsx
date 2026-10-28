@@ -487,8 +487,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
             py: 1.25,
             fontWeight: 700,
             boxShadow: 'none',
-            bgcolor: tokens.brand.primary,
-            '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-1px)' },
+            bgcolor: tokens.brand.solid,
+            '&:hover': { bgcolor: tokens.brand.solid, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-1px)' },
             transition: 'all 0.2s',
           }}
         >

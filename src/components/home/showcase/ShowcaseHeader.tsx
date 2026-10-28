@@ -73,7 +73,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           onClick={onToggleTheme}
           title={isDarkMode ? 'Switch demo to Light Mode' : 'Switch demo to Dark Mode'}
           sx={{
-            color: isDarkMode ? '#FCD34D' : '#5D1A89',
+            color: isDarkMode ? '#FCD34D' : tokens.brand.primary,
             p: 0.5,
             borderRadius: '8px',
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'}`,
@@ -89,7 +89,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           {isDarkMode ? (
             <LightModeOutlinedIcon sx={{ fontSize: 16, color: '#FCD34D' }} />
           ) : (
-            <DarkModeOutlinedIcon sx={{ fontSize: 16, color: '#5D1A89' }} />
+            <DarkModeOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
           )}
         </IconButton>
 
@@ -122,7 +122,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           sx={{
             width: 26,
             height: 26,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             backgroundImage: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
             color: '#fff',
             fontWeight: 800,

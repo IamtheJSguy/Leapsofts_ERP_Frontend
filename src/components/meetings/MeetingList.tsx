@@ -512,7 +512,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                                     sx={{
                                       width: 26,
                                       height: 26,
-                                      bgcolor: tokens.brand.primary,
+                                      bgcolor: tokens.brand.solid,
                                       color: '#fff',
                                       border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
                                       fontSize: '0.65rem',
@@ -808,7 +808,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
             borderRadius: '24px',
             textTransform: 'none',
             fontWeight: 700,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             '&:hover': {
               bgcolor: tokens.brand.primaryDark,

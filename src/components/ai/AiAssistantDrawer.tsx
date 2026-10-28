@@ -476,7 +476,7 @@ export const AiAssistantDrawer = () => {
                   fontWeight: 700,
                   fontSize: '0.74rem',
                   py: 0.25,
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                 }}
               >
                 {currentPendingOp?.kind === 'enrich' ? 'Enriching...' : 'Enrich This Lead Now'}
@@ -843,12 +843,12 @@ export const AiAssistantDrawer = () => {
             onClick={() => handleSend()}
             disabled={!input.trim() || Boolean(currentPendingOp)}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               width: 40,
               height: 40,
               '&:hover': {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 opacity: 0.9,
               },
               '&.Mui-disabled': {

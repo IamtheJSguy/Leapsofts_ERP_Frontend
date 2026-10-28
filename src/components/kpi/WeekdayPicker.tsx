@@ -51,7 +51,7 @@ export const WeekdayPicker = ({ value, onChange, label, disabled, size = 'medium
                   fontFamily: 'inherit',
                   transition: 'all 0.2s',
                   opacity: disabled ? 0.5 : 1,
-                  bgcolor: selected ? tokens.brand.primary : isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                  bgcolor: selected ? tokens.brand.solid : isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
                   color: selected ? '#fff' : isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
                   border: `1px solid ${selected ? tokens.brand.primary : isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
                   '&:hover': disabled

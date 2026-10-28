@@ -588,7 +588,7 @@ export const ShowcaseTasks: React.FC = () => {
                     borderRadius: '8px',
                     fontSize: '0.62rem',
                     fontWeight: 850,
-                    bgcolor: isActive ? tokens.brand.primary : 'rgba(255, 127, 17, 0.2)',
+                    bgcolor: isActive ? tokens.brand.solid : 'rgba(255, 127, 17, 0.2)',
                     color: isActive ? '#FFFFFF' : '#FF7F11',
                   }}
                 >
@@ -1079,7 +1079,7 @@ export const ShowcaseTasks: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon sx={{ fontSize: 14 }} />}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#FFFFFF',
                 fontWeight: 700,
                 fontSize: '0.74rem',
@@ -1181,7 +1181,7 @@ export const ShowcaseTasks: React.FC = () => {
                         textTransform: 'none',
                         px: 1.25,
                         py: 0.25,
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                       }}
                     >
                       Assign

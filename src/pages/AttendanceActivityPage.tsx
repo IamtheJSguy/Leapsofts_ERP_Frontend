@@ -49,7 +49,7 @@ const pillTabSx = (isDarkMode: boolean) => ({
   p: 0.5,
   minHeight: '44px',
   '& .MuiTabs-indicator': {
-    backgroundColor: tokens.brand.primary,
+    backgroundColor: tokens.brand.solid,
     borderRadius: '12px',
     height: '100%',
     boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',

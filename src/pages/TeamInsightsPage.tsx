@@ -559,7 +559,7 @@ export default function TeamInsightsPage() {
                   {/* Member Profile Header */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar src={member.avatarUrl || undefined} sx={{ width: 44, height: 44, bgcolor: tokens.brand.primary, fontWeight: 700, fontSize: '0.94rem' }}>
+                      <Avatar src={member.avatarUrl || undefined} sx={{ width: 44, height: 44, bgcolor: tokens.brand.solid, fontWeight: 700, fontSize: '0.94rem' }}>
                         {mInitials}
                       </Avatar>
                       <Box>
