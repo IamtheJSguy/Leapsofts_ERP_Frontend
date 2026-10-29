@@ -55,7 +55,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
-  PointerSensor, useSensor, useSensors, type DragStartEvent,
+  MouseSensor, TouchSensor, useSensor, useSensors, type DragStartEvent,
   type DragEndEvent, type DragOverEvent, type CollisionDetection,
   useDroppable, MeasuringStrategy, pointerWithin, rectIntersection,
 } from '@dnd-kit/core';
@@ -611,11 +611,14 @@ const SortableTask = ({ task, isDarkMode, onTaskClick, onViewLead }: any) => {
     data: { type: 'Task', task },
   });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
     cursor: isDragging ? 'grabbing' : 'grab',
+    touchAction: isDragging ? 'none' : 'manipulation',
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
   };
 
   return (
@@ -770,7 +773,17 @@ const SortableBoardColumn = ({
         <Box 
           {...attributes} 
           {...listeners} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, cursor: isDragging ? 'grabbing' : 'grab', py: 0.5 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            flex: 1,
+            cursor: isDragging ? 'grabbing' : 'grab',
+            py: 0.5,
+            touchAction: isDragging ? 'none' : 'manipulation',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{col.title}</Typography>
           <Chip label={colTasks.length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
@@ -3308,8 +3321,20 @@ export const KanbanBoardPage = () => {
   const [pendingRemoveUserId, setPendingRemoveUserId] = useState<string>('');
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   // Transform board columns and cards into flattened lists for dnd-kit
@@ -3812,6 +3837,13 @@ export const KanbanBoardPage = () => {
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        autoScroll={{
+          threshold: {
+            x: 0.2,
+            y: 0.2,
+          },
+          acceleration: 10,
+        }}
         measuring={{
           droppable: {
             strategy: MeasuringStrategy.Always,
@@ -3859,7 +3891,7 @@ export const KanbanBoardPage = () => {
               easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
             }}>
               {activeColumn ? (
-                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9 }}>
+                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9, pointerEvents: 'none' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, py: 0.5, cursor: 'grabbing' }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{activeColumn.title}</Typography>
@@ -3877,7 +3909,7 @@ export const KanbanBoardPage = () => {
                   </Box>
                 </Box>
               ) : activeTask ? (
-                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing' }}>
+                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing', pointerEvents: 'none' }}>
                   <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
                 </Box>
               ) : null}
