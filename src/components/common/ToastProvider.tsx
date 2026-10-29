@@ -31,6 +31,11 @@ export const ToastProvider = () => {
       autoHideDuration={current?.severity === 'message' ? 3000 : 3000}
       onClose={handleClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      sx={{
+        left: { xs: 16, sm: 'auto' },
+        right: { xs: 16, sm: 24 },
+        maxWidth: { xs: 'calc(100vw - 32px)', sm: 'none' },
+      }}
     >
       {current ? (
         current.severity === 'message' ? (
@@ -47,8 +52,8 @@ export const ToastProvider = () => {
               boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 10px 40px rgba(135,116,160,0.08)',
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
               cursor: 'pointer',
-              minWidth: 320,
-              maxWidth: 400,
+              minWidth: { xs: 0, sm: 320 },
+              maxWidth: { xs: 'calc(100vw - 32px)', sm: 400 },
               position: 'relative',
               transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s',
               '&:hover': {

@@ -10,6 +10,8 @@ import {
   Avatar,
   Divider,
   Chip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
@@ -31,6 +33,8 @@ import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
   const { toggleSidebar, setNotificationPanelOpen, toggleAiDrawer, theme, setTheme } = useUIStore();
+  const muiTheme = useTheme();
+  const themeInMenu = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const { user } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const logout = useLogout();
@@ -480,7 +484,34 @@ export const Header = () => {
             My Profile
           </MenuItem>
 
-
+          {themeInMenu && (
+            <MenuItem
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              sx={{
+                py: 1,
+                px: 2,
+                borderRadius: '8px',
+                mx: 0.5,
+                fontSize: '0.86rem',
+                fontWeight: 600,
+                gap: 1.5,
+                color: 'text.primary',
+                display: { xs: 'flex', sm: 'none' },
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(93, 26, 137, 0.04)',
+                  color: tokens.brand.primary,
+                },
+              }}
+            >
+              {theme === 'light' ? (
+                <DarkModeOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+              ) : (
+                <LightModeOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+              )}
+              {theme === 'light' ? 'Dark mode' : 'Light mode'}
+            </MenuItem>
+          )}
 
           <Divider sx={{ mx: 1, my: 0.5, opacity: theme === 'dark' ? 0.08 : 0.08 }} />
 

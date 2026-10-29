@@ -292,7 +292,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Tooltip>
                 )}
 
-                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', alignItems: viewMode === 'grid' ? 'stretch' : 'center', width: '100%' }}>
+                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : { xs: 'column', sm: 'row' }, alignItems: viewMode === 'grid' ? 'stretch' : { xs: 'stretch', sm: 'center' }, gap: viewMode === 'list' ? { xs: 2, sm: 0 } : 0, width: '100%' }}>
                   {/* Top Row: Category Icon Box & Badge */}
                   {viewMode === 'grid' && (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, pr: 4 }}>
@@ -319,7 +319,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   )}
 
                   {viewMode === 'list' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 3, minWidth: 200 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: { xs: 0, sm: 3 }, minWidth: { xs: 0, sm: 200 } }}>
                       <Box
                         sx={{
                           width: 42,

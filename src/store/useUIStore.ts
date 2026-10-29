@@ -19,6 +19,7 @@ interface UIState {
   aiContextLeadId: string | null;
   toastQueue: Toast[];
   toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   openModal: (modal: string) => void;
   closeModal: () => void;
@@ -30,8 +31,11 @@ interface UIState {
   removeToast: (id: string) => void;
 }
 
+const sidebarStartsOpen =
+  typeof window === 'undefined' || window.matchMedia('(min-width: 900px)').matches;
+
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: sidebarStartsOpen,
   theme: 'light',
   activeModal: null,
   notificationPanelOpen: false,
@@ -39,6 +43,7 @@ export const useUIStore = create<UIState>((set) => ({
   aiContextLeadId: null,
   toastQueue: [],
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setTheme: (theme) => set({ theme }),
   openModal: (modal) => set({ activeModal: modal }),
   closeModal: () => set({ activeModal: null }),

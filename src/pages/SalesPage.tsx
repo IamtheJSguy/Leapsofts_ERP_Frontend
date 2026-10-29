@@ -1201,14 +1201,15 @@ export const SalesPage = () => {
             >
               {outreachChannel === 'cold_calling' ? 'Cold Calling & Pipeline' : 'LinkedIn Outreach & Pipeline'}
             </Typography>
-            <FormControl size="small">
+            <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' } }}>
               <Select
                 value={outreachChannel}
                 onChange={(e) => handleOutreachChannelChange(e.target.value as OutreachChannel)}
                 aria-label="Outreach channel"
                 sx={{
                   height: 30,
-                  minWidth: 154,
+                  minWidth: { xs: '100%', sm: 154 },
+                  width: { xs: '100%', sm: 'auto' },
                   borderRadius: '999px',
                   bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
                   color: tokens.brand.primary,
@@ -1243,7 +1244,7 @@ export const SalesPage = () => {
 
         {/* Date Range Filter in Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: '100%', sm: 380 }, maxWidth: { sm: 520 }, flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 168 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 168 }, width: { xs: '100%', sm: 'auto' }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
             <Select
               value={dateFilterField}
               onChange={(e) => setDateFilterField(e.target.value as 'date' | 'updatedAt')}
@@ -1265,7 +1266,7 @@ export const SalesPage = () => {
             </Select>
   
           </FormControl>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
             <DateRangePicker
               startDate={startDate}
               endDate={endDate}
@@ -1586,7 +1587,7 @@ export const SalesPage = () => {
               border: '1px solid rgba(245, 158, 11, 0.3)',
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 140 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
             <Select
               value={futureLeadWindow}
               displayEmpty
@@ -1697,10 +1698,10 @@ export const SalesPage = () => {
             ref={filterToolbarRef}
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
+              flexDirection: { xs: 'row', sm: 'column', md: 'row' },
               flexWrap: 'wrap',
               gap: 1.5,
-              alignItems: { xs: 'stretch', md: 'center' },
+              alignItems: { xs: 'center', sm: 'stretch', md: 'center' },
               mb: 3.5,
             }}
           >
@@ -1719,6 +1720,7 @@ export const SalesPage = () => {
               }}
               sx={{
                 flexGrow: 1,
+                width: { xs: '100%', sm: 'auto' },
                 minWidth: { xs: '100%', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
@@ -1759,8 +1761,9 @@ export const SalesPage = () => {
                 disableClearable
                 sx={{
                   flexGrow: 1,
-                  minWidth: { xs: '100%', sm: 220 },
-                  maxWidth: { sm: 260 },
+                  width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                  minWidth: { xs: 0, sm: 220 },
+                  maxWidth: { xs: 'calc(50% - 6px)', sm: 260 },
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '20px',
                     bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1811,8 +1814,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1862,8 +1866,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1906,7 +1911,7 @@ export const SalesPage = () => {
             />
 
             {/* Connection Status Filter */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedConnectionStatus}
                 displayEmpty
@@ -1935,7 +1940,7 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Status Select Dropdown */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -1978,7 +1983,23 @@ export const SalesPage = () => {
 
             {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
             
-              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  alignItems: 'center',
+                  ml: { xs: 0, md: 'auto' },
+                  width: { xs: '100%', md: 'auto' },
+                  flexWrap: { xs: 'wrap', md: 'nowrap' },
+                  '& > .MuiButton-root': {
+                    whiteSpace: 'nowrap',
+                    justifyContent: 'center',
+                    flex: { xs: '1 1 calc(50% - 8px)', md: '0 0 auto' },
+                    minWidth: { xs: 0, md: 64 },
+                    px: { xs: 1.25, md: 3 },
+                  },
+                }}
+              >
                 {(isEditAllMode || draftRestored || !draftReady || draftSaving) && (
                   <Box
                     sx={{

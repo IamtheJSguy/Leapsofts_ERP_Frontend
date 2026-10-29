@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Drawer,
   List,
@@ -139,7 +139,7 @@ const BrandMark = () => (
 );
 
 export const Sidebar = () => {
-  const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
   const permissions = usePermissions();
   const entitlements = useEntitlements();
   const switchOrganization = useSwitchOrganization();
@@ -148,6 +148,10 @@ export const Sidebar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDarkMode = theme.palette.mode === 'dark';
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile, setSidebarOpen]);
   const [orgMenuAnchor, setOrgMenuAnchor] = useState<null | HTMLElement>(null);
 
   const { data: conversations = [] } = useConversations({ enabled: entitlements.chat });

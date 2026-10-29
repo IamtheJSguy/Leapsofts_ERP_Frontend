@@ -138,14 +138,15 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
       <Box
         onClick={openDetail}
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: { xs: 1, sm: 2 },
           cursor: detailPath ? 'pointer' : 'default',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 }, minWidth: 0, flex: 1 }}>
           <Box sx={{ position: 'relative', display: 'inline-flex' }}>
             <CircularProgress
               variant="determinate"
@@ -195,19 +196,21 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
             </Box>
           </Box>
 
-          <Box>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1.15rem',
+                fontSize: { xs: '1rem', sm: '1.15rem' },
+                lineHeight: 1.25,
                 color: isDarkMode ? '#fff' : tokens.text.primary,
                 letterSpacing: '-0.015em',
+                overflowWrap: 'anywhere',
               }}
             >
               {name}
             </Typography>
             <Typography
-              sx={{ fontSize: '0.82rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}
+              sx={{ fontSize: { xs: '0.75rem', sm: '0.82rem' }, color: 'text.secondary', fontWeight: 600, mt: 0.25, lineHeight: 1.35 }}
             >
               {group.completedCount} of {group.totalCount} completed
               {hasTargetRollup && ` · Actual ${totalActual} / Target ${totalTarget}`}
@@ -244,11 +247,11 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, flexShrink: 0 }}>
           <Box
             sx={{
-              px: 2,
-              py: 0.75,
+              px: { xs: 1.25, sm: 2 },
+              py: { xs: 0.5, sm: 0.75 },
               borderRadius: '14px',
               bgcolor:
                 percentage === 100
@@ -268,7 +271,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1rem',
+                fontSize: { xs: '0.85rem', sm: '1rem' },
                 color:
                   percentage === 100
                     ? tokens.semantic.success
@@ -663,7 +666,8 @@ export const DailyTeamProgress = () => {
           }}
           sx={{
             flexGrow: 1,
-            minWidth: 200,
+            minWidth: { xs: 0, sm: 200 },
+            width: { xs: '100%', sm: 'auto' },
             '& .MuiOutlinedInput-root': {
               borderRadius: '16px',
               bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -727,7 +731,7 @@ export const DailyTeamProgress = () => {
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={3.5}>
+        <Grid container spacing={{ xs: 2, sm: 3.5 }}>
           {filteredGroupedEntries.map((group, idx) => (
             <Grid item xs={12} lg={6} key={group.user?._id || idx}>
               <UserProgressCard
