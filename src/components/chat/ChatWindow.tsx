@@ -928,7 +928,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
             <IconButton
               onClick={() => navigate('/chat', { replace: true })}
-              sx={{ display: { xs: 'flex', md: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
+              sx={{ display: { xs: 'flex', lg: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
             >
               <ArrowBackIcon />
             </IconButton>
@@ -1248,7 +1248,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         <Box
           sx={{
             display: 'flex',
-            alignItems: { xs: 'flex-end', sm: 'center' },
+            alignItems: 'center',
             gap: { xs: 0.75, sm: 1.5 },
             p: { xs: 0.75, sm: 1 },
             px: { xs: 1, sm: 2 },
@@ -1320,18 +1320,21 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               flex: 1,
               width: { xs: '100%' },
               minWidth: 0,
-              alignSelf: 'stretch',
+              alignSelf: 'center',
               '& .tiptap, & .ProseMirror, & .ProseMirror p': {
-                width: { xs: '100% !important' },
-                maxWidth: { xs: '100% !important' },
-                margin: { xs: '0 !important' },
+                width: '100% !important',
+                maxWidth: '100% !important',
+                margin: '0 !important',
                 boxSizing: 'border-box',
                 textAlign: 'left',
               },
               '& .ProseMirror': {
-                minHeight: { xs: '40px !important' },
-                maxHeight: { xs: '140px !important' },
-                padding: { xs: '4px 0 !important' },
+                minHeight: { xs: '32px !important', sm: '40px !important' },
+                maxHeight: { xs: '140px !important', sm: '200px !important' },
+                padding: '0 !important',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
               },
               '& .ProseMirror a': {
                 overflowWrap: 'anywhere',
@@ -1339,17 +1342,20 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               '& .rte-input-row': {
                 width: '100%',
                 flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: { xs: 'stretch !important', sm: 'flex-end' },
+                alignItems: { xs: 'stretch', sm: 'center' },
               },
               '& .rte-input-row > :first-child': {
-                width: { xs: '100%' },
-                maxWidth: { xs: '100%' },
+                flex: '1 1 auto',
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: { xs: '100%', sm: 0 },
               },
               '& .rte-tools': {
                 justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                pt: { xs: 0, sm: 0 },
-                pb: { xs: 0, sm: '10px' },
-                pr: { xs: 0, sm: '10px' },
+                alignSelf: { xs: 'flex-end', sm: 'center' },
+                pt: '0 !important',
+                pb: '0 !important',
+                pr: '0 !important',
               },
             }}
             onPaste={(e) => {
