@@ -35,19 +35,19 @@ export const HeroSection = () => {
     <Box
       sx={{
         position: 'relative',
-        pt: { xs: 2, md: 4 },
-        pb: { xs: 8, md: 14 },
+        pt: { xs: 1, sm: 2, md: 4 },
+        pb: { xs: 5, md: 14 },
         overflow: 'hidden',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 } }}>
         {/* Hero Eyebrow Pill */}
         <ScrollReveal variant="fade-down" delay={60}>
           <Box
             sx={{
               display: 'flex',
               justifyContent: 'center',
-              mb: 3,
+              mb: { xs: 1.5, md: 3 },
             }}
           >
             <TypingOperatingSystem isDark={isDark} />
@@ -56,16 +56,16 @@ export const HeroSection = () => {
 
         {/* Main Headline */}
         <ScrollReveal variant="fade-up" delay={120}>
-          <Box sx={{ textAlign: 'center', maxWidth: '960px', mx: 'auto', mb: { xs: 2.5, sm: 3.5 } }}>
+          <Box sx={{ textAlign: 'center', maxWidth: '960px', mx: 'auto', mb: { xs: 2, sm: 3.5 } }}>
             <Typography
               variant="h1"
               sx={{
                 fontWeight: 850,
-                fontSize: { xs: '1.75rem', sm: '2.8rem', md: '4.4rem' },
+                fontSize: { xs: '1.6rem', sm: '2.6rem', md: '4.4rem' },
                 lineHeight: { xs: 1.22, sm: 1.14 },
                 letterSpacing: { xs: '-0.025em', md: '-0.04em' },
                 color: isDark ? '#FFFFFF' : '#14111B',
-                mb: { xs: 1.75, sm: 2.5 },
+                mb: { xs: 1.25, sm: 2.5 },
                 wordBreak: 'break-word',
               }}
             >
@@ -93,13 +93,13 @@ export const HeroSection = () => {
             <Typography
               variant="body1"
               sx={{
-                fontSize: { xs: '0.88rem', sm: '1.05rem', md: '1.2rem' },
-                lineHeight: 1.6,
+                fontSize: { xs: '0.84rem', sm: '1.02rem', md: '1.2rem' },
+                lineHeight: 1.55,
                 color: isDark ? 'rgba(255, 255, 255, 0.72)' : '#4A4458',
                 maxWidth: '760px',
                 mx: 'auto',
                 fontWeight: 450,
-                px: { xs: 1, sm: 0 },
+                px: { xs: 0.5, sm: 0 },
               }}
             >
               The unified enterprise platform bridging LinkedIn & cold outbound CRM, automated daily KPI tracking, departmental Kanban boards, and real-time shift telemetry into a single, high-velocity workspace.
@@ -115,8 +115,8 @@ export const HeroSection = () => {
               flexDirection: { xs: 'column', sm: 'row' },
               alignItems: 'center',
               justifyContent: 'center',
-              gap: { xs: 1.5, sm: 2 },
-              mb: { xs: 5, md: 8 },
+              gap: { xs: 1.25, sm: 2 },
+              mb: { xs: 3, sm: 4, md: 8 },
             }}
           >
             <Button
