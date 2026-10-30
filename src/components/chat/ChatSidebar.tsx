@@ -458,6 +458,7 @@ export const ChatSidebar = () => {
             color: '#fff',
             width: 38,
             height: 38,
+            flexShrink: 0,
             '&:hover': { bgcolor: tokens.brand.solid }
           }}
         >
@@ -496,10 +497,10 @@ export const ChatSidebar = () => {
                     navigate(`/chat/${conv._id}`);
                   }}
                   sx={{
-                    px: 2.25,
+                    px: { xs: 1.5, sm: 2.25 },
                     py: 1.75,
                     mb: 0.75,
-                    mx: 2,
+                    mx: { xs: 0.75, sm: 2 },
                     borderRadius: '20px',
                     position: 'relative',
                     bgcolor: active

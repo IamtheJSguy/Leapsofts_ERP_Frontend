@@ -47,7 +47,7 @@ const ChatPage = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: { xs: 'calc(100dvh - 120px)', md: 'calc(100vh - 120px)' },
+        height: { xs: 'calc(100dvh - 84px)', sm: 'calc(100dvh - 100px)', md: 'calc(100vh - 120px)' },
         minHeight: 0,
         minWidth: 0,
         maxWidth: '100%',
@@ -61,7 +61,7 @@ const ChatPage = () => {
           flex: 1,
           display: 'grid',
           gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: '340px minmax(0, 1fr)' },
-          borderRadius: '24px',
+          borderRadius: { xs: '16px', sm: '24px' },
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.6)',
           /* backdropFilter: 'blur(24px)' (removed for performance) */
           /* WebkitBackdropFilter: 'blur(24px)' (removed for performance) */

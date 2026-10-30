@@ -915,7 +915,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           px: { xs: 1.5, md: 3 },
-          py: { xs: 1.5, md: 2 },
+          py: { xs: 1, md: 1.5 },
           borderBottom: 'none',
           bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
           /* backdropFilter: 'blur(20px)' (removed for performance) */
@@ -927,7 +927,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         {chatHeaderDetails && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
             <IconButton
-              onClick={() => navigate('/chat', { replace: true })}
+              onClick={() => {
+                setActiveConversation(null);
+                navigate('/chat', { replace: true });
+              }}
               sx={{ display: { xs: 'flex', lg: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
             >
               <ArrowBackIcon />
