@@ -40,7 +40,7 @@ export const HeroSection = () => {
         overflow: 'hidden',
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
         {/* Hero Eyebrow Pill */}
         <ScrollReveal variant="fade-down" delay={60}>
           <Box
@@ -190,8 +190,8 @@ export const HeroSection = () => {
               position: 'relative',
               mx: 'auto',
               maxWidth: '1020px',
-              borderRadius: { xs: '20px', md: '24px' },
-              p: { xs: 0.5, sm: 1 },
+              borderRadius: { xs: '18px', md: '24px' },
+              p: { xs: 0.25, sm: 0.75, md: 1 },
               background: isDark
                 ? 'linear-gradient(180deg, rgba(168, 85, 247, 0.35) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(93, 26, 137, 0.2) 100%)'
                 : 'linear-gradient(180deg, rgba(93, 26, 137, 0.2) 0%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 127, 17, 0.15) 100%)',

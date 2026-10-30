@@ -55,8 +55,8 @@ export const RealErpShowcaseWindow: React.FC = () => {
         {/* 1. Sleek Window Chrome Header Bar */}
         <Box
           sx={{
-            px: 2,
-            py: 1,
+            px: { xs: 1.25, sm: 2 },
+            py: { xs: 0.6, sm: 1 },
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -67,23 +67,24 @@ export const RealErpShowcaseWindow: React.FC = () => {
           }}
         >
           {/* Left: Window Controls + Address */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-              <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#EF4444' }} />
-              <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#F59E0B' }} />
-              <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#10B981' }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 }, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#EF4444' }} />
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#F59E0B' }} />
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10B981' }} />
             </Box>
 
             <Box
               sx={{
                 px: { xs: 1, sm: 1.75 },
-                py: 0.3,
+                py: 0.25,
                 borderRadius: '999px',
                 bgcolor: isDemoDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.75,
-                maxWidth: { xs: '140px', sm: 'none' },
+                gap: 0.6,
+                minWidth: 0,
+                maxWidth: { xs: '150px', sm: 'none' },
               }}
             >
               <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10B981', flexShrink: 0 }} />
@@ -93,7 +94,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
                 sx={{
                   color: isDemoDark ? 'rgba(255, 255, 255, 0.65)' : 'text.secondary',
                   fontWeight: 650,
-                  fontSize: '0.68rem',
+                  fontSize: { xs: '0.62rem', sm: '0.68rem' },
                 }}
               >
                 erp.leapsofts.com/{activePage}
@@ -106,8 +107,8 @@ export const RealErpShowcaseWindow: React.FC = () => {
             label="REAL ERP DEMO"
             size="small"
             sx={{
-              height: 20,
-              fontSize: '0.62rem',
+              height: { xs: 18, sm: 20 },
+              fontSize: { xs: '0.55rem', sm: '0.62rem' },
               fontWeight: 800,
               letterSpacing: '0.04em',
               bgcolor: isDemoDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)',
@@ -123,7 +124,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
           sx={{
             display: 'flex',
             position: 'relative',
-            height: { xs: '440px', sm: '510px', md: '590px' },
+            height: { xs: '460px', sm: '520px', md: '590px' },
             bgcolor: isDemoDark ? '#14111B' : '#FAF8FD',
             overflow: 'hidden',
             transition: 'background-color 0.25s ease',

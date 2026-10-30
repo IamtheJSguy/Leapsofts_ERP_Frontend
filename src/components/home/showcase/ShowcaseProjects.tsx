@@ -14,7 +14,6 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import FolderIcon from '@mui/icons-material/Folder';
 import { tokens } from '@/styles/tokens';
 
 interface ProjectCardData {
@@ -25,7 +24,6 @@ interface ProjectCardData {
   statusLabel: string;
   statusColor: string;
   statusBg: string;
-  progress: number;
   tags: string[];
   members: string[];
 }
@@ -47,7 +45,6 @@ export const ShowcaseProjects: React.FC = () => {
       statusLabel: 'Active',
       statusColor: '#10B981',
       statusBg: 'rgba(16, 185, 129, 0.1)',
-      progress: 78,
       tags: ['Enterprise', 'SupplyChain', 'Billing'],
       members: ['HR', 'SJ', 'AR'],
     },
@@ -59,7 +56,6 @@ export const ShowcaseProjects: React.FC = () => {
       statusLabel: 'Active',
       statusColor: '#10B981',
       statusBg: 'rgba(16, 185, 129, 0.1)',
-      progress: 92,
       tags: ['Growth', 'AI-Leads', 'CRM'],
       members: ['HR', 'SJ'],
     },
@@ -71,7 +67,6 @@ export const ShowcaseProjects: React.FC = () => {
       statusLabel: 'In Development',
       statusColor: '#3B82F6',
       statusBg: 'rgba(59, 130, 246, 0.1)',
-      progress: 45,
       tags: ['Security', 'OAuth', 'Telemetry'],
       members: ['AR', 'MV'],
     },
@@ -234,75 +229,71 @@ export const ShowcaseProjects: React.FC = () => {
           <Grid item xs={12} md={6} lg={4} key={project.id}>
             <Card
               sx={{
-                p: 3,
+                p: { xs: 2.25, sm: 3 },
                 borderRadius: '24px',
-                bgcolor: isDark ? 'rgba(28, 25, 36, 0.65)' : '#FFFFFF',
-                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)'}`,
-                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 12px rgba(0,0,0,0.02)',
+                bgcolor: isDark ? 'rgba(30, 27, 36, 0.45)' : '#FFFFFF',
+                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.05)'}`,
+                boxShadow: isDark ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 height: '100%',
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 cursor: 'pointer',
+                position: 'relative',
                 '&:hover': {
                   borderColor: tokens.brand.primary,
                   transform: 'translateY(-3px)',
-                  boxShadow: isDark
-                    ? '0 12px 30px rgba(93, 26, 137, 0.25)'
-                    : '0 10px 24px rgba(93, 26, 137, 0.08)',
+                  boxShadow: tokens.shadow.cardHover,
                 },
               }}
             >
               <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '12px',
-                      bgcolor: 'rgba(93, 26, 137, 0.08)',
-                      color: tokens.brand.primary,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <FolderIcon sx={{ fontSize: 22 }} />
-                  </Box>
-
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 1.5 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em', fontSize: '1.05rem' }}>
+                    {project.name}
+                  </Typography>
                   <Chip
                     label={project.statusLabel}
                     size="small"
                     sx={{
-                      height: 22,
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
                       bgcolor: project.statusBg,
                       color: project.statusColor,
-                      borderRadius: '8px',
+                      fontWeight: 750,
+                      fontSize: '0.68rem',
+                      height: 20,
+                      border: 'none',
                     }}
                   />
                 </Box>
 
                 <Typography
+                  variant="caption"
                   sx={{
-                    fontWeight: 800,
-                    fontSize: '1.05rem',
-                    color: isDark ? '#FFFFFF' : tokens.text.primary,
-                    mb: 0.75,
-                    letterSpacing: '-0.01em',
+                    color: 'text.secondary',
+                    fontWeight: 700,
+                    display: 'block',
+                    mb: 1.5,
+                    fontSize: '0.72rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.02em',
                   }}
                 >
-                  {project.name}
+                  Project
                 </Typography>
 
                 <Typography
+                  variant="body2"
                   sx={{
-                    fontSize: '0.8rem',
-                    color: isDark ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
-                    lineHeight: 1.5,
+                    color: 'text.secondary',
                     mb: 2.5,
+                    fontSize: '0.82rem',
+                    lineHeight: 1.5,
+                    minHeight: 40,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
                   }}
                 >
                   {project.description}
@@ -313,14 +304,15 @@ export const ShowcaseProjects: React.FC = () => {
                   {project.tags.map((tag) => (
                     <Chip
                       key={tag}
-                      label={`#${tag}`}
+                      label={tag}
                       size="small"
                       sx={{
                         height: 20,
-                        fontSize: '0.65rem',
+                        fontSize: '0.68rem',
                         fontWeight: 650,
-                        bgcolor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                        color: tokens.text.secondary,
+                        bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                        color: 'text.secondary',
+                        borderRadius: '8px',
                       }}
                     />
                   ))}
@@ -330,21 +322,32 @@ export const ShowcaseProjects: React.FC = () => {
               {/* Bottom Avatar & Kanban Row */}
               <Box
                 sx={{
-                  pt: 2,
-                  borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+                  pt: 2.25,
+                  borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
-                <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.68rem', fontWeight: 800, bgcolor: tokens.brand.solid } }}>
+                <AvatarGroup
+                  max={4}
+                  sx={{
+                    '& .MuiAvatar-root': {
+                      width: 28,
+                      height: 28,
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      borderColor: isDark ? '#1e1b24' : '#fff',
+                    },
+                  }}
+                >
                   {project.members.map((m) => (
                     <Avatar key={m}>{m}</Avatar>
                   ))}
                 </AvatarGroup>
 
-                <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: tokens.brand.primary }}>
-                  Open Kanban ↗
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.brand.primary }}>
+                  Kanban Board ↗
                 </Typography>
               </Box>
             </Card>
