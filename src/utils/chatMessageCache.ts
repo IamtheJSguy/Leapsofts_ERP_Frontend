@@ -31,7 +31,10 @@ export const optimisticMatchesIncoming = (pending: Message, incoming: Message): 
   const incomingType = incoming.type || 'text';
   if (pendingType !== incomingType) return false;
   if (pendingType === 'drive_file') {
-    return Boolean(pending.driveFileId && pending.driveFileId === incoming.driveFileId);
+    return Boolean(
+      (pending.driveFileId && pending.driveFileId === incoming.driveFileId) ||
+      (pending.driveFileName && incoming.driveFileName && pending.driveFileName === incoming.driveFileName),
+    );
   }
   if (pendingType === 'file') {
     return (
@@ -98,7 +101,20 @@ export const isMessagesInfiniteData = (old: unknown): old is MessagesInfiniteDat
 
 export const flattenMessagePages = (data: MessagesInfiniteData | undefined): Message[] => {
   if (!data?.pages?.length) return [];
-  return [...data.pages].reverse().flatMap((page) => page.messages);
+  const raw = [...data.pages].reverse().flatMap((page) => page.messages);
+  const seenIds = new Set<string>();
+  const seenClientIds = new Set<string>();
+  const deduped: Message[] = [];
+
+  for (const m of raw) {
+    if (m._id && seenIds.has(m._id)) continue;
+    if (m.clientMessageId && seenClientIds.has(m.clientMessageId)) continue;
+    if (m._id) seenIds.add(m._id);
+    if (m.clientMessageId) seenClientIds.add(m.clientMessageId);
+    deduped.push(m);
+  }
+
+  return deduped;
 };
 
 export const findMessageInCache = (

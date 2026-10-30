@@ -142,6 +142,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [drivePromptOpen, setDrivePromptOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const isSendingRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
@@ -598,9 +599,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const handleSend = () => {
     if (!activeConversationId) return;
-    if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
+    if (isSendingRef.current) return;
+    if (sendMessage.isPending || sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
+    isSendingRef.current = true;
+    setTimeout(() => {
+      isSendingRef.current = false;
+    }, 450);
     // Force stick to bottom and lock it so any in-flight scroll or user position is overridden
     shouldStickToBottomRef.current = true;
     pendingImageScrollRef.current = true;
@@ -984,13 +990,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       {/* Dynamic Conversational Header Bar */}
       <Box
         sx={{
+          position: 'sticky',
+          top: 0,
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           px: { xs: 1.5, md: 3 },
           py: { xs: 1, md: 1.5 },
           borderBottom: 'none',
-          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           /* backdropFilter: 'blur(20px)' (removed for performance) */
           /* WebkitBackdropFilter: 'blur(20px)' (removed for performance) */
           boxShadow: isDarkMode ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.02)',
@@ -1237,7 +1246,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 0.5, pb: { xs: 1.5, md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+      <Box sx={{ px: { xs: 1, md: 3 }, pt: { xs: 0.25, md: 0.5 }, pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10, flexShrink: 0 }}>
         {replyingTo && (
           <Box
             sx={{
@@ -1381,10 +1390,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: { xs: 0.75, sm: 1.5 },
-            p: { xs: 0.75, sm: 1 },
-            px: { xs: 1, sm: 2 },
-            borderRadius: { xs: '20px', sm: '32px' },
+            gap: { xs: 0.5, sm: 1.5 },
+            p: { xs: 0.35, sm: 1 },
+            px: { xs: 0.75, sm: 2 },
+            borderRadius: { xs: '24px', sm: '32px' },
             bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.8)' : 'rgba(255, 255, 255, 0.85)',
             /* backdropFilter: 'blur(24px)' (removed for performance) */
             /* WebkitBackdropFilter: 'blur(24px)' (removed for performance) */
@@ -1404,13 +1413,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               sx={{
                 color: 'text.secondary',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                width: { xs: 32, sm: 36 },
-                height: { xs: 32, sm: 36 },
+                width: { xs: 30, sm: 36 },
+                height: { xs: 30, sm: 36 },
+                flexShrink: 0,
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }
               }}
               aria-label="Attach file"
             >
-              <AttachFileIcon sx={{ fontSize: 20 }} />
+              <AttachFileIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
             </IconButton>
           </Tooltip>
 
@@ -1450,7 +1460,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           <Box
             sx={{
               flex: 1,
-              width: { xs: '100%' },
+              width: '100%',
               minWidth: 0,
               alignSelf: 'center',
               '& .tiptap, & .ProseMirror, & .ProseMirror p': {
@@ -1461,9 +1471,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 textAlign: 'left',
               },
               '& .ProseMirror': {
-                minHeight: { xs: '32px !important', sm: '40px !important' },
-                maxHeight: { xs: '140px !important', sm: '200px !important' },
-                padding: '0 !important',
+                minHeight: { xs: '28px !important', sm: '40px !important' },
+                maxHeight: { xs: '120px !important', sm: '200px !important' },
+                padding: { xs: '4px 6px !important', sm: '0 !important' },
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -1473,21 +1483,26 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               },
               '& .rte-input-row': {
                 width: '100%',
-                flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: { xs: 'stretch', sm: 'center' },
+                display: 'flex !important',
+                flexDirection: 'row !important',
+                alignItems: 'center !important',
+                gap: { xs: '2px', sm: '6px' },
               },
               '& .rte-input-row > :first-child': {
                 flex: '1 1 auto',
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: { xs: '100%', sm: 0 },
+                width: 'auto',
+                minWidth: 0,
               },
               '& .rte-tools': {
-                justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                alignSelf: { xs: 'flex-end', sm: 'center' },
+                display: 'flex !important',
+                flexDirection: 'row !important',
+                alignItems: 'center !important',
+                justifyContent: 'flex-end',
+                flexShrink: 0,
                 pt: '0 !important',
                 pb: '0 !important',
                 pr: '0 !important',
+                gap: { xs: '2px', sm: '4px' },
               },
             }}
             onPaste={(e) => {
@@ -1530,6 +1545,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             sx={{
               width: { xs: 32, sm: 44 },
               height: { xs: 32, sm: 44 },
+              flexShrink: 0,
               bgcolor: tokens.brand.solid,
               color: '#fff',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

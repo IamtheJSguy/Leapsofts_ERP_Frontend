@@ -261,7 +261,7 @@ export const RichTextEditor = ({
         </Box>
       </Collapse>
       
-      <Box className="rte-input-row" sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+      <Box className="rte-input-row" sx={{ display: 'flex', alignItems: 'center', position: 'relative', width: '100%' }}>
         <Box
           sx={{
             flex: 1,
@@ -315,12 +315,15 @@ export const RichTextEditor = ({
         </Box>
 
         {/* Inline Tools (A button and Emoji) */}
-        <Box className="rte-tools" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
+        <Box className="rte-tools" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.25, sm: 0.5 }, pr: { xs: 0.25, sm: 0.75 }, flexShrink: 0 }}>
           <Tooltip title="Formatting options" arrow>
             <IconButton 
               size="small" 
               onClick={() => setIsToolbarVisible(!isToolbarVisible)}
               sx={{
+                width: { xs: 26, sm: 30 },
+                height: { xs: 26, sm: 30 },
+                p: { xs: 0.25, sm: 0.5 },
                 color: isToolbarVisible ? tokens.brand.primary : 'text.secondary',
                 bgcolor: isToolbarVisible ? (isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.1)') : 'transparent',
                 '&:hover': {
@@ -330,7 +333,7 @@ export const RichTextEditor = ({
                 }
               }}
             >
-              <TextFormatIcon fontSize="small" />
+              <TextFormatIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
             </IconButton>
           </Tooltip>
           
@@ -339,11 +342,14 @@ export const RichTextEditor = ({
               size="small" 
               onClick={(e) => setEmojiAnchorEl(e.currentTarget)}
               sx={{ 
+                width: { xs: 26, sm: 30 },
+                height: { xs: 26, sm: 30 },
+                p: { xs: 0.25, sm: 0.5 },
                 color: emojiAnchorEl ? tokens.brand.primary : 'text.secondary',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }
               }}
             >
-              <SentimentSatisfiedAltIcon fontSize="small" />
+              <SentimentSatisfiedAltIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
             </IconButton>
           </Tooltip>
         </Box>
