@@ -75,7 +75,7 @@ export const ShowcaseKanban = () => {
                 fontWeight: 750,
                 fontSize: '0.74rem',
                 textTransform: 'none',
-                bgcolor: selectedDept === dept ? tokens.brand.primary : isDark ? 'rgba(255,255,255,0.05)' : '#F5F3F8',
+                bgcolor: selectedDept === dept ? tokens.brand.solid : isDark ? 'rgba(255,255,255,0.05)' : '#F5F3F8',
                 color: selectedDept === dept ? '#fff' : isDark ? 'rgba(255,255,255,0.7)' : 'text.secondary',
               }}
             >
@@ -160,7 +160,7 @@ export const ShowcaseKanban = () => {
                       </Typography>
                     </Box>
 
-                    <Avatar sx={{ width: 22, height: 22, fontSize: '0.65rem', fontWeight: 800, bgcolor: tokens.brand.primary }}>
+                    <Avatar sx={{ width: 22, height: 22, fontSize: '0.65rem', fontWeight: 800, bgcolor: tokens.brand.solid }}>
                       {card.rep.charAt(0)}
                     </Avatar>
                   </Box>

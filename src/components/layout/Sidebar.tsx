@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Drawer,
   List,
@@ -29,7 +29,9 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { prefetchNavRoute } from '@/router/prefetchRoute';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
@@ -95,6 +97,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Meetings', path: '/meetings', icon: <EventIcon sx={{ fontSize: 18 }} /> },
       { label: 'Chat', path: '/chat', icon: <ChatIcon sx={{ fontSize: 18 }} />, requiresEntitlement: 'chat' },
+      { label: 'Lumi', path: '/ai', icon: <AutoAwesomeIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {
@@ -136,7 +139,7 @@ const BrandMark = () => (
 );
 
 export const Sidebar = () => {
-  const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
   const permissions = usePermissions();
   const entitlements = useEntitlements();
   const switchOrganization = useSwitchOrganization();
@@ -145,6 +148,10 @@ export const Sidebar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDarkMode = theme.palette.mode === 'dark';
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile, setSidebarOpen]);
   const [orgMenuAnchor, setOrgMenuAnchor] = useState<null | HTMLElement>(null);
 
   const { data: conversations = [] } = useConversations({ enabled: entitlements.chat });
@@ -369,6 +376,8 @@ export const Sidebar = () => {
                       <ListItemButton
                         component={NavLink}
                         to={item.path}
+                        onMouseEnter={() => prefetchNavRoute(item.path)}
+                        onFocus={() => prefetchNavRoute(item.path)}
                         onClick={() => isMobile && toggleSidebar()}
                         sx={{
                           borderRadius: '10px',
@@ -465,7 +474,7 @@ export const Sidebar = () => {
             sx={{
               width: 32,
               height: 32,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               backgroundImage: user?.avatarUrl
                 ? 'none'
                 : `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,

@@ -52,7 +52,6 @@ export const useSocket = () => {
         }
         refreshSalesKpiQueries(queryClient);
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
-        queryClient.invalidateQueries({ queryKey: ['org-entitlements'] });
         lastActivityEmit.current = 0;
         socket.emit(SOCKET_EVENTS.PRESENCE_ACTIVITY);
       });

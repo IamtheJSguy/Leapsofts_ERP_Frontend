@@ -836,7 +836,7 @@ export const AttendancePage = () => {
                     sx={{
                       width: 52,
                       height: 52,
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       fontWeight: 800,
                       fontSize: '1.2rem',
@@ -930,12 +930,12 @@ export const AttendancePage = () => {
                           height: 32,
                           px: 1,
                           borderRadius: '10px',
-                          bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                          bgcolor: active ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
                           color: active ? '#ffffff' : 'text.primary',
                           border: `1px solid ${active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
                           transition: 'all 0.2s ease',
                           '&:hover': {
-                            bgcolor: active ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                            bgcolor: active ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
                           }
                         }}
                       />
@@ -1194,7 +1194,7 @@ export const AttendancePage = () => {
           gap: 3,
         }}
       >
-        <Box sx={{ minWidth: 140 }}>
+        <Box sx={{ minWidth: { xs: 0, sm: 140 } }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
             Filter History
           </Typography>
@@ -1219,11 +1219,11 @@ export const AttendancePage = () => {
               }}
               sx={{
                 fontWeight: 700,
-                bgcolor: userFilterType === btn.id ? tokens.brand.primary : 'transparent',
+                bgcolor: userFilterType === btn.id ? tokens.brand.solid : 'transparent',
                 color: userFilterType === btn.id ? '#fff' : 'text.primary',
                 border: `1px solid ${userFilterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.12)'}`,
                 '&:hover': {
-                  bgcolor: userFilterType === btn.id ? tokens.brand.primary : 'rgba(0,0,0,0.04)',
+                  bgcolor: userFilterType === btn.id ? tokens.brand.solid : 'rgba(0,0,0,0.04)',
                 }
               }}
             />
@@ -1231,7 +1231,7 @@ export const AttendancePage = () => {
         </Box>
 
         {userFilterType === 'month' && (
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' } }}>
             <InputLabel id="user-month-select-label">Select Month</InputLabel>
             <Select
               labelId="user-month-select-label"
@@ -1265,7 +1265,8 @@ export const AttendancePage = () => {
               setPage(1);
             }}
             sx={{
-              minWidth: 180,
+              minWidth: { xs: '100%', sm: 180 },
+              width: { xs: '100%', sm: 'auto' },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
               }
@@ -1282,7 +1283,8 @@ export const AttendancePage = () => {
               setPage(1);
             }}
             sx={{
-              minWidth: 180,
+              minWidth: { xs: '100%', sm: 180 },
+              width: { xs: '100%', sm: 'auto' },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
               }

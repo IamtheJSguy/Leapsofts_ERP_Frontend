@@ -1,6 +1,6 @@
 import { applyLeadUpdateResponse, getLeadUpdateScope } from '@/utils/leadUpdateCache';
 import { scheduleSalesKpiRefresh } from '@/utils/salesKpiRefresh';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import type {
@@ -82,22 +82,41 @@ const leadApi = {
     api.post('/leads/export', { ...body, format: 'xlsx' }, { responseType: 'blob' }),
 };
 
+const fetchLeadsPage = async (filters: LeadFilters): Promise<LeadsListResponse> => {
+  const response = await leadApi.getLeads(filters);
+  const body = response.data;
+  return {
+    data: Array.isArray(body.data) ? body.data : [],
+    meta: body.meta ?? {
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 20,
+      total: Array.isArray(body.data) ? body.data.length : 0,
+    },
+  };
+};
+
+/** Matches the first paint of SalesPage (LinkedIn, page 1, no extra filters). */
+export const LEADS_FIRST_PAGE_FILTERS: LeadFilters = {
+  page: 1,
+  limit: 20,
+  channel: 'linkedin',
+  dateField: 'date',
+};
+
+export const prefetchLeadsFirstPage = (client: QueryClient) => {
+  const organizationId = useAuthStore.getState().user?.organizationId;
+  return client.prefetchQuery({
+    queryKey: ['leads', organizationId, LEADS_FIRST_PAGE_FILTERS],
+    queryFn: () => fetchLeadsPage(LEADS_FIRST_PAGE_FILTERS),
+    staleTime: 1000 * 60,
+  });
+};
+
 export const useLeads = (filters: LeadFilters = {}) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
     queryKey: ['leads', organizationId, filters],
-    queryFn: async (): Promise<LeadsListResponse> => {
-      const response = await leadApi.getLeads(filters);
-      const body = response.data;
-      return {
-        data: Array.isArray(body.data) ? body.data : [],
-        meta: body.meta ?? {
-          page: filters.page ?? 1,
-          limit: filters.limit ?? 20,
-          total: Array.isArray(body.data) ? body.data.length : 0,
-        },
-      };
-    },
+    queryFn: () => fetchLeadsPage(filters),
     staleTime: 1000 * 60,
     placeholderData: (previous, previousQuery) => {
       if (previousQuery?.queryKey[1] !== organizationId) return undefined;

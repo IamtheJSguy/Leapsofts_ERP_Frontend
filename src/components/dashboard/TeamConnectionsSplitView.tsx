@@ -262,7 +262,17 @@ export const TeamConnectionsSplitView = () => {
               </Box>
 
               {/* Date Filters (Pills) */}
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  overflowX: 'auto',
+                  maxWidth: '100%',
+                  pb: { xs: 0.5, sm: 0 },
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  scrollbarWidth: 'none',
+                }}
+              >
                 {['Today', 'This Week', 'This Month', 'All Time', 'Custom'].map((label) => {
                   const isActive = activeDateFilter === label;
                   return (
@@ -276,6 +286,8 @@ export const TeamConnectionsSplitView = () => {
                         fontSize: '0.75rem',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
                         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         bgcolor: isActive 
                           ? (isDark ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)') 
@@ -305,6 +317,7 @@ export const TeamConnectionsSplitView = () => {
               {activeDateFilter === 'Custom' && (
                 <Box sx={{ 
                   display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' },
                   gap: 2, 
                   animation: 'fadeIn 0.3s ease-in-out',
                   p: 1.5,
@@ -380,9 +393,11 @@ export const TeamConnectionsSplitView = () => {
                       }}
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'flex-start', sm: 'center' },
                         justifyContent: 'space-between',
-                        p: 2,
+                        p: { xs: 1.5, sm: 2 },
+                        gap: { xs: 1.5, sm: 2 },
                         borderRadius: '16px',
                         bgcolor: isDark ? 'rgba(255,255,255,0.015)' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
@@ -397,30 +412,40 @@ export const TeamConnectionsSplitView = () => {
                         }
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
                         <Avatar 
                           src={user.avatarUrl || undefined}
                           sx={{ 
-                            width: 42, 
-                            height: 42, 
+                            width: 38, 
+                            height: 38, 
                             bgcolor: isDark ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)',
                             color: isDark ? '#E8D9F2' : tokens.brand.primary,
                             fontWeight: 800,
-                            fontSize: '1rem'
+                            fontSize: '0.95rem',
+                            flexShrink: 0
                           }}
                         >
                           {initial}
                         </Avatar>
-                        <Box>
-                          <Typography sx={{ fontWeight: 800, color: isDark ? '#fff' : tokens.text.primary, fontSize: '0.9rem', letterSpacing: '-0.01em' }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography noWrap sx={{ fontWeight: 800, color: isDark ? '#fff' : tokens.text.primary, fontSize: '0.88rem', letterSpacing: '-0.01em' }}>
                             {fullName || user.email}
                           </Typography>
-                          <Typography sx={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.4)' : tokens.text.muted, fontSize: '0.72rem', mt: 0.2 }}>
+                          <Typography noWrap sx={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.4)' : tokens.text.muted, fontSize: '0.72rem', mt: 0.2 }}>
                             {user.role || 'Member'}
                           </Typography>
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          gap: 1.5,
+                          width: { xs: '100%', sm: 'auto' },
+                          justifyContent: { xs: 'space-around', sm: 'flex-end' },
+                          pt: { xs: 1, sm: 0 },
+                          borderTop: { xs: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`, sm: 'none' }
+                        }}
+                      >
                         <Box sx={{ textAlign: 'center', minWidth: 40 }}>
                           <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: tokens.semantic.success, lineHeight: 1.2 }}>
                             {user.doneTasks ?? 0}

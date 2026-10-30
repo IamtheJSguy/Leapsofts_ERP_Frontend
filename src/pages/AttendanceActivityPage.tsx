@@ -49,7 +49,7 @@ const pillTabSx = (isDarkMode: boolean) => ({
   p: 0.5,
   minHeight: '44px',
   '& .MuiTabs-indicator': {
-    backgroundColor: tokens.brand.primary,
+    backgroundColor: tokens.brand.solid,
     borderRadius: '12px',
     height: '100%',
     boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',
@@ -232,7 +232,7 @@ export default function AttendanceActivityPage() {
         </Tabs>
       </Box>
 
-      <Paper elevation={0} sx={{ ...paperSx(isDarkMode), mb: 3.5, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+      <Paper elevation={0} sx={{ ...paperSx(isDarkMode), mb: 3.5, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' } }}>
         <TextField
           type="date"
           size="small"
@@ -246,9 +246,9 @@ export default function AttendanceActivityPage() {
             next.delete('page');
             setSearchParams(next, { replace: true });
           }}
-          sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+          sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' }, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
         />
-        <FormControl size="small" sx={{ minWidth: 220 }}>
+        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
           <InputLabel id="shift-select-label">Shift</InputLabel>
           <Select
             labelId="shift-select-label"

@@ -64,7 +64,7 @@ const MeetingsPage = () => {
           startIcon={<AddIcon />}
           onClick={() => setSchedulerOpen(true)}
           sx={{
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             fontWeight: 700,
             fontSize: '0.82rem',

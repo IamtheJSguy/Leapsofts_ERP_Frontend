@@ -208,6 +208,157 @@ const InvoiceStatusChip = ({
   );
 };
 
+type InvoiceActionHandlers = {
+  downloadingId: string | null;
+  sendingId: string | null;
+  remindingId: string | null;
+  onOpen: (invoice: InvoiceRecord) => void;
+  onDownload: (invoice: InvoiceRecord) => void;
+  onSend: (invoice: InvoiceRecord) => void;
+  onRemind: (invoice: InvoiceRecord) => void;
+  onMarkPaid: (invoice: InvoiceRecord) => void;
+  onDispute: (invoice: InvoiceRecord) => void;
+};
+
+const InvoiceRecordActions = ({
+  invoice,
+  sx,
+  downloadingId,
+  sendingId,
+  remindingId,
+  onOpen,
+  onDownload,
+  onSend,
+  onRemind,
+  onMarkPaid,
+  onDispute,
+}: InvoiceActionHandlers & { invoice: InvoiceRecord; sx?: object }) => (
+  <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', ...sx }}>
+    <Button
+      size="small"
+      onClick={() => onOpen(invoice)}
+      startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+      sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
+    >
+      Open
+    </Button>
+    <Button
+      size="small"
+      startIcon={downloadingId === invoice._id ? <CircularProgress size={13} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
+      sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
+      disabled={downloadingId === invoice._id}
+      onClick={() => onDownload(invoice)}
+    >
+      PDF
+    </Button>
+    {invoice.status === 'draft' && (
+      <Button
+        size="small"
+        color="primary"
+        startIcon={<SendIcon sx={{ fontSize: 14 }} />}
+        sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
+        disabled={sendingId === invoice._id}
+        onClick={() => onSend(invoice)}
+      >
+        Send
+      </Button>
+    )}
+    {invoice.status === 'sent' && invoice.overdue && (
+      <Button
+        size="small"
+        color="warning"
+        startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
+        sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
+        disabled={remindingId === invoice._id}
+        onClick={() => onRemind(invoice)}
+      >
+        Send Reminder
+      </Button>
+    )}
+    {invoice.status === 'sent' && (
+      <Button
+        size="small"
+        color="success"
+        startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
+        sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
+        onClick={() => onMarkPaid(invoice)}
+      >
+        Mark Paid
+      </Button>
+    )}
+    {(invoice.status === 'draft' || invoice.status === 'sent') && (
+      <Button
+        size="small"
+        color="warning"
+        startIcon={<GavelIcon sx={{ fontSize: 14 }} />}
+        sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
+        onClick={() => onDispute(invoice)}
+      >
+        Dispute
+      </Button>
+    )}
+  </Box>
+);
+
+const InvoiceClientInvoiceListMobile = ({
+  invoices,
+  isDarkMode,
+  emptyMessage,
+  handlers,
+}: {
+  invoices: InvoiceRecord[];
+  isDarkMode: boolean;
+  emptyMessage: string;
+  handlers: InvoiceActionHandlers;
+}) => {
+  if (invoices.length === 0) {
+    return (
+      <Typography sx={{ py: 6, textAlign: 'center', color: 'text.secondary', fontWeight: 600 }}>
+        {emptyMessage}
+      </Typography>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, p: 1.5 }}>
+      {invoices.map((invoice) => (
+        <Box
+          key={invoice._id}
+          sx={{
+            p: 1.75,
+            borderRadius: '16px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+              {invoice.invoiceNumber}
+            </Typography>
+            <InvoiceStatusChip
+              status={invoice.status}
+              overdue={invoice.overdue}
+              disputeReason={invoice.disputeReason}
+              isDarkMode={isDarkMode}
+            />
+          </Box>
+          <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', fontWeight: 550 }}>
+            Issued {dateLabel(invoice.issueDate)} · Due {dateLabel(invoice.dueDate)}
+          </Typography>
+          <Typography sx={{ fontWeight: 850, fontSize: '0.95rem', color: tokens.brand.primary, my: 1 }}>
+            {formatInvoiceMoney(invoice.currency, invoice.grandTotal)}
+          </Typography>
+          <InvoiceRecordActions
+            invoice={invoice}
+            sx={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}
+            {...handlers}
+          />
+        </Box>
+      ))}
+    </Box>
+  );
+};
+
 const PROFILE_GROUPS: Array<{
   category: string;
   fields: Array<{ label: string; key: keyof InvoiceClientForm; fullWidth?: boolean }>;
@@ -613,7 +764,7 @@ const InvoiceClientDetailPage = () => {
                 ? 'linear-gradient(135deg, rgba(93, 26, 137, 0.5) 0%, rgba(155, 107, 184, 0.25) 100%)'
                 : 'linear-gradient(135deg, #F3E8FF 0%, #FFFFFF 100%)',
               border: `1.5px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
-              color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
+              color: tokens.brand.primary,
               fontWeight: 850,
               fontSize: '1.2rem',
               flexShrink: 0,
@@ -720,7 +871,7 @@ const InvoiceClientDetailPage = () => {
             onClick={() => navigate(`/invoices/new?clientId=${client._id}`)}
             sx={{
               ...headerButtonSx,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
               '&:hover': {
                 bgcolor: tokens.brand.primaryDark,
@@ -961,12 +1112,51 @@ const InvoiceClientDetailPage = () => {
             <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
-          <Box sx={{ overflowX: 'auto' }}>
+          <>
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <InvoiceClientInvoiceListMobile
+              invoices={invoices.data || []}
+              isDarkMode={isDarkMode}
+              emptyMessage={
+                dateRangeInvalid
+                  ? 'Issued from must be on or before issued to.'
+                  : issuedFrom || issuedTo
+                    ? 'No invoices were issued in this date range.'
+                    : 'No invoice records found for this filter.'
+              }
+              handlers={{
+                downloadingId,
+                sendingId,
+                remindingId,
+                onOpen: (invoice) => navigate(`/invoices/${invoice._id}?clientId=${client._id}`),
+                onDownload: (invoice) =>
+                  run(async () => {
+                    setDownloadingId(invoice._id);
+                    try {
+                      await exportInvoiceRecordToPdf(invoice, settings.data?.bankAccounts || []);
+                    } finally {
+                      setDownloadingId(null);
+                    }
+                  }),
+                onSend: openSendConfirm,
+                onRemind: setRemindConfirmInvoice,
+                onMarkPaid: (invoice) =>
+                  run(async () => {
+                    const pdf = await renderInvoicePreviewToBlob(
+                      previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
+                    );
+                    await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
+                  }),
+                onDispute: setDisputeInvoice,
+              }}
+            />
+          </Box>
+          <Box sx={{ overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
           <Table
             size="medium"
             sx={{
               width: '100%',
-              minWidth: { xs: 1200, lg: 820 },
+              minWidth: { lg: 820 },
               '& th, & td': { whiteSpace: 'nowrap' },
             }}
           >
@@ -1127,6 +1317,7 @@ const InvoiceClientDetailPage = () => {
             </TableBody>
           </Table>
           </Box>
+          </>
         )}
       </Paper>
 
@@ -1172,7 +1363,7 @@ const InvoiceClientDetailPage = () => {
               textTransform: 'none',
               fontWeight: 800,
               borderRadius: '12px',
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               px: 3,
               py: 0.8,
               boxShadow: '0 4px 14px rgba(93,26,137,0.25)',

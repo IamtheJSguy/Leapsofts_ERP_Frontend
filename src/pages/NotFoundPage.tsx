@@ -212,7 +212,7 @@ const NotFoundPage = () => {
         }
         .nf-btn-ghost:hover {
           background: ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.06)'};
-          color: ${isDarkMode ? '#fff' : '#5D1A89'};
+          color: ${isDarkMode ? '#fff' : 'var(--brand-primary)'};
           border-color: ${isDarkMode ? 'rgba(255,255,255,0.22)' : 'rgba(93,26,137,0.4)'};
           transform: translateY(-2px);
         }
@@ -223,13 +223,13 @@ const NotFoundPage = () => {
           padding: 6px 14px; border-radius: 99px; margin-bottom: 28px;
           font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
           background: ${isDarkMode ? 'rgba(93,26,137,0.2)' : 'rgba(93,26,137,0.08)'};
-          color: ${isDarkMode ? '#c084fc' : '#5D1A89'};
+          color: var(--brand-primary);
           border: 1px solid ${isDarkMode ? 'rgba(155,107,184,0.3)' : 'rgba(93,26,137,0.2)'};
           animation: fadeSlideUp 0.7s 0.05s cubic-bezier(0.16,1,0.3,1) both;
         }
         .nf-badge-dot {
           width: 6px; height: 6px; border-radius: 50%;
-          background: ${isDarkMode ? '#c084fc' : '#5D1A89'};
+          background: var(--brand-primary);
           animation: pulse 2s ease-in-out infinite;
         }
         @keyframes pulse {

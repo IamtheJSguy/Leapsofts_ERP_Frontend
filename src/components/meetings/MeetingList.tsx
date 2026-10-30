@@ -18,6 +18,7 @@ import {
   InputAdornment,
   Autocomplete,
 } from '@mui/material';
+import { MeetingCardsSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -139,12 +140,8 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
     canEditOrDeleteMeeting(meeting, currentUser ?? user, { isElevated, allUsers: dbUsers });
 
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+  if (isLoading && myMeetings.length === 0) {
+    return <MeetingCardsSkeleton />;
   }
 
   if (myMeetings.length === 0) {
@@ -295,7 +292,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Tooltip>
                 )}
 
-                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', alignItems: viewMode === 'grid' ? 'stretch' : 'center', width: '100%' }}>
+                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : { xs: 'column', sm: 'row' }, alignItems: viewMode === 'grid' ? 'stretch' : { xs: 'stretch', sm: 'center' }, gap: viewMode === 'list' ? { xs: 2, sm: 0 } : 0, width: '100%' }}>
                   {/* Top Row: Category Icon Box & Badge */}
                   {viewMode === 'grid' && (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, pr: 4 }}>
@@ -322,7 +319,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   )}
 
                   {viewMode === 'list' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 3, minWidth: 200 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: { xs: 0, sm: 3 }, minWidth: { xs: 0, sm: 200 } }}>
                       <Box
                         sx={{
                           width: 42,
@@ -515,7 +512,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                                     sx={{
                                       width: 26,
                                       height: 26,
-                                      bgcolor: tokens.brand.primary,
+                                      bgcolor: tokens.brand.solid,
                                       color: '#fff',
                                       border: `2px solid ${isDarkMode ? '#1e1b24' : '#fff'}`,
                                       fontSize: '0.65rem',
@@ -811,7 +808,7 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
             borderRadius: '24px',
             textTransform: 'none',
             fontWeight: 700,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             '&:hover': {
               bgcolor: tokens.brand.primaryDark,

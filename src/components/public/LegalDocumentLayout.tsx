@@ -168,6 +168,40 @@ export const LegalDocumentLayout = ({
             </Typography>
           </Box>
 
+          <Box
+            sx={{
+              display: { xs: 'flex', md: 'none' },
+              gap: 1,
+              overflowX: 'auto',
+              pb: 0.5,
+              mb: 2,
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {toc.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <Chip
+                  key={item.id}
+                  label={item.title}
+                  onClick={() => scrollToSection(item.id)}
+                  sx={{
+                    flexShrink: 0,
+                    fontWeight: isActive ? 800 : 600,
+                    color: isActive ? tokens.brand.primary : 'text.secondary',
+                    bgcolor: isActive
+                      ? isDark
+                        ? 'rgba(93, 26, 137, 0.25)'
+                        : tokens.brand.primary50
+                      : 'transparent',
+                    border: '1px solid',
+                    borderColor: isActive ? tokens.brand.primary : isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                  }}
+                />
+              );
+            })}
+          </Box>
+
           {/* Two-Column Reader: Sticky Sidebar TOC + Content Viewport */}
           <Box
             sx={{
@@ -265,7 +299,7 @@ export const LegalDocumentLayout = ({
                   fontSize: '1.2rem',
                   mt: 3,
                   mb: 1.5,
-                  color: isDark ? '#E9D5FF' : tokens.brand.primaryDark,
+                  color: tokens.brand.primary,
                 },
                 '& p': {
                   color: isDark ? 'rgba(255, 255, 255, 0.78)' : '#332E3F',
@@ -282,6 +316,12 @@ export const LegalDocumentLayout = ({
                 },
                 '& li': {
                   mb: 0.75,
+                },
+                '& a': {
+                  color: 'var(--brand-primary)',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  '&:hover': { color: 'var(--brand-primary-light)', textDecoration: 'underline' },
                 },
               }}
             >

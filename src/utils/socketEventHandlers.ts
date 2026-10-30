@@ -5,6 +5,7 @@ import type { Conversation, Message, MessageReaction, Notification, PresenceStat
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
+import { useAiChatSessionStore } from '@/store/useAiChatSessionStore';
 import { addUserToIdList, normalizeMessageReceipts, serializeReceiptMap, stripHtml } from '@/utils/chatMessageUtils';
 import { getDisplayName } from '@/utils/formatters';
 import {
@@ -375,6 +376,40 @@ export const setupSocketEventHandlers = (
     patchMessagesReceipt(queryClient, conversationId, messageIds, userId, 'deliveredTo', at);
   });
 
+  // Option A: Backend emits this after async population completes.
+  // Patch enriched message fields (populated sender, replyTo, etc.) into cache.
+  socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, (data: unknown) => {
+    const message = normalizeMessageReceipts(data as Message);
+    if (!belongsToActiveOrg((message as Message & { organizationId?: unknown }).organizationId)) return;
+    const conversationId = getConversationId(message);
+    if (!conversationId || !message._id) return;
+
+    // Patch only if the message already exists in cache (never insert via this event)
+    queryClient.setQueriesData<Message[] | MessagesInfiniteData>(
+      { queryKey: ['messages', conversationId] },
+      (old) =>
+        mapMessageCache(old, (messages) =>
+          messages.map((msg) => (msg._id === message._id ? { ...msg, ...message } : msg)),
+        ),
+    );
+
+    // Also update lastMessage in conversations list if it matches
+    queryClient.setQueriesData<Conversation[]>({ queryKey: ['conversations'] }, (old) => {
+      if (!old) return old;
+      return old.map((conv) => {
+        if (conv._id !== conversationId) return conv;
+        const lastMsgId =
+          typeof conv.lastMessage === 'object' && conv.lastMessage !== null
+            ? (conv.lastMessage as Message)._id
+            : undefined;
+        if (lastMsgId === message._id) {
+          return { ...conv, lastMessage: message };
+        }
+        return conv;
+      });
+    });
+  });
+
   socket.on(SOCKET_EVENTS.MESSAGE_READ, (data: unknown) => {
     const { conversationId, userId, messageIds, at } = data as {
       conversationId: string;
@@ -554,6 +589,29 @@ export const setupSocketEventHandlers = (
         conversationId,
       });
     }
+  });
+
+  socket.on(SOCKET_EVENTS.AI_AGENT_PROGRESS, (raw: unknown) => {
+    if (!raw || typeof raw !== 'object') return;
+    const payload = raw as {
+      requestId?: string;
+      conversationId?: string;
+      stepId?: string;
+      status?: 'running' | 'completed' | 'error';
+      label?: string;
+      detail?: string;
+      timestamp?: string;
+    };
+    if (!payload.stepId || !payload.label || !payload.status) return;
+    useAiChatSessionStore.getState().recordPhaseEvent({
+      requestId: payload.requestId,
+      conversationId: payload.conversationId,
+      stepId: payload.stepId,
+      status: payload.status,
+      label: payload.label,
+      detail: payload.detail,
+      timestamp: payload.timestamp || new Date().toISOString(),
+    });
   });
 };
 

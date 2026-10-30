@@ -36,6 +36,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import WorkIcon from '@mui/icons-material/Work';
 
 import { tokens } from '@/styles/tokens';
+import { ProjectDetailsSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -332,12 +333,8 @@ export const ProjectDetailsPage = () => {
     return dbUsers.find((u) => u._id === id);
   }, [project?.ownerId, dbUsers]);
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
-    );
+  if (isLoading && !project) {
+    return <ProjectDetailsSkeleton />;
   }
 
   if (!project) {
@@ -485,7 +482,7 @@ export const ProjectDetailsPage = () => {
                 left: 0,
                 right: 0,
                 height: '3px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 borderRadius: '2px',
               } : undefined,
             }}
@@ -524,13 +521,13 @@ export const ProjectDetailsPage = () => {
                     startIcon={<AddIcon />}
                     onClick={() => setIsCreateBoardOpen(true)}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       color: '#fff',
                       fontWeight: 700,
                       borderRadius: '24px',
                       textTransform: 'none',
                       boxShadow: 'none',
-                      '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+                      '&:hover': { bgcolor: tokens.brand.solid, boxShadow: 'none' },
                     }}
                   >
                     New Board
@@ -952,7 +949,7 @@ export const ProjectDetailsPage = () => {
             onClick={handleSaveBoardEdit}
             disabled={!editBoardName.trim() || updateBoardMutation.isPending}
             variant="contained"
-            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ bgcolor: tokens.brand.solid, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
           </Button>
@@ -1022,13 +1019,13 @@ export const ProjectDetailsPage = () => {
             disabled={!newBoardName.trim() || createProjectBoardMutation.isPending}
             variant="contained"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
               textTransform: 'none',
               boxShadow: 'none',
-              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+              '&:hover': { bgcolor: tokens.brand.solid, boxShadow: 'none' },
             }}
           >
             {createProjectBoardMutation.isPending ? 'Creating...' : 'Create'}
@@ -1104,13 +1101,13 @@ export const ProjectDetailsPage = () => {
             disabled={!selectedUserToAdd || addProjectMemberMutation.isPending}
             variant="contained"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
               textTransform: 'none',
               boxShadow: 'none',
-              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+              '&:hover': { bgcolor: tokens.brand.solid, boxShadow: 'none' },
             }}
           >
             Add Member

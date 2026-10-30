@@ -684,7 +684,7 @@ export const BulkAddLeadsPage = () => {
   const agentName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 88px)', minHeight: 0 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'calc(100dvh - 88px)', md: 'calc(100vh - 88px)' }, minHeight: 0 }}>
       <Box
         sx={{
           display: 'flex',
@@ -723,8 +723,8 @@ export const BulkAddLeadsPage = () => {
             </Typography>
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Select size="small" value={outreachChannel} onChange={(e) => { const channel = e.target.value as OutreachChannel; setOutreachChannel(channel); if (userId) localStorage.setItem(`sales-outreach-channel:${userId}`, channel); }} sx={{ minWidth: 190, borderRadius: '20px', height: 40, fontWeight: 700 }}>
+        <Box sx={{ display: 'flex', alignItems: { xs: 'stretch', md: 'center' }, flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
+          <Select size="small" value={outreachChannel} onChange={(e) => { const channel = e.target.value as OutreachChannel; setOutreachChannel(channel); if (userId) localStorage.setItem(`sales-outreach-channel:${userId}`, channel); }} sx={{ minWidth: { xs: '100%', md: 190 }, width: { xs: '100%', md: 'auto' }, borderRadius: '20px', height: 40, fontWeight: 700 }}>
             <MenuItem value="linkedin">LinkedIn Outreach</MenuItem>
             <MenuItem value="cold_calling">Cold Calling Outreach</MenuItem>
           </Select>
@@ -752,6 +752,7 @@ export const BulkAddLeadsPage = () => {
               fontWeight: 700,
               px: 2.5,
               height: 40,
+              width: { xs: '100%', md: 'auto' },
             }}
           >
             {csvImporting ? 'Loading…' : 'Upload CSV'}
@@ -760,11 +761,11 @@ export const BulkAddLeadsPage = () => {
             variant="text"
             startIcon={<DownloadIcon sx={{ fontSize: 18 }} />}
             onClick={downloadBulkAddSampleCsv}
-            sx={{ textTransform: 'none', fontWeight: 700, color: 'text.secondary' }}
+            sx={{ textTransform: 'none', fontWeight: 700, color: 'text.secondary', width: { xs: '100%', md: 'auto' }, justifyContent: { xs: 'flex-start', md: 'center' } }}
           >
             Sample CSV
           </Button>
-          <Box sx={{ textAlign: 'right' }}>
+          <Box sx={{ textAlign: { xs: 'left', md: 'right' } }}>
             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
               {filledCount} filled · {rows.length} rows
             </Typography>
@@ -781,7 +782,19 @@ export const BulkAddLeadsPage = () => {
         </Box>
       </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', px: { xs: 1, md: 2 } }}>
+      <Typography
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          px: 1.5,
+          pt: 1.25,
+          fontSize: '0.75rem',
+          color: 'text.secondary',
+          fontWeight: 650,
+        }}
+      >
+        Swipe sideways to see every column.
+      </Typography>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch', px: { xs: 1, md: 2 } }}>
         {!draftReady ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
             <CircularProgress size={28} aria-label="Loading draft" />
@@ -870,7 +883,7 @@ export const BulkAddLeadsPage = () => {
           Required: Prospect Name, ICP, Profile
           {filledCount > 0 ? ` · Ready to submit ${filledCount} lead(s)` : ''}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, width: { xs: '100%', md: 'auto' }, flexDirection: { xs: 'column', sm: 'row' } }}>
           <Button
             variant="outlined"
             onClick={() => navigate('/sales')}
@@ -902,8 +915,8 @@ export const BulkAddLeadsPage = () => {
               fontWeight: 700,
               px: 3,
               height: 42,
-              bgcolor: tokens.brand.primary,
-              '&:hover': { bgcolor: tokens.brand.primary, filter: 'brightness(0.92)' },
+              bgcolor: tokens.brand.solid,
+              '&:hover': { bgcolor: tokens.brand.solid, filter: 'brightness(0.92)' },
             }}
           >
             {bulkCreate.isPending ? 'Adding…' : 'Add All Leads'}

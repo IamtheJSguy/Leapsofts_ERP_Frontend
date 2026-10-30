@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { BoardCategory, Project, ProjectMember, KanbanBoard, ProjectStatus } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -55,12 +55,23 @@ const projectsApi = {
     api.delete(`/projects/${id}/boards/${boardId}/members/${userId}`),
 };
 
+const fetchProjects = () => projectsApi.getProjects().then((r) => r.data.data);
+
+export const prefetchProjects = (client: QueryClient) => {
+  const organizationId = useAuthStore.getState().user?.organizationId;
+  return client.prefetchQuery({
+    queryKey: ['projects', organizationId],
+    queryFn: fetchProjects,
+    staleTime: 30_000,
+  });
+};
+
 export const useProjects = () => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
     queryKey: ['projects', organizationId],
-    queryFn: () => projectsApi.getProjects().then((r) => r.data.data),
-    staleTime: 0,
+    queryFn: fetchProjects,
+    staleTime: 30_000,
   });
 };
 

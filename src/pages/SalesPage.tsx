@@ -49,6 +49,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens, coldOutreachStatusTokens, coldResponseStatusTokens } from '@/styles/tokens';
+import { PipelineRowSkeleton, SalesTableSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import type { Lead, OutreachChannel } from '@/types';
 import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp, useAddLeadComment } from '@/hooks/api/useLeads';
 import { getLatestLeadComment, leadHasComment } from '@/utils/getLatestLeadComment';
@@ -486,59 +487,53 @@ export const SalesPage = () => {
   );
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
   const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
+  const markingSentInFlight = useRef(new Set<string>());
+  const markingAcceptedInFlight = useRef(new Set<string>());
 
-  const handleAdvanceConnectionStatus = useCallback((id: string, currentStatus?: string) => {
-    if (markingAcceptedIds[id]) return;
+  const handleAdvanceConnectionStatus = useCallback(async (id: string, currentStatus?: string) => {
+    if (markingAcceptedInFlight.current.has(id)) return;
     const nextStatus = currentStatus === 'sent' ? 'accepted' : currentStatus === 'pending' || !currentStatus
       ? 'sent'
       : null;
     if (!nextStatus) return;
+    markingAcceptedInFlight.current.add(id);
     setMarkingAcceptedIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { connectionStatus: nextStatus } },
-      {
-        onSuccess: () => {
-          addToast({
-            message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
-            severity: 'success',
-          });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingAcceptedIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingAcceptedIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { connectionStatus: nextStatus } });
+      addToast({
+        message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
+        severity: 'success',
+      });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingAcceptedInFlight.current.delete(id);
+      setMarkingAcceptedIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
 
-  const handleMarkMessageSent = useCallback((id: string) => {
-    if (markingSentIds[id]) return;
+  const handleMarkMessageSent = useCallback(async (id: string) => {
+    if (markingSentInFlight.current.has(id)) return;
+    markingSentInFlight.current.add(id);
     setMarkingSentIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } },
-      {
-        onSuccess: () => {
-          addToast({ message: 'Marked as sent', severity: 'success' });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingSentIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingSentIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } });
+      addToast({ message: 'Marked as sent', severity: 'success' });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingSentInFlight.current.delete(id);
+      setMarkingSentIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
   const handleAdvanceColdOutreach = useCallback((lead: Lead) => {
     const current = lead.coldCalling?.outreachStatus || 'pending';
     const next = current === 'pending' ? 'dialed_1' : current === 'dialed_1' ? 'dialed_2' : current === 'dialed_2' ? 'dialed_3' : null;
@@ -1206,14 +1201,15 @@ export const SalesPage = () => {
             >
               {outreachChannel === 'cold_calling' ? 'Cold Calling & Pipeline' : 'LinkedIn Outreach & Pipeline'}
             </Typography>
-            <FormControl size="small">
+            <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' } }}>
               <Select
                 value={outreachChannel}
                 onChange={(e) => handleOutreachChannelChange(e.target.value as OutreachChannel)}
                 aria-label="Outreach channel"
                 sx={{
                   height: 30,
-                  minWidth: 154,
+                  minWidth: { xs: '100%', sm: 154 },
+                  width: { xs: '100%', sm: 'auto' },
                   borderRadius: '999px',
                   bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
                   color: tokens.brand.primary,
@@ -1248,7 +1244,7 @@ export const SalesPage = () => {
 
         {/* Date Range Filter in Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: '100%', sm: 380 }, maxWidth: { sm: 520 }, flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 168 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 168 }, width: { xs: '100%', sm: 'auto' }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
             <Select
               value={dateFilterField}
               onChange={(e) => setDateFilterField(e.target.value as 'date' | 'updatedAt')}
@@ -1270,7 +1266,7 @@ export const SalesPage = () => {
             </Select>
   
           </FormControl>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
             <DateRangePicker
               startDate={startDate}
               endDate={endDate}
@@ -1307,10 +1303,8 @@ export const SalesPage = () => {
       </Box>
 
       {/* Stats Counter Row */}
-      {isPipelineLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, mb: 4.5 }}>
-          <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
-        </Box>
+      {isPipelineLoading && !pipelineStats ? (
+        <PipelineRowSkeleton />
       ) : (
         <>
         <Box
@@ -1593,7 +1587,7 @@ export const SalesPage = () => {
               border: '1px solid rgba(245, 158, 11, 0.3)',
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 140 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
             <Select
               value={futureLeadWindow}
               displayEmpty
@@ -1704,10 +1698,10 @@ export const SalesPage = () => {
             ref={filterToolbarRef}
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
+              flexDirection: { xs: 'row', sm: 'column', md: 'row' },
               flexWrap: 'wrap',
               gap: 1.5,
-              alignItems: { xs: 'stretch', md: 'center' },
+              alignItems: { xs: 'center', sm: 'stretch', md: 'center' },
               mb: 3.5,
             }}
           >
@@ -1726,6 +1720,7 @@ export const SalesPage = () => {
               }}
               sx={{
                 flexGrow: 1,
+                width: { xs: '100%', sm: 'auto' },
                 minWidth: { xs: '100%', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
@@ -1766,8 +1761,9 @@ export const SalesPage = () => {
                 disableClearable
                 sx={{
                   flexGrow: 1,
-                  minWidth: { xs: '100%', sm: 220 },
-                  maxWidth: { sm: 260 },
+                  width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                  minWidth: { xs: 0, sm: 220 },
+                  maxWidth: { xs: 'calc(50% - 6px)', sm: 260 },
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '20px',
                     bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1818,8 +1814,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1869,8 +1866,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1913,7 +1911,7 @@ export const SalesPage = () => {
             />
 
             {/* Connection Status Filter */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedConnectionStatus}
                 displayEmpty
@@ -1942,7 +1940,7 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Status Select Dropdown */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -1985,7 +1983,23 @@ export const SalesPage = () => {
 
             {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
             
-              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  alignItems: 'center',
+                  ml: { xs: 0, md: 'auto' },
+                  width: { xs: '100%', md: 'auto' },
+                  flexWrap: { xs: 'wrap', md: 'nowrap' },
+                  '& > .MuiButton-root': {
+                    whiteSpace: 'nowrap',
+                    justifyContent: 'center',
+                    flex: { xs: '1 1 calc(50% - 8px)', md: '0 0 auto' },
+                    minWidth: { xs: 0, md: 64 },
+                    px: { xs: 1.25, md: 3 },
+                  },
+                }}
+              >
                 {(isEditAllMode || draftRestored || !draftReady || draftSaving) && (
                   <Box
                     sx={{
@@ -2042,7 +2056,7 @@ export const SalesPage = () => {
                   sx={{
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                     color: isEditAllMode ? '#fff' : (isDarkMode ? '#fff' : tokens.text.primary),
-                    bgcolor: isEditAllMode ? tokens.brand.primary : 'transparent',
+                    bgcolor: isEditAllMode ? tokens.brand.solid : 'transparent',
                     textTransform: 'none',
                     borderRadius: '24px',
                     height: 42,
@@ -2155,9 +2169,7 @@ export const SalesPage = () => {
           </Box>
 
           {isLeadsLoading && !leadsResponse ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-              <CircularProgress sx={{ color: tokens.brand.primary }} />
-            </Box>
+            <SalesTableSkeleton />
           ) : prospects.length === 0 && !isAddingInline ? (
             /* Unlinked Prospects View - Show Empty State Graphic below the toolbar */
             <Box
@@ -2648,6 +2660,7 @@ export const SalesPage = () => {
                                   fontSize: '0.64rem',
                                   height: 20,
                                   borderRadius: '6px',
+                                  border: `1px solid ${`color-mix(in srgb, ${messageStatusTokens.follow_up.color} 12%, transparent)`}`,
                                 }}
                               />
                             )}
@@ -2822,7 +2835,7 @@ export const SalesPage = () => {
                                       borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                                       color: 'text.secondary',
                                       '&:hover': {
-                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.primary,
+                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.solid,
                                         borderColor: !isElevated ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
                                         color: !isElevated ? 'text.secondary' : '#fff',
                                       },
@@ -2963,7 +2976,7 @@ export const SalesPage = () => {
               }
             }}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               textTransform: 'none',
               fontWeight: 700,

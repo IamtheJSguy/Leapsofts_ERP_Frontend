@@ -1098,7 +1098,7 @@ const InvoiceEditorPage = () => {
                     py: 1.1,
                     textTransform: 'none',
                     fontWeight: 800,
-                    bgcolor: tokens.brand.primary,
+                    bgcolor: tokens.brand.solid,
                     boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
                     '&:hover': { bgcolor: tokens.brand.primaryDark },
                   }}
@@ -1255,7 +1255,7 @@ const InvoiceEditorPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3.5, pb: 3, pt: 1 }}>
           <Button onClick={() => setBankOpen(false)} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}>Cancel</Button>
-          <Button onClick={addBankNow} variant="contained" disabled={mutations.addBank.isPending} sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '12px', bgcolor: tokens.brand.primary }}>
+          <Button onClick={addBankNow} variant="contained" disabled={mutations.addBank.isPending} sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '12px', bgcolor: tokens.brand.solid }}>
             Save account
           </Button>
         </DialogActions>

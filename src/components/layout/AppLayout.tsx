@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { NotificationPanel } from './NotificationPanel';
+import { lazyRetry } from '@/utils/lazyRetry';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -25,11 +26,26 @@ import {
   markMonitoringPromptCompleted,
 } from '@/utils/monitoringPromptSession';
 
+const AiAssistantDrawer = lazyRetry(() =>
+  import('@/components/ai/AiAssistantDrawer').then((module) => ({ default: module.AiAssistantDrawer })),
+);
+
+const scheduleIdle = (run: () => void) => {
+  if (typeof window.requestIdleCallback === 'function') {
+    const id = window.requestIdleCallback(run, { timeout: 4000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(run, 1500);
+  return () => window.clearTimeout(id);
+};
+
 export const AppLayout = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
+  const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
+  const location = useLocation();
   const organizationId = user?.organizationId;
   const queryClient = useQueryClient();
   const previousOrganizationId = useRef(organizationId);
@@ -86,17 +102,26 @@ export const AppLayout = () => {
     }
   }, [conversations, syncUnreadFromConversations]);
 
-  // Prefetch latest message pages into React Query / IndexedDB so chats open instantly.
+  // Warm chat history after the page the user opened has painted. On /chat, start immediately.
   useEffect(() => {
     if (!chatEnabled || !conversations.length) return;
     let cancelled = false;
-    void warmMessagesForConversations(queryClient, conversations, organizationId).then(() => {
+    const run = () => {
       if (cancelled) return;
-    });
+      void warmMessagesForConversations(queryClient, conversations, organizationId);
+    };
+    if (location.pathname.startsWith('/chat')) {
+      run();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const cancelIdle = scheduleIdle(run);
     return () => {
       cancelled = true;
+      cancelIdle();
     };
-  }, [chatEnabled, conversations, organizationId, queryClient]);
+  }, [chatEnabled, conversations, organizationId, queryClient, location.pathname]);
 
   useEffect(() => {
     if (!isCheckedIn || user?.role === 'admin') return;
@@ -205,15 +230,20 @@ export const AppLayout = () => {
           component="section"
           sx={{
             flex: 1,
-            px: { xs: 2, sm: 3, md: 4 },
-            py: { xs: 2, sm: 3 },
-            pb: 4,
+            px: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : { xs: 2, sm: 3, md: 4 },
+            py: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 3 } : { xs: 2, sm: 3 },
+            pb: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : 4,
           }}
         >
           <Outlet />
         </Box>
       </Box>
       <NotificationPanel />
+      {aiDrawerOpen ? (
+        <Suspense fallback={null}>
+          <AiAssistantDrawer />
+        </Suspense>
+      ) : null}
       <Dialog open={monitoringOpen}>
         <DialogTitle>Workplace monitoring</DialogTitle>
         <DialogContent>

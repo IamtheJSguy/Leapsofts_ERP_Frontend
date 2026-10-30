@@ -147,7 +147,54 @@ export const TeamProgressView = () => {
             </Typography>
           </Box>
 
-          <Table sx={{ minWidth: 650 }}>
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.25, px: 2, pb: 2 }}>
+            {agentsStats.map((agent) => (
+              <Box
+                key={agent._id}
+                sx={{
+                  p: 1.75,
+                  borderRadius: '16px',
+                  border: `1px solid ${tokens.surface.borderLight}`,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                  <Avatar src={agent.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryLight, fontWeight: 600 }}>
+                    {agent.firstName ? agent.firstName[0] : agent.email[0].toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" fontWeight={700}>
+                      {`${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.email}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {agent.jobTitle || 'Sales Agent'} · {agent.activeCampaigns} campaigns · {agent.meetings} meetings
+                    </Typography>
+                  </Box>
+                  <Tooltip title="Export Excel" arrow>
+                    <IconButton onClick={() => handleExport(agent._id, 'excel')} size="small" aria-label="Export Excel">
+                      <FileDownloadIcon fontSize="small" sx={{ color: tokens.brand.primary }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={agent.rate}
+                    sx={{
+                      flex: 1,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: tokens.brand.primary100,
+                      '& .MuiLinearProgress-bar': { backgroundColor: tokens.brand.solid, borderRadius: 4 },
+                    }}
+                  />
+                  <Typography variant="body2" fontWeight={700} color={tokens.brand.primary}>
+                    {agent.rate}%
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+          <Table sx={{ minWidth: 650, display: { xs: 'none', md: 'table' } }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: tokens.brand.primary50 }}>
                 <TableCell sx={{ fontWeight: 600, color: tokens.brand.primary }}>Agent</TableCell>
@@ -215,7 +262,7 @@ export const TeamProgressView = () => {
                             borderRadius: 4,
                             backgroundColor: tokens.brand.primary100,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: tokens.brand.primary,
+                              backgroundColor: tokens.brand.solid,
                               borderRadius: 4,
                             },
                           }}

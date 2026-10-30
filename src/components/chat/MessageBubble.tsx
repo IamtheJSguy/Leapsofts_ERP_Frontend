@@ -274,7 +274,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '75%', minWidth: 0, position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: { xs: 'calc(100% - 64px)', sm: '75%' }, minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -361,7 +361,7 @@ export const MessageBubble = React.memo(({
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
               boxShadow: 'none',
               overflow: 'hidden',
-              ...(isDriveFile ? { width: 280 } : {}),
+              ...(isDriveFile ? { width: { xs: '100%', sm: 280 }, maxWidth: 280 } : {}),
               maxWidth: '100%',
               minWidth: 0,
               overflowWrap: 'anywhere',

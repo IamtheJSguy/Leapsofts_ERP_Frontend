@@ -443,7 +443,7 @@ const DashboardPage = () => {
               borderRadius: '20px',
               textTransform: 'none',
               '&:hover': {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 borderColor: tokens.brand.primary,
                 color: '#fff',
                 transform: 'translateY(-1px)',

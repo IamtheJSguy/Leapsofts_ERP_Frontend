@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, IconButton, Chip, Avatar,
-  useTheme, CircularProgress, Divider,
+  useTheme, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -14,6 +14,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DescriptionIcon from '@mui/icons-material/Description';
+import { LeadDetailSkeleton } from '@/components/page-skeletons/PageSkeletons';
 
 import {
   useLead,
@@ -99,12 +100,8 @@ export const LeadDetailsPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
-    );
+  if (isLoading && !lead) {
+    return <LeadDetailSkeleton />;
   }
 
   if (!lead || !id) {

@@ -248,7 +248,7 @@ export function LeadNotesSection({
                 fontWeight: 750,
                 fontSize: '0.8rem',
                 borderRadius: '10px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryLight },
               }}
             >

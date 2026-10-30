@@ -213,10 +213,10 @@ export const ReviewChangeRequestDialog = ({ request, open, onClose }: Props) => 
             borderRadius: '12px', 
             px: 3.5, 
             fontWeight: 800,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             boxShadow: 'none',
             '&:hover': {
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               transform: 'translateY(-1px)'
             },

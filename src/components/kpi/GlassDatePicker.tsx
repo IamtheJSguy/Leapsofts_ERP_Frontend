@@ -196,7 +196,7 @@ export const GlassDatePicker = ({
                         : isDarkMode
                           ? '#fff'
                           : tokens.text.primary,
-                    bgcolor: isSelected ? tokens.brand.primary : 'transparent',
+                    bgcolor: isSelected ? tokens.brand.solid : 'transparent',
                     transition: 'all 0.2s',
                     opacity: isCurrentMonth ? 1 : 0.4,
                     '&:hover': {

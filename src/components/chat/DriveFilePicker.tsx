@@ -66,9 +66,10 @@ const getMimeInfo = (mimeType?: string): { icon: React.ReactNode; color: string;
 interface DriveFilePickerProps {
   open: boolean;
   onClose: () => void;
+  onSelect?: (file: DriveFile) => void;
 }
 
-export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
+export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
@@ -100,6 +101,12 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
   };
 
   const handleSelect = (file: DriveFile) => {
+    if (onSelect) {
+      onSelect(file);
+      onClose();
+      return;
+    }
+
     if (!activeConversationId) return;
 
     sendMessage.mutate(
@@ -370,7 +377,7 @@ export const DriveFilePicker = ({ open, onClose }: DriveFilePickerProps) => {
                     <ListItemButton
                       key={file.id}
                       onClick={() => handleSelect(file)}
-                      disabled={sendMessage.isPending}
+                      disabled={!onSelect && sendMessage.isPending}
                       sx={{
                         px: 2,
                         py: 1.5,

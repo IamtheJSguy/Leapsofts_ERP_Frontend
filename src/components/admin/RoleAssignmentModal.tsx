@@ -15,6 +15,10 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useState, useEffect } from 'react';
 import { useUpdateUser } from '@/hooks/api/useUsers';
+import {
+  useAdminUserAiQuotas,
+  useUpdateAdminUserAiQuota,
+} from '@/hooks/api/useAi';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ROLES } from '@/lib/constants';
 import { useUIStore } from '@/store/useUIStore';
@@ -32,7 +36,11 @@ interface RoleAssignmentModalProps {
 export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModalProps) => {
   const [role, setRole] = useState<any>(ROLES.USER);
   const [googleSheetId, setGoogleSheetId] = useState('');
+  const [tokenLimitOverride, setTokenLimitOverride] = useState<string>('');
+  const [resetAiUsage, setResetAiUsage] = useState(false);
   const updateUser = useUpdateUser();
+  const { data: aiQuotasData } = useAdminUserAiQuotas(open);
+  const updateUserAiQuota = useUpdateAdminUserAiQuota();
   const addToast = useUIStore((s) => s.addToast);
   const [confirmOpen, setConfirmOpen] = useState(false);
   
@@ -51,8 +59,15 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
     if (user) {
       setRole(user.role || ROLES.USER);
       setGoogleSheetId(user.googleSheetId || '');
+      const userQuota = aiQuotasData?.users?.find((u) => u.userId === user._id);
+      setTokenLimitOverride(
+        userQuota?.tokenLimitOverride !== null && userQuota?.tokenLimitOverride !== undefined
+          ? String(userQuota.tokenLimitOverride)
+          : '',
+      );
+      setResetAiUsage(false);
     }
-  }, [user]);
+  }, [user, aiQuotasData]);
 
   const handleSave = () => {
     if (!user) return;
@@ -60,25 +75,29 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
     setConfirmOpen(true);
   };
 
-  const handleConfirmSave = () => {
+  const handleConfirmSave = async () => {
     if (!user) return;
-    updateUser.mutate(
-      {
+    try {
+      await updateUser.mutateAsync({
         id: user._id,
         data: { role, googleSheetId },
-      },
-      {
-        onSuccess: () => {
-          addToast({ message: 'User updated successfully', severity: 'success' });
-          setConfirmOpen(false);
-          onClose();
-        },
-        onError: (err: any) => {
-          setConfirmOpen(false);
-          showApiError(err);
-        },
-      },
-    );
+      });
+      const parsedOverride =
+        tokenLimitOverride.trim() === ''
+          ? null
+          : Math.max(0, Number(tokenLimitOverride.trim()) || 0);
+      await updateUserAiQuota.mutateAsync({
+        userId: user._id,
+        tokenLimitOverride: parsedOverride,
+        resetUsage: resetAiUsage,
+      });
+      addToast({ message: 'User settings & AI token quota updated', severity: 'success' });
+      setConfirmOpen(false);
+      onClose();
+    } catch (err: any) {
+      setConfirmOpen(false);
+      showApiError(err);
+    }
   };
 
   return (
@@ -194,6 +213,50 @@ export const RoleAssignmentModal = ({ user, open, onClose }: RoleAssignmentModal
               },
             }}
           />
+
+          <TextField
+            fullWidth
+            type="number"
+            label="AI Token Limit Override (Optional)"
+            value={tokenLimitOverride}
+            onChange={(e) => setTokenLimitOverride(e.target.value)}
+            placeholder={`Default (${(aiQuotasData?.defaultUserTokenLimit ?? 10000).toLocaleString()} tokens)`}
+            helperText="Leave blank to use organization default token limit, or enter a custom token limit for this user."
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '16px',
+                bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#F9F8F7',
+                fontSize: '0.88rem',
+              },
+              '& .MuiFormHelperText-root': {
+                fontSize: '0.72rem',
+                color: 'text.secondary',
+                mt: 0.5,
+                px: 1,
+              },
+            }}
+          />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Used:{' '}
+              <strong>
+                {(
+                  aiQuotasData?.users?.find((u) => u.userId === user?._id)?.tokensUsed ?? 0
+                ).toLocaleString()}{' '}
+                tokens
+              </strong>
+            </Typography>
+            <Button
+              size="small"
+              variant={resetAiUsage ? 'contained' : 'outlined'}
+              color={resetAiUsage ? 'warning' : 'inherit'}
+              onClick={() => setResetAiUsage((v) => !v)}
+              sx={{ textTransform: 'none', fontSize: '0.74rem', borderRadius: '10px' }}
+            >
+              {resetAiUsage ? 'Will Reset Usage on Save' : 'Reset Token Counter'}
+            </Button>
+          </Box>
         </Box>
       </DialogContent>
 

@@ -9,6 +9,7 @@ import {
   Popover, Checkbox, Autocomplete, Collapse,
 } from '@mui/material';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { KanbanPageSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -54,7 +55,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
-  PointerSensor, useSensor, useSensors, type DragStartEvent,
+  MouseSensor, TouchSensor, useSensor, useSensors, type DragStartEvent,
   type DragEndEvent, type DragOverEvent, type CollisionDetection,
   useDroppable, MeasuringStrategy, pointerWithin, rectIntersection,
 } from '@dnd-kit/core';
@@ -71,7 +72,7 @@ import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
-  useEditComment, useDeleteComment,
+  useEditComment, useDeleteComment, useCard,
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
@@ -369,7 +370,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
               size="small"
               sx={{
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 fontWeight: 750,
                 fontSize: '0.68rem',
                 height: 22,
@@ -537,7 +538,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                     height: 22,
                     fontSize: '0.6rem',
                     fontWeight: 800,
-                    bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                    bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                     ...kanbanActiveMoverRingSx(createdByUser._id === lastMovedById),
                   }}
                 >
@@ -567,7 +568,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                 py: 0.25,
                 height: 24,
                 borderRadius: '8px',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
                 border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.2)' : 'rgba(93,26,137,0.12)'}`,
                 '&:hover': {
@@ -585,7 +586,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                   <Avatar
                     src={u.avatarUrl || undefined}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       ...kanbanActiveMoverRingSx(u._id === lastMovedById),
                     }}
                   >
@@ -610,11 +611,14 @@ const SortableTask = ({ task, isDarkMode, onTaskClick, onViewLead }: any) => {
     data: { type: 'Task', task },
   });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
     cursor: isDragging ? 'grabbing' : 'grab',
+    touchAction: isDragging ? 'none' : 'manipulation',
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
   };
 
   return (
@@ -769,7 +773,17 @@ const SortableBoardColumn = ({
         <Box 
           {...attributes} 
           {...listeners} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, cursor: isDragging ? 'grabbing' : 'grab', py: 0.5 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            flex: 1,
+            cursor: isDragging ? 'grabbing' : 'grab',
+            py: 0.5,
+            touchAction: isDragging ? 'none' : 'manipulation',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{col.title}</Typography>
           <Chip label={colTasks.length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
@@ -1118,7 +1132,7 @@ const CardLabelsSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '8px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -1287,7 +1301,7 @@ const CardLinksSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '10px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -1588,9 +1602,21 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const openedCardIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!open) {
+      openedCardIdRef.current = null;
+      return;
+    }
+
     if (task && open) {
+      const isNewCardOpen = openedCardIdRef.current !== task.id;
+      if (isNewCardOpen) {
+        openedCardIdRef.current = task.id;
+        setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
+      }
+
       setEditTitle(task.title || '');
       setEditDesc(task.description || '');
       setPendingAssignees(Array.isArray(task.rawCard?.assignedTo)
@@ -1601,7 +1627,6 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       setPendingDueTime(dueParts.time);
       setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
       setPendingPriority(task.rawCard?.priority || 'medium');
-      setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
       setNewSubPriority((task.rawCard?.priority as keyof typeof PRIORITY_CONFIG) || 'medium');
     }
   }, [task, open, searchParams]);
@@ -1721,11 +1746,56 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     runFieldUpdates(finishOk);
   };
 
+  // Fetch detailed card data (including comments) directly from /kanban/cards/:cardId
+  const { data: cardDetail } = useCard(task?.id);
+  const [localComments, setLocalComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const incoming = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+    if (incoming.length > 0) {
+      setLocalComments((prev) => {
+        const map = new Map<string, any>();
+        prev.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        incoming.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [task?.id, cardDetail?.comments, task?.rawCard?.comments]);
+
+  useEffect(() => {
+    if (task?.id) {
+      const initial = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+      if (initial.length > 0) {
+        setLocalComments(initial);
+      }
+    }
+  }, [task?.id]);
+
+  // NOTE: useMemo must come BEFORE any early return to obey the Rules of Hooks.
+  const rawCard = task?.rawCard;
+  const rawComments = localComments.length > 0
+    ? localComments
+    : ((cardDetail?.comments?.length ? cardDetail.comments : rawCard?.comments) || []);
+
+  const commentsList = useMemo(() => {
+    const list = rawComments.filter((c: any) => c.isActive !== false);
+    return [...list].sort((a: any, b: any) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
+  }, [rawComments]);
+
   if (!task) return null;
 
   const lead = task.lead;
-  const rawCard = task.rawCard;
-  const commentsList = rawCard?.comments || [];
+  const commentsCount = commentsList.length;
   const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
     : [];
@@ -1742,15 +1812,32 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         : lead?._id;
 
   const handleSendComment = () => {
-    if (commentText.trim() && !addCommentMutation.isPending) {
+    const textToSend = commentText.trim();
+    if (textToSend && !addCommentMutation.isPending) {
+      setCommentText('');
+      const optimisticComment = {
+        _id: `temp-${Date.now()}`,
+        userId: currentUser?._id,
+        author: currentUser,
+        text: textToSend,
+        createdAt: new Date().toISOString(),
+        isActive: true,
+      };
+      setLocalComments((prev) => [...prev, optimisticComment]);
+
       addCommentMutation.mutate({
         cardId: task.id,
-        data: { text: commentText.trim() }
+        data: { text: textToSend }
       }, {
-        onSuccess: () => {
-          setCommentText('');
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
         },
         onError: (err: any) => {
+          setLocalComments((prev) => prev.filter((c) => c._id !== optimisticComment._id));
+          setCommentText(textToSend);
           showApiError(err);
         },
       });
@@ -1759,12 +1846,20 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const handleSaveCommentEdit = (commentId: string) => {
     if (editCommentText.trim()) {
+      const newText = editCommentText.trim();
+      setLocalComments((prev) =>
+        prev.map((c) => (c._id === commentId ? { ...c, text: newText } : c))
+      );
       editCommentMutation.mutate({
         cardId: task.id,
         commentId,
-        text: editCommentText.trim()
+        text: newText
       }, {
-        onSuccess: () => {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
           setEditingCommentId(null);
           setEditCommentText('');
         },
@@ -1793,9 +1888,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const handleConfirmAction = () => {
     setConfirmOpen(false);
     if (confirmAction === 'deleteComment' && targetCommentId) {
+      setLocalComments((prev) => prev.filter((c) => c._id !== targetCommentId));
       deleteCommentMutation.mutate({
         cardId: task.id,
         commentId: targetCommentId
+      }, {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
+        }
       });
     } else if (confirmAction === 'deleteCard') {
       deleteCardMutation.mutate(task.id, {
@@ -2035,7 +2138,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         <Box sx={{ px: 3, pt: 3, pb: 1 }}>
           <Box
             sx={{
-              display: 'inline-flex',
+              display: 'flex',
+              width: '100%',
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
               borderRadius: '20px',
               p: 0.5,
@@ -2045,17 +2149,22 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             {[
               { id: 'details', label: 'Details & Assignees' },
               { id: 'subtasks', label: 'Sub-tasks' },
-              { id: 'comments', label: 'Comments' },
+              {
+                id: 'comments',
+                label: commentsCount > 0 ? `Comments (${commentsCount})` : 'Comments',
+              },
             ].map((tab) => (
               <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as 'details' | 'subtasks' | 'comments')}
                 sx={{
-                  px: 3, py: 0.75,
+                  flex: 1,
+                  px: 1.5, py: 0.75,
                   borderRadius: '16px',
                   textTransform: 'none',
                   fontWeight: 700,
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
+                  whiteSpace: 'nowrap',
                   color: activeTab === tab.id
                     ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
@@ -2253,7 +2362,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           ...kanbanActiveMoverRingSx(true),
                         }}
                       >
@@ -2278,7 +2387,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                          bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                         }}
                       >
                         {kanbanUserInitial(task.createdBy)}
@@ -2367,7 +2476,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         py: 1.5,
                         borderRadius: '12px',
                         fontWeight: 750,
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                         color: '#fff',
                         textTransform: 'none',
                         boxShadow: '0 4px 14px rgba(93, 26, 137, 0.4)',
@@ -2861,12 +2970,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {commentsList.map((comm: any, idx: number) => {
-                    const commentUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
-                    const isCommentAuthor = currentUser && currentUser._id === commentUserId;
+                    const rawUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
+                    const commentUserId = typeof rawUserId === 'object' && rawUserId ? rawUserId._id : rawUserId;
+                    const isCommentAuthor = Boolean(currentUser && commentUserId && currentUser._id === commentUserId);
 
                     let matchingUser: any = null;
                     if (typeof comm.author === 'object' && comm.author?.firstName) {
                       matchingUser = comm.author;
+                    }
+
+                    if (!matchingUser && typeof comm.userId === 'object' && comm.userId?.firstName) {
+                      matchingUser = comm.userId;
                     }
 
                     if (!matchingUser && commentUserId) {
@@ -2883,7 +2997,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     const initial = name.charAt(0).toUpperCase() || 'U';
 
                     return (
-                      <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
+                      <Box key={comm._id ? String(comm._id) : `comm-${idx}`} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
                         <Avatar src={matchingUser?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
@@ -3207,8 +3321,20 @@ export const KanbanBoardPage = () => {
   const [pendingRemoveUserId, setPendingRemoveUserId] = useState<string>('');
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   // Transform board columns and cards into flattened lists for dnd-kit
@@ -3588,12 +3714,8 @@ export const KanbanBoardPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
-    );
+  if (isLoading && !board) {
+    return <KanbanPageSkeleton />;
   }
 
   if (error || !actualBoard) {
@@ -3715,6 +3837,13 @@ export const KanbanBoardPage = () => {
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        autoScroll={{
+          threshold: {
+            x: 0.2,
+            y: 0.2,
+          },
+          acceleration: 10,
+        }}
         measuring={{
           droppable: {
             strategy: MeasuringStrategy.Always,
@@ -3762,7 +3891,7 @@ export const KanbanBoardPage = () => {
               easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
             }}>
               {activeColumn ? (
-                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9 }}>
+                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9, pointerEvents: 'none' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, py: 0.5, cursor: 'grabbing' }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{activeColumn.title}</Typography>
@@ -3780,7 +3909,7 @@ export const KanbanBoardPage = () => {
                   </Box>
                 </Box>
               ) : activeTask ? (
-                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing' }}>
+                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing', pointerEvents: 'none' }}>
                   <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
                 </Box>
               ) : null}
@@ -3955,7 +4084,7 @@ export const KanbanBoardPage = () => {
             onClick={handleSaveBoardName}
             disabled={!editBoardNameValue.trim() || updateBoardMutation.isPending}
             variant="contained"
-            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ bgcolor: tokens.brand.solid, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
           </Button>
@@ -4274,7 +4403,7 @@ export const KanbanBoardPage = () => {
             disabled={!newCardTitle.trim() || createCardMutation.isPending || uploadCardImageMutation.isPending}
             variant="contained"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
@@ -4452,7 +4581,7 @@ export const KanbanBoardPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setIsShareDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
+          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.solid, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
             Invite
           </Button>
         </DialogActions>

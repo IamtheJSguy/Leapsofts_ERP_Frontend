@@ -8,7 +8,6 @@ import {
   Chip,
   Avatar,
   AvatarGroup,
-  LinearProgress,
   TextField,
   InputAdornment,
   useTheme,
@@ -185,7 +184,17 @@ export const ShowcaseProjects: React.FC = () => {
           }}
         />
 
-        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 0.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            overflowX: 'auto',
+            py: 0.5,
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           {statusFilters.map((filter) => (
             <Chip
               key={filter}
@@ -196,6 +205,7 @@ export const ShowcaseProjects: React.FC = () => {
                 px: 1,
                 fontSize: '0.78rem',
                 fontWeight: 750,
+                flexShrink: 0,
                 bgcolor:
                   activeFilter === filter
                     ? isDark
@@ -317,43 +327,25 @@ export const ShowcaseProjects: React.FC = () => {
                 </Box>
               </Box>
 
-              {/* Progress & Avatar Row */}
-              <Box sx={{ pt: 2, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}` }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary' }}>
-                    Sprint Completion
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: project.statusColor }}>
-                    {project.progress}%
-                  </Typography>
-                </Box>
+              {/* Bottom Avatar & Kanban Row */}
+              <Box
+                sx={{
+                  pt: 2,
+                  borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.68rem', fontWeight: 800, bgcolor: tokens.brand.solid } }}>
+                  {project.members.map((m) => (
+                    <Avatar key={m}>{m}</Avatar>
+                  ))}
+                </AvatarGroup>
 
-                <LinearProgress
-                  variant="determinate"
-                  value={project.progress}
-                  sx={{
-                    height: 5,
-                    borderRadius: '3px',
-                    bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                    mb: 2,
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: project.statusColor,
-                      borderRadius: '3px',
-                    },
-                  }}
-                />
-
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.68rem', fontWeight: 800, bgcolor: tokens.brand.primary } }}>
-                    {project.members.map((m) => (
-                      <Avatar key={m}>{m}</Avatar>
-                    ))}
-                  </AvatarGroup>
-
-                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: tokens.brand.primary }}>
-                    Open Kanban ↗
-                  </Typography>
-                </Box>
+                <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: tokens.brand.primary }}>
+                  Open Kanban ↗
+                </Typography>
               </Box>
             </Card>
           </Grid>

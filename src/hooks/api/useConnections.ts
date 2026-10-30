@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import type { ConnectionStatus } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -86,6 +86,17 @@ export const useConnectionStats = (filters: Record<string, string> = {}) => {
     queryKey: ['connectionStats', organizationId, filters],
     queryFn: () => connectionApi.getStats(filters).then((r) => r.data.data),
     staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const PIPELINE_FIRST_PAINT_FILTERS = { dateField: 'date' };
+
+export const prefetchSalesPipelineStats = (client: QueryClient) => {
+  const organizationId = useAuthStore.getState().user?.organizationId;
+  return client.prefetchQuery({
+    queryKey: ['salesPipelineStats', organizationId, PIPELINE_FIRST_PAINT_FILTERS],
+    queryFn: () => connectionApi.getPipelineStats(PIPELINE_FIRST_PAINT_FILTERS).then((r) => r.data.data),
+    staleTime: 1000 * 60,
   });
 };
 

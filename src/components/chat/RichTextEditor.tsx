@@ -249,6 +249,10 @@ export const RichTextEditor = ({
             gap: 0.25,
             p: 0.75,
             px: 1.5,
+            overflowX: 'auto',
+            maxWidth: '100%',
+            '&::-webkit-scrollbar': { display: 'none' },
+            scrollbarWidth: 'none',
             borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.9)' : 'rgba(248, 245, 255, 0.95)',
           }}
@@ -257,7 +261,7 @@ export const RichTextEditor = ({
         </Box>
       </Collapse>
       
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+      <Box className="rte-input-row" sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
         <Box
           sx={{
             flex: 1,
@@ -311,7 +315,7 @@ export const RichTextEditor = ({
         </Box>
 
         {/* Inline Tools (A button and Emoji) */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
+        <Box className="rte-tools" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
           <Tooltip title="Formatting options" arrow>
             <IconButton 
               size="small" 
@@ -387,8 +391,9 @@ export const RichTextEditor = ({
             sx: { 
               borderRadius: 3, 
               mt: -1, 
-              width: 352, // Fixed width so MUI calculates bounds correctly
-              height: 435, // Fixed height
+              width: { xs: 'calc(100vw - 32px)', sm: 352 },
+              maxWidth: 352,
+              height: 435,
               boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)', 
               bgcolor: 'transparent',
               overflow: 'hidden'

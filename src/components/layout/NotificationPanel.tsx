@@ -71,7 +71,7 @@ export const NotificationPanel = () => {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
-  } = useInfiniteNotifications(30);
+  } = useInfiniteNotifications(30, { enabled: notificationPanelOpen });
   const { data: serverUnreadCount } = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -362,7 +362,7 @@ export const NotificationPanel = () => {
                           transform: 'translate(-50%, -50%)', 
                           width: 8, height: 8, 
                           borderRadius: '50%', 
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           boxShadow: `0 0 10px ${`color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`}`
                         }} 
                       />

@@ -1159,6 +1159,7 @@ export interface Message {
   type: 'text' | 'image' | 'file' | 'drive_file' | 'board_event';
   isPending?: boolean;
   clientId?: string;
+  clientMessageId?: string;
   fileUrl?: string;
   filePublicId?: string;
   boardEvent?: BoardEvent;
@@ -1325,6 +1326,11 @@ export interface SystemSettings {
     portal: boolean;
     kpiAlerts: boolean;
     meetingReminders: boolean;
+  };
+  aiSettings?: {
+    defaultUserTokenLimit?: number;
+    defaultProvider?: 'gemini' | 'claude';
+    enrichmentEnabled?: boolean;
   };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];

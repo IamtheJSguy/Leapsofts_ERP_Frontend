@@ -107,7 +107,9 @@ export const SALES_DASHBOARD_DEPARTMENTS = [
 ] as const;
 
 export const SOCKET_EVENTS = {
+  MESSAGE_SEND: 'message:send',
   MESSAGE_NEW: 'message:new',
+  MESSAGE_UPDATED: 'message:updated',
   MESSAGE_READ: 'message:read',
   MESSAGE_DELIVERED: 'message:delivered',
   MESSAGE_REACTION: 'message:reaction',
@@ -130,6 +132,7 @@ export const SOCKET_EVENTS = {
   CHAT_READ: 'chat:read',
   CHAT_TYPING: 'chat:typing',
   ORG_ENTITLEMENTS_UPDATED: 'org:entitlements_updated',
+  AI_AGENT_PROGRESS: 'ai:agent_progress',
 } as const;
 
 /** Quick-bar emojis shown on message hover (full picker via +). */
