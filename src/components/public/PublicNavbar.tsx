@@ -4,6 +4,7 @@ import {
   Typography,
   Button,
   IconButton,
+  Avatar,
   Drawer,
   List,
   ListItem,
@@ -24,6 +25,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
+import { optimizeCloudinaryAvatarUrl } from '@/utils/cloudinaryUrl';
 
 const DRAWER_LINKS = [
   { label: 'Platform & Velocity', href: '#features' },
@@ -372,6 +374,22 @@ export const PublicNavbar = () => {
           <Button
             variant="contained"
             onClick={() => navigate('/dashboard')}
+            startIcon={
+              <Avatar
+                src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 48)}
+                sx={{
+                  width: { xs: 20, sm: 24 },
+                  height: { xs: 20, sm: 24 },
+                  fontSize: '0.72rem',
+                  fontWeight: 750,
+                  bgcolor: tokens.brand.primaryDark,
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                }}
+              >
+                A
+              </Avatar>
+            }
             endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
             sx={{
               borderRadius: '999px',
