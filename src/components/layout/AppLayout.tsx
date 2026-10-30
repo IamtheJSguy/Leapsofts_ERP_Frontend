@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography } from '@mui/material';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
@@ -46,6 +46,11 @@ export const AppLayout = () => {
   const user = useAuthStore((s) => s.user);
   const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isChat = location.pathname.startsWith('/chat');
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const isMobileConversation = isMobile && isChat && Boolean(activeConversationId);
   const organizationId = user?.organizationId;
   const queryClient = useQueryClient();
   const previousOrganizationId = useRef(organizationId);
@@ -199,6 +204,9 @@ export const AppLayout = () => {
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          height: isChat ? { xs: '100dvh', md: 'auto' } : 'auto',
+          maxHeight: isChat ? { xs: '100dvh', md: 'none' } : 'none',
+          overflow: isChat ? { xs: 'hidden', md: 'visible' } : 'visible',
           transition: (t) =>
             t.transitions.create(['width', 'margin'], {
               easing: t.transitions.easing.sharp,
@@ -225,14 +233,19 @@ export const AppLayout = () => {
             Viewing as {user.firstName || user.email} — impersonated by Leapsofts support
           </Alert>
         )}
-        <Header />
+        {!isMobileConversation && <Header />}
         <Box
           component="section"
           sx={{
             flex: 1,
-            px: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : { xs: 2, sm: 3, md: 4 },
-            py: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 3 } : { xs: 2, sm: 3 },
-            pb: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : 4,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            height: isChat ? { xs: '100%', md: 'auto' } : 'auto',
+            overflow: isChat ? 'hidden' : 'visible',
+            px: isChat ? { xs: 0, sm: 1, md: 4 } : { xs: 2, sm: 3, md: 4 },
+            py: isChat ? { xs: 0, sm: 1, md: 3 } : { xs: 2, sm: 3 },
+            pb: isChat ? { xs: 0, sm: 1, md: 4 } : 4,
           }}
         >
           <Outlet />
