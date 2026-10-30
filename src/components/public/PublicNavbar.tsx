@@ -14,7 +14,6 @@ import {
   useMediaQuery,
   Tooltip,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
@@ -417,10 +416,7 @@ export const PublicNavbar = () => {
               },
             }}
           >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, mr: 0.5 }}>
-              Launch
-            </Box>
-            Workspace
+            Launch Workspace
           </Button>
         ) : (
           <Button
@@ -462,30 +458,6 @@ export const PublicNavbar = () => {
           >
             Get Started
           </Button>
-        )}
-
-        {/* Quick Menu Drawer Hamburger */}
-        {isMobile && (
-          <IconButton
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open navigation drawer"
-            sx={{
-              width: { xs: 34, sm: 38 },
-              height: { xs: 34, sm: 38 },
-              borderRadius: '50%',
-              border: '1px solid',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-              color: isDark ? '#FFFFFF' : tokens.text.primary,
-              bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
-                transform: 'scale(1.05)',
-              },
-            }}
-          >
-            <MenuIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
-          </IconButton>
         )}
       </Box>
 
