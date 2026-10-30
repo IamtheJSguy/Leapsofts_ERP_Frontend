@@ -86,6 +86,12 @@ export const PublicNavbar = () => {
     }
   };
 
+  const userInitial = user?.firstName
+    ? user.firstName.charAt(0).toUpperCase()
+    : user?.email
+      ? user.email.charAt(0).toUpperCase()
+      : 'A';
+
   const userName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.firstName || user?.email || 'Active Member';
@@ -358,97 +364,55 @@ export const PublicNavbar = () => {
           </IconButton>
         </Tooltip>
 
-        {/* Authenticated Workspace Button vs. Guest High-Contrast Pill CTA */}
-        {isAuthenticated ? (
-          <Button
-            variant="contained"
-            onClick={() => navigate('/dashboard')}
-            startIcon={
-              <Avatar
-                src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 48)}
-                sx={{
-                  width: { xs: 20, sm: 24 },
-                  height: { xs: 20, sm: 24 },
-                  fontSize: '0.72rem',
-                  fontWeight: 750,
-                  bgcolor: tokens.brand.primaryDark,
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                }}
-              >
-                A
-              </Avatar>
-            }
-            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
-            sx={{
-              borderRadius: '999px',
-              px: { xs: 1.5, sm: 2.75 },
-              py: { xs: 0.6, sm: 0.9 },
-              fontSize: { xs: '0.78rem', sm: '0.86rem' },
-              fontWeight: 800,
-              textTransform: 'none',
-              whiteSpace: 'nowrap',
-              background: 'linear-gradient(135deg, #7B3DA8 0%, #5D1A89 60%, #461468 100%)',
-              color: '#FFFFFF',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              boxShadow: '0 4px 18px rgba(93, 26, 137, 0.38)',
-              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        {/* Workspace Button: Same style and text [ (A) Launch Workspace -> ] */}
+        <Button
+          variant="contained"
+          onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
+          startIcon={
+            <Avatar
+              src={user?.avatarUrl ? optimizeCloudinaryAvatarUrl(user.avatarUrl, 48) : undefined}
+              sx={{
+                width: { xs: 20, sm: 24 },
+                height: { xs: 20, sm: 24 },
+                fontSize: '0.72rem',
+                fontWeight: 750,
+                bgcolor: tokens.brand.primaryDark,
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+              }}
+            >
+              {userInitial}
+            </Avatar>
+          }
+          endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
+          sx={{
+            borderRadius: '999px',
+            px: { xs: 1.5, sm: 2.75 },
+            py: { xs: 0.6, sm: 0.9 },
+            fontSize: { xs: '0.78rem', sm: '0.86rem' },
+            fontWeight: 800,
+            textTransform: 'none',
+            whiteSpace: 'nowrap',
+            background: 'linear-gradient(135deg, #7B3DA8 0%, #5D1A89 60%, #461468 100%)',
+            color: '#FFFFFF',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 4px 18px rgba(93, 26, 137, 0.38)',
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            '& .btn-arrow': {
+              transition: 'transform 0.2s ease',
+            },
+            '&:hover': {
+              background: 'linear-gradient(135deg, #8E4CBF 0%, #6E20A1 60%, #53187A 100%)',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 8px 26px rgba(93, 26, 137, 0.52)',
               '& .btn-arrow': {
-                transition: 'transform 0.2s ease',
+                transform: 'translateX(4px)',
               },
-              '&:hover': {
-                background: 'linear-gradient(135deg, #8E4CBF 0%, #6E20A1 60%, #53187A 100%)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 8px 26px rgba(93, 26, 137, 0.52)',
-                '& .btn-arrow': {
-                  transform: 'translateX(4px)',
-                },
-              },
-            }}
-          >
-            Launch Workspace
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            component={Link}
-            to="/login"
-            startIcon={
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
-                <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#FFD79E' }} />
-              </Box>
-            }
-            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
-            sx={{
-              borderRadius: '999px',
-              px: { xs: 1.5, sm: 2.75 },
-              py: { xs: 0.6, sm: 0.9 },
-              fontSize: { xs: '0.8rem', sm: '0.88rem' },
-              fontWeight: 800,
-              letterSpacing: '-0.01em',
-              textTransform: 'none',
-              whiteSpace: 'nowrap',
-              background: 'linear-gradient(135deg, #7C3AED 0%, #581C87 50%, #3B0764 100%)',
-              color: '#FFFFFF',
-              border: '1px solid rgba(255, 255, 255, 0.22)',
-              boxShadow: '0 4px 18px rgba(93, 26, 137, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
-              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-              '& .btn-arrow': {
-                transition: 'transform 0.2s ease',
-              },
-              '&:hover': {
-                background: 'linear-gradient(135deg, #8B5CF6 0%, #6B21A8 50%, #4C1D95 100%)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 8px 28px rgba(124, 58, 237, 0.58), 0 0 16px rgba(168, 85, 247, 0.35)',
-                '& .btn-arrow': {
-                  transform: 'translateX(4px)',
-                },
-              },
-            }}
-          >
-            Get Started
-          </Button>
-        )}
+            },
+          }}
+        >
+          Launch Workspace
+        </Button>
       </Box>
 
       {/* Modern Frosted Drawer Menu */}
