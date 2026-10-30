@@ -387,9 +387,9 @@ export const PublicNavbar = () => {
           endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
           sx={{
             borderRadius: '999px',
-            px: { xs: 1.5, sm: 2.75 },
-            py: { xs: 0.6, sm: 0.9 },
-            fontSize: { xs: '0.78rem', sm: '0.86rem' },
+            px: { xs: 1.25, sm: 2.75 },
+            py: { xs: 0.55, sm: 0.9 },
+            fontSize: { xs: '0.74rem', sm: '0.86rem' },
             fontWeight: 800,
             textTransform: 'none',
             whiteSpace: 'nowrap',
