@@ -103,21 +103,11 @@ export const PublicNavbar = () => {
         transition: 'padding 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         py: scrolled ? { xs: 1.1, md: 1.5 } : { xs: 1.4, md: 2.75 },
         px: { xs: 1.5, sm: 3, md: 8, lg: 12, xl: 16 },
-        bgcolor: scrolled
-          ? isDark
-            ? 'rgba(9, 7, 16, 0.92)'
-            : 'rgba(250, 248, 253, 0.94)'
-          : 'transparent',
-        borderBottom: scrolled
-          ? `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(93, 26, 137, 0.08)'}`
-          : 'none',
-        backdropFilter: scrolled ? 'blur(20px)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-        boxShadow: scrolled
-          ? isDark
-            ? '0 10px 30px rgba(0, 0, 0, 0.6)'
-            : '0 10px 30px rgba(93, 26, 137, 0.08)'
-          : 'none',
+        bgcolor: 'transparent',
+        borderBottom: 'none',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        boxShadow: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
