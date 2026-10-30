@@ -108,8 +108,8 @@ export const PublicNavbar = () => {
         width: '100%',
         zIndex: 1100,
         transition: 'padding 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        py: scrolled ? { xs: 1.4, md: 1.6 } : { xs: 2.2, md: 2.75 },
-        px: { xs: 3, sm: 5, md: 8, lg: 12, xl: 16 },
+        py: scrolled ? { xs: 1.1, md: 1.6 } : { xs: 1.4, md: 2.75 },
+        px: { xs: 1.5, sm: 3, md: 8, lg: 12, xl: 16 },
         bgcolor: 'transparent',
         borderBottom: 'none',
         backdropFilter: 'none',
@@ -118,6 +118,7 @@ export const PublicNavbar = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        boxSizing: 'border-box',
       }}
     >
 
@@ -129,11 +130,12 @@ export const PublicNavbar = () => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.4,
+          gap: { xs: 0.85, sm: 1.4 },
           textDecoration: 'none',
           outline: 'none',
           cursor: 'pointer',
           position: 'relative',
+          flexShrink: 0,
           transition: 'all 0.25s ease',
           '&:hover .brand-logo-pod': {
             transform: 'scale(1.05)',
@@ -152,7 +154,7 @@ export const PublicNavbar = () => {
         }}
       >
         {/* Logo Container with Ambient Backglow */}
-        <Box sx={{ position: 'relative', width: { xs: 44, sm: 48 }, height: { xs: 44, sm: 48 } }}>
+        <Box sx={{ position: 'relative', width: { xs: 34, sm: 44, md: 48 }, height: { xs: 34, sm: 44, md: 48 }, flexShrink: 0 }}>
           {/* Ambient Radial Flare */}
           <Box
             className="brand-logo-ambient"
@@ -176,8 +178,8 @@ export const PublicNavbar = () => {
               position: 'relative',
               width: '100%',
               height: '100%',
-              borderRadius: '14px',
-              p: '3px',
+              borderRadius: { xs: '10px', sm: '14px' },
+              p: '2.5px',
               background: isDark
                 ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(255, 127, 17, 0.18))'
                 : 'linear-gradient(135deg, rgba(93, 26, 137, 0.16), rgba(255, 127, 17, 0.12))',
@@ -196,7 +198,7 @@ export const PublicNavbar = () => {
               sx={{
                 width: '100%',
                 height: '100%',
-                borderRadius: '10.5px',
+                borderRadius: { xs: '8px', sm: '10.5px' },
                 objectFit: 'contain',
               }}
             />
@@ -211,11 +213,12 @@ export const PublicNavbar = () => {
               sx={{
                 fontFamily: '"Plus Jakarta Sans", sans-serif',
                 fontWeight: 900,
-                fontSize: { xs: '1.18rem', sm: '1.28rem' },
+                fontSize: { xs: '1.05rem', sm: '1.28rem' },
                 letterSpacing: '-0.035em',
                 lineHeight: 1.15,
                 display: 'inline-flex',
                 alignItems: 'baseline',
+                whiteSpace: 'nowrap',
               }}
             >
               {/* Dual-Tone: "Leap" in high-contrast solid */}
@@ -256,10 +259,10 @@ export const PublicNavbar = () => {
               </Box>
             </Typography>
 
-            {/* Frosted Glassmorphic ERP Pill */}
+            {/* Frosted Glassmorphic ERP Pill - hidden on xs to prevent crowding */}
             <Box
               sx={{
-                display: 'inline-flex',
+                display: { xs: 'none', sm: 'inline-flex' },
                 alignItems: 'center',
                 gap: 0.45,
                 px: 0.75,
@@ -294,8 +297,8 @@ export const PublicNavbar = () => {
             </Box>
           </Box>
 
-          {/* Subtitle with Pulsing Live Dot */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mt: 0.15 }}>
+          {/* Subtitle with Pulsing Live Dot - hidden on xs/sm */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.6, mt: 0.15 }}>
             <Box
               sx={{
                 width: 5,
@@ -326,7 +329,8 @@ export const PublicNavbar = () => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 1.25, sm: 1.75 },
+          gap: { xs: 0.85, sm: 1.5 },
+          flexShrink: 0,
         }}
       >
         {/* Theme Toggle Button */}
@@ -336,8 +340,8 @@ export const PublicNavbar = () => {
             onClick={toggleTheme}
             aria-label="Toggle visual theme"
             sx={{
-              width: 38,
-              height: 38,
+              width: { xs: 34, sm: 38 },
+              height: { xs: 34, sm: 38 },
               borderRadius: '50%',
               border: '1px solid',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
@@ -354,9 +358,9 @@ export const PublicNavbar = () => {
             }}
           >
             {isDark ? (
-              <LightModeOutlinedIcon sx={{ fontSize: 18, color: '#FCD34D' }} />
+              <LightModeOutlinedIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: '#FCD34D' }} />
             ) : (
-              <DarkModeOutlinedIcon sx={{ fontSize: 18, color: tokens.brand.primary }} />
+              <DarkModeOutlinedIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: tokens.brand.primary }} />
             )}
           </IconButton>
         </Tooltip>
@@ -370,8 +374,8 @@ export const PublicNavbar = () => {
               <Avatar
                 src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 48)}
                 sx={{
-                  width: 24,
-                  height: 24,
+                  width: { xs: 20, sm: 24 },
+                  height: { xs: 20, sm: 24 },
                   fontSize: '0.72rem',
                   fontWeight: 750,
                   bgcolor: tokens.brand.primaryDark,
@@ -382,14 +386,15 @@ export const PublicNavbar = () => {
                 {userInitial}
               </Avatar>
             }
-            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: 16 }} />}
+            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
             sx={{
               borderRadius: '999px',
-              px: { xs: 2.2, sm: 2.75 },
-              py: 0.9,
-              fontSize: '0.86rem',
+              px: { xs: 1.5, sm: 2.75 },
+              py: { xs: 0.6, sm: 0.9 },
+              fontSize: { xs: '0.78rem', sm: '0.86rem' },
               fontWeight: 800,
               textTransform: 'none',
+              whiteSpace: 'nowrap',
               background: 'linear-gradient(135deg, #7B3DA8 0%, #5D1A89 60%, #461468 100%)',
               color: '#FFFFFF',
               border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -418,16 +423,21 @@ export const PublicNavbar = () => {
             variant="contained"
             component={Link}
             to="/login"
-            startIcon={<AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#FFD79E' }} />}
-            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: 16 }} />}
+            startIcon={
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#FFD79E' }} />
+              </Box>
+            }
+            endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: { xs: 13, sm: 16 } }} />}
             sx={{
               borderRadius: '999px',
-              px: { xs: 2.2, sm: 2.75 },
-              py: 0.9,
-              fontSize: '0.88rem',
+              px: { xs: 1.5, sm: 2.75 },
+              py: { xs: 0.6, sm: 0.9 },
+              fontSize: { xs: '0.8rem', sm: '0.88rem' },
               fontWeight: 800,
               letterSpacing: '-0.01em',
               textTransform: 'none',
+              whiteSpace: 'nowrap',
               background: 'linear-gradient(135deg, #7C3AED 0%, #581C87 50%, #3B0764 100%)',
               color: '#FFFFFF',
               border: '1px solid rgba(255, 255, 255, 0.22)',
@@ -456,8 +466,8 @@ export const PublicNavbar = () => {
             onClick={() => setDrawerOpen(true)}
             aria-label="Open navigation drawer"
             sx={{
-              width: 38,
-              height: 38,
+              width: { xs: 34, sm: 38 },
+              height: { xs: 34, sm: 38 },
               borderRadius: '50%',
               border: '1px solid',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
@@ -470,7 +480,7 @@ export const PublicNavbar = () => {
               },
             }}
           >
-            <MenuIcon sx={{ fontSize: 20 }} />
+            <MenuIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
           </IconButton>
         )}
       </Box>

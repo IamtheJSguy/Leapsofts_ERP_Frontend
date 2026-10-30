@@ -35,19 +35,19 @@ export const HeroSection = () => {
     <Box
       sx={{
         position: 'relative',
-        pt: { xs: 2, md: 4 },
-        pb: { xs: 8, md: 14 },
+        pt: { xs: 1, sm: 2, md: 4 },
+        pb: { xs: 5, md: 14 },
         overflow: 'hidden',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 } }}>
         {/* Hero Eyebrow Pill */}
         <ScrollReveal variant="fade-down" delay={60}>
           <Box
             sx={{
               display: 'flex',
               justifyContent: 'center',
-              mb: 3,
+              mb: { xs: 1.5, md: 3 },
             }}
           >
             <TypingOperatingSystem isDark={isDark} />
@@ -56,16 +56,17 @@ export const HeroSection = () => {
 
         {/* Main Headline */}
         <ScrollReveal variant="fade-up" delay={120}>
-          <Box sx={{ textAlign: 'center', maxWidth: '960px', mx: 'auto', mb: 3.5 }}>
+          <Box sx={{ textAlign: 'center', maxWidth: '960px', mx: 'auto', mb: { xs: 2, sm: 3.5 } }}>
             <Typography
               variant="h1"
               sx={{
                 fontWeight: 850,
-                fontSize: { xs: '2.4rem', sm: '3.6rem', md: '4.4rem' },
-                lineHeight: { xs: 1.18, sm: 1.12 },
-                letterSpacing: { xs: '-0.03em', md: '-0.04em' },
+                fontSize: { xs: '1.6rem', sm: '2.6rem', md: '4.4rem' },
+                lineHeight: { xs: 1.22, sm: 1.14 },
+                letterSpacing: { xs: '-0.025em', md: '-0.04em' },
                 color: isDark ? '#FFFFFF' : '#14111B',
-                mb: 2.5,
+                mb: { xs: 1.25, sm: 2.5 },
+                wordBreak: 'break-word',
               }}
             >
               Accelerate Pipeline.{' '}
@@ -84,20 +85,21 @@ export const HeroSection = () => {
                   intervalMs={2800}
                 />
                 .
-              </Box>
-              <br />
+              </Box>{' '}
+              <Box component="br" sx={{ display: { xs: 'none', md: 'inline' } }} />
               Orchestrate Your Entire Team.
             </Typography>
 
             <Typography
               variant="body1"
               sx={{
-                fontSize: { xs: '1rem', sm: '1.2rem' },
-                lineHeight: 1.6,
+                fontSize: { xs: '0.84rem', sm: '1.02rem', md: '1.2rem' },
+                lineHeight: 1.55,
                 color: isDark ? 'rgba(255, 255, 255, 0.72)' : '#4A4458',
                 maxWidth: '760px',
                 mx: 'auto',
                 fontWeight: 450,
+                px: { xs: 0.5, sm: 0 },
               }}
             >
               The unified enterprise platform bridging LinkedIn & cold outbound CRM, automated daily KPI tracking, departmental Kanban boards, and real-time shift telemetry into a single, high-velocity workspace.
@@ -113,8 +115,8 @@ export const HeroSection = () => {
               flexDirection: { xs: 'column', sm: 'row' },
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 2,
-              mb: { xs: 6, md: 8 },
+              gap: { xs: 1.25, sm: 2 },
+              mb: { xs: 3, sm: 4, md: 8 },
             }}
           >
             <Button
@@ -124,9 +126,9 @@ export const HeroSection = () => {
               endIcon={<ArrowForwardIcon className="btn-arrow" sx={{ fontSize: 18 }} />}
               sx={{
                 width: { xs: '100%', sm: 'auto' },
-                px: 4,
-                py: 1.5,
-                fontSize: '1rem',
+                px: { xs: 2.5, sm: 4 },
+                py: { xs: 1.25, sm: 1.5 },
+                fontSize: { xs: '0.92rem', sm: '1rem' },
                 fontWeight: 800,
                 borderRadius: '999px',
                 background: 'linear-gradient(135deg, #7C3AED 0%, #581C87 50%, #3B0764 100%)',
@@ -156,9 +158,9 @@ export const HeroSection = () => {
               startIcon={<PlayArrowIcon sx={{ color: tokens.brand.accent }} />}
               sx={{
                 width: { xs: '100%', sm: 'auto' },
-                px: 3.5,
-                py: 1.5,
-                fontSize: '0.98rem',
+                px: { xs: 2.5, sm: 3.5 },
+                py: { xs: 1.25, sm: 1.5 },
+                fontSize: { xs: '0.88rem', sm: '0.98rem' },
                 fontWeight: 700,
                 borderRadius: '999px',
                 border: '1px solid',

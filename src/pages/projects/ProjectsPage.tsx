@@ -143,6 +143,7 @@ const ProjectsPage = () => {
             sx={{
               fontWeight: 800,
               letterSpacing: '-0.02em',
+              fontSize: { xs: '1.75rem', sm: '2.125rem' },
               color: isDarkMode ? '#fff' : tokens.text.primary,
               mb: 0.5,
             }}
@@ -161,7 +162,7 @@ const ProjectsPage = () => {
         </Box>
 
         {canCreateProjectsAndBoards && (
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', width: { xs: '100%', sm: 'auto' } }}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -174,6 +175,7 @@ const ProjectsPage = () => {
                 textTransform: 'none',
                 boxShadow: 'none',
                 px: 3,
+                width: { xs: '100%', sm: 'auto' },
                 transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
                   bgcolor: tokens.brand.solid,
@@ -190,7 +192,7 @@ const ProjectsPage = () => {
 
       {/* Toolbar */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
           <TextField
             placeholder="Search projects..."
             size="small"
@@ -229,7 +231,18 @@ const ProjectsPage = () => {
           />
 
           {/* Filter Pills */}
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              overflowX: 'auto',
+              maxWidth: '100%',
+              pb: { xs: 0.5, sm: 0 },
+              width: { xs: '100%', sm: 'auto' },
+              '&::-webkit-scrollbar': { display: 'none' },
+              scrollbarWidth: 'none',
+            }}
+          >
             {statusFilters.map((filter) => (
               <Button
                 key={filter}
@@ -241,6 +254,8 @@ const ProjectsPage = () => {
                   fontSize: '0.85rem',
                   fontWeight: 650,
                   textTransform: 'none',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   bgcolor: activeFilter === filter ? (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E4E4E7') : 'transparent',
                   color: activeFilter === filter ? (isDarkMode ? '#fff' : '#1A1625') : 'text.secondary',
                   '&:hover': {
@@ -329,7 +344,7 @@ const ProjectsPage = () => {
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   borderRadius: '24px',
-                  p: 3,
+                  p: { xs: 2.25, sm: 3 },
                   cursor: 'pointer',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
@@ -505,12 +520,14 @@ const ProjectsPage = () => {
                 onClick={() => navigate(`/projects/${project._id}`)}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { xs: 'flex-start', sm: 'center' },
                   justifyContent: 'space-between',
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   borderRadius: '16px',
-                  p: 2.25,
+                  p: { xs: 2, sm: 2.25 },
+                  gap: { xs: 2, sm: 2 },
                   cursor: 'pointer',
                   transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                   '&:hover': {
@@ -520,9 +537,9 @@ const ProjectsPage = () => {
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, minWidth: 0, flex: 1 }}>
-                  <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 24 }} />
-                  <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, width: { xs: '100%', sm: 'auto' }, flex: 1 }}>
+                  <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 24, flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary' }}>
                         {project.name}
@@ -548,7 +565,17 @@ const ProjectsPage = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: { xs: 'space-between', sm: 'flex-end' },
+                    width: { xs: '100%', sm: 'auto' },
+                    pt: { xs: 1.5, sm: 0 },
+                    borderTop: { xs: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, sm: 'none' },
+                    gap: { xs: 2, sm: 4 },
+                  }}
+                >
                   <AvatarGroup
                     max={3}
                     sx={{

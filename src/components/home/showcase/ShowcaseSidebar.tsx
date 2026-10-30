@@ -9,6 +9,7 @@ import {
   ListItemText,
   Avatar,
   IconButton,
+  Chip,
   useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -21,6 +22,7 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import { tokens } from '@/styles/tokens';
 
 export type ShowcasePageId =
@@ -38,6 +40,7 @@ export type ShowcasePageId =
 interface ShowcaseSidebarProps {
   activePage: ShowcasePageId;
   onSelectPage: (id: ShowcasePageId) => void;
+  onCloseMobile?: () => void;
 }
 
 interface NavItem {
@@ -52,7 +55,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, onSelectPage }) => {
+export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, onSelectPage, onCloseMobile }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
@@ -102,7 +105,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
   return (
     <Box
       sx={{
-        width: { xs: '100%', md: '180px' },
+        width: '100%',
         flexShrink: 0,
         height: '100%',
         display: 'flex',
@@ -111,9 +114,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
           ? 'linear-gradient(180deg, #131117 0%, #1a1721 65%, #0f0d12 100%)'
           : 'linear-gradient(180deg, #1c1825 0%, #24202e 65%, #18151f 100%)',
         color: '#E8E4EF',
-        borderRight: isDark
-          ? '1px solid rgba(255, 255, 255, 0.05)'
-          : '1px solid rgba(0, 0, 0, 0.08)',
+        borderRight: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.08)',
         transition: 'background 0.25s ease, border-color 0.25s ease',
         userSelect: 'none',
       }}
@@ -124,6 +125,7 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
           sx={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 1,
             p: 0.85,
             borderRadius: '10px',
@@ -131,36 +133,53 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
             border: '1px solid rgba(255, 255, 255, 0.05)',
           }}
         >
-          <Box
-            component="img"
-            src="/logo/leapsofts-white.png"
-            alt="Leapsofts"
-            sx={{ width: 22, height: 22, borderRadius: '5px', objectFit: 'contain' }}
-          />
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              sx={{
-                color: '#FFFFFF',
-                fontWeight: 800,
-                fontSize: '0.74rem',
-                lineHeight: 1.15,
-                letterSpacing: '-0.01em',
-              }}
-              noWrap
-            >
-              Leapsofts
-            </Typography>
-            <Typography
-              sx={{
-                color: 'rgba(255, 255, 255, 0.42)',
-                fontSize: '0.6rem',
-                fontWeight: 500,
-              }}
-              noWrap
-            >
-              Enterprise
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            <Box
+              component="img"
+              src="/logo/leapsofts-white.png"
+              alt="Leapsofts"
+              sx={{ width: 22, height: 22, borderRadius: '5px', objectFit: 'contain' }}
+            />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '0.74rem',
+                  lineHeight: 1.15,
+                  letterSpacing: '-0.01em',
+                }}
+                noWrap
+              >
+                Leapsofts
+              </Typography>
+              <Typography
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.42)',
+                  fontSize: '0.6rem',
+                  fontWeight: 500,
+                }}
+                noWrap
+              >
+                Enterprise
+              </Typography>
+            </Box>
           </Box>
+          {onCloseMobile && (
+            <IconButton
+              size="small"
+              onClick={onCloseMobile}
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                color: 'rgba(255, 255, 255, 0.6)',
+                p: 0.25,
+                '&:hover': { color: '#FFFFFF' },
+              }}
+              aria-label="Close sidebar"
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
@@ -170,9 +189,14 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
           flex: 1,
           overflowY: 'auto',
           px: 0.85,
-          py: 0.25,
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          py: 0.5,
+          scrollbarWidth: 'thin',
+          '&::-webkit-scrollbar': { width: '4px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '10px',
+          },
         }}
       >
         {navGroups.map((group) => (
@@ -250,9 +274,9 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
       {/* Bottom User Profile: Huzaifa Rasheed */}
       <Box
         sx={{
+          display: 'flex',
           p: 1,
           borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           bgcolor: isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.12)',

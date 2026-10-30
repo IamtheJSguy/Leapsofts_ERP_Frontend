@@ -21,6 +21,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
   const pageTheme = useUIStore((s) => s.theme);
   const [demoMode, setDemoMode] = useState<'dark' | 'light'>(pageTheme || 'light');
   const [activePage, setActivePage] = useState<ShowcasePageId>('dashboard');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Automatically update demo theme whenever the overall page theme mode switches
   useEffect(() => {
@@ -75,18 +76,20 @@ export const RealErpShowcaseWindow: React.FC = () => {
 
             <Box
               sx={{
-                px: 1.75,
+                px: { xs: 1, sm: 1.75 },
                 py: 0.3,
                 borderRadius: '999px',
                 bgcolor: isDemoDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.75,
+                maxWidth: { xs: '140px', sm: 'none' },
               }}
             >
-              <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10B981' }} />
+              <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10B981', flexShrink: 0 }} />
               <Typography
                 variant="caption"
+                noWrap
                 sx={{
                   color: isDemoDark ? 'rgba(255, 255, 255, 0.65)' : 'text.secondary',
                   fontWeight: 650,
@@ -110,33 +113,86 @@ export const RealErpShowcaseWindow: React.FC = () => {
               bgcolor: isDemoDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)',
               color: '#10B981',
               border: '1px solid rgba(16, 185, 129, 0.25)',
+              flexShrink: 0,
             }}
           />
         </Box>
 
-        {/* 2. Main Window Area: Balanced Height & High-DPI View */}
+        {/* 2. Main Window Area: Contained Height & Responsive Sidebar */}
         <Box
           sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            height: { xs: 'auto', md: '590px' },
-            maxHeight: '590px',
+            position: 'relative',
+            height: { xs: '440px', sm: '510px', md: '590px' },
             bgcolor: isDemoDark ? '#14111B' : '#FAF8FD',
+            overflow: 'hidden',
             transition: 'background-color 0.25s ease',
           }}
         >
-          {/* Left: Authentic Leapsofts Sidebar */}
-          <ShowcaseSidebar activePage={activePage} onSelectPage={setActivePage} />
+          {/* Mobile Overlay Backdrop */}
+          {mobileSidebarOpen && (
+            <Box
+              onClick={() => setMobileSidebarOpen(false)}
+              sx={{
+                display: { xs: 'block', md: 'none' },
+                position: 'absolute',
+                inset: 0,
+                bgcolor: 'rgba(0, 0, 0, 0.55)',
+                backdropFilter: 'blur(3px)',
+                zIndex: 15,
+                transition: 'opacity 0.2s ease',
+              }}
+            />
+          )}
+
+          {/* Authentic Leapsofts Sidebar */}
+          <Box
+            sx={{
+              position: { xs: 'absolute', md: 'relative' },
+              top: 0,
+              bottom: 0,
+              left: 0,
+              zIndex: 20,
+              width: { xs: '200px', sm: '210px', md: '180px' },
+              transform: {
+                xs: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                md: 'none',
+              },
+              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: { xs: mobileSidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none', md: 'none' },
+              height: '100%',
+              flexShrink: 0,
+            }}
+          >
+            <ShowcaseSidebar
+              activePage={activePage}
+              onSelectPage={(page) => {
+                setActivePage(page);
+                setMobileSidebarOpen(false);
+              }}
+              onCloseMobile={() => setMobileSidebarOpen(false)}
+            />
+          </Box>
 
           {/* Right: Authentic Top Application Header + Active Page View */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-            <ShowcaseHeader onToggleTheme={toggleDemoTheme} demoTheme={demoMode} />
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', height: '100%' }}>
+            <ShowcaseHeader
+              onToggleTheme={toggleDemoTheme}
+              demoTheme={demoMode}
+              onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+            />
             <Box
               sx={{
                 flex: 1,
                 overflowY: 'auto',
-                maxHeight: '540px',
+                height: '100%',
                 scrollbarWidth: 'thin',
+                '&::-webkit-scrollbar': { width: '5px' },
+                '&::-webkit-scrollbar-track': { background: 'transparent' },
+                '&::-webkit-scrollbar-thumb': {
+                  background: isDemoDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.16)',
+                  borderRadius: '10px',
+                },
               }}
             >
               {activePage === 'dashboard' && <ShowcaseDashboard />}

@@ -179,7 +179,7 @@ export const OperationalLifecycleSection: React.FC = () => {
                 variant="h2"
                 sx={{
                   fontWeight: 850,
-                  fontSize: { xs: '2rem', sm: '2.8rem', md: '3.2rem' },
+                  fontSize: { xs: '1.65rem', sm: '2.5rem', md: '3.2rem' },
                   letterSpacing: '-0.03em',
                   background: isDark
                     ? 'linear-gradient(135deg, #FFFFFF 25%, #C084FC 65%, #38BDF8 100%)'
@@ -221,7 +221,7 @@ export const OperationalLifecycleSection: React.FC = () => {
                 ? '0 20px 60px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                 : '0 20px 50px -15px rgba(93, 26, 137, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
               overflow: 'hidden',
-              p: { xs: 2.5, sm: 3.5, md: 5 },
+              p: { xs: 2, sm: 3.5, md: 5 },
               mb: { xs: 8, md: 12 },
               position: 'relative',
               transform: 'translate3d(0, 0, 0)',

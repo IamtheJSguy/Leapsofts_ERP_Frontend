@@ -230,9 +230,9 @@ export const AppLayout = () => {
           component="section"
           sx={{
             flex: 1,
-            px: { xs: 2, sm: 3, md: 4 },
-            py: { xs: 2, sm: 3 },
-            pb: 4,
+            px: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : { xs: 2, sm: 3, md: 4 },
+            py: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 3 } : { xs: 2, sm: 3 },
+            pb: location.pathname.startsWith('/chat') ? { xs: 0.75, sm: 2, md: 4 } : 4,
           }}
         >
           <Outlet />
