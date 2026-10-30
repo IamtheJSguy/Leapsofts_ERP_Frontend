@@ -1194,7 +1194,7 @@ export const AttendancePage = () => {
           gap: 3,
         }}
       >
-        <Box sx={{ minWidth: 140 }}>
+        <Box sx={{ minWidth: { xs: 0, sm: 140 } }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
             Filter History
           </Typography>
@@ -1231,7 +1231,7 @@ export const AttendancePage = () => {
         </Box>
 
         {userFilterType === 'month' && (
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' } }}>
             <InputLabel id="user-month-select-label">Select Month</InputLabel>
             <Select
               labelId="user-month-select-label"
@@ -1265,7 +1265,8 @@ export const AttendancePage = () => {
               setPage(1);
             }}
             sx={{
-              minWidth: 180,
+              minWidth: { xs: '100%', sm: 180 },
+              width: { xs: '100%', sm: 'auto' },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
               }
@@ -1282,7 +1283,8 @@ export const AttendancePage = () => {
               setPage(1);
             }}
             sx={{
-              minWidth: 180,
+              minWidth: { xs: '100%', sm: 180 },
+              width: { xs: '100%', sm: 'auto' },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
               }

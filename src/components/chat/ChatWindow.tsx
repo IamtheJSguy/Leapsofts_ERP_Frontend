@@ -1248,11 +1248,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            p: 1,
-            px: 2,
-            borderRadius: '32px',
+            alignItems: { xs: 'flex-end', sm: 'center' },
+            gap: { xs: 0.75, sm: 1.5 },
+            p: { xs: 0.75, sm: 1 },
+            px: { xs: 1, sm: 2 },
+            borderRadius: { xs: '20px', sm: '32px' },
             bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.8)' : 'rgba(255, 255, 255, 0.85)',
             /* backdropFilter: 'blur(24px)' (removed for performance) */
             /* WebkitBackdropFilter: 'blur(24px)' (removed for performance) */
@@ -1272,8 +1272,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               sx={{
                 color: 'text.secondary',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                width: 36,
-                height: 36,
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }
               }}
               aria-label="Attach file"
@@ -1316,7 +1316,42 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Menu>
 
           <Box
-            sx={{ flex: 1, minWidth: 0 }}
+            sx={{
+              flex: 1,
+              width: { xs: '100%' },
+              minWidth: 0,
+              alignSelf: 'stretch',
+              '& .tiptap, & .ProseMirror, & .ProseMirror p': {
+                width: { xs: '100% !important' },
+                maxWidth: { xs: '100% !important' },
+                margin: { xs: '0 !important' },
+                boxSizing: 'border-box',
+                textAlign: 'left',
+              },
+              '& .ProseMirror': {
+                minHeight: { xs: '40px !important' },
+                maxHeight: { xs: '140px !important' },
+                padding: { xs: '4px 0 !important' },
+              },
+              '& .ProseMirror a': {
+                overflowWrap: 'anywhere',
+              },
+              '& .rte-input-row': {
+                width: '100%',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'stretch !important', sm: 'flex-end' },
+              },
+              '& .rte-input-row > :first-child': {
+                width: { xs: '100%' },
+                maxWidth: { xs: '100%' },
+              },
+              '& .rte-tools': {
+                justifyContent: { xs: 'flex-end', sm: 'flex-start' },
+                pt: { xs: 0, sm: 0 },
+                pb: { xs: 0, sm: '10px' },
+                pr: { xs: 0, sm: '10px' },
+              },
+            }}
             onPaste={(e) => {
               const item = [...(e.clipboardData?.items || [])].find((i) => i.kind === 'file');
               if (!item) return;
@@ -1354,8 +1389,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               createConversation.isPending
             }
             sx={{
-              width: 44,
-              height: 44,
+              width: { xs: 32, sm: 44 },
+              height: { xs: 32, sm: 44 },
               bgcolor: tokens.brand.solid,
               color: '#fff',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1376,7 +1411,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }}
             aria-label="Send message"
           >
-            <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />
+            <SendIcon sx={{ fontSize: { xs: 16, sm: 18 }, ml: { xs: 0.25, sm: 0.5 } }} />
           </IconButton>
         </Box>
       </Box>

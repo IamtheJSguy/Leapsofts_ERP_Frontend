@@ -36,6 +36,8 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EventIcon from '@mui/icons-material/Event';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import { MobileDateTimePicker } from '@mui/x-date-pickers/MobileDateTimePicker';
 
@@ -2193,17 +2195,49 @@ const TasksPage = () => {
       <>
         {/* Navigation Sub-Tabs */}
         {isElevated && viewMode === 'list' && (
-          <Box sx={{ display: 'flex', gap: 1, mb: 4, bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', p: 0.5, borderRadius: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
-            <Button onClick={() => setDashboardTab('my_tasks')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'my_tasks' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'my_tasks' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>My Tasks</Button>
-            <Button onClick={() => setDashboardTab('team')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'team' || dashboardTab === 'daily_progress') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Team Progress</Button>
-            {salesModuleOn && (
-            <Button onClick={() => setDashboardTab('sales')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'sales' || dashboardTab === 'sales_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Sales KPIs</Button>
-            )}
-            <Button onClick={() => setDashboardTab('templates')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'templates' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'templates' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>KPI Templates</Button>
-            <Button onClick={() => setDashboardTab('standalone')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: (dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis') ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>Standalone KPIs</Button>
-            <Button onClick={() => setDashboardTab('change_requests')} sx={{ textTransform: 'none', borderRadius: '16px', px: 3, bgcolor: dashboardTab === 'change_requests' ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent', color: dashboardTab === 'change_requests' ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary', fontWeight: 700 }}>
-              Change Requests{pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}
-            </Button>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: { xs: 0.5, sm: 1 },
+              mb: { xs: 2, sm: 4 },
+              bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
+              p: 0.5,
+              borderRadius: '20px',
+              width: { xs: '100%', sm: 'fit-content' },
+              maxWidth: '100%',
+              flexWrap: { xs: 'nowrap', sm: 'wrap' },
+              overflowX: { xs: 'auto', sm: 'visible' },
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {([
+              { id: 'my_tasks', label: 'My Tasks', active: dashboardTab === 'my_tasks' },
+              { id: 'team', label: 'Team Progress', active: dashboardTab === 'team' || dashboardTab === 'daily_progress' },
+              ...(salesModuleOn ? [{ id: 'sales', label: 'Sales KPIs', active: dashboardTab === 'sales' || dashboardTab === 'sales_kpis' }] : []),
+              { id: 'templates', label: 'KPI Templates', active: dashboardTab === 'templates' },
+              { id: 'standalone', label: 'Standalone KPIs', active: dashboardTab === 'standalone' || dashboardTab === 'standalone_kpis' },
+              { id: 'change_requests', label: `Change Requests${pendingChangeRequests.length > 0 ? ` (${pendingChangeRequests.length})` : ''}`, active: dashboardTab === 'change_requests' },
+            ] as Array<{ id: DashboardTab; label: string; active: boolean }>).map((tab) => (
+              <Button
+                key={tab.id}
+                onClick={() => setDashboardTab(tab.id)}
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: '16px',
+                  px: { xs: 1.75, sm: 3 },
+                  py: { xs: 0.6, sm: 0.75 },
+                  minHeight: { xs: 34, sm: 36 },
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontWeight: 700,
+                  bgcolor: tab.active ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
+                  color: tab.active ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
+                }}
+              >
+                {tab.label}
+              </Button>
+            ))}
           </Box>
         )}
 
@@ -2235,12 +2269,14 @@ const TasksPage = () => {
                 <Card
                   key={kpi._id}
                   sx={{
-                    p: 2.5,
+                    p: { xs: 1.75, sm: 2.5 },
                     borderRadius: '20px',
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'stretch', sm: 'center' },
                     justifyContent: 'space-between',
-                    gap: 2,
+                    gap: { xs: 1.25, sm: 2 },
+                    overflow: 'hidden',
                     bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                     boxShadow: 'none',
@@ -2252,28 +2288,71 @@ const TasksPage = () => {
                     }
                   }}
                 >
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>{kpi.name}</Typography>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, gap: { xs: 0.75, sm: 1.5 }, mb: 0.5 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: { xs: '0.95rem', sm: '1rem' },
+                          lineHeight: 1.35,
+                          flex: { xs: '1 1 100%', sm: '0 1 auto' },
+                          minWidth: 0,
+                          overflowWrap: 'anywhere',
+                          color: isDarkMode ? '#fff' : tokens.text.primary,
+                        }}
+                      >
+                        {kpi.name}
+                      </Typography>
                       <PriorityBadge priority={kpi.priority} />
                       {kpi.daysOfWeek?.length ? (
                         <Chip
                           label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
                           size="small"
-                          sx={{ fontWeight: 700, fontSize: '0.68rem', height: 20, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: { xs: '0.64rem', sm: '0.68rem' },
+                            height: { xs: 'auto', sm: 20 },
+                            maxWidth: '100%',
+                            bgcolor: 'rgba(93, 26, 137, 0.08)',
+                            color: tokens.brand.primary,
+                            '& .MuiChip-label': {
+                              whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                              lineHeight: 1.35,
+                              py: { xs: 0.4, sm: 0 },
+                            },
+                          }}
                         />
                       ) : null}
                     </Box>
-                    <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500, fontSize: { xs: '0.78rem', sm: '0.875rem' }, overflowWrap: 'anywhere' }}>
                       {kpi.targetValue != null ? `Target: ${kpi.targetValue}` : 'Simple task'}
                       {kpi.daysOfWeek?.length
                         ? ` · ${formatDaysLabel(kpi.daysOfWeek)}`
                         : (kpi.dueDate ? ` · Due ${new Date(kpi.dueDate).toLocaleString()}` : ' · No due date')}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" onClick={() => { setEditingStandaloneKpi(kpi); setStandaloneFormOpen(true); }} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', color: tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}>Edit</Button>
-                    <Button size="small" color="error" onClick={() => { setStandaloneKpiToDelete(kpi._id); setConfirmDeleteStandaloneOpen(true); }} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', '&:hover': { bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)' } }}>Delete</Button>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
+                    <Tooltip title="Edit" arrow>
+                      <IconButton
+                        size="small"
+                        aria-label="Edit KPI"
+                        onClick={() => { setEditingStandaloneKpi(kpi); setStandaloneFormOpen(true); }}
+                        sx={{ color: tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}
+                      >
+                        <EditOutlinedIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete" arrow>
+                      <IconButton
+                        size="small"
+                        aria-label="Delete KPI"
+                        onClick={() => { setStandaloneKpiToDelete(kpi._id); setConfirmDeleteStandaloneOpen(true); }}
+                        sx={{ color: tokens.semantic.error, '&:hover': { bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)' } }}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </Card>
               ))}

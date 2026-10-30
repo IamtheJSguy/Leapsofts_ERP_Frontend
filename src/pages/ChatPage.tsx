@@ -47,7 +47,7 @@ const ChatPage = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 120px)',
+        height: { xs: 'calc(100dvh - 120px)', md: 'calc(100vh - 120px)' },
         minHeight: 0,
         minWidth: 0,
         maxWidth: '100%',

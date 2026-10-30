@@ -257,7 +257,7 @@ export const RichTextEditor = ({
         </Box>
       </Collapse>
       
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+      <Box className="rte-input-row" sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
         <Box
           sx={{
             flex: 1,
@@ -311,7 +311,7 @@ export const RichTextEditor = ({
         </Box>
 
         {/* Inline Tools (A button and Emoji) */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
+        <Box className="rte-tools" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
           <Tooltip title="Formatting options" arrow>
             <IconButton 
               size="small" 

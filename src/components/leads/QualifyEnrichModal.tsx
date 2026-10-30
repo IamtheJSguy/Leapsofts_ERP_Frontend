@@ -916,8 +916,10 @@ export const QualifyEnrichModal = ({
       PaperProps={{
         sx: {
           borderRadius: { xs: '20px', md: '24px' },
-          maxHeight: 'calc(100vh - 32px)',
-          height: { xs: 'calc(100vh - 32px)', md: 'auto' },
+          m: { xs: 1, sm: 4 },
+          width: { xs: 'calc(100% - 16px)', sm: 'calc(100% - 64px)' },
+          maxHeight: { xs: 'calc(100dvh - 16px)', sm: 'calc(100vh - 32px)' },
+          height: { xs: 'calc(100dvh - 16px)', md: 'auto' },
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -934,14 +936,16 @@ export const QualifyEnrichModal = ({
       <DialogTitle sx={{ p: 0, flexShrink: 0 }}>
         <Box sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
           justifyContent: 'space-between',
+          gap: { xs: 1, sm: 0 },
           px: { xs: 2, md: 3 },
           py: 1.5,
           borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         }}>
-          <Box sx={{ minWidth: 0, pr: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+          <Box sx={{ minWidth: 0, pr: { xs: 0, sm: 2 } }}>
+            <Typography variant="h6" sx={{ fontWeight: 850, fontSize: { xs: '1.05rem', sm: '1.25rem' }, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {isUpdateMode ? 'Update Lead' : 'Qualify Lead'}
             </Typography>
             <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 500, mt: 0.25, display: { xs: 'none', sm: 'block' } }}>
@@ -950,7 +954,7 @@ export const QualifyEnrichModal = ({
                 : 'Review and enrich the profile before pushing it to the pipeline.'}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-end', sm: 'flex-start' }, gap: 1, flexShrink: 0 }}>
             <Button
               size="small"
               variant="outlined"
@@ -1072,6 +1076,8 @@ export const QualifyEnrichModal = ({
         px: { xs: 2, md: 3 },
         py: 1.25,
         flexShrink: 0,
+        flexWrap: 'wrap',
+        gap: { xs: 1, sm: 0 },
         borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.01)',
       }}>
@@ -1081,11 +1087,13 @@ export const QualifyEnrichModal = ({
           variant="outlined"
           startIcon={<DashboardIcon sx={{ fontSize: 17 }} />}
           sx={{
-            mr: 'auto',
+            mr: { xs: 0, sm: 'auto' },
+            width: { xs: '100%', sm: 'auto' },
+            whiteSpace: 'nowrap',
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 750,
-            fontSize: '0.85rem',
+            fontSize: { xs: '0.8rem', sm: '0.85rem' },
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
             color: tokens.brand.primary,
             '&:hover': {
