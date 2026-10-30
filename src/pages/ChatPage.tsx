@@ -3,14 +3,12 @@ import { Box, Card, useTheme } from '@mui/material';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { ChatSearchModal } from '@/components/chat/ChatSearchModal';
-import { DriveFilePicker } from '@/components/chat/DriveFilePicker';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const ChatPage = () => {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [driveOpen, setDriveOpen] = useState(false);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
 
@@ -75,12 +73,11 @@ const ChatPage = () => {
           <ChatSidebar />
         </Box>
         <Box sx={{ display: { xs: activeConversationId ? 'flex' : 'none', lg: 'flex' }, flexDirection: 'column', overflow: 'hidden', height: '100%', minWidth: 0 }}>
-          <ChatWindow onSearchOpen={() => setSearchOpen(true)} onDriveOpen={() => setDriveOpen(true)} />
+          <ChatWindow onSearchOpen={() => setSearchOpen(true)} />
         </Box>
       </Card>
 
       <ChatSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <DriveFilePicker open={driveOpen} onClose={() => setDriveOpen(false)} />
     </Box>
   );
 };

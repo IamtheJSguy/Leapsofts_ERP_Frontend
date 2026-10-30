@@ -131,10 +131,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [pendingFilesByConv, setPendingFilesByConv] = useState<
     Record<string, { file: File; previewUrl: string | null }>
   >({});
+  const [pendingDriveFilesByConv, setPendingDriveFilesByConv] = useState<
+    Record<string, DriveFile>
+  >({});
 
   const currentPending = activeConversationId ? pendingFilesByConv[activeConversationId] : null;
   const pendingFile = currentPending?.file || null;
   const pendingPreviewUrl = currentPending?.previewUrl || null;
+  const pendingDriveFile = activeConversationId ? pendingDriveFilesByConv[activeConversationId] || null : null;
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [drivePromptOpen, setDrivePromptOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -289,8 +293,33 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     void removeDraftAttachment(id);
   }, [activeConversationId]);
 
+  const clearPendingDriveFile = useCallback((targetConvId?: string) => {
+    const id = targetConvId || activeConversationId;
+    if (!id) return;
+    setPendingDriveFilesByConv((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, [activeConversationId]);
+
+  const stageDriveFile = useCallback((file: DriveFile | null) => {
+    if (!activeConversationId) return;
+    if (!file) {
+      clearPendingDriveFile(activeConversationId);
+      return;
+    }
+    clearPendingFile(activeConversationId);
+    setPendingDriveFilesByConv((prev) => ({
+      ...prev,
+      [activeConversationId]: file,
+    }));
+  }, [activeConversationId, clearPendingDriveFile, clearPendingFile]);
+
   const stageFile = useCallback((file: File | undefined | null) => {
     if (!file || !activeConversationId) return;
+    clearPendingDriveFile(activeConversationId);
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
     setPendingFilesByConv((prev) => {
       const existing = prev[activeConversationId];
@@ -303,7 +332,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       };
     });
     void saveDraftAttachment(activeConversationId, file);
-  }, [activeConversationId]);
+  }, [activeConversationId, clearPendingDriveFile]);
 
   const connectDrive = useCallback(() => {
     driveAuth.mutate(undefined, {
@@ -590,10 +619,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const caption = text.trim();
 
     const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string, fallbackFile?: File) => {
+      const messageContent = !isDraftEmpty(content) ? content : file.name;
       sendMessage.mutate(
         {
           conversationId,
-          content: content || file.name,
+          content: messageContent,
           type: 'drive_file',
           driveFileId: file.id,
           driveFileName: file.name,
@@ -607,6 +637,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           onError: (err) => {
             if (content) setText(content);
             if (fallbackFile) stageFile(fallbackFile);
+            else stageDriveFile(file);
             showApiError(err);
           },
         }
@@ -687,6 +718,48 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         return;
       }
       sendAttachment(activeConversationId);
+      return;
+    }
+
+    if (pendingDriveFile) {
+      const fileToSend = pendingDriveFile;
+      const contentToSend = caption;
+      const replyToIdToSend = replyToId;
+
+      clearPendingDriveFile(activeConversationId);
+      removeDraft(activeConversationId);
+      setReplyingTo(null);
+
+      const doSendDrive = (convId: string) => {
+        postDriveFile(convId, fileToSend, contentToSend, replyToIdToSend);
+      };
+
+      if (activeConversationId.startsWith('mock-conv-')) {
+        const targetUserId = activeConversationId.replace('mock-conv-', '');
+        createConversation.mutate(
+          { participantId: targetUserId },
+          {
+            onSuccess: (response: any) => {
+              const newConvId = response.data?.data?._id || response.data?._id;
+              if (newConvId) {
+                setActiveConversation(newConvId);
+                navigate(`/chat/${newConvId}`, { replace: true });
+                clearPendingDriveFile(newConvId);
+                removeDraft(newConvId);
+                doSendDrive(newConvId);
+              }
+            },
+            onError: (err) => {
+              stageDriveFile(fileToSend);
+              if (contentToSend) setText(contentToSend);
+              showApiError(err);
+            },
+          },
+        );
+        return;
+      }
+
+      doSendDrive(activeConversationId);
       return;
     }
 
@@ -1020,7 +1093,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Tooltip>
           <Tooltip title="Google Drive Files" arrow>
             <IconButton
-              onClick={onDriveOpen}
+              onClick={() => {
+                if (onDriveOpen) onDriveOpen();
+                else setDrivePickerOpen(true);
+              }}
               size="small"
               sx={{
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
@@ -1248,6 +1324,59 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </IconButton>
           </Box>
         )}
+
+        {/* Pending Google Drive Document Preview */}
+        {pendingDriveFile && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              mb: 1,
+              mx: 0.5,
+              px: 1.5,
+              py: 1,
+              borderRadius: '18px',
+              bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.75)' : 'rgba(255,255,255,0.9)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(15, 157, 88, 0.2)'}`,
+            }}
+          >
+            {pendingDriveFile.thumbnailLink ? (
+              <Box
+                component="img"
+                src={pendingDriveFile.thumbnailLink}
+                alt={pendingDriveFile.name}
+                sx={{ width: 56, height: 56, borderRadius: '10px', objectFit: 'cover' }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: isDarkMode ? 'rgba(15, 157, 88, 0.12)' : 'rgba(15, 157, 88, 0.08)',
+                  color: '#0F9D58',
+                }}
+              >
+                <InsertDriveFileIcon />
+              </Box>
+            )}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" noWrap sx={{ fontWeight: 800, display: 'block' }}>
+                {pendingDriveFile.name}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Google Drive document • Add an optional caption below, then send
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => clearPendingDriveFile()} aria-label="Remove Google Drive file">
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        )}
         <Box
           sx={{
             display: 'flex',
@@ -1383,7 +1512,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 }
               }}
               onSubmit={handleSend}
-              placeholder={pendingFile ? 'Add a caption (optional)...' : 'Type a message...'}
+              placeholder={pendingFile || pendingDriveFile ? 'Add a caption (optional)...' : 'Type a message...'}
               autoFocus={true}
               mentionableUsers={mentionableUsers}
             />
@@ -1392,10 +1521,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           <IconButton
             onClick={handleSend}
             disabled={
-              (!pendingFile && isDraftEmpty(text)) ||
+              (!pendingFile && !pendingDriveFile && isDraftEmpty(text)) ||
               uploadDriveFile.isPending ||
               sendChatImage.isPending ||
-              createConversation.isPending
+              createConversation.isPending ||
+              sendMessage.isPending
             }
             sx={{
               width: { xs: 32, sm: 44 },
@@ -1426,7 +1556,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       </Box>
 
       {/* Google Drive File Picker */}
-      <DriveFilePicker open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
+      <DriveFilePicker
+        open={drivePickerOpen}
+        onClose={() => setDrivePickerOpen(false)}
+        onSelect={(file) => {
+          stageDriveFile(file);
+          setDrivePickerOpen(false);
+        }}
+      />
       <Dialog open={drivePromptOpen} onClose={() => setDrivePromptOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Connect Google Drive</DialogTitle>
         <DialogContent>

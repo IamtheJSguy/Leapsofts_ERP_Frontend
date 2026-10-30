@@ -9,6 +9,7 @@ import {
   ListItemText,
   Avatar,
   IconButton,
+  Chip,
   useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -99,27 +100,87 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
     },
   ];
 
+  const allNavItems = navGroups.flatMap((group) => group.items);
+
   return (
     <Box
       sx={{
         width: { xs: '100%', md: '180px' },
         flexShrink: 0,
-        height: '100%',
+        height: { xs: 'auto', md: '100%' },
         display: 'flex',
         flexDirection: 'column',
         background: isDark
           ? 'linear-gradient(180deg, #131117 0%, #1a1721 65%, #0f0d12 100%)'
           : 'linear-gradient(180deg, #1c1825 0%, #24202e 65%, #18151f 100%)',
         color: '#E8E4EF',
-        borderRight: isDark
-          ? '1px solid rgba(255, 255, 255, 0.05)'
-          : '1px solid rgba(0, 0, 0, 0.08)',
+        borderRight: { md: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.08)' },
+        borderBottom: { xs: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.08)', md: 'none' },
         transition: 'background 0.25s ease, border-color 0.25s ease',
         userSelect: 'none',
       }}
     >
-      {/* Brand Workspace Header */}
-      <Box sx={{ p: 1, pb: 0.5 }}>
+      {/* Mobile Horizontal Page Selector Bar */}
+      <Box
+        sx={{
+          display: { xs: 'flex', md: 'none' },
+          alignItems: 'center',
+          gap: 0.85,
+          px: 1.25,
+          py: 0.85,
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
+      >
+        {allNavItems.map((item) => {
+          const isSelected = activePage === item.id;
+          return (
+            <Chip
+              key={item.id}
+              icon={
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
+                    '& .MuiSvgIcon-root': { fontSize: 14 },
+                  }}
+                >
+                  {item.icon}
+                </Box>
+              }
+              label={item.label}
+              size="small"
+              onClick={() => onSelectPage(item.id)}
+              clickable
+              sx={{
+                height: 27,
+                px: 0.5,
+                fontSize: '0.72rem',
+                fontWeight: isSelected ? 800 : 600,
+                bgcolor: isSelected
+                  ? 'rgba(168, 85, 247, 0.45)'
+                  : isDark
+                    ? 'rgba(255, 255, 255, 0.06)'
+                    : 'rgba(255, 255, 255, 0.15)',
+                color: isSelected ? '#FFFFFF' : isDark ? '#D1CAD8' : '#FAF8FD',
+                border: '1px solid',
+                borderColor: isSelected
+                  ? 'rgba(192, 132, 252, 0.65)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                flexShrink: 0,
+              }}
+            />
+          );
+        })}
+      </Box>
+
+      {/* Brand Workspace Header (Desktop) */}
+      <Box sx={{ display: { xs: 'none', md: 'block' }, p: 1, pb: 0.5 }}>
         <Box
           sx={{
             display: 'flex',
@@ -164,9 +225,10 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
         </Box>
       </Box>
 
-      {/* Navigation Groups */}
+      {/* Navigation Groups (Desktop) */}
       <Box
         sx={{
+          display: { xs: 'none', md: 'block' },
           flex: 1,
           overflowY: 'auto',
           px: 0.85,
@@ -247,12 +309,12 @@ export const ShowcaseSidebar: React.FC<ShowcaseSidebarProps> = ({ activePage, on
         ))}
       </Box>
 
-      {/* Bottom User Profile: Huzaifa Rasheed */}
+      {/* Bottom User Profile: Huzaifa Rasheed (Desktop) */}
       <Box
         sx={{
+          display: { xs: 'none', md: 'flex' },
           p: 1,
           borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           bgcolor: isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.12)',

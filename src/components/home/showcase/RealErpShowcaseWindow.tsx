@@ -75,18 +75,20 @@ export const RealErpShowcaseWindow: React.FC = () => {
 
             <Box
               sx={{
-                px: 1.75,
+                px: { xs: 1, sm: 1.75 },
                 py: 0.3,
                 borderRadius: '999px',
                 bgcolor: isDemoDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.75,
+                maxWidth: { xs: '140px', sm: 'none' },
               }}
             >
-              <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10B981' }} />
+              <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10B981', flexShrink: 0 }} />
               <Typography
                 variant="caption"
+                noWrap
                 sx={{
                   color: isDemoDark ? 'rgba(255, 255, 255, 0.65)' : 'text.secondary',
                   fontWeight: 650,
@@ -110,6 +112,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
               bgcolor: isDemoDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)',
               color: '#10B981',
               border: '1px solid rgba(16, 185, 129, 0.25)',
+              flexShrink: 0,
             }}
           />
         </Box>
@@ -120,7 +123,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },
             height: { xs: 'auto', md: '590px' },
-            maxHeight: '590px',
+            maxHeight: { xs: '650px', md: '590px' },
             bgcolor: isDemoDark ? '#14111B' : '#FAF8FD',
             transition: 'background-color 0.25s ease',
           }}
@@ -135,7 +138,7 @@ export const RealErpShowcaseWindow: React.FC = () => {
               sx={{
                 flex: 1,
                 overflowY: 'auto',
-                maxHeight: '540px',
+                maxHeight: { xs: '580px', md: '540px' },
                 scrollbarWidth: 'thin',
               }}
             >
