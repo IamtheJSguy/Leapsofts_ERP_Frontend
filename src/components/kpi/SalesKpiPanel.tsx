@@ -10,12 +10,22 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   TextField,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { PriorityBadge } from '@/components/kpi/PriorityBadge';
 import { SalesKpiAssignmentsPanel } from '@/components/kpi/SalesKpiAssignmentsPanel';
 import { SalesKpiTemplateForm } from '@/components/kpi/SalesKpiTemplateForm';
@@ -42,6 +52,42 @@ export const SalesKpiPanel = () => {
   const [editing, setEditing] = useState<SalesKpiTemplate | null>(null);
   const [assignTarget, setAssignTarget] = useState<SalesKpiTemplate | null>(null);
   const [assignUsers, setAssignUsers] = useState<User[]>([]);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<SalesKpiTemplate | null>(null);
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, template: SalesKpiTemplate) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedTemplate(template);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuAnchorEl(null);
+    setSelectedTemplate(null);
+  };
+
+  const handleMenuAssign = () => {
+    if (selectedTemplate) {
+      setAssignTarget(selectedTemplate);
+      setAssignUsers([]);
+    }
+    handleCloseMenu();
+  };
+
+  const handleMenuEdit = () => {
+    if (selectedTemplate) {
+      setEditing(selectedTemplate);
+      setFormOpen(true);
+    }
+    handleCloseMenu();
+  };
+
+  const handleMenuDelete = () => {
+    if (selectedTemplate) {
+      handleDelete(selectedTemplate._id);
+    }
+    handleCloseMenu();
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -78,13 +124,22 @@ export const SalesKpiPanel = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           {sectionHeading('Sales KPI Templates', 'Weekday-scheduled tasks that generate and progress themselves from pipeline activity.')}
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => { setEditing(null); setFormOpen(true); }}
-            sx={{ textTransform: 'none', borderRadius: '12px', fontWeight: 700, boxShadow: 'none', bgcolor: tokens.brand.solid, '&:hover': { bgcolor: tokens.brand.solid } }}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '12px',
+              fontWeight: 700,
+              boxShadow: 'none',
+              bgcolor: tokens.brand.solid,
+              '&:hover': { bgcolor: tokens.brand.solid },
+              width: { xs: '100%', sm: 'auto' },
+              whiteSpace: 'nowrap',
+            }}
           >
             Create Template
           </Button>
@@ -104,7 +159,7 @@ export const SalesKpiPanel = () => {
               <Card
                 key={template._id}
                 sx={{
-                  p: 2.5,
+                  p: { xs: 2, sm: 2.5 },
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
@@ -113,26 +168,56 @@ export const SalesKpiPanel = () => {
                   '&:hover': { borderColor: tokens.brand.primary },
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                  <Box sx={{ minWidth: 0, flex: 1, pr: 0.5 }}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 800,
+                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                        wordBreak: 'break-word',
+                        lineHeight: 1.35,
+                        fontSize: { xs: '0.98rem', sm: '1.05rem' },
+                      }}
+                    >
                       {template.name}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary, fontWeight: 500 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
+                        fontWeight: 500,
+                        wordBreak: 'break-word',
+                        mt: 0.25,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      }}
+                    >
                       {template.description || `${template.items?.length ?? 0} item${(template.items?.length ?? 0) === 1 ? '' : 's'}`}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" onClick={() => { setAssignTarget(template); setAssignUsers([]); }} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px', color: tokens.brand.primary }}>
-                      Assign
-                    </Button>
-                    <Button size="small" onClick={() => { setEditing(template); setFormOpen(true); }} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', color: tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: tokens.text.primary } }}>
-                      Edit
-                    </Button>
-                    <Button size="small" color="error" disabled={deleteMutation.isPending} onClick={() => handleDelete(template._id)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', '&:hover': { bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)' } }}>
-                      Delete
-                    </Button>
-                  </Box>
+
+                  <Tooltip title="Actions" arrow placement="top">
+                    <IconButton
+                      size="small"
+                      aria-label="template actions"
+                      aria-haspopup="true"
+                      onClick={(e) => handleOpenMenu(e, template)}
+                      sx={{
+                        color: isDarkMode ? 'rgba(255,255,255,0.65)' : tokens.text.secondary,
+                        borderRadius: '10px',
+                        p: 0.75,
+                        flexShrink: 0,
+                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          color: tokens.brand.primary,
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.08)',
+                          transform: 'scale(1.08)',
+                        },
+                      }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
@@ -141,37 +226,41 @@ export const SalesKpiPanel = () => {
                       key={item._id ?? index}
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        flexDirection: { xs: 'column', sm: 'row' },
                         gap: 1,
-                        flexWrap: 'wrap',
-                        p: 1.25,
+                        p: { xs: 1.25, sm: 1.25 },
                         borderRadius: '14px',
                         bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 750, minWidth: 140 }}>{item.name}</Typography>
-                      <Chip
-                        label={SALES_KPI_METRIC_LABELS[item.metric] ?? item.metric}
-                        size="small"
-                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
-                      />
-                      <Chip
-                        label={item.scheduleMode === 'span' ? 'Single task' : 'Per day'}
-                        size="small"
-                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
-                      />
-                      <PriorityBadge priority={item.priority} />
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                        {formatWeekdays(item.daysOfWeek)}
+                      <Typography variant="body2" sx={{ fontWeight: 750, minWidth: { xs: 'auto', sm: 140 }, wordBreak: 'break-word' }}>
+                        {item.name}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                        · {item.targetMode === 'manual' ? `Target ${item.targetValue ?? '—'}` : 'Target from pipeline'}
-                      </Typography>
-                      {(item.startTime || item.endTime) && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip
+                          label={SALES_KPI_METRIC_LABELS[item.metric] ?? item.metric}
+                          size="small"
+                          sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                        />
+                        <Chip
+                          label={item.scheduleMode === 'span' ? 'Single task' : 'Per day'}
+                          size="small"
+                          sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
+                        />
+                        <PriorityBadge priority={item.priority} />
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                          · {item.startTime || 'start of day'} – {item.endTime || 'end of day'}
+                          {formatWeekdays(item.daysOfWeek)}
                         </Typography>
-                      )}
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                          · {item.targetMode === 'manual' ? `Target ${item.targetValue ?? '—'}` : 'Target from pipeline'}
+                        </Typography>
+                        {(item.startTime || item.endTime) && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                            · {item.startTime || 'start of day'} – {item.endTime || 'end of day'}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   ))}
                 </Box>
@@ -190,12 +279,115 @@ export const SalesKpiPanel = () => {
         <SalesKpiTemplateForm open onClose={() => setFormOpen(false)} template={editing} />
       )}
 
+      {/* 3-dots Actions Menu */}
+      <Menu
+        id="template-action-menu"
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleCloseMenu}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              mt: 1,
+              minWidth: 160,
+              borderRadius: '16px',
+              bgcolor: isDarkMode ? 'rgba(28, 25, 34, 0.98)' : '#fff',
+              backdropFilter: 'blur(16px)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              boxShadow: isDarkMode ? '0 12px 32px rgba(0,0,0,0.6)' : '0 12px 30px rgba(0,0,0,0.08)',
+              p: 0.75,
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={handleMenuAssign}
+          sx={{
+            py: 1,
+            px: 1.5,
+            borderRadius: '10px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            color: tokens.brand.primary,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.08)',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 28, color: tokens.brand.primary }}>
+            <PersonAddAlt1Icon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 700 }}>
+            Assign
+          </ListItemText>
+        </MenuItem>
+
+        <MenuItem
+          onClick={handleMenuEdit}
+          sx={{
+            py: 1,
+            px: 1.5,
+            borderRadius: '10px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: isDarkMode ? '#fff' : tokens.text.primary,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 28, color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary }}>
+            <EditOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            Edit
+          </ListItemText>
+        </MenuItem>
+
+        <MenuItem
+          disabled={deleteMutation.isPending}
+          onClick={handleMenuDelete}
+          sx={{
+            py: 1,
+            px: 1.5,
+            borderRadius: '10px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: tokens.semantic.error,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 28, color: tokens.semantic.error }}>
+            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 600, color: tokens.semantic.error }}>
+            Delete
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+
       <Dialog
         open={!!assignTarget}
         onClose={() => setAssignTarget(null)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: '20px', bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff', backgroundImage: 'none' } }}
+        PaperProps={{
+          sx: {
+            m: { xs: 2, sm: 4 },
+            width: { xs: 'calc(100% - 32px)', sm: 'auto' },
+            borderRadius: '20px',
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+            backgroundImage: 'none',
+          },
+        }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Assign “{assignTarget?.name}”</DialogTitle>
         <DialogContent sx={{ pt: '8px !important' }}>

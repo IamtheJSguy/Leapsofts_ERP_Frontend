@@ -13,14 +13,14 @@ const useSurface = () => {
 
 const Bone = ({ width, height, radius = '10px' }: { width: number | string; height: number; radius?: string }) => {
   const { bone } = useSurface();
-  return <Skeleton variant="rounded" width={width} height={height} sx={{ borderRadius: radius, bgcolor: bone }} />;
+  return <Skeleton variant="rounded" width={width} height={height} sx={{ maxWidth: '100% !important', borderRadius: radius, bgcolor: bone }} />;
 };
 
 const PageTitle = () => (
-  <Box sx={{ mb: 3.5 }}>
-    <Bone width={280} height={36} radius="8px" />
-    <Box sx={{ mt: 1 }}>
-      <Bone width={420} height={16} radius="6px" />
+  <Box sx={{ mb: 3.5, maxWidth: '100%', minWidth: 0 }}>
+    <Bone width="min(280px, 75vw)" height={36} radius="8px" />
+    <Box sx={{ mt: 1, maxWidth: '100%' }}>
+      <Bone width="min(420px, 90vw)" height={16} radius="6px" />
     </Box>
   </Box>
 );
@@ -28,7 +28,7 @@ const PageTitle = () => (
 const CardShell = ({ children, radius = '24px', padding = 3 }: { children: ReactNode; radius?: string; padding?: number }) => {
   const { card, line } = useSurface();
   return (
-    <Box sx={{ bgcolor: card, border: `1px solid ${line}`, borderRadius: radius, p: padding }}>
+    <Box sx={{ bgcolor: card, border: `1px solid ${line}`, borderRadius: radius, p: { xs: Math.min(padding, 2), sm: padding }, maxWidth: '100%', overflow: 'hidden' }}>
       {children}
     </Box>
   );

@@ -199,7 +199,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
   return (
     <Card
       sx={{
-        p: 2.5,
+        p: { xs: 1.75, sm: 2.5 },
         borderRadius: '24px',
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
@@ -273,7 +273,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                   </TextField>
                 </Box>
               ) : (
-                <Box sx={{ minWidth: 180, flex: 1 }}>
+                <Box sx={{ minWidth: { xs: '100%', sm: 180 }, flex: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 800 }}>{d.name}</Typography>
                   <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
                     <Chip
@@ -404,11 +404,11 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
         >
           Add new KPI
         </Button>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, ml: 'auto' }}>
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' }, gap: 1.5, ml: { xs: 0, sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
           <Button
             onClick={() => { setDrafts(toDrafts(assignment)); setDirty(false); }}
             disabled={!dirty || updateMutation.isPending}
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary }}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary, flex: { xs: 1, sm: 'none' } }}
           >
             Reset
           </Button>
@@ -424,6 +424,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
               boxShadow: 'none',
               bgcolor: tokens.brand.solid,
               '&:hover': { bgcolor: tokens.brand.solid, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+              flex: { xs: 1, sm: 'none' },
             }}
           >
             {updateMutation.isPending ? 'Saving...' : 'Save changes'}
