@@ -124,7 +124,7 @@ export const SalesKpiPanel = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: { xs: 2.5, sm: 3 } }}>
           {sectionHeading('Sales KPI Templates', 'Weekday-scheduled tasks that generate and progress themselves from pipeline activity.')}
           <Button
             variant="contained"
