@@ -397,12 +397,16 @@ export const RichTextEditor = ({
             sx: { 
               borderRadius: 3, 
               mt: -1, 
-              width: { xs: 'calc(100vw - 32px)', sm: 352 },
-              maxWidth: 352,
+              width: { xs: 'calc(100vw - 24px)', sm: 352 },
+              maxWidth: { xs: 'calc(100vw - 24px)', sm: 352 },
               height: 435,
               boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)', 
               bgcolor: 'transparent',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              '& em-emoji-picker': {
+                width: '100% !important',
+                maxWidth: '100% !important',
+              },
             } 
           } 
         }}

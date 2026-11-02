@@ -274,7 +274,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: { xs: 'calc(100% - 64px)', sm: '75%' }, minWidth: 0, position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: { xs: 'calc(100% - 44px)', sm: '80%', md: '75%' }, minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -655,15 +655,28 @@ export const MessageBubble = React.memo(({
               className="msg-hover-action"
               sx={{
                 position: 'absolute',
-                bottom: 0,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
+                zIndex: 3,
+                top: { xs: -14, md: 'auto' },
+                bottom: { xs: 'auto', md: 0 },
                 ...(isOwn
-                  ? { right: '100%', mr: 0.5 }
-                  : { left: '100%', ml: 0.5 }),
-                opacity: { xs: 1, md: 0 },
-                transition: 'opacity 0.15s ease',
+                  ? {
+                      right: { xs: 4, md: '100%' },
+                      mr: { xs: 0, md: 0.5 },
+                    }
+                  : {
+                      left: { xs: 4, md: '100%' },
+                      ml: { xs: 0, md: 0.5 },
+                    }),
+                opacity: { xs: 0.9, md: 0 },
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                borderRadius: '16px',
+                p: 0.25,
+                boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.08)',
+                transition: 'opacity 0.15s ease, transform 0.15s ease',
               }}
             >
               {canReact && (

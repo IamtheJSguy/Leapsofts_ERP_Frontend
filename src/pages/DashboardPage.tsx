@@ -78,6 +78,13 @@ const DashboardPage = () => {
     user?.organizationName ||
     'Leapsofts';
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
       {/* Header Greeting & Stylized Date Row */}
@@ -97,18 +104,19 @@ const DashboardPage = () => {
             sx={{
               fontWeight: 800,
               letterSpacing: '-0.025em',
+              fontSize: { xs: '1.45rem', sm: '1.85rem', md: '2.125rem' },
               mb: 0.5,
               color: isDarkMode ? '#fff' : tokens.text.primary,
             }}
           >
-            Good evening, {getDisplayName(user)}
+            {getGreeting()}, {getDisplayName(user)}
           </Typography>
           <Typography
             variant="body1"
             sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
               fontWeight: 500,
-              fontSize: '0.92rem',
+              fontSize: { xs: '0.85rem', sm: '0.92rem' },
             }}
           >
             Here&apos;s what&apos;s happening at{' '}
@@ -124,13 +132,14 @@ const DashboardPage = () => {
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 1.5,
+            gap: { xs: 1, sm: 1.5 },
             bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.035)'}`,
             borderRadius: '20px',
-            px: 2.2,
+            px: { xs: 1.75, sm: 2.2 },
             py: 0.8,
-            userSelect: 'none'
+            userSelect: 'none',
+            alignSelf: { xs: 'flex-start', md: 'center' },
           }}
         >
           <Typography 

@@ -399,11 +399,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <Box className="animate-fade-in-up" sx={{ p: { xs: 2.5, md: 4.5 }, width: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <Box className="animate-fade-in-up" sx={{ p: 0, width: '100%', maxWidth: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       {/* Modern Page Header Banner */}
       <Card
         sx={{
-          p: 4,
+          p: { xs: 2.5, sm: 3.5, md: 4 },
           borderRadius: '24px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.8)',
           /* backdropFilter: 'blur(20px)' (removed for performance) */
@@ -438,11 +438,11 @@ export default function ProfilePage() {
           <Avatar
             src={optimizeCloudinaryAvatarUrl(user?.avatarUrl, 192)}
             sx={{
-              width: 84,
-              height: 84,
+              width: { xs: 72, sm: 84 },
+              height: { xs: 72, sm: 84 },
               background: `linear-gradient(135deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)`,
               fontWeight: 800,
-              fontSize: '1.85rem',
+              fontSize: { xs: '1.5rem', sm: '1.85rem' },
               boxShadow: '0 8px 24px rgba(93, 26, 137, 0.25)',
             }}
           >
@@ -471,12 +471,15 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
           <Typography
             variant="h4"
             sx={{
               fontWeight: 850,
               letterSpacing: '-0.02em',
+              fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' },
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
               mb: 0.5,
               background: `linear-gradient(135deg, ${isDarkMode ? '#fff' : tokens.text.primary} 0%, ${tokens.text.secondary} 100%)`,
               WebkitBackgroundClip: 'text',
@@ -490,7 +493,7 @@ export default function ProfilePage() {
               {user?.role === 'admin' ? 'Administrator' : user?.role === 'manager' ? 'Manager' : 'Sales Representative'}
             </Typography> */}
             {/* <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'text.disabled' }} /> */}
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, wordBreak: 'break-all' }}>
               {user?.email}
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 500 }}>
@@ -506,10 +509,17 @@ export default function ProfilePage() {
           display: 'flex',
           gap: 1.5,
           p: 1,
-          flexWrap: 'wrap',
+          flexWrap: { xs: 'nowrap', sm: 'wrap' },
+          overflowX: { xs: 'auto', sm: 'visible' },
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.8)',
           borderRadius: '20px',
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)'}`,
           boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         }}
