@@ -104,7 +104,7 @@ export const Header = () => {
         borderBottom: `1px solid ${tokens.surface.border}`,
       }}
     >
-      <Toolbar sx={{ gap: 2, py: 1.5, minHeight: { xs: 64, sm: 72 } }}>
+      <Toolbar sx={{ gap: { xs: 0.75, sm: 2 }, px: { xs: 1.25, sm: 3 }, py: 1.5, minHeight: { xs: 60, sm: 72 } }}>
         <IconButton
           edge="start"
           onClick={toggleSidebar}

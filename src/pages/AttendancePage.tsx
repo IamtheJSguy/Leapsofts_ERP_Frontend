@@ -445,8 +445,8 @@ export const AttendancePage = () => {
         {/* KPI Widgets removed as requested */}
 
         {/* Directory Header with Search */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.01em' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5, mb: 3.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.01em', fontSize: { xs: '1.05rem', sm: '1.25rem' } }}>
             Employees Directory
           </Typography>
           <TextField
@@ -455,7 +455,7 @@ export const AttendancePage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
-              width: 250,
+              width: { xs: '100%', sm: 250 },
               '& .MuiOutlinedInput-root': {
                 borderRadius: '24px',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#fff',

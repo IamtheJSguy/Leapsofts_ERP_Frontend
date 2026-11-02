@@ -996,7 +996,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: { xs: 1.5, md: 3 },
+          px: { xs: 1.25, md: 3 },
           py: { xs: 1, md: 1.5 },
           borderBottom: 'none',
           bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
@@ -1007,26 +1007,27 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         }}
       >
         {chatHeaderDetails && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1.5, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
             <IconButton
               onClick={() => {
                 setActiveConversation(null);
                 navigate('/chat', { replace: true });
               }}
-              sx={{ display: { xs: 'flex', lg: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
+              sx={{ display: { xs: 'flex', md: 'none' }, ml: { xs: -0.5, sm: -1 }, mr: -0.5, color: 'text.secondary', p: 0.75 }}
+              aria-label="Back to conversations"
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
             </IconButton>
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
               <Avatar
                 src={chatHeaderDetails.avatarUrl || undefined}
                 sx={{
-                  width: 40,
-                  height: 40,
+                  width: { xs: 36, sm: 40 },
+                  height: { xs: 36, sm: 40 },
                   bgcolor: tokens.brand.solid,
                   color: '#fff',
                   fontWeight: 700,
-                  fontSize: '0.9rem',
+                  fontSize: '0.85rem',
                 }}
               >
                 {chatHeaderDetails.initial}
@@ -1047,7 +1048,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               )}
             </Box>
             <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2, fontSize: { xs: '0.88rem', sm: '1rem' } }}>
                 {chatHeaderDetails.name}
               </Typography>
               <Typography
@@ -1062,6 +1063,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                         ? PRESENCE_COLORS.away
                         : 'text.secondary',
                   fontWeight: 600,
+                  fontSize: { xs: '0.68rem', sm: '0.75rem' },
                 }}
               >
                 {chatHeaderDetails.presenceLabel}
@@ -1071,19 +1073,22 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         )}
 
         {/* Action Header Tools */}
-        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 1.5 }, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0.25, sm: 1, md: 1.5 }, flexShrink: 0, alignItems: 'center' }}>
           {conversations.find((c) => c._id === activeConversationId)?.isGroup && (
             <Tooltip title="Group Info" arrow>
               <IconButton
                 onClick={() => setIsGroupSettingsOpen(true)}
                 size="small"
                 sx={{
+                  width: { xs: 32, sm: 36 },
+                  height: { xs: 32, sm: 36 },
+                  p: { xs: 0.5, sm: 1 },
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                   transition: 'all 0.2s',
                   '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
                 }}
               >
-                <InfoOutlinedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                <InfoOutlinedIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
               </IconButton>
             </Tooltip>
           )}
@@ -1092,12 +1097,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               onClick={onSearchOpen}
               size="small"
               sx={{
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
+                p: { xs: 0.5, sm: 1 },
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
               }}
             >
-              <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              <SearchIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Google Drive Files" arrow>
@@ -1108,12 +1116,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               }}
               size="small"
               sx={{
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
+                p: { xs: 0.5, sm: 1 },
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
               }}
             >
-              <FolderIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              <FolderIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -1246,7 +1257,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ px: { xs: 1, md: 3 }, pt: { xs: 0.25, md: 0.5 }, pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10, flexShrink: 0 }}>
+      <Box sx={{ px: { xs: 0.75, sm: 2, md: 3 }, pt: { xs: 0.25, md: 0.5 }, pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10, flexShrink: 0 }}>
         {replyingTo && (
           <Box
             sx={{

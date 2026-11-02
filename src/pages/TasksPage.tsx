@@ -2205,9 +2205,13 @@ const TasksPage = () => {
               borderRadius: '20px',
               width: { xs: '100%', sm: 'fit-content' },
               maxWidth: '100%',
+              minWidth: 0,
               flexWrap: { xs: 'nowrap', sm: 'wrap' },
               overflowX: { xs: 'auto', sm: 'visible' },
               WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
             }}
           >
             {([
