@@ -123,6 +123,11 @@ export const MessageBubble = React.memo(({
   const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActive = React.useRef(false);
 
+  // Mobile swipe-to-reply
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const isSwipingRef = React.useRef(false);
+  const hasTriggeredHapticRef = React.useRef(false);
+
   const senderRef = message.sender || message.senderId;
   const senderUser: User | undefined =
     typeof senderRef === 'object' && senderRef
@@ -211,31 +216,56 @@ export const MessageBubble = React.memo(({
   }, [reactions, mentionableUsers, currentUserId]);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
-    if (e.touches.length !== 1 || !canReact) return;
+    if (e.touches.length !== 1) return;
     const t = e.touches[0];
     touchStartPos.current = { x: t.clientX, y: t.clientY };
     isLongPressActive.current = false;
+    isSwipingRef.current = false;
+    hasTriggeredHapticRef.current = false;
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    const target = e.currentTarget;
-    longPressTimer.current = setTimeout(() => {
-      isLongPressActive.current = true;
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(40); } catch (_) {}
-      }
-      setQuickAnchor(target);
-    }, 450);
+
+    if (canReact) {
+      const target = e.currentTarget;
+      longPressTimer.current = setTimeout(() => {
+        isLongPressActive.current = true;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(40); } catch (_) {}
+        }
+        setQuickAnchor(target);
+      }, 450);
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
     if (!touchStartPos.current) return;
     const t = e.touches[0];
-    const dx = Math.abs(t.clientX - touchStartPos.current.x);
-    const dy = Math.abs(t.clientY - touchStartPos.current.y);
-    // If finger moves > 8px, user is scrolling: cancel long press immediately
-    if (dx > 8 || dy > 8) {
+    const diffX = t.clientX - touchStartPos.current.x;
+    const diffY = t.clientY - touchStartPos.current.y;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+
+    // If movement detected, cancel long-press
+    if (absX > 8 || absY > 8) {
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
+      }
+    }
+
+    // Horizontal swipe-to-reply: swiping to the right (diffX > 0)
+    if (onReply && !isLongPressActive.current) {
+      if (absX > absY && diffX > 0) {
+        isSwipingRef.current = true;
+        const offset = Math.min(65, diffX * 0.55);
+        setSwipeOffset(offset);
+
+        // Haptic feedback once threshold (45px) is reached
+        if (offset >= 45 && !hasTriggeredHapticRef.current) {
+          hasTriggeredHapticRef.current = true;
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate(25); } catch (_) {}
+          }
+        }
       }
     }
   };
@@ -245,6 +275,15 @@ export const MessageBubble = React.memo(({
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+
+    if (isSwipingRef.current && swipeOffset >= 45 && onReply) {
+      onReply(message);
+    }
+
+    setSwipeOffset(0);
+    isSwipingRef.current = false;
+    hasTriggeredHapticRef.current = false;
+    touchStartPos.current = null;
   };
 
   if (isBoardEvent) {
@@ -412,12 +451,39 @@ export const MessageBubble = React.memo(({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onContextMenu={(e) => {
-              if (isLongPressActive.current) e.preventDefault();
+              if (isLongPressActive.current || isSwipingRef.current) e.preventDefault();
             }}
           >
+            {/* Animated Reply Icon behind swiping bubble */}
+            {swipeOffset > 0 && onReply && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: -32,
+                  top: '50%',
+                  transform: `translateY(-50%) scale(${Math.min(1, Math.max(0.4, swipeOffset / 40))})`,
+                  opacity: Math.min(1, swipeOffset / 30),
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(93, 26, 137, 0.12)',
+                  color: tokens.brand.primary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 0,
+                  pointerEvents: 'none',
+                }}
+              >
+                <ReplyIcon sx={{ fontSize: 15 }} />
+              </Box>
+            )}
+
           <Paper
             elevation={0}
             sx={{
+              transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : 'none',
+              transition: isSwipingRef.current ? 'none' : 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)',
               p: compactMedia ? '0' : '8px 12px',
               borderRadius: '16px',
               borderBottomRightRadius: isOwn ? '4px' : '16px',
