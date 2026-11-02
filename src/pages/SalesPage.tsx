@@ -1186,14 +1186,16 @@ export const SalesPage = () => {
             sx={{
               mb: 0.5,
               display: 'flex',
-              alignItems: 'center',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               flexWrap: 'wrap',
-              gap: 1.5,
+              gap: { xs: 1, sm: 1.5 },
             }}
           >
             <Typography
               variant="h4"
               sx={{
+                fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.1rem' },
+                lineHeight: { xs: 1.25, sm: 1.3 },
                 fontWeight: 800,
                 letterSpacing: '-0.025em',
                 color: isDarkMode ? '#fff' : tokens.text.primary,
@@ -1201,15 +1203,15 @@ export const SalesPage = () => {
             >
               {outreachChannel === 'cold_calling' ? 'Cold Calling & Pipeline' : 'LinkedIn Outreach & Pipeline'}
             </Typography>
-            <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <FormControl size="small" sx={{ width: 'auto' }}>
               <Select
                 value={outreachChannel}
                 onChange={(e) => handleOutreachChannelChange(e.target.value as OutreachChannel)}
                 aria-label="Outreach channel"
                 sx={{
                   height: 30,
-                  minWidth: { xs: '100%', sm: 154 },
-                  width: { xs: '100%', sm: 'auto' },
+                  minWidth: { xs: 136, sm: 154 },
+                  width: 'auto',
                   borderRadius: '999px',
                   bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
                   color: tokens.brand.primary,
@@ -1233,7 +1235,8 @@ export const SalesPage = () => {
             sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
               fontWeight: 500,
-              fontSize: '0.92rem',
+              fontSize: { xs: '0.82rem', sm: '0.92rem' },
+              mt: { xs: 0.25, sm: 0 },
             }}
           >
             {outreachChannel === 'cold_calling'
@@ -3168,13 +3171,43 @@ export const SalesPage = () => {
                 setPage(1);
               }}
               rowsPerPageOptions={[10, 20, 50, 100]}
+              labelRowsPerPage={typeof window !== 'undefined' && window.innerWidth < 600 ? 'Rows:' : 'Rows per page:'}
               sx={{
-                mt: 1,
+                mt: 1.5,
                 borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                 color: 'text.secondary',
-                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                overflowX: 'auto',
+                '& .MuiTablePagination-toolbar': {
+                  minHeight: { xs: 44, sm: 52 },
+                  px: { xs: 1, sm: 2 },
+                  flexWrap: 'wrap',
+                  justifyContent: { xs: 'center', sm: 'flex-end' },
+                  gap: { xs: 0.5, sm: 1 },
+                },
+                '& .MuiTablePagination-spacer': {
+                  display: { xs: 'none', sm: 'block' },
+                },
+                '& .MuiTablePagination-selectLabel': {
                   fontWeight: 600,
-                  fontSize: '0.82rem',
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  m: 0,
+                },
+                '& .MuiTablePagination-select': {
+                  fontWeight: 600,
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  pl: { xs: 0.5, sm: 1 },
+                  pr: { xs: '18px !important', sm: '24px !important' },
+                },
+                '& .MuiTablePagination-displayedRows': {
+                  fontWeight: 600,
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  m: 0,
+                },
+                '& .MuiTablePagination-actions': {
+                  ml: { xs: 0.5, sm: 2 },
+                  '& .MuiIconButton-root': {
+                    p: { xs: 0.5, sm: 1 },
+                  },
                 },
               }}
             />
