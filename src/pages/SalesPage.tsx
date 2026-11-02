@@ -1990,13 +1990,19 @@ export const SalesPage = () => {
                   alignItems: 'center',
                   ml: { xs: 0, md: 'auto' },
                   width: { xs: '100%', md: 'auto' },
-                  flexWrap: { xs: 'wrap', md: 'nowrap' },
+                  flexWrap: 'nowrap',
+                  overflowX: { xs: 'auto', md: 'visible' },
+                  pb: { xs: 0.5, md: 0 },
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
                   '& > .MuiButton-root': {
                     whiteSpace: 'nowrap',
                     justifyContent: 'center',
-                    flex: { xs: '1 1 calc(50% - 8px)', md: '0 0 auto' },
+                    flexShrink: 0,
                     minWidth: { xs: 0, md: 64 },
-                    px: { xs: 1.25, md: 3 },
+                    px: { xs: 2, md: 3 },
+                    height: { xs: 38, md: 42 },
+                    fontSize: { xs: '0.8rem', md: '0.84rem' },
                   },
                 }}
               >
@@ -2238,19 +2244,305 @@ export const SalesPage = () => {
               </Typography>
             </Box>
           ) : (
-            /* Connected Prospects View - Show Table */
-            <TableContainer
-              ref={tableContainerRef}
-              component={Paper}
-              sx={{
-                borderRadius: '24px',
-                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                boxShadow: 'none',
-                overflowX: 'auto',
-                overflowY: 'hidden',
-              }}
-            >
+            <>
+              {/* Mobile Lead Cards View (xs to md) */}
+              <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                {isAddingInline && (
+                  <Card
+                    sx={{
+                      p: 2,
+                      borderRadius: '18px',
+                      bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                      border: `1.5px dashed ${tokens.brand.primary}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: tokens.brand.primary }}>
+                      New Prospect Details
+                    </Typography>
+                    <TextField
+                      size="small"
+                      placeholder="Prospect Name *"
+                      value={newLeadData.prospectName || ''}
+                      onChange={(e) => handleInlineAddUpdate({ prospectName: e.target.value })}
+                      error={!!addLeadErrors.prospectName}
+                      helperText={addLeadErrors.prospectName}
+                    />
+                    <TextField
+                      size="small"
+                      placeholder="Email Address"
+                      value={newLeadData.email || ''}
+                      onChange={(e) => handleInlineAddUpdate({ email: e.target.value })}
+                      error={!!addLeadErrors.email}
+                      helperText={addLeadErrors.email}
+                    />
+                    <TextField
+                      size="small"
+                      placeholder="Profile URL"
+                      value={newLeadData.profileUrl || ''}
+                      onChange={(e) => handleInlineAddUpdate({ profileUrl: e.target.value })}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 0.5 }}>
+                      <Button size="small" onClick={handleInlineAddCancel} sx={{ textTransform: 'none' }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={handleInlineSave}
+                        sx={{ textTransform: 'none', fontWeight: 700, bgcolor: tokens.brand.solid }}
+                      >
+                        Save Lead
+                      </Button>
+                    </Box>
+                  </Card>
+                )}
+
+                {prospects.map((prospect, idx) => {
+                  const responsePage = leadsResponse?.meta?.page ?? page;
+                  const globalRowIndex = (responsePage - 1) * rowsPerPage + idx + 1;
+                  const nameToUse = prospect.prospectName || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim() || prospect.email || 'Prospect';
+                  const initials = nameToUse.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
+                  const assignedName = getAssignedName(prospect.assignedTo);
+                  const canAdvanceConn = (prospect.connectionStatus || 'pending') === 'pending' || prospect.connectionStatus === 'sent';
+                  const isMarkingAccepted = !!markingAcceptedIds[prospect._id];
+
+                  return (
+                    <Card
+                      key={`mobile-lead-${prospect._id}`}
+                      sx={{
+                        p: 2,
+                        borderRadius: '18px',
+                        bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                        boxShadow: isDarkMode ? '0 4px 16px rgba(0,0,0,0.3)' : '0 4px 16px rgba(93,26,137,0.04)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1.25,
+                      }}
+                    >
+                      {/* Top Header: Index, Avatar, Name & Actions */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: 1 }}>
+                          <Box
+                            sx={{
+                              minWidth: 26,
+                              height: 22,
+                              px: 0.6,
+                              borderRadius: '6px',
+                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
+                              color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.muted,
+                              fontSize: '0.7rem',
+                              fontWeight: 750,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {String(globalRowIndex).padStart(2, '0')}
+                          </Box>
+                          <Avatar
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#F2EEEC',
+                              color: isDarkMode ? '#fff' : '#1A1625',
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0,0,0,0.04)'}`,
+                            }}
+                          >
+                            {initials}
+                          </Avatar>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography
+                                component="span"
+                                role="button"
+                                tabIndex={0}
+                                variant="subtitle2"
+                                onClick={() => handleOpenUpdateLead(String(prospect._id))}
+                                sx={{
+                                  fontWeight: 750,
+                                  color: isDarkMode ? '#fff' : tokens.text.primary,
+                                  fontSize: '0.88rem',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  cursor: 'pointer',
+                                  '&:hover': { color: tokens.brand.primary, textDecoration: 'underline' },
+                                }}
+                              >
+                                {nameToUse}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyName(e, String(prospect._id), nameToUse)}
+                                sx={{ p: 0.25, color: copiedLeadId === String(prospect._id) ? tokens.brand.primary : 'text.secondary' }}
+                              >
+                                {copiedLeadId === String(prospect._id) ? (
+                                  <CheckCircleIcon sx={{ fontSize: 13 }} />
+                                ) : (
+                                  <ContentCopyIcon sx={{ fontSize: 13 }} />
+                                )}
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Quick icon actions: Comments, Edit & Activity */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                          <LeadCommentButton
+                            comments={prospect.leadComments}
+                            comment={prospect.leadComment}
+                            mentionableUsers={Array.isArray(usersData) ? usersData : []}
+                            saving={addLeadComment.isPending}
+                            onAdd={(payload) =>
+                              addLeadComment.mutate(
+                                { id: prospect._id, ...payload },
+                                {
+                                  onSuccess: () => addToast({ message: 'Comment added', severity: 'success' }),
+                                  onError: (err) => showApiError(err),
+                                },
+                              )
+                            }
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditClick(prospect)}
+                            sx={{ color: 'text.secondary' }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleOpenTimeline(e, String(prospect._id))}
+                            sx={{ color: timelineLeadId === prospect._id ? tokens.brand.primary : 'text.secondary' }}
+                          >
+                            <TimelineOutlinedIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Box>
+                      </Box>
+
+                      {/* Contact details */}
+                      {(prospect.email || prospect.phone || prospect.profileUrl) && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, pl: 4.75 }}>
+                          {prospect.email && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <EmailIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{prospect.email}</Typography>
+                            </Box>
+                          )}
+                          {prospect.phone && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <PhoneIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{prospect.phone}</Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Middle Badges: Campaign & Status */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 0.75, borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}` }}>
+                        <Chip
+                          label={prospect.icp || 'General Lead'}
+                          size="small"
+                          sx={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(93,26,137,0.05)',
+                            color: isDarkMode ? '#fff' : tokens.brand.primary,
+                          }}
+                        />
+                        {outreachChannel === 'linkedin' ? (
+                          <Chip
+                            label={isMarkingAccepted ? 'Conn: saving…' : `Conn: ${prospect.connectionStatus || 'pending'}`}
+                            size="small"
+                            clickable={canAdvanceConn && !isMarkingAccepted}
+                            onClick={canAdvanceConn && !isMarkingAccepted ? (e) => {
+                              e.stopPropagation();
+                              handleAdvanceConnectionStatus(prospect._id, prospect.connectionStatus || 'pending');
+                            } : undefined}
+                            sx={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              bgcolor: (prospect.connectionStatus === 'accepted')
+                                ? 'rgba(16, 185, 129, 0.1)'
+                                : 'rgba(245, 158, 11, 0.1)',
+                              color: (prospect.connectionStatus === 'accepted') ? '#10B981' : '#F59E0B',
+                            }}
+                          />
+                        ) : (
+                          <Chip
+                            label={`Outreach: ${prospect.coldCalling?.outreachStatus || 'pending'}`}
+                            size="small"
+                            sx={{ fontSize: '0.68rem', fontWeight: 700 }}
+                          />
+                        )}
+                      </Box>
+
+                      {/* Bottom Bar: Assigned Agent & Qualify */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pt: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                          {assignedName ? `Agent: ${assignedName}` : 'Unassigned'}
+                        </Typography>
+                        {prospect.isQualified ? (
+                          <Chip
+                            icon={<CheckCircleIcon sx={{ fontSize: '13px !important' }} />}
+                            label="Qualified"
+                            size="small"
+                            sx={{
+                              bgcolor: 'rgba(16, 185, 129, 0.1)',
+                              color: '#10B981',
+                              fontWeight: 700,
+                              fontSize: '0.68rem',
+                              border: '1px solid rgba(16, 185, 129, 0.2)',
+                            }}
+                          />
+                        ) : (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={!isElevated ? <LockIcon sx={{ fontSize: '13px !important' }} /> : <StarIcon sx={{ fontSize: '13px !important' }} />}
+                            onClick={() => handleOpenQualifyConfirm(prospect._id)}
+                            disabled={!isElevated || qualifyLead.isPending}
+                            sx={{
+                              borderRadius: '16px',
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              py: 0.25,
+                              px: 1.25,
+                              borderColor: tokens.brand.primary,
+                              color: tokens.brand.primary,
+                            }}
+                          >
+                            Qualify
+                          </Button>
+                        )}
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </Box>
+
+              {/* Connected Prospects View - Show Table (Desktop & Tablet) */}
+              <TableContainer
+                ref={tableContainerRef}
+                component={Paper}
+                sx={{
+                  display: { xs: 'none', md: 'block' },
+                  borderRadius: '24px',
+                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                  boxShadow: 'none',
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                }}
+              >
               <Table>
                 <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.015)' }}>
                   <TableRow>
@@ -2858,6 +3150,7 @@ export const SalesPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            </>
           )}
 
           {totalProspects > 0 && (
