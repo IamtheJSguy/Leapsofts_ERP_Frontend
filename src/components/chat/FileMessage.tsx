@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Box, IconButton, Modal, Typography, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Message, User } from '@/types';
-import { chatMentionSx, sanitizeChatHtml } from '@/utils/chatHtml';
-import { tokens } from '@/styles/tokens';
 
 interface FileMessageProps {
   message: Message;
@@ -50,7 +48,7 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           textAlign: 'left',
           position: 'relative',
           overflow: 'hidden',
-          borderRadius: message.content?.trim() ? '16px 16px 0 0' : '16px',
+          borderRadius: '16px',
         }}
       >
         <Box
@@ -95,48 +93,6 @@ export const FileMessage = ({ message, isOwn = false, mentionableUsers = [] }: F
           </Box>
         )}
       </Box>
-      {message.content?.trim() ? (
-        <Box
-          className="prose tiptap-content"
-          sx={{
-            px: 1.75,
-            pt: 1.25,
-            pb: 1.25,
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            lineHeight: 1.5,
-            maxWidth: '100%',
-            minWidth: 0,
-            whiteSpace: 'pre-wrap',
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
-            '& *': {
-              whiteSpace: 'pre-wrap',
-              overflowWrap: 'anywhere',
-              wordBreak: 'break-word',
-              maxWidth: '100%',
-            },
-            color: isOwn ? '#000' : 'text.primary',
-            '& p': { m: 0 },
-            '& ul': { m: 0, pl: 2, listStyleType: 'disc' },
-            '& ol': { m: 0, pl: 2, listStyleType: 'decimal' },
-            '& a': {
-              color: isOwn ? '#000' : tokens.brand.primary,
-              textDecoration: 'underline',
-            },
-            '& mark': {
-              backgroundColor: '#ffcc00',
-              color: '#000',
-              borderRadius: '2px',
-              padding: '0 2px',
-            },
-            ...chatMentionSx,
-          }}
-          dangerouslySetInnerHTML={{
-            __html: sanitizeChatHtml(message.content, mentionableUsers),
-          }}
-        />
-      ) : null}
 
       <Modal
         open={lightboxOpen}
