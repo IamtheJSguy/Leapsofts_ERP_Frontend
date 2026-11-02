@@ -18,10 +18,10 @@ const AdminPage = () => {
   const { canManageUsers, canManageSystemSettings } = usePermissions();
 
   const tabs = useMemo(() => {
-    const list: { id: AdminTabId; label: string }[] = [];
-    if (canManageUsers) list.push({ id: 'users', label: 'Users List' });
-    if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings' });
-    if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage' });
+    const list: { id: AdminTabId; label: string; shortLabel: string }[] = [];
+    if (canManageUsers) list.push({ id: 'users', label: 'Users List', shortLabel: 'Users' });
+    if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings', shortLabel: 'Settings' });
+    if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage', shortLabel: 'Usage' });
     return list;
   }, [canManageUsers, canManageSystemSettings]);
 
@@ -75,7 +75,8 @@ const AdminPage = () => {
             p: 0.5,
             gap: 0.5,
             mb: 4,
-            width: 'fit-content',
+            width: { xs: '100%', sm: 'fit-content' },
+            maxWidth: '100%',
           }}
         >
           {tabs.map((item) => (
@@ -83,21 +84,28 @@ const AdminPage = () => {
               key={item.id}
               onClick={() => setTab(item.id)}
               sx={{
+                flex: { xs: 1, sm: 'initial' },
+                whiteSpace: 'nowrap',
                 borderRadius: '16px',
-                px: 3,
-                py: 0.75,
+                px: { xs: 1.5, sm: 2.5, md: 3 },
+                py: { xs: 0.85, sm: 0.75 },
                 bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
                 color: activeTab === item.id ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
                 fontWeight: 700,
                 textTransform: 'none',
-                fontSize: '0.84rem',
+                fontSize: { xs: '0.82rem', sm: '0.84rem' },
                 '&:hover': {
                   bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
                 },
                 transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
-              {item.label}
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                {item.shortLabel}
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {item.label}
+              </Box>
             </Button>
           ))}
         </Box>
