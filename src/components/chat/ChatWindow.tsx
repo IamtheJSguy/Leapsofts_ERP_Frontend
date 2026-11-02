@@ -470,8 +470,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   // Memoize enhanced messages list so it doesn't recalculate on every keystroke
   const enhancedMessages = useMemo(() => {
-    return displayMessages.map((msg: any) => {
-      const senderRef = msg.sender || msg.senderId;
+    const list: Array<{ msg: any; isOwn: boolean }> = [];
+
+    displayMessages.forEach((rawMsg: any) => {
+      const senderRef = rawMsg.sender || rawMsg.senderId;
       let senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
       if (typeof senderObj === 'object' && senderObj?._id && !senderObj.avatarUrl) {
         const fromDb = userMap.get(senderObj._id);
@@ -479,7 +481,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
       const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
 
-      let replyTo = msg.replyTo;
+      let replyTo = rawMsg.replyTo;
       if (replyTo && typeof replyTo === 'object') {
         const replySenderRef = replyTo.sender || replyTo.senderId;
         const replySenderObj =
@@ -489,8 +491,55 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         replyTo = { ...replyTo, sender: replySenderObj, senderId: replySenderObj };
       }
 
-      return { msg: { ...msg, sender: senderObj, replyTo }, isOwn };
+      const msg = { ...rawMsg, sender: senderObj, replyTo };
+
+      // WhatsApp/Instagram style: check if message has BOTH an attachment AND separate text caption
+      const hasImageAttachment = msg.type === 'file' && Boolean(msg.fileUrl);
+      const hasDriveAttachment =
+        msg.type === 'drive_file' &&
+        Boolean(msg.driveFileId || msg.driveFileName || msg.driveWebViewLink);
+      const isAttachment = hasImageAttachment || hasDriveAttachment;
+
+      const hasSeparateCaption =
+        isAttachment &&
+        Boolean(msg.content?.trim()) &&
+        (!hasDriveAttachment || msg.content.trim() !== (msg.driveFileName?.trim() || ''));
+
+      if (isAttachment && hasSeparateCaption) {
+        // Message 1: Independent Attachment Bubble
+        const attachmentMsg = {
+          ...msg,
+          _id: msg._id ? `${msg._id}-attachment` : `att-${Date.now()}`,
+          originalMessageId: msg._id,
+          content: hasDriveAttachment ? (msg.driveFileName || '') : '',
+        };
+
+        // Message 2: Independent Text Caption Bubble
+        const textMsg = {
+          ...msg,
+          _id: msg._id ? `${msg._id}-text` : `txt-${Date.now()}`,
+          originalMessageId: msg._id,
+          type: 'text' as const,
+          fileUrl: undefined,
+          filePublicId: undefined,
+          driveFileId: undefined,
+          driveFileName: undefined,
+          driveMimeType: undefined,
+          driveWebViewLink: undefined,
+          driveIconLink: undefined,
+          driveThumbnailLink: undefined,
+          content: msg.content.trim(),
+          replyTo: undefined,
+        };
+
+        list.push({ msg: attachmentMsg, isOwn });
+        list.push({ msg: textMsg, isOwn });
+      } else {
+        list.push({ msg, isOwn });
+      }
     });
+
+    return list;
   }, [displayMessages, userMap, user?._id]);
 
   const contentWrapperRef = useRef<HTMLDivElement>(null);
@@ -552,6 +601,19 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }
   }, [loadOlderMessages]);
 
+  // Auto-scroll when virtual keyboard toggles on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleViewportChange = () => {
+      shouldStickToBottomRef.current = true;
+      scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
+    };
+    vv.addEventListener('resize', handleViewportChange);
+    return () => vv.removeEventListener('resize', handleViewportChange);
+  }, [scrollToBottom]);
+
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
     if (isPrependingRef.current && el) {
@@ -566,6 +628,19 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       requestAnimationFrame(() => scrollToBottom('auto'));
     }
   }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
+
+  // Auto-scroll when virtual keyboard toggles on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleViewportChange = () => {
+      shouldStickToBottomRef.current = true;
+      scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
+    };
+    vv.addEventListener('resize', handleViewportChange);
+    return () => vv.removeEventListener('resize', handleViewportChange);
+  }, [scrollToBottom]);
 
   useLayoutEffect(() => {
     const el = contentWrapperRef.current;
@@ -671,7 +746,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           {
             conversationId,
             file: fileToUpload,
-            content: contentToUpload || undefined,
+            content: undefined,
             replyTo: replyToIdToUpload,
           },
           {
@@ -682,6 +757,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             },
           }
         );
+
+        // Send accompanying text as a completely separate message bubble
+        if (contentToUpload && !isDraftEmpty(contentToUpload)) {
+          setTimeout(() => {
+            sendMessage.mutate({
+              conversationId,
+              content: contentToUpload,
+            });
+          }, 40);
+        }
         return;
       }
 
@@ -693,7 +778,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
 
       uploadDriveFile.mutate(fileToUpload, {
-        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload, fileToUpload),
+        onSuccess: (uploaded) => {
+          postDriveFile(conversationId, uploaded, '', replyToIdToUpload, fileToUpload);
+          // Send accompanying text as a completely separate message bubble
+          if (contentToUpload && !isDraftEmpty(contentToUpload)) {
+            setTimeout(() => {
+              sendMessage.mutate({
+                conversationId,
+                content: contentToUpload,
+              });
+            }, 40);
+          }
+        },
         onError: (err) => {
           if (contentToUpload) setText(contentToUpload);
           stageFile(fileToUpload);
@@ -737,7 +833,15 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       setReplyingTo(null);
 
       const doSendDrive = (convId: string) => {
-        postDriveFile(convId, fileToSend, contentToSend, replyToIdToSend);
+        postDriveFile(convId, fileToSend, '', replyToIdToSend);
+        if (contentToSend && !isDraftEmpty(contentToSend)) {
+          setTimeout(() => {
+            sendMessage.mutate({
+              conversationId: convId,
+              content: contentToSend,
+            });
+          }, 40);
+        }
       };
 
       if (activeConversationId.startsWith('mock-conv-')) {
@@ -1257,7 +1361,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ px: { xs: 0.75, sm: 2, md: 3 }, pt: { xs: 0.25, md: 0.5 }, pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10, flexShrink: 0 }}>
+      <Box
+        sx={{
+          px: { xs: 0.75, sm: 2, md: 3 },
+          pt: { xs: 0.75, md: 0.75 },
+          pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 },
+          bgcolor: isDarkMode ? '#18141f' : '#fcfaff',
+          borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.06)'}`,
+          position: 'relative',
+          zIndex: 10,
+          flexShrink: 0,
+        }}
+      >
         {replyingTo && (
           <Box
             sx={{

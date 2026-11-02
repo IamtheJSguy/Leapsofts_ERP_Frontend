@@ -135,8 +135,8 @@ export const SOCKET_EVENTS = {
   AI_AGENT_PROGRESS: 'ai:agent_progress',
 } as const;
 
-/** Quick-bar emojis shown on message hover (full picker via +). */
-export const QUICK_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
+/** Quick-bar emojis shown on message hover / long-press (full picker via +). */
+export const QUICK_REACTION_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🔥'] as const;
 
 export const PRESENCE_COLORS = {
   online: '#2D8A5E',

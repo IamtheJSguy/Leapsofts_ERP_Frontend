@@ -207,6 +207,18 @@ export const AppLayout = () => {
           height: isChat ? { xs: '100dvh', md: 'auto' } : 'auto',
           maxHeight: isChat ? { xs: '100dvh', md: 'none' } : 'none',
           overflow: isChat ? { xs: 'hidden', md: 'visible' } : 'visible',
+          ...(isMobileConversation
+            ? {
+                position: { xs: 'fixed', md: 'static' },
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: { xs: '100dvh', md: 'auto' },
+                maxHeight: { xs: '100dvh', md: 'none' },
+                zIndex: { xs: 100, md: 'auto' },
+              }
+            : {}),
           transition: (t) =>
             t.transitions.create(['width', 'margin'], {
               easing: t.transitions.easing.sharp,

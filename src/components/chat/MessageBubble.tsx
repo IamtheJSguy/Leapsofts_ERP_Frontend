@@ -118,6 +118,11 @@ export const MessageBubble = React.memo(({
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
   const setReaction = useSetMessageReaction();
 
+  // Mobile long-press detection without interfering with scrolling
+  const touchStartPos = React.useRef<{ x: number; y: number } | null>(null);
+  const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressActive = React.useRef(false);
+
   const senderRef = message.sender || message.senderId;
   const senderUser: User | undefined =
     typeof senderRef === 'object' && senderRef
@@ -183,7 +188,64 @@ export const MessageBubble = React.memo(({
     return String(message.conversationId || '');
   })();
 
-  const canReact = Boolean(currentUserId && conversationId && !message._id.startsWith('temp-'));
+  const targetMessageId = (message as any).originalMessageId || message._id.replace(/-(attachment|text)$/, '');
+  const canReact = Boolean(currentUserId && conversationId && !targetMessageId.startsWith('temp-') && !targetMessageId.startsWith('optimistic-'));
+
+  const reactionTooltip = useMemo(() => {
+    if (!reactions.length) return '';
+    const byEmoji: Record<string, string[]> = {};
+    for (const r of reactions) {
+      const u =
+        typeof r.userId === 'object' && r.userId
+          ? r.userId
+          : mentionableUsers.find((mu) => mu._id === (typeof r.userId === 'string' ? r.userId : ''));
+      const uid = typeof r.userId === 'string' ? r.userId : r.userId?._id;
+      const isMe = Boolean(currentUserId && uid === currentUserId);
+      const name = isMe ? 'You' : u ? getDisplayName(u) : 'Someone';
+      if (!byEmoji[r.emoji]) byEmoji[r.emoji] = [];
+      byEmoji[r.emoji].push(name);
+    }
+    return Object.entries(byEmoji)
+      .map(([em, names]) => `${em} ${names.join(', ')}`)
+      .join(' • ');
+  }, [reactions, mentionableUsers, currentUserId]);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    if (e.touches.length !== 1 || !canReact) return;
+    const t = e.touches[0];
+    touchStartPos.current = { x: t.clientX, y: t.clientY };
+    isLongPressActive.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    const target = e.currentTarget;
+    longPressTimer.current = setTimeout(() => {
+      isLongPressActive.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (_) {}
+      }
+      setQuickAnchor(target);
+    }, 450);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    if (!touchStartPos.current) return;
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - touchStartPos.current.x);
+    const dy = Math.abs(t.clientY - touchStartPos.current.y);
+    // If finger moves > 8px, user is scrolling: cancel long press immediately
+    if (dx > 8 || dy > 8) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   if (isBoardEvent) {
     const actionText = (message.content || message.boardEvent?.cardTitle || 'updated the board').trim();
@@ -227,7 +289,7 @@ export const MessageBubble = React.memo(({
     setPickerAnchor(null);
     setReaction.mutate({
       conversationId,
-      messageId: message._id,
+      messageId: targetMessageId,
       emoji,
     });
   };
@@ -344,7 +406,15 @@ export const MessageBubble = React.memo(({
 
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
-          <Box sx={{ position: 'relative', maxWidth: '100%', minWidth: 0 }}>
+          <Box
+            sx={{ position: 'relative', maxWidth: '100%', minWidth: 0, userSelect: 'text' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onContextMenu={(e) => {
+              if (isLongPressActive.current) e.preventDefault();
+            }}
+          >
           <Paper
             elevation={0}
             sx={{
@@ -589,64 +659,70 @@ export const MessageBubble = React.memo(({
 
           {/* Aggregated reaction pill (WhatsApp-style overlap) */}
           {aggregated.count > 0 && (
-            <Box
-              component="button"
-              type="button"
-              aria-label="View reactions"
-              onClick={(e) => {
-                e.stopPropagation();
-                setReactionsOpen(true);
-              }}
-              sx={{
-                position: 'absolute',
-                bottom: -12,
-                [isOwn ? 'right' : 'left']: 10,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.35,
-                px: 0.85,
-                py: 0.2,
-                minHeight: 24,
-                borderRadius: '999px',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-                bgcolor: isDarkMode ? 'rgba(36, 30, 46, 0.98)' : '#fff',
-                boxShadow: isDarkMode
-                  ? '0 2px 8px rgba(0,0,0,0.35)'
-                  : '0 2px 8px rgba(0,0,0,0.08)',
-                cursor: 'pointer',
-                zIndex: 2,
-                transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-                outline: myReaction
-                  ? `1.5px solid ${tokens.brand.primary}`
-                  : 'none',
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: isDarkMode
-                    ? '0 4px 12px rgba(0,0,0,0.45)'
-                    : '0 4px 12px rgba(93, 26, 137, 0.15)',
-                },
-              }}
+            <Tooltip
+              title={reactionTooltip || 'View reactions'}
+              arrow
+              placement="bottom"
             >
-              <Typography
-                component="span"
-                sx={{ fontSize: '0.82rem', lineHeight: 1, letterSpacing: '0.02em' }}
+              <Box
+                component="button"
+                type="button"
+                aria-label="View reactions"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReactionsOpen(true);
+                }}
+                sx={{
+                  position: 'absolute',
+                  bottom: -12,
+                  [isOwn ? 'right' : 'left']: 10,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.35,
+                  px: 0.85,
+                  py: 0.2,
+                  minHeight: 24,
+                  borderRadius: '999px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  bgcolor: isDarkMode ? 'rgba(36, 30, 46, 0.98)' : '#fff',
+                  boxShadow: isDarkMode
+                    ? '0 2px 8px rgba(0,0,0,0.35)'
+                    : '0 2px 8px rgba(0,0,0,0.08)',
+                  cursor: 'pointer',
+                  zIndex: 2,
+                  transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+                  outline: myReaction
+                    ? `1.5px solid ${tokens.brand.primary}`
+                    : 'none',
+                  '&:hover': {
+                    transform: 'translateY(-1px)',
+                    boxShadow: isDarkMode
+                      ? '0 4px 12px rgba(0,0,0,0.45)'
+                      : '0 4px 12px rgba(93, 26, 137, 0.15)',
+                  },
+                }}
               >
-                {aggregated.emojis.slice(0, 3).join('')}
-              </Typography>
-              {aggregated.count > 1 && (
                 <Typography
                   component="span"
-                  sx={{
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    color: 'text.secondary',
-                    ml: 0.15,
-                  }}
+                  sx={{ fontSize: '0.82rem', lineHeight: 1, letterSpacing: '0.02em' }}
                 >
-                  {aggregated.count}
+                  {aggregated.emojis.slice(0, 3).join('')}
                 </Typography>
-              )}
-            </Box>
+                {aggregated.count > 1 && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: 'text.secondary',
+                      ml: 0.15,
+                    }}
+                  >
+                    {aggregated.count}
+                  </Typography>
+                )}
+              </Box>
+            </Tooltip>
           )}
           </Box>
 
@@ -655,27 +731,26 @@ export const MessageBubble = React.memo(({
               className="msg-hover-action"
               sx={{
                 position: 'absolute',
-                display: 'flex',
+                display: { xs: 'none', md: 'flex' },
                 alignItems: 'center',
                 gap: 0.5,
                 zIndex: 3,
-                top: { xs: -14, md: 'auto' },
-                bottom: { xs: 'auto', md: 0 },
+                bottom: 4,
                 ...(isOwn
                   ? {
-                      right: { xs: 4, md: '100%' },
-                      mr: { xs: 0, md: 0.5 },
+                      right: '100%',
+                      mr: 1,
                     }
                   : {
-                      left: { xs: 4, md: '100%' },
-                      ml: { xs: 0, md: 0.5 },
+                      left: '100%',
+                      ml: 1,
                     }),
-                opacity: { xs: 0.9, md: 0 },
-                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.92)' : 'rgba(255, 255, 255, 0.95)',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-                borderRadius: '16px',
-                p: 0.25,
-                boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.08)',
+                opacity: 0,
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: '20px',
+                p: '3px 4px',
+                boxShadow: isDarkMode ? '0 4px 14px rgba(0,0,0,0.45)' : '0 4px 14px rgba(0,0,0,0.08)',
                 transition: 'opacity 0.15s ease, transform 0.15s ease',
               }}
             >
@@ -735,6 +810,7 @@ export const MessageBubble = React.memo(({
       onClose={() => setQuickAnchor(null)}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      marginThreshold={8}
       slotProps={{
         paper: {
           sx: {
@@ -744,6 +820,7 @@ export const MessageBubble = React.memo(({
             display: 'flex',
             alignItems: 'center',
             gap: 0.25,
+            maxWidth: 'calc(100vw - 16px)',
             // Solid opaque surface (no Paper gradient / translucent wash)
             bgcolor: isDarkMode ? '#241E2E' : '#FFFFFF',
             backgroundImage: 'none',
@@ -847,12 +924,14 @@ export const MessageBubble = React.memo(({
       }}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      marginThreshold={8}
       slotProps={{
         paper: {
           sx: {
             borderRadius: '16px',
             overflow: 'hidden',
             bgcolor: 'transparent',
+            maxWidth: 'calc(100vw - 16px)',
             boxShadow: isDarkMode
               ? '0 12px 40px rgba(0,0,0,0.5)'
               : '0 12px 40px rgba(0,0,0,0.15)',
@@ -866,12 +945,12 @@ export const MessageBubble = React.memo(({
           setQuickAnchor(null);
         }}
       >
-        <Box>
+        <Box sx={{ maxWidth: '100%', overflow: 'hidden' }}>
           <EmojiPicker
             onEmojiClick={handlePickerSelect}
             theme={isDarkMode ? EmojiTheme.DARK : EmojiTheme.LIGHT}
-            width={320}
-            height={400}
+            width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 24, 320) : 320}
+            height={380}
             searchPlaceHolder="Search emoji"
             previewConfig={{ showPreview: false }}
             lazyLoadEmojis
@@ -904,7 +983,7 @@ export const MessageBubble = React.memo(({
           ? (emoji) => {
               setReaction.mutate({
                 conversationId,
-                messageId: message._id,
+                messageId: targetMessageId,
                 emoji,
               });
             }
