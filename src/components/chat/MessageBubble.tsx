@@ -128,6 +128,9 @@ export const MessageBubble = React.memo(({
   const [swipeOffset, setSwipeOffset] = useState(0);
   const isSwipingRef = React.useRef(false);
   const hasTriggeredHapticRef = React.useRef(false);
+  const swipeRafRef = React.useRef<number | null>(null);
+  const SWIPE_TRIGGER_THRESHOLD = 32;
+  const SWIPE_MAX_OFFSET = 56;
 
   const senderRef = message.sender || message.senderId;
   const senderUser: User | undefined =
@@ -223,7 +226,14 @@ export const MessageBubble = React.memo(({
     isLongPressActive.current = false;
     isSwipingRef.current = false;
     hasTriggeredHapticRef.current = false;
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (swipeRafRef.current) {
+      cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = null;
+    }
 
     if (canReact) {
       const target = e.currentTarget;
@@ -245,7 +255,7 @@ export const MessageBubble = React.memo(({
     const absX = Math.abs(diffX);
     const absY = Math.abs(diffY);
 
-    // If movement detected, cancel long-press
+    // Cancel long-press if movement detected (8px jitter threshold)
     if (absX > 8 || absY > 8) {
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
@@ -253,20 +263,42 @@ export const MessageBubble = React.memo(({
       }
     }
 
-    // Horizontal swipe-to-reply: swiping to the right (diffX > 0)
-    if (onReply && !isLongPressActive.current) {
-      if (absX > absY && diffX > 0) {
-        isSwipingRef.current = true;
-        const offset = Math.min(65, diffX * 0.55);
-        setSwipeOffset(offset);
+    if (!onReply || isLongPressActive.current) return;
 
-        // Haptic feedback once threshold (45px) is reached
-        if (offset >= 45 && !hasTriggeredHapticRef.current) {
-          hasTriggeredHapticRef.current = true;
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            try { navigator.vibrate(25); } catch (_) {}
-          }
+    // Detect horizontal swipe intent (swiping rightwards)
+    if (!isSwipingRef.current) {
+      if (diffX > 6 && absX > absY) {
+        isSwipingRef.current = true;
+      }
+    }
+
+    // Once swipe is active, smoothly follow finger without sticky pauses
+    if (isSwipingRef.current) {
+      if (diffX <= 0) {
+        if (swipeRafRef.current) cancelAnimationFrame(swipeRafRef.current);
+        swipeRafRef.current = requestAnimationFrame(() => setSwipeOffset(0));
+        return;
+      }
+
+      // 1:1 smooth follow up to threshold, then gentle elastic resistance
+      const offset = diffX < SWIPE_TRIGGER_THRESHOLD
+        ? diffX * 0.95
+        : SWIPE_TRIGGER_THRESHOLD + (diffX - SWIPE_TRIGGER_THRESHOLD) * 0.35;
+      const clampedOffset = Math.min(SWIPE_MAX_OFFSET, Math.max(0, offset));
+
+      if (swipeRafRef.current) cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = requestAnimationFrame(() => {
+        setSwipeOffset(clampedOffset);
+      });
+
+      // Haptic feedback when passing trigger threshold
+      if (clampedOffset >= SWIPE_TRIGGER_THRESHOLD && !hasTriggeredHapticRef.current) {
+        hasTriggeredHapticRef.current = true;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(25); } catch (_) {}
         }
+      } else if (clampedOffset < SWIPE_TRIGGER_THRESHOLD) {
+        hasTriggeredHapticRef.current = false;
       }
     }
   };
@@ -276,8 +308,12 @@ export const MessageBubble = React.memo(({
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    if (swipeRafRef.current) {
+      cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = null;
+    }
 
-    if (isSwipingRef.current && swipeOffset >= 45 && onReply) {
+    if (isSwipingRef.current && swipeOffset >= SWIPE_TRIGGER_THRESHOLD && onReply) {
       onReply(message);
     }
 
@@ -447,10 +483,18 @@ export const MessageBubble = React.memo(({
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
           <Box
-            sx={{ position: 'relative', maxWidth: '100%', minWidth: 0, userSelect: 'text' }}
+            sx={{
+              position: 'relative',
+              maxWidth: '100%',
+              minWidth: 0,
+              userSelect: 'text',
+              touchAction: 'pan-y',
+              WebkitTouchCallout: 'none',
+            }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
             onContextMenu={(e) => {
               if (isLongPressActive.current || isSwipingRef.current) e.preventDefault();
             }}
@@ -460,20 +504,37 @@ export const MessageBubble = React.memo(({
               <Box
                 sx={{
                   position: 'absolute',
-                  left: -32,
+                  left: -30,
                   top: '50%',
-                  transform: `translateY(-50%) scale(${Math.min(1, Math.max(0.4, swipeOffset / 40))})`,
-                  opacity: Math.min(1, swipeOffset / 30),
+                  transform: `translateY(-50%) scale(${
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? 1.15
+                      : Math.max(0.6, swipeOffset / SWIPE_TRIGGER_THRESHOLD)
+                  })`,
+                  opacity: Math.min(1, swipeOffset / 16),
                   width: 26,
                   height: 26,
                   borderRadius: '50%',
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(93, 26, 137, 0.12)',
-                  color: tokens.brand.primary,
+                  bgcolor:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? tokens.brand.primary
+                      : isDarkMode
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(93, 26, 137, 0.14)',
+                  color:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? '#ffffff'
+                      : tokens.brand.primary,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   zIndex: 0,
                   pointerEvents: 'none',
+                  transition: 'background-color 0.15s ease, transform 0.12s ease',
+                  boxShadow:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? '0 2px 8px rgba(93, 26, 137, 0.35)'
+                      : 'none',
                 }}
               >
                 <ReplyIcon sx={{ fontSize: 15 }} />
@@ -484,7 +545,7 @@ export const MessageBubble = React.memo(({
             elevation={0}
             sx={{
               transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : 'none',
-              transition: isSwipingRef.current ? 'none' : 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)',
+              transition: isSwipingRef.current ? 'none' : 'transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15)',
               p: compactMedia ? '0' : '8px 12px',
               borderRadius: '16px',
               borderBottomRightRadius: isOwn ? '4px' : '16px',
@@ -500,9 +561,11 @@ export const MessageBubble = React.memo(({
               overflow: 'hidden',
               ...(isDriveFile ? { width: { xs: '100%', sm: 280 }, maxWidth: 280 } : {}),
               maxWidth: '100%',
-              minWidth: 0,
+              minWidth: { xs: 52, sm: 0 },
+              minHeight: 34,
               overflowWrap: 'anywhere',
               wordBreak: 'break-word',
+              willChange: isSwipingRef.current ? 'transform' : 'auto',
             }}
           >
             {replySnippet && (
