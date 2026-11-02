@@ -9,6 +9,7 @@ import {
   Tooltip,
   Popover,
   ClickAwayListener,
+  Divider,
 } from '@mui/material';
 import type { Message, MessageReaction, User } from '@/types';
 import { chatMentionSx, sanitizeChatHtml } from '@/utils/chatHtml';
@@ -978,6 +979,52 @@ export const MessageBubble = React.memo(({
       >
         <AddIcon sx={{ fontSize: 18, opacity: 1 }} />
       </Box>
+
+      {onReply && (
+        <>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{
+              mx: 0.35,
+              my: 0.75,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+            }}
+          />
+          <Tooltip title="Reply" arrow>
+            <Box
+              component="button"
+              type="button"
+              onClick={() => {
+                setQuickAnchor(null);
+                onReply(message);
+              }}
+              aria-label="Reply to message"
+              sx={{
+                width: 34,
+                height: 34,
+                p: 0,
+                m: 0,
+                border: 'none',
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: tokens.brand.primary,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.08)',
+                transition: 'background-color 0.12s ease, transform 0.12s ease',
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(93, 26, 137, 0.14)',
+                  transform: 'scale(1.15)',
+                },
+              }}
+            >
+              <ReplyIcon sx={{ fontSize: 17 }} />
+            </Box>
+          </Tooltip>
+        </>
+      )}
     </Popover>
 
     {/* Full emoji picker */}
