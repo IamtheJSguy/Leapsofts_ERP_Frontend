@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Box, Typography, Button, useTheme, IconButton, InputAdornment,
+  Box, Typography, Button, useTheme, useMediaQuery, IconButton, InputAdornment,
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, Drawer, CircularProgress, Modal,
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
@@ -24,6 +24,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import SendIcon from '@mui/icons-material/Send';
 import EditIcon from '@mui/icons-material/Edit';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -82,9 +83,10 @@ import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanba
 import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useCalendarStatus } from '@/hooks/api/useCalendar';
-import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
+import { useAddBoardMember, useRemoveBoardMember, useProject } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
+import { canManageBoardTeam, memberUserId, userIdsEqual } from '@/lib/projectAccess';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useConversations, useCreateBoardConversation } from '@/hooks/api/useChat';
@@ -3058,10 +3060,12 @@ export const KanbanBoardPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompactShare = useMediaQuery(theme.breakpoints.down('sm'));
   const queryClient = useQueryClient();
   const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   const { data: board, isLoading, error, isError, refetch } = useKanbanBoard(activeBoardId);
+  const { data: projectBundle } = useProject(projectId);
   const { data: allUsers = [] } = useUsers();
   const { data: conversations = [] } = useConversations();
   const createBoardConversation = useCreateBoardConversation();
@@ -3123,7 +3127,8 @@ export const KanbanBoardPage = () => {
 
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
-  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isElevated;
+  const project = projectBundle?.project;
+  const canManageTeam = canManageBoardTeam(currentUser, project, actualBoard);
   const canEditBoard = Boolean(
     isElevated ||
     currentUser?.role === 'admin' ||
@@ -3173,10 +3178,10 @@ export const KanbanBoardPage = () => {
 
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
-    const owner = allUsers.find((u: any) => u._id === actualBoard.ownerId);
+    const owner = allUsers.find((u: any) => userIdsEqual(u._id, actualBoard.ownerId));
     const membersList = (actualBoard.members || []).map((m: any) => {
-      const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
-      return allUsers.find((u: any) => u._id === uid);
+      const uid = memberUserId(m.userId);
+      return allUsers.find((u: any) => userIdsEqual(u._id, uid));
     }).filter(Boolean);
     
     // De-duplicate in case owner is also in members
@@ -3513,6 +3518,25 @@ export const KanbanBoardPage = () => {
     }
   };
 
+  const getBoardMemberRole = (userId: string): 'admin' | 'member' | null => {
+    const entry = (actualBoard?.members || []).find((m: { userId: unknown; role: string }) =>
+      userIdsEqual(m.userId, userId),
+    );
+    if (!entry) return null;
+    return entry.role === 'admin' ? 'admin' : 'member';
+  };
+
+  const handleBoardMemberRoleChange = (userId: string, role: 'admin' | 'member') => {
+    if (!activeBoardId || !projectId) return;
+    addBoardMemberMutation.mutate(
+      { id: projectId, boardId: activeBoardId, userId, role },
+      {
+        onSuccess: () => addToast({ message: 'Board role updated', severity: 'success' }),
+        onError: (err: unknown) => showApiError(err),
+      },
+    );
+  };
+
   // Invite member and keep share dialog open for more invites
   const handleShareSubmit = () => {
     if (activeBoardId && selectedUserToShare && projectId) {
@@ -3690,26 +3714,215 @@ export const KanbanBoardPage = () => {
     );
   }
 
+  const boardDisplayTitle = boardLead
+    ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
+    : `${actualBoard.name}`;
+
+  const renderBoardMemberAvatars = (max: number) => (
+    <AvatarGroup
+      max={max}
+      sx={{
+        flexShrink: 0,
+        '& .MuiAvatar-root': {
+          width: max <= 3 ? 26 : 32,
+          height: max <= 3 ? 26 : 32,
+          fontSize: max <= 3 ? '0.68rem' : '0.8rem',
+          fontWeight: 700,
+          borderColor: isDarkMode ? '#1E1B24' : '#fff',
+        },
+      }}
+    >
+      {boardMembers.map((member: any, idx: number) => {
+        const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
+        const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
+        const tooltipText = (
+          <Box sx={{ p: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{name}</Typography>
+            <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)' }}>{member.email}</Typography>
+            {member.jobTitle && <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{member.jobTitle}</Typography>}
+          </Box>
+        );
+        return (
+          <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
+            <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+          </Tooltip>
+        );
+      })}
+    </AvatarGroup>
+  );
+
+  const filterActive = priorityFilter !== 'All' || assigneeFilterIds.length > 0;
+  const filterButtonSx = {
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+    borderRadius: '50%',
+    flexShrink: 0,
+    bgcolor: filterActive ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent',
+  } as const;
+
+  const boardChatLabel = boardChat ? 'Open board chat' : 'Create board chat';
+
+  const mobileHeaderActions = (
+    <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+      {canEditBoard && (
+        <Tooltip title="Edit Board Name" arrow>
+          <IconButton
+            size="small"
+            aria-label="Edit Board Name"
+            onClick={handleOpenEditBoardModal}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+            }}
+          >
+            <EditIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+      {canManageBoardChat && (
+        <Tooltip title={boardChatLabel} arrow>
+          <span>
+            <IconButton
+              size="small"
+              aria-label={boardChatLabel}
+              onClick={handleBoardChatClick}
+              disabled={createBoardConversation.isPending}
+              sx={{
+                color: tokens.brand.primary,
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.1)' },
+              }}
+            >
+              <ForumOutlinedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+      {canManageTeam && (
+        <Tooltip title="Share Board" arrow>
+          <IconButton
+            size="small"
+            aria-label="Share Board"
+            onClick={() => setIsShareDialogOpen(true)}
+            sx={{
+              color: '#FF5733',
+              '&:hover': { bgcolor: 'rgba(255, 87, 51, 0.08)' },
+            }}
+          >
+            <ShareOutlinedIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+
+  const goToProjectBoards = () => navigate(`/projects/${projectId}?tab=Board`);
+
   return (
     <Box className="animate-fade-in-up" sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '100%' }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Box
+        sx={{
+          mb: { xs: 1.25, sm: 3 },
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          gap: { xs: 1, sm: 2 },
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: { sm: 1 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mb: { xs: 0.5, sm: 1 }, minWidth: 0 }}>
+            <Tooltip title="Back to project boards" arrow>
+              <IconButton
+                aria-label="Back to project boards"
+                onClick={goToProjectBoards}
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  flexShrink: 0,
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': { color: 'text.primary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' },
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
             <Button
               startIcon={<ArrowBackIcon fontSize="small" />}
-              onClick={() => navigate(`/projects/${projectId}?tab=Board`)}
-              sx={{ color: 'text.secondary', textTransform: 'none', minWidth: 0, p: 0, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
+              onClick={goToProjectBoards}
+              sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
+                color: 'text.secondary',
+                textTransform: 'none',
+                minWidth: 0,
+                p: 0,
+                flexShrink: 0,
+                '&:hover': { bgcolor: 'transparent', color: 'text.primary' },
+              }}
             >
               Project
             </Button>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>/</Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>{actualBoard.name}</Typography>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'text.secondary',
+                flexShrink: 0,
+              }}
+            >
+              /
+            </Typography>
+            <Typography
+              variant="body2"
+              noWrap
+              onClick={goToProjectBoards}
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'text.secondary',
+                cursor: 'pointer',
+                minWidth: 0,
+                '&:hover': { color: 'text.primary' },
+              }}
+            >
+              {actualBoard.name}
+            </Typography>
+            <Typography
+              variant="caption"
+              noWrap
+              sx={{
+                display: { xs: 'block', sm: 'none' },
+                color: 'text.secondary',
+                minWidth: 0,
+                flex: 1,
+                lineHeight: 1.3,
+              }}
+            >
+              <Box
+                component="span"
+                onClick={goToProjectBoards}
+                sx={{ cursor: 'pointer', '&:hover': { color: 'text.primary' } }}
+              >
+                Project
+              </Box>
+              {' / '}
+              {actualBoard.name}
+            </Typography>
+            {mobileHeaderActions}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
-              {boardLead
-                ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
-                : `${actualBoard.name}`}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            <Typography
+              variant="h4"
+              noWrap
+              sx={{
+                fontWeight: 800,
+                color: 'text.primary',
+                letterSpacing: '-0.02em',
+                minWidth: 0,
+                flex: 1,
+                fontSize: { xs: '1.05rem', sm: '2.125rem' },
+                lineHeight: { xs: 1.35, sm: 1.2 },
+              }}
+            >
+              {boardDisplayTitle}
             </Typography>
             {canEditBoard && (
               <Tooltip title="Edit Board Name">
@@ -3717,8 +3930,10 @@ export const KanbanBoardPage = () => {
                   size="small"
                   onClick={handleOpenEditBoardModal}
                   sx={{
+                    display: { xs: 'none', sm: 'inline-flex' },
                     color: 'text.secondary',
                     p: 0.5,
+                    flexShrink: 0,
                     '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
                   }}
                 >
@@ -3726,48 +3941,60 @@ export const KanbanBoardPage = () => {
                 </IconButton>
               </Tooltip>
             )}
+            <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexShrink: 0 }}>
+              {renderBoardMemberAvatars(3)}
+            </Box>
           </Box>
           {boardLead?.company && (
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 600,
+                mt: { xs: 0.25, sm: 0.5 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
+            >
               {boardLead.company}{(boardLead.jobTitle || boardLead.title) ? ` · ${boardLead.jobTitle || boardLead.title}` : ''}
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-          <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
-            {boardMembers.map((member: any, idx: number) => {
-              const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
-              const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
-              const tooltipText = (
-                <Box sx={{ p: 0.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{name}</Typography>
-                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)' }}>{member.email}</Typography>
-                  {member.jobTitle && <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{member.jobTitle}</Typography>}
-                </Box>
-              );
-              return (
-                <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
-                  <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
-                </Tooltip>
-              );
-            })}
-          </AvatarGroup>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5 },
+            alignItems: 'center',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            width: { xs: '100%', sm: 'auto' },
+            flexShrink: 0,
+          }}
+        >
+          <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>{renderBoardMemberAvatars(4)}</Box>
           <TextField
             placeholder="Search cards..."
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff', '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } }}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> }}
-          />
-          <IconButton
-            onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
             sx={{
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              borderRadius: '50%',
-              bgcolor: (priorityFilter !== 'All' || assigneeFilterIds.length > 0) ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
+              flex: { xs: 1, sm: 'none' },
+              minWidth: 0,
+              width: { xs: 'auto', sm: 200 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff',
+                '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' },
+              },
             }}
-          >
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <IconButton onClick={(e) => setFilterMenuAnchor(e.currentTarget)} sx={filterButtonSx}>
             <FilterListIcon fontSize="small" />
           </IconButton>
           {canManageBoardChat && (
@@ -3777,6 +4004,7 @@ export const KanbanBoardPage = () => {
               disabled={createBoardConversation.isPending}
               variant="outlined"
               sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
                 color: tokens.brand.primary,
                 borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(93,26,137,0.2)',
                 fontWeight: 700,
@@ -3785,11 +4013,28 @@ export const KanbanBoardPage = () => {
                 px: 2.5,
               }}
             >
-              {boardChat ? 'Open board chat' : 'Create board chat'}
+              {boardChatLabel}
             </Button>
           )}
           {canManageTeam && (
-            <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+            <Button
+              onClick={() => setIsShareDialogOpen(true)}
+              variant="contained"
+              sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
+                bgcolor: '#FF5733',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '24px',
+                textTransform: 'none',
+                boxShadow: 'none',
+                px: 3,
+                ml: 1,
+                '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' },
+              }}
+            >
+              Share
+            </Button>
           )}
         </Box>
       </Box>
@@ -3821,7 +4066,7 @@ export const KanbanBoardPage = () => {
         gap: 3,
         overflowX: 'auto',
         overflowY: 'hidden',
-        pb: 2,
+        pb: { xs: 1, sm: 2 },
         '&::-webkit-scrollbar': { height: 8 },
         '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
         '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 },
@@ -4480,20 +4725,31 @@ export const KanbanBoardPage = () => {
               boardMembers.map((member: any, idx: number) => {
                 const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
                 const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
-                const isOwner = member._id === actualBoard?.ownerId;
-                const isInMembersList = (actualBoard?.members || []).some((m: any) => {
-                  const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
-                  return uid === member._id;
-                });
-                const canRemove = canManageTeam && !isOwner && isInMembersList && member._id !== currentUser?._id;
+                const isOwner = userIdsEqual(member._id, actualBoard?.ownerId);
+                const isInMembersList = (actualBoard?.members || []).some((m: any) =>
+                  userIdsEqual(m.userId, member._id),
+                );
+                const boardRole = getBoardMemberRole(member._id);
+                const canEditRole =
+                  canManageTeam &&
+                  !isOwner &&
+                  isInMembersList &&
+                  !userIdsEqual(member._id, currentUser?._id) &&
+                  boardRole;
+                const canRemove =
+                  canManageTeam &&
+                  !isOwner &&
+                  isInMembersList &&
+                  !userIdsEqual(member._id, currentUser?._id);
 
                 return (
                   <Box
                     key={member._id || idx}
                     sx={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: isCompactShare ? 'flex-start' : 'center',
                       justifyContent: 'space-between',
+                      flexDirection: isCompactShare ? 'column' : 'row',
                       gap: 1.5,
                       px: 2,
                       py: 1.5,
@@ -4503,7 +4759,7 @@ export const KanbanBoardPage = () => {
                           : 'none',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, width: isCompactShare ? '100%' : 'auto' }}>
                       <Avatar src={member.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
                         {initial}
                       </Avatar>
@@ -4512,24 +4768,65 @@ export const KanbanBoardPage = () => {
                           {name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {isOwner ? 'Owner' : member.email}
+                          {isOwner ? 'Board owner' : member.email}
                         </Typography>
                       </Box>
                     </Box>
-                    {canRemove && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveMemberClick(member._id)}
-                        disabled={removeBoardMemberMutation.isPending}
-                        sx={{
-                          color: 'text.secondary',
-                          flexShrink: 0,
-                          '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        alignSelf: isCompactShare ? 'stretch' : 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isOwner ? (
+                        <Chip label="OWNER" size="small" sx={{ fontWeight: 700, fontSize: '0.65rem', height: 22 }} />
+                      ) : canEditRole ? (
+                        <FormControl size="small" fullWidth={isCompactShare} sx={{ minWidth: isCompactShare ? undefined : 108 }}>
+                          <Select
+                            value={boardRole}
+                            onChange={(e) =>
+                              handleBoardMemberRoleChange(member._id, e.target.value as 'admin' | 'member')
+                            }
+                            disabled={addBoardMemberMutation.isPending}
+                            aria-label={`Board role for ${name}`}
+                            sx={{
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              height: 32,
+                              '& .MuiSelect-select': { py: 0.75 },
+                            }}
+                          >
+                            <MenuItem value="member">Member</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                          </Select>
+                        </FormControl>
+                      ) : boardRole ? (
+                        <Chip
+                          label={boardRole.toUpperCase()}
+                          size="small"
+                          sx={{ fontWeight: 700, fontSize: '0.65rem', height: 22 }}
+                        />
+                      ) : null}
+                      {canRemove && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveMemberClick(member._id)}
+                          disabled={removeBoardMemberMutation.isPending}
+                          sx={{
+                            color: 'text.secondary',
+                            flexShrink: 0,
+                            ml: isCompactShare ? 'auto' : 0,
+                            '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
                   </Box>
                 );
               })

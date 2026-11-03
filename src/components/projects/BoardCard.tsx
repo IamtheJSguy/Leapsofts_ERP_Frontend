@@ -6,6 +6,7 @@ import {
   Avatar,
   Tooltip,
   useTheme,
+  useMediaQuery,
   IconButton,
   Chip,
 } from '@mui/material';
@@ -27,6 +28,7 @@ interface BoardCardProps {
 export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const { data: dbUsers = [] } = useUsers();
   const category = getBoardCategoryOption(board.category);
 
@@ -55,22 +57,35 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
         borderRadius: '24px',
-        p: 3,
+        p: { xs: 2, sm: 3 },
         cursor: 'pointer',
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
-        '&:hover': {
-          transform: 'translateY(-3px)',
-          boxShadow: tokens.shadow.cardHover,
-          borderColor: tokens.brand.primary,
-        },
+        ...(!isCompact && {
+          '&:hover': {
+            transform: 'translateY(-3px)',
+            boxShadow: tokens.shadow.cardHover,
+            borderColor: tokens.brand.primary,
+          },
+        }),
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box sx={{ minWidth: 0, mb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.01em' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+        <Box sx={{ minWidth: 0, mb: 1, flex: '1 1 auto' }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
+            <FolderIcon sx={{ color: tokens.brand.primary, fontSize: 20, mt: 0.25, flexShrink: 0 }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                color: 'text.primary',
+                letterSpacing: '-0.01em',
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                lineHeight: 1.3,
+                overflowWrap: 'break-word',
+                minWidth: 0,
+              }}
+            >
               {board.name}
             </Typography>
           </Box>
@@ -87,41 +102,47 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
             }}
           />
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, ml: 0.5 }}>
           {onEdit && (
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(e);
-              }}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Edit board" arrow>
+              <IconButton
+                size={isCompact ? 'medium' : 'small'}
+                aria-label={`Edit ${board.name} board`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(e);
+                }}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
           {onDelete && (
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(e);
-              }}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
-              }}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Delete board" arrow>
+              <IconButton
+                size={isCompact ? 'medium' : 'small'}
+                aria-label={`Delete ${board.name} board`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(e);
+                }}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
       </Box>
 
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
         {board.columns?.length || 0} columns · {totalCards} tasks
       </Typography>
 
@@ -129,18 +150,22 @@ export const BoardCard = ({ board, onClick, onEdit, onDelete }: BoardCardProps) 
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           alignItems: 'center',
-          pt: 2,
+          flexWrap: 'wrap',
+          gap: 1,
+          pt: { xs: 1.5, sm: 2 },
           borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
         }}
       >
         <AvatarGroup
           max={4}
           sx={{
+            flexWrap: 'wrap',
+            justifyContent: 'flex-start',
             '& .MuiAvatar-root': {
-              width: 26,
-              height: 26,
+              width: { xs: 28, sm: 26 },
+              height: { xs: 28, sm: 26 },
               fontSize: '0.68rem',
               fontWeight: 700,
               borderColor: isDarkMode ? '#1e1b24' : '#fff',
