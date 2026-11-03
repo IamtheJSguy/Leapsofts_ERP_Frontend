@@ -112,12 +112,13 @@ export const prefetchLeadsFirstPage = (client: QueryClient) => {
   });
 };
 
-export const useLeads = (filters: LeadFilters = {}) => {
+export const useLeads = (filters: LeadFilters = {}, options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
     queryKey: ['leads', organizationId, filters],
     queryFn: () => fetchLeadsPage(filters),
     staleTime: 1000 * 60,
+    enabled: options?.enabled !== false,
     placeholderData: (previous, previousQuery) => {
       if (previousQuery?.queryKey[1] !== organizationId) return undefined;
       return previous;
