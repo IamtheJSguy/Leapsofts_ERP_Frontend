@@ -5,7 +5,9 @@ import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 
 export const ToastProvider = () => {
-  const { toastQueue, removeToast, theme } = useUIStore();
+  const toastQueue = useUIStore((s) => s.toastQueue);
+  const removeToast = useUIStore((s) => s.removeToast);
+  const theme = useUIStore((s) => s.theme);
   const current = toastQueue[0];
   const isDarkMode = theme === 'dark';
 

@@ -5,10 +5,9 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
 import { CrmConnectionsPanel } from '@/components/admin/CrmConnectionsPanel';
 import { tokens } from '@/styles/tokens';
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/axios';
+import { useAdminUsage, useRevokeAdminSessions } from '@/hooks/api/useAdmin';
+import { QueryState } from '@/components/common/QueryState';
 import { useUIStore } from '@/store/useUIStore';
-import { useAuthStore } from '@/store/useAuthStore';
 
 type AdminTabId = 'users' | 'system' | 'usage';
 
@@ -26,18 +25,12 @@ const AdminPage = () => {
   }, [canManageUsers, canManageSystemSettings]);
 
   const addToast = useUIStore((s) => s.addToast);
-  const organizationId = useAuthStore((s) => s.user?.organizationId);
-  const { data: usage } = useQuery({
-    queryKey: ['admin', 'usage', organizationId],
-    enabled: canManageSystemSettings,
-    queryFn: async () => {
-      const res = await api.get('/admin/usage');
-      return res.data.data as { usage: Record<string, number | string | null> };
-    },
-  });
-
   const [tab, setTab] = useState<AdminTabId>(tabs[0]?.id ?? 'users');
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
+  const { data: usage, isLoading: isUsageLoading, isError: isUsageError, refetch: refetchUsage } = useAdminUsage(
+    canManageSystemSettings && activeTab === 'usage',
+  );
+  const revokeSessions = useRevokeAdminSessions();
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -120,23 +113,34 @@ const AdminPage = () => {
             <SystemSettingsPanel readOnly={!canManageSystemSettings} />
           </>
         ) : activeTab === 'usage' && canManageSystemSettings ? (
-          <Box>
-            <Typography sx={{ mb: 2 }}>
-              Leads {String(usage?.usage?.leads ?? 0)} · Projects {String(usage?.usage?.projects ?? 0)} · Boards{' '}
-              {String(usage?.usage?.boards ?? 0)} · Storage {String(usage?.usage?.storageMb ?? 0)} MB · Seats{' '}
-              {String((usage as { seats?: { used: number; purchased: number } } | undefined)?.seats?.used ?? '—')}
-            </Typography>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={async () => {
-                await api.post('/admin/sessions/revoke', {});
-                addToast({ message: 'All organization sessions were signed out', severity: 'success' });
-              }}
-            >
-              Sign out all sessions
-            </Button>
-          </Box>
+          <QueryState
+            isLoading={isUsageLoading}
+            isError={isUsageError}
+            onRetry={() => refetchUsage()}
+            hasData={!!usage}
+          >
+            <Box>
+              <Typography sx={{ mb: 2 }}>
+                Leads {String(usage?.usage?.leads ?? 0)} · Projects {String(usage?.usage?.projects ?? 0)} · Boards{' '}
+                {String(usage?.usage?.boards ?? 0)} · Storage {String(usage?.usage?.storageMb ?? 0)} MB · Seats{' '}
+                {String((usage as { seats?: { used: number; purchased: number } } | undefined)?.seats?.used ?? '—')}
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                disabled={revokeSessions.isPending}
+                onClick={() => {
+                  revokeSessions.mutate(undefined, {
+                    onSuccess: () => {
+                      addToast({ message: 'All organization sessions were signed out', severity: 'success' });
+                    },
+                  });
+                }}
+              >
+                Sign out all sessions
+              </Button>
+            </Box>
+          </QueryState>
         ) : null}
       </Box>
     </Box>

@@ -107,6 +107,23 @@ export const tokens = {
     lg: 16,
     pill: 9999,
   },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    xxl: 32,
+    xxxl: 48,
+  },
+  zIndex: {
+    base: 1,
+    dropdown: 10,
+    sticky: 30,
+    modal: 1300,
+    skipLink: 1400,
+    toast: 1500,
+  },
 } as const;
 
 /** Chart series — brand + semantic, no random Material defaults */

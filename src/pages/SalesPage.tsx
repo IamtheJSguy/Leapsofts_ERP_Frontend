@@ -87,50 +87,17 @@ import EventIcon from '@mui/icons-material/Event';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
+import { useDebounce } from '@/hooks/useDebounce';
 import { resolvePermissions } from '@/lib/permissions';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
-import api from '@/lib/axios';
+import { OverflowTooltip } from '@/components/sales/OverflowTooltip';
+import { QueryState } from '@/components/common/QueryState';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
-
-const OverflowTooltip = ({ title, children, ...props }: any) => {
-  const textElementRef = useRef<HTMLElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  const checkOverflow = useCallback(() => {
-    if (textElementRef.current) {
-      setIsOverflowing(textElementRef.current.scrollWidth > textElementRef.current.clientWidth);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [checkOverflow]);
-
-  const child = React.isValidElement(children)
-    ? React.cloneElement(children as any, {
-        ref: textElementRef,
-        onMouseEnter: (e: any) => {
-          checkOverflow();
-          if ((children as any).props.onMouseEnter) {
-            (children as any).props.onMouseEnter(e);
-          }
-        },
-      })
-    : <span ref={textElementRef} onMouseEnter={checkOverflow} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{children}</span>;
-
-  return (
-    <Tooltip title={title} disableHoverListener={!isOverflowing} {...props}>
-      {child}
-    </Tooltip>
-  );
-};
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -351,6 +318,7 @@ export const SalesPage = () => {
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
   const [selectedUserId, setSelectedUserId] = useState('All Users');
   const [selectedIcp, setSelectedIcp] = useState('');
   const [selectedProfile, setSelectedProfile] = useState('');
@@ -381,7 +349,6 @@ export const SalesPage = () => {
   // Pagination
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
   const [dateFilterField, setDateFilterField] = useState<'date' | 'updatedAt'>('date');
@@ -699,11 +666,6 @@ export const SalesPage = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  useEffect(() => {
     setPage(1);
   }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
@@ -782,7 +744,7 @@ export const SalesPage = () => {
     return filters;
   }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
-  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
+  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching, isError: isLeadsError, error: leadsError, refetch: refetchLeads } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
   const filterToolbarRef = useRef<HTMLDivElement>(null);
@@ -2241,9 +2203,15 @@ export const SalesPage = () => {
             
           </Box>
 
-          {isLeadsLoading && !leadsResponse ? (
-            <SalesTableSkeleton />
-          ) : prospects.length === 0 && !isAddingInline ? (
+          <QueryState
+            isLoading={isLeadsLoading}
+            isError={isLeadsError}
+            error={leadsError}
+            onRetry={() => refetchLeads()}
+            hasData={!!leadsResponse}
+            loadingFallback={<SalesTableSkeleton />}
+          >
+          {prospects.length === 0 && !isAddingInline ? (
             /* Unlinked Prospects View - Show Empty State Graphic below the toolbar */
             <Box
               sx={{
@@ -2993,6 +2961,7 @@ export const SalesPage = () => {
           {isLeadsFetching && leadsResponse && (
             <LinearProgress sx={{ mt: -0.5, borderRadius: '0 0 12px 12px' }} />
           )}
+          </QueryState>
         </Box>
       )}
 

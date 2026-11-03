@@ -139,7 +139,9 @@ const BrandMark = () => (
 );
 
 export const Sidebar = () => {
-  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const permissions = usePermissions();
   const entitlements = useEntitlements();
   const switchOrganization = useSwitchOrganization();
@@ -506,6 +508,7 @@ export const Sidebar = () => {
         </Box>
         <IconButton
           size="small"
+          aria-label="Open profile settings"
           sx={{
             color: 'rgba(255, 255, 255, 0.4)',
             transition: 'color 0.2s',

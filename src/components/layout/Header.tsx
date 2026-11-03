@@ -32,7 +32,11 @@ import { tokens } from '@/styles/tokens';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
-  const { toggleSidebar, setNotificationPanelOpen, toggleAiDrawer, theme, setTheme } = useUIStore();
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const setNotificationPanelOpen = useUIStore((s) => s.setNotificationPanelOpen);
+  const toggleAiDrawer = useUIStore((s) => s.toggleAiDrawer);
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
   const muiTheme = useTheme();
   const themeInMenu = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const { user } = useAuth();

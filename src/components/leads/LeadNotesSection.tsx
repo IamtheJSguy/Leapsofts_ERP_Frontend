@@ -12,7 +12,7 @@ import {
 import DescriptionIcon from '@mui/icons-material/Description';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
 import { tokens } from '@/styles/tokens';
 import type { User } from '@/types';
@@ -196,7 +196,7 @@ export function LeadNotesSection({
             },
           }}
         >
-          <RichTextEditor
+          <LazyRichTextEditor
             value={draft}
             onChange={(html) => {
               setDraft(html);

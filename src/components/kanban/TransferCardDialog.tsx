@@ -13,7 +13,7 @@ import { useKanbanBoards } from '@/hooks/api/useKanban';
 import { useUsers } from '@/hooks/api/useUsers';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { hasDisplayableClockTime } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
@@ -340,7 +340,7 @@ export const TransferCardDialog: React.FC<TransferCardDialogProps> = ({
                       },
                     }}
                   >
-                    <RichTextEditor
+                    <LazyRichTextEditor
                       value={description}
                       onChange={setDescription}
                       submitOnEnter={false}

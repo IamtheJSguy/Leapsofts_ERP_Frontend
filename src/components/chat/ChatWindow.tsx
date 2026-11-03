@@ -37,10 +37,11 @@ import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
+import { ChatVirtualMessageList } from './ChatVirtualMessageList';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
 import { useDriveAuthUrl, useDriveStatus, useUploadDriveFile, openDriveOAuthPopup } from '@/hooks/api/useDrive';
-import { RichTextEditor } from './RichTextEditor';
+import { LazyRichTextEditor } from './LazyRichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { getDisplayName, getPresenceLabel } from '@/utils/formatters';
@@ -110,7 +111,10 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
-  const { activeConversationId, setActiveConversation, clearUnread, setReplyingTo } = useChatStore();
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+  const clearUnread = useChatStore((s) => s.clearUnread);
+  const setReplyingTo = useChatStore((s) => s.setReplyingTo);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightMessageId = searchParams.get('message');
@@ -1218,6 +1222,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               <IconButton
                 onClick={() => setIsGroupSettingsOpen(true)}
                 size="small"
+                aria-label="Group info"
                 sx={{
                   width: { xs: 32, sm: 36 },
                   height: { xs: 32, sm: 36 },
@@ -1235,6 +1240,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             <IconButton
               onClick={onSearchOpen}
               size="small"
+              aria-label="Search messages"
               sx={{
                 width: { xs: 32, sm: 36 },
                 height: { xs: 32, sm: 36 },
@@ -1254,6 +1260,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 else setDrivePickerOpen(true);
               }}
               size="small"
+              aria-label="Browse Google Drive files"
               sx={{
                 width: { xs: 32, sm: 36 },
                 height: { xs: 32, sm: 36 },
@@ -1313,24 +1320,29 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 ) : null}
               </Box>
             )}
-            {enhancedMessages.map(({ msg, isOwn }: any, index: number) => {
+            <ChatVirtualMessageList
+              items={enhancedMessages}
+              scrollRef={messagesContainerRef}
+              getItemKey={(row: { msg: { clientId?: string; _id: string } }, index) =>
+                row.msg.clientId || row.msg._id || String(index)
+              }
+              renderItem={({ msg, isOwn }: { msg: Message; isOwn: boolean }, index: number) => {
               const prevMsg = index > 0 ? enhancedMessages[index - 1]?.msg : null;
               const showDaySeparator =
                 Boolean(msg.createdAt) &&
                 (!prevMsg || !isSameMessageDay(prevMsg.createdAt, msg.createdAt));
 
               return (
-                <Box key={msg.clientId || msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0, pb: showDaySeparator ? 0.25 : 0 }}>
                   {showDaySeparator && (
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        my: index === 0 ? 0.5 : 1,
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 2,
+                        py: index === 0 ? 0.75 : 1.25,
+                        width: '100%',
+                        flexShrink: 0,
                       }}
                     >
                       <Typography
@@ -1368,7 +1380,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                   />
                 </Box>
               );
-            })}
+            }}
+            />
             <div
               ref={bottomRef}
               style={{
@@ -1676,7 +1689,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               }
             }}
           >
-            <RichTextEditor
+            <LazyRichTextEditor
               key={activeConversationId}
               value={text}
               onChange={(html) => {

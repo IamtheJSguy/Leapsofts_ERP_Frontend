@@ -33,7 +33,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { showApiError } from '@/utils/apiError';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { toPlainText } from '@/components/common/RichTextContent';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
@@ -415,7 +415,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                   overflow: 'hidden',
                 }}
               >
-                <RichTextEditor
+                <LazyRichTextEditor
                   value={cardDescription}
                   onChange={setCardDescription}
                   submitOnEnter={false}

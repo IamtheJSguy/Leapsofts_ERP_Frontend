@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -58,6 +58,7 @@ export const RichTextEditor = ({
   const [isToolbarVisible, setIsToolbarVisible] = useState(defaultShowToolbar || alwaysShowToolbar);
   const [hasSelection, setHasSelection] = useState(false);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [colorAnchorEl, setColorAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   const mentionableUsersRef = useRef(mentionableUsers);
   mentionableUsersRef.current = mentionableUsers;
@@ -68,10 +69,11 @@ export const RichTextEditor = ({
   const minH = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
   const maxH = typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight;
 
-  const editor = useEditor({
-    autofocus: autoFocus ? 'end' : false,
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
+        link: false,
+        underline: false,
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }),
@@ -98,6 +100,12 @@ export const RichTextEditor = ({
         ),
       }),
     ],
+    [placeholder],
+  );
+
+  const editor = useEditor({
+    autofocus: autoFocus ? 'end' : false,
+    extensions,
     content: value,
     onSelectionUpdate: ({ editor }) => {
       const { empty } = editor.state.selection;
@@ -146,26 +154,35 @@ export const RichTextEditor = ({
   });
 
   useEffect(() => {
-    if (editor) {
-      const currentHtml = editor.getHTML();
-      if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
-        editor.commands.setContent(value || '');
-        if (autoFocus || editor.isFocused) {
-          editor.commands.focus('end');
-        }
+    if (!editor || editor.isDestroyed) return;
+    const currentHtml = editor.getHTML();
+    if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
+      editor.commands.setContent(value || '');
+      if (autoFocus || editor.isFocused) {
+        editor.commands.focus('end');
       }
     }
   }, [value, editor, autoFocus]);
 
   useEffect(() => {
-    if (editor && autoFocus) {
-      editor.commands.focus('end');
-    }
+    if (!editor || editor.isDestroyed || !autoFocus) return;
+    editor.commands.focus('end');
   }, [editor, autoFocus]);
 
-  if (!editor) return null;
-
-  const [colorAnchorEl, setColorAnchorEl] = useState<HTMLButtonElement | null>(null);
+  if (!editor) {
+    return (
+      <Box
+        id="rich-text-editor-wrapper"
+        sx={{
+          width: '100%',
+          minHeight: minH,
+          borderRadius: 1,
+          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+        }}
+        aria-hidden
+      />
+    );
+  }
 
   const menuButtonSx = {
     p: 0.5,

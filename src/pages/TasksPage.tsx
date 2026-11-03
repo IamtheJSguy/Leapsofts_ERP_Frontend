@@ -18,6 +18,7 @@ import {
   Divider,
   Card,
   useTheme,
+  useMediaQuery,
   alpha,
   Dialog,
   DialogTitle,
@@ -38,6 +39,7 @@ import EventIcon from '@mui/icons-material/Event';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import { MobileDateTimePicker } from '@mui/x-date-pickers/MobileDateTimePicker';
 
@@ -46,7 +48,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { RichTextContent } from '@/components/common/RichTextContent';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
@@ -63,88 +65,24 @@ import { WeekdayPicker } from '@/components/kpi/WeekdayPicker';
 import { SalesKpiPanel } from '@/components/kpi/SalesKpiPanel';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
+import { buildAssignerInfoFromPopulatedUsers, useAssignerNames } from '@/hooks/useAssignerNames';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { WEEKDAY_SHORT_LABELS } from '@/lib/constants';
 import type { KpiPriority, KPI, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
-import api from '@/lib/axios';
+import {
+  type ActiveAssignment,
+  type ActiveAssignmentItem,
+  type UIKPITemplate,
+  type UIKPITemplateItem,
+  EMPTY_KPI_LIST,
+  emptyTemplateItem,
+  formatDaysLabel,
+  invalidItemTimeWindow,
+} from '@/components/tasks/kpiAssignmentTypes';
 import type { User } from '@/types';
 import { showApiError } from '@/utils/apiError';
 
-// Interfaces for templates and assignments matching the exact structure
-interface UIKPITemplateItem {
-  name: string;
-  description: string;
-  targetValue?: number;
-  assignedTo: string[];
-  daysOfWeek?: number[];
-  scheduleMode?: KpiScheduleMode;
-  startTime?: string;
-  endTime?: string;
-  recurrenceMode?: KpiRecurrenceMode;
-}
-
-interface UIKPITemplate {
-  _id: string;
-  name: string;
-  description?: string;
-  kpis: UIKPITemplateItem[];
-}
-
-interface ActiveAssignmentItem {
-  _id?: string;
-  itemId?: string;
-  name: string;
-  description: string;
-  targetValue?: number;
-  dueDate?: string;
-  daysOfWeek?: number[];
-  scheduleMode?: KpiScheduleMode;
-  startTime?: string | null;
-  endTime?: string | null;
-  recurrenceMode?: KpiRecurrenceMode;
-  priority?: KpiPriority;
-  assignedTo: string[];
-  completed: boolean;
-}
-
-/** Stable empty list — inline `= []` on React Query `data` is a new array every render. */
-const EMPTY_LIST: never[] = [];
-
-const emptyTemplateItem = (): UIKPITemplateItem => ({
-  name: '',
-  description: '',
-  targetValue: undefined,
-  assignedTo: [],
-  daysOfWeek: [],
-  scheduleMode: 'per_day',
-  startTime: '',
-  endTime: '',
-  recurrenceMode: 'weekly',
-});
-
-const formatDaysLabel = (days?: number[]) => {
-  if (!days?.length) return '';
-  return [...days].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT_LABELS[d]).join(', ');
-};
-
-const invalidItemTimeWindow = (item: UIKPITemplateItem) => {
-  if (!item.startTime || !item.endTime || !item.daysOfWeek?.length) return false;
-  const sameDay = item.scheduleMode !== 'span' || item.daysOfWeek.length <= 1;
-  return sameDay && item.startTime >= item.endTime;
-};
-
-interface ActiveAssignment {
-  _id: string;
-  templateId: string;
-  templateName: string;
-  assignedTo: string[]; // user IDs
-  assignedBy?: string; // user ID who assigned
-  deadlineDate: string;
-  deadlineTime: string;
-  kpis: ActiveAssignmentItem[];
-}
-
-
+const EMPTY_LIST = EMPTY_KPI_LIST;
 const TasksPage = () => {
   const { user } = useAuth();
   const { isElevated } = usePermissions();
@@ -153,6 +91,30 @@ const TasksPage = () => {
   const addToast = useUIStore((s) => s.addToast);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isCompact = isMobile;
+
+  const assignKpiSurfaceBg = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+  const assignDialogFieldSx = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+    },
+    '& .MuiInputLabel-root': {
+      bgcolor: assignKpiSurfaceBg,
+      px: 0.5,
+    },
+  };
+  const assignDialogRichTextSx = {
+    fontSize: '0.85rem',
+    lineHeight: 1.55,
+    color: 'text.secondary',
+    maxWidth: '100%',
+    overflowWrap: 'break-word',
+    '& p': { m: 0, mb: 0.75, textDecoration: 'none', '&:last-child': { mb: 0 } },
+    '& u': { textDecoration: 'none' },
+    '& a': { textDecoration: 'underline', color: tokens.brand.primary },
+  };
 
   // Fetch actual employees/users from the API
   const { data: dbUsers = EMPTY_LIST } = useUsers();
@@ -244,103 +206,34 @@ const TasksPage = () => {
     });
   }, [apiAssignments]);
 
-  // Active assignments state — populated exclusively from the API
-  const [activeAssignments, setActiveAssignments] = useState<ActiveAssignment[]>([]);
+  const populatedAssignerInfo = useMemo(
+    () => buildAssignerInfoFromPopulatedUsers(apiAssignments),
+    [apiAssignments],
+  );
 
-  // Sync API assignments to local state — skip if the mapped list is referentially or content-equal
-  useEffect(() => {
-    setActiveAssignments((prev) => {
-      if (prev === mappedAssignments) return prev;
-      // Both empty: do not replace with a new [] reference (that retriggers this effect)
-      if (prev.length === 0 && mappedAssignments.length === 0) return prev;
-      return mappedAssignments;
-    });
-  }, [mappedAssignments]);
+  const assignerIdList = useMemo(
+    () =>
+      mappedAssignments
+        .map((a) => a.assignedBy)
+        .filter((id): id is string => !!id && typeof id === 'string'),
+    [mappedAssignments],
+  );
 
-  // State to store resolved assigner names fetched directly from DB by ID (or resolved from populated api response)
-  const [assignerNames, setAssignerNames] = useState<Record<string, { name: string; email: string; initial: string; jobTitle?: string }>>({});
+  const assignerNames = useAssignerNames(assignerIdList, dbUsers, populatedAssignerInfo);
 
-  // Pre-populate assigner details from already-populated nested user objects returned by the API
-  useEffect(() => {
-    if (!apiAssignments || apiAssignments.length === 0) return;
+  const [localKpiCompletion, setLocalKpiCompletion] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
-    const fromApi: Record<string, { name: string; email: string; initial: string; jobTitle?: string }> = {};
-    apiAssignments.forEach((a) => {
-      [a.assignedBy, a.userId].forEach((u) => {
-        if (u && typeof u === 'object' && u._id && !fromApi[u._id]) {
-          const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Admin';
-          const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A';
-          const jobTitle = u.jobTitle || (u.role === 'admin' ? 'Administrator' : 'Agent');
-          fromApi[u._id] = { name, email: u.email || 'N/A', initial, jobTitle };
-        }
-      });
-    });
-
-    if (Object.keys(fromApi).length === 0) return;
-
-    setAssignerNames((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const [id, info] of Object.entries(fromApi)) {
-        if (!next[id]) {
-          next[id] = info;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [apiAssignments]);
-
-  useEffect(() => {
-    const assignerIds = Array.from(
-      new Set(
-        activeAssignments
-          .map((a) => a.assignedBy)
-          .filter((id): id is string => !!id && typeof id === 'string')
-      )
-    );
-
-    const fetchAssigners = async () => {
-      for (const id of assignerIds) {
-        if (assignerNames[id] || dbUsers.some((u) => u._id === id)) continue;
-
-        try {
-          // Pre-populate with a temporary state so we don't fetch it again
-          setAssignerNames((prev) => ({
-            ...prev,
-            [id]: { name: 'Loading...', email: 'N/A', initial: '...' },
-          }));
-
-          const response = await api.get<{ data: User }>(`/users/${id}`);
-          if (response.data?.data) {
-            const u = response.data.data;
-            const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Admin';
-            const initial = name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'A';
-            const jobTitle = u.jobTitle || (u.role === 'admin' ? 'Administrator' : 'Agent');
-            setAssignerNames((prev) => ({
-              ...prev,
-              [id]: { name, email: u.email, initial, jobTitle },
-            }));
-          } else {
-            setAssignerNames((prev) => ({
-              ...prev,
-              [id]: { name: 'Admin', email: 'N/A', initial: 'A', jobTitle: 'Administrator' },
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to fetch assigner details', err);
-          setAssignerNames((prev) => ({
-            ...prev,
-            [id]: { name: 'Admin', email: 'N/A', initial: 'A', jobTitle: 'Administrator' },
-          }));
-        }
-      }
-    };
-
-    if (assignerIds.length > 0) {
-      fetchAssigners();
-    }
-  }, [activeAssignments, dbUsers]);
+  const activeAssignments = useMemo(() => {
+    return mappedAssignments.map((assign) => ({
+      ...assign,
+      kpis: assign.kpis.map((k) => ({
+        ...k,
+        completed: localKpiCompletion[assign._id]?.[k.name] ?? k.completed,
+      })),
+    }));
+  }, [mappedAssignments, localKpiCompletion]);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -671,10 +564,6 @@ const TasksPage = () => {
       },
       {
         onSuccess: () => {
-          // Immediately remove the card from local state — don't wait for refetch
-          setActiveAssignments((prev) =>
-            prev.filter((a) => a._id !== pendingUnassign._id)
-          );
           addToast({ message: 'Target unassigned successfully!', severity: 'success' });
           setConfirmUnassignOpen(false);
           if (viewMode === 'details' && selectedAssignment?._id === pendingUnassign._id) {
@@ -734,32 +623,6 @@ const TasksPage = () => {
       },
       {
         onSuccess: () => {
-          const activeKpis: ActiveAssignmentItem[] = assigningTemplate.kpis.map((k) => ({
-            name: k.name,
-            description: k.description,
-            targetValue: k.targetValue,
-            daysOfWeek: k.daysOfWeek ?? [],
-            scheduleMode: k.scheduleMode ?? 'per_day',
-            startTime: k.startTime ?? '',
-            endTime: k.endTime ?? '',
-            recurrenceMode: k.recurrenceMode ?? 'weekly',
-            assignedTo: [selectedUserId],
-            completed: false,
-          }));
-
-          const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-          const newAssignment: ActiveAssignment = {
-            _id: `assign-${Date.now()}`,
-            templateId: assigningTemplate._id,
-            templateName: assigningTemplate.name,
-            assignedTo: [selectedUserId],
-            deadlineDate: tomorrowDate,
-            deadlineTime: '18:00',
-            kpis: activeKpis,
-          };
-
-          setActiveAssignments((prev) => [newAssignment, ...prev]);
           addToast({
             message: 'KPI Template successfully assigned to the user.',
             severity: 'success',
@@ -780,20 +643,20 @@ const TasksPage = () => {
 
   // Toggle KPI milestone checkmark on active assignment details view
   const handleToggleKpiCompletion = (assignmentId: string, kpiName: string) => {
-    setActiveAssignments((prev) =>
-      prev.map((assign) => {
-        if (assign._id === assignmentId) {
-          const nextKpis = assign.kpis.map((k) => {
-            if (k.name === kpiName) {
-              return { ...k, completed: !k.completed };
-            }
-            return k;
-          });
-          return { ...assign, kpis: nextKpis };
-        }
-        return assign;
-      })
-    );
+    setLocalKpiCompletion((prev) => {
+      const assignment = activeAssignments.find((a) => a._id === assignmentId);
+      const current =
+        prev[assignmentId]?.[kpiName] ??
+        assignment?.kpis.find((k) => k.name === kpiName)?.completed ??
+        false;
+      return {
+        ...prev,
+        [assignmentId]: {
+          ...prev[assignmentId],
+          [kpiName]: !current,
+        },
+      };
+    });
 
     setSelectedAssignment((prev) => {
       if (prev && prev._id === assignmentId) {
@@ -974,9 +837,9 @@ const TasksPage = () => {
             </Button>
           </Box>
 
-          <Box sx={{ maxWidth: 800, mx: 'auto', mb: 5 }}>
+          <Box sx={{ maxWidth: 800, mx: 'auto', mb: 5, px: { xs: 1, sm: 0 } }}>
             {/* Custom Connecting Line Stepper */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5, px: 6, position: 'relative' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5, px: { xs: 0, sm: 6 }, position: 'relative' }}>
               <Box
                 sx={{
                   position: 'absolute',
@@ -1050,8 +913,8 @@ const TasksPage = () => {
             {/* Stepper Card Panel - 100% Flat & Clean */}
             <Card
               sx={{
-                p: 4.5,
-                borderRadius: '24px',
+                p: { xs: 2, sm: 4.5 },
+                borderRadius: { xs: '16px', sm: '24px' },
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
                 boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(26, 22, 37, 0.04)',
@@ -1099,7 +962,7 @@ const TasksPage = () => {
                           overflow: 'hidden',
                         }}
                       >
-                        <RichTextEditor
+                        <LazyRichTextEditor
                           value={newTemplateDesc}
                           onChange={setNewTemplateDesc}
                           submitOnEnter={false}
@@ -1124,7 +987,7 @@ const TasksPage = () => {
                     Add multiple KPI targets inside this template. These will track daily activity goals.
                   </Typography>
 
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, maxHeight: '520px', overflowY: 'auto', pr: 1, mb: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, maxHeight: { xs: 'none', sm: '520px' }, overflowY: 'auto', pr: { xs: 0, sm: 1 }, mb: 3 }}>
                     {newKpis.map((kpi, idx) => {
                       const hasSchedule = (kpi.daysOfWeek?.length ?? 0) > 0;
                       const timeInvalid = invalidItemTimeWindow(kpi);
@@ -1145,8 +1008,8 @@ const TasksPage = () => {
                         <Box
                           key={idx}
                           sx={{
-                            p: 3,
-                            borderRadius: '16px',
+                            p: { xs: 2, sm: 3 },
+                            borderRadius: { xs: '14px', sm: '16px' },
                             bgcolor: isDarkMode ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                             display: 'flex',
@@ -1201,7 +1064,7 @@ const TasksPage = () => {
 
                           <TextField
                             label={`KPI #${idx + 1} Target Description`}
-                            placeholder="e.g. Send at least 50 connection requests per day"
+                            // placeholder="e.g. Send at least 50 connection requests per day"
                             fullWidth
                             multiline
                             rows={2}
@@ -1212,15 +1075,17 @@ const TasksPage = () => {
                             sx={fieldSx}
                           />
 
-                          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                            <WeekdayPicker
-                              label="Runs on"
-                              value={kpi.daysOfWeek ?? []}
-                              onChange={(daysOfWeek) => handleKpiFieldChange(idx, 'daysOfWeek', daysOfWeek)}
-                              size="small"
-                            />
+                          <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', alignItems: 'flex-start', width: '100%' }}>
+                            <Box sx={{ width: '100%', minWidth: 0, flex: { sm: '1 1 auto' } }}>
+                              <WeekdayPicker
+                                label="Runs on"
+                                value={kpi.daysOfWeek ?? []}
+                                onChange={(daysOfWeek) => handleKpiFieldChange(idx, 'daysOfWeek', daysOfWeek)}
+                                size="small"
+                              />
+                            </Box>
                             {hasSchedule && (
-                              <Box>
+                              <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
                                 <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                   Schedule
                                 </Typography>
@@ -1255,29 +1120,38 @@ const TasksPage = () => {
                                   <ToggleButton value="once" sx={toggleSelectedSx}>This week only</ToggleButton>
                                 </ToggleButtonGroup>
                               </Box>
-                              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                              <Box
+                                sx={{
+                                  display: 'grid',
+                                  gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(2, minmax(0, 180px))' },
+                                  gap: 2,
+                                  width: '100%',
+                                }}
+                              >
                                 <TextField
-                                  label="Start time (optional)"
+                                  label={isMobile ? 'Start' : 'Start time (optional)'}
                                   type="time"
                                   value={kpi.startTime ?? ''}
                                   onChange={(e) => handleKpiFieldChange(idx, 'startTime', e.target.value)}
                                   size="small"
+                                  fullWidth
                                   InputLabelProps={{ shrink: true }}
                                   inputProps={{ step: 60 }}
-                                  sx={{ width: 180, ...fieldSx }}
-                                  helperText="Empty = start of day"
+                                  sx={fieldSx}
+                                  helperText={isMobile ? undefined : 'Empty = start of day'}
                                 />
                                 <TextField
-                                  label="End time (optional)"
+                                  label={isMobile ? 'End' : 'End time (optional)'}
                                   type="time"
                                   value={kpi.endTime ?? ''}
                                   onChange={(e) => handleKpiFieldChange(idx, 'endTime', e.target.value)}
                                   size="small"
+                                  fullWidth
                                   InputLabelProps={{ shrink: true }}
                                   inputProps={{ step: 60 }}
                                   error={timeInvalid}
-                                  sx={{ width: 180, ...fieldSx }}
-                                  helperText={timeInvalid ? 'Must be after start time' : 'Empty = end of day'}
+                                  sx={fieldSx}
+                                  helperText={timeInvalid ? 'Must be after start time' : isMobile ? undefined : 'Empty = end of day'}
                                 />
                               </Box>
                             </>
@@ -1398,12 +1272,15 @@ const TasksPage = () => {
                 sx={{
                   display: 'flex',
                   justifyContent: 'space-between',
+                  flexDirection: { xs: 'column-reverse', sm: 'row' },
+                  gap: { xs: 1.5, sm: 0 },
                   mt: 4.5,
                   pt: 3,
                   borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
                 }}
               >
                 <Button
+                  fullWidth={isMobile}
                   onClick={() => {
                     if (wizardStep > 0) {
                       setWizardStep(wizardStep - 1);
@@ -1430,6 +1307,7 @@ const TasksPage = () => {
 
                 <Button
                   variant="contained"
+                  fullWidth={isMobile}
                   disabled={wizardStep === 2 && (createTemplateMutation.isPending || updateTemplateMutation.isPending)}
                   onClick={() => {
                     if (wizardStep < 2) {
@@ -1477,133 +1355,142 @@ const TasksPage = () => {
     if (viewMode === 'details') {
       // Template details layout
       if (selectedTemplate) {
+        const templateDetailCardSx = {
+          borderRadius: '24px',
+          bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.85)',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+          boxShadow: isDarkMode ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.03)',
+        };
+        const templateDetailRichTextSx = {
+          fontSize: { xs: '0.84rem', sm: '0.94rem' },
+          lineHeight: 1.55,
+          color: 'text.secondary',
+          maxWidth: '100%',
+          overflowWrap: 'break-word',
+          '& p': { m: 0, textDecoration: 'none' },
+          '& u': { textDecoration: 'none' },
+          '& a': { textDecoration: 'underline', color: tokens.brand.primary },
+        };
+
         return (
-          <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
-            {/* Back toolbar */}
-            <Box sx={{ mb: 4.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setViewMode('list');
-                  setSelectedTemplate(null);
-                }}
-                startIcon={<ArrowBackIcon />}
-                sx={{
-                  borderRadius: '24px',
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.08)',
-                  color: isDarkMode ? 'rgba(255,255,255,0.8)' : tokens.text.secondary,
-                  textTransform: 'none',
-                  px: 2.75,
-                  py: 0.75,
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  '&:hover': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                    borderColor: tokens.brand.primary,
-                  },
-                }}
-              >
-                Back to Targets
-              </Button>
+          <Box className="animate-fade-in-up" sx={{ pb: { xs: 4, sm: 6 } }}>
+            {/* Actions */}
+            <Box
+              sx={{
+                mb: { xs: 3, sm: 4.5 },
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 0.5,
+                minHeight: 40,
+              }}
+            >
+              <Tooltip title="Back to Targets" arrow>
+                <IconButton
+                  aria-label="Back to Targets"
+                  onClick={() => {
+                    setViewMode('list');
+                    setSelectedTemplate(null);
+                  }}
+                  sx={{
+                    color: isDarkMode ? 'rgba(255,255,255,0.8)' : tokens.text.secondary,
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                      color: tokens.brand.primary,
+                    },
+                  }}
+                >
+                  <ArrowBackIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
 
               {isElevated && (
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setNewTemplateName(selectedTemplate.name);
-                      setNewTemplateDesc(selectedTemplate.description || '');
-                      setNewKpis(
-                        selectedTemplate.kpis.map((k) => ({
-                          name: k.name,
-                          description: k.description || '',
-                          targetValue: k.targetValue,
-                          assignedTo: k.assignedTo,
-                          daysOfWeek: k.daysOfWeek ?? [],
-                          scheduleMode: k.scheduleMode ?? 'per_day',
-                          startTime: k.startTime ?? '',
-                          endTime: k.endTime ?? '',
-                          recurrenceMode: k.recurrenceMode ?? 'weekly',
-                        }))
-                      );
-                      setEditingTemplateId(selectedTemplate._id);
-                      setWizardStep(0);
-                      setViewMode('create');
-                    }}
-                    sx={{
-                      bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.08)' : 'rgba(93, 26, 137, 0.05)',
-                      color: isDarkMode ? '#dcb6f2' : tokens.brand.primary,
-                      borderRadius: '12px',
-                      px: 3.5,
-                      py: 1.25,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      border: `1px solid ${isDarkMode ? 'rgba(155, 107, 184, 0.2)' : 'rgba(93, 26, 137, 0.12)'}`,
-                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      '&:hover': {
-                        bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.1)',
-                        borderColor: isDarkMode ? 'rgba(155, 107, 184, 0.3)' : 'rgba(93, 26, 137, 0.25)',
-                      },
-                    }}
-                  >
-                    Update Template
-                  </Button>
+                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                  <Tooltip title="Update Template" arrow>
+                    <IconButton
+                      aria-label="Update Template"
+                      onClick={() => {
+                        setNewTemplateName(selectedTemplate.name);
+                        setNewTemplateDesc(selectedTemplate.description || '');
+                        setNewKpis(
+                          selectedTemplate.kpis.map((k) => ({
+                            name: k.name,
+                            description: k.description || '',
+                            targetValue: k.targetValue,
+                            assignedTo: k.assignedTo,
+                            daysOfWeek: k.daysOfWeek ?? [],
+                            scheduleMode: k.scheduleMode ?? 'per_day',
+                            startTime: k.startTime ?? '',
+                            endTime: k.endTime ?? '',
+                            recurrenceMode: k.recurrenceMode ?? 'weekly',
+                          }))
+                        );
+                        setEditingTemplateId(selectedTemplate._id);
+                        setWizardStep(0);
+                        setViewMode('create');
+                      }}
+                      sx={{
+                        color: isDarkMode ? '#dcb6f2' : tokens.brand.primary,
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.1)',
+                        },
+                      }}
+                    >
+                      <EditOutlinedIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Tooltip>
 
-                  <Button
-                    variant="outlined"
-                    disabled={deleteTemplateMutation.isPending}
-                    onClick={handleDeleteTemplate}
-                    sx={{
-                      bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.08)' : 'rgba(196, 69, 69, 0.05)',
-                      color: tokens.semantic.error,
-                      borderRadius: '12px',
-                      px: 3.5,
-                      py: 1.25,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(196, 69, 69, 0.12)'}`,
-                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      '&:hover': {
-                        bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(196, 69, 69, 0.1)',
-                        borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(196, 69, 69, 0.25)',
-                      },
-                    }}
+                  <Tooltip
+                    title={deleteTemplateMutation.isPending ? 'Deleting template…' : 'Delete Template'}
+                    arrow
                   >
-                    {deleteTemplateMutation.isPending ? 'Deleting...' : 'Delete Template'}
-                  </Button>
+                    <span>
+                      <IconButton
+                        aria-label="Delete Template"
+                        color="error"
+                        disabled={deleteTemplateMutation.isPending}
+                        onClick={handleDeleteTemplate}
+                        sx={{
+                          '&:hover': {
+                            bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(196, 69, 69, 0.1)',
+                          },
+                        }}
+                      >
+                        {deleteTemplateMutation.isPending ? (
+                          <CircularProgress size={20} color="inherit" />
+                        ) : (
+                          <DeleteOutlineIcon sx={{ fontSize: 20 }} />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
 
-                  <Button
-                    variant="contained"
-                    onClick={() => handleOpenAssignModal(selectedTemplate)}
-                    sx={{
-                      bgcolor: '#d95236',
-                      color: '#fff',
-                      borderRadius: '12px',
-                      px: 3.5,
-                      py: 1.25,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      boxShadow: '0 4px 12px rgba(217, 82, 54, 0.15)',
-                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      '&:hover': {
-                        bgcolor: '#c7452b',
-                        boxShadow: '0 6px 20px rgba(217, 82, 54, 0.25)',
-                      },
-                    }}
-                  >
-                    Assign Template to Agents
-                  </Button>
+                  <Tooltip title="Assign Template to Agents" arrow>
+                    <IconButton
+                      aria-label="Assign Template to Agents"
+                      color="primary"
+                      onClick={() => handleOpenAssignModal(selectedTemplate)}
+                      sx={{
+                        color: '#d95236',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(217, 82, 54, 0.15)' : 'rgba(217, 82, 54, 0.1)',
+                        },
+                      }}
+                    >
+                      <GroupAddOutlinedIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               )}
             </Box>
 
-            <Grid container spacing={4.5}>
+            <Grid container spacing={{ xs: 2.5, md: 4.5 }}>
               {/* Left Column: Template Summary and KPIs */}
               <Grid item xs={12} md={8}>
                 {/* Header Box */}
-                <Card sx={{ p: 4, borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`, mb: 3.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                    <ShieldIcon sx={{ color: tokens.brand.primary, fontSize: 24 }} />
+                <Card sx={{ ...templateDetailCardSx, p: { xs: 2, sm: 3, md: 4 }, mb: { xs: 2.5, sm: 3.5 } }}>
+                  <Box sx={{ mb: 1.5 }}>
                     <Chip
                       label="KPI Template"
                       size="small"
@@ -1621,44 +1508,91 @@ const TasksPage = () => {
                     />
                   </Box>
 
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.025em', mb: 2 }}>
+                  <Typography
+                    component="h1"
+                    sx={{
+                      fontWeight: 800,
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      letterSpacing: '-0.025em',
+                      mb: 1.25,
+                      fontSize: { xs: '1.35rem', sm: '1.65rem', md: '2rem' },
+                      lineHeight: 1.2,
+                      overflowWrap: 'break-word',
+                    }}
+                  >
                     {selectedTemplate.name}
                   </Typography>
 
-                  <RichTextContent content={selectedTemplate.description} fallbackText="No description provided." sx={{ fontSize: '0.94rem' }} />
+                  <RichTextContent
+                    className="tiptap-content"
+                    content={selectedTemplate.description}
+                    fallbackText="No description provided."
+                    sx={templateDetailRichTextSx}
+                  />
                 </Card>
 
                 {/* Grouped KPIs List */}
-                <Card sx={{ p: 4, borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
-                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 3.5, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.015em' }}>
+                <Card sx={{ ...templateDetailCardSx, p: { xs: 2, sm: 3, md: 4 } }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 800,
+                      mb: { xs: 2, sm: 3 },
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      letterSpacing: '-0.015em',
+                      fontSize: { xs: '1rem', sm: '1.15rem' },
+                    }}
+                  >
                     Grouped KPI Targets
                   </Typography>
 
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
                     {selectedTemplate.kpis.map((kpi, idx) => (
                       <Box
                         key={idx}
                         sx={{
-                          p: 3,
+                          p: { xs: 1.5, sm: 2.5 },
                           borderRadius: '16px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.008)',
-                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
+                          bgcolor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: isCompact ? 'column' : 'row',
+                            alignItems: isCompact ? 'flex-start' : 'center',
+                            flexWrap: isCompact ? 'nowrap' : 'wrap',
+                            gap: { xs: 0.75, sm: 1 },
+                            mb: kpi.description?.trim() ? 0.75 : 0,
+                            width: '100%',
+                          }}
+                        >
                           <Chip
                             label={`KPI #${idx + 1}`}
                             size="small"
                             sx={{
-                              height: 18,
-                              fontSize: '0.58rem',
+                              height: 22,
+                              fontSize: '0.68rem',
                               fontWeight: 800,
                               bgcolor: tokens.brand.primary100,
                               color: tokens.brand.primary,
                               borderRadius: '4px',
+                              flexShrink: 0,
                             }}
                           />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDarkMode ? '#fff' : tokens.text.primary, fontSize: '0.9rem' }}>
+                          <Typography
+                            sx={{
+                              flex: isCompact ? 'none' : '1 1 auto',
+                              minWidth: 0,
+                              width: isCompact ? '100%' : undefined,
+                              fontWeight: 800,
+                              color: isDarkMode ? '#fff' : tokens.text.primary,
+                              fontSize: { xs: '0.88rem', sm: '0.92rem' },
+                              lineHeight: 1.35,
+                              overflowWrap: 'break-word',
+                            }}
+                          >
                             {kpi.name}
                             {kpi.targetValue != null ? ` — Target: ${kpi.targetValue}` : ' — Simple task'}
                             {kpi.daysOfWeek?.length
@@ -1666,7 +1600,17 @@ const TasksPage = () => {
                               : ''}
                           </Typography>
                         </Box>
-                        <RichTextContent content={kpi.description} sx={{ pl: 0.5, fontSize: '0.84rem' }} />
+                        {Boolean(kpi.description?.trim()) && (
+                          <RichTextContent
+                            className="tiptap-content"
+                            content={kpi.description}
+                            sx={{
+                              ...templateDetailRichTextSx,
+                              fontSize: { xs: '0.78rem', sm: '0.84rem' },
+                              lineHeight: 1.4,
+                            }}
+                          />
+                        )}
                       </Box>
                     ))}
                   </Box>
@@ -1675,7 +1619,7 @@ const TasksPage = () => {
 
               {/* Right Column: Template Info Panel */}
               <Grid item xs={12} md={4}>
-                <Card sx={{ p: 4, borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}` }}>
+                <Card sx={{ ...templateDetailCardSx, p: { xs: 2, sm: 3, md: 4 } }}>
                   <Typography variant="h6" sx={{ fontWeight: 800, mb: 3.5, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.015em' }}>
                     Template Properties
                   </Typography>
@@ -1700,11 +1644,9 @@ const TasksPage = () => {
                   return (
                     <Card
                       sx={{
-                        p: 4,
-                        mt: 3.5,
-                        borderRadius: '24px',
-                        bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                        ...templateDetailCardSx,
+                        p: { xs: 2, sm: 3, md: 4 },
+                        mt: { xs: 2.5, sm: 3.5 },
                       }}
                     >
                       <Typography
@@ -2444,7 +2386,7 @@ const TasksPage = () => {
                     },
                   }}
                 >
-                  Create Template
+                  Create
                 </Button>
               )}
               <ToggleButtonGroup
@@ -2721,7 +2663,7 @@ const TasksPage = () => {
                             borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
                           }}
                         >
-                          View KPIs ({tpl.kpis.length})
+                          View
                         </Button>
                         {isElevated && (
                           <Button
@@ -2740,7 +2682,7 @@ const TasksPage = () => {
                               '&:hover': { bgcolor: '#FF8A6F', boxShadow: 'none' },
                             }}
                           >
-                            Assign Template
+                            Assign
                           </Button>
                         )}
                       </Grid>
@@ -3295,32 +3237,72 @@ const TasksPage = () => {
         onClose={() => setIsAssignOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
-            borderRadius: '24px',
-            bgcolor: isDarkMode ? '#1e1b24' : '#fff',
-            border: isDarkMode ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
-            p: 1.5,
+            borderRadius: isMobile ? 0 : '24px',
+            bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+            backgroundImage: 'none',
+            border: isMobile ? 'none' : isDarkMode ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
+            boxShadow: isMobile ? 'none' : isDarkMode ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 25px 50px -12px rgba(0,0,0,0.1)',
+            overflowX: 'hidden',
+            ...(isMobile ? { display: 'flex', flexDirection: 'column', maxHeight: '100dvh' } : { p: 1.5 }),
+          },
+        }}
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.2)' },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, pb: 1, pr: 5, position: 'relative' }}>
+        <DialogTitle
+          sx={{
+            fontWeight: 800,
+            pb: 1,
+            pr: 5,
+            pt: { xs: 2, sm: 1.5 },
+            px: { xs: 2, sm: 2.5 },
+            position: 'relative',
+            flexShrink: 0,
+            color: isDarkMode ? '#fff' : tokens.text.primary,
+            letterSpacing: '-0.02em',
+          }}
+        >
           Assign KPI Template
           <IconButton
             onClick={() => setIsAssignOpen(false)}
-            sx={{ position: 'absolute', right: 12, top: 12, color: 'text.secondary' }}
+            sx={{
+              position: 'absolute',
+              right: { xs: 12, sm: 12 },
+              top: { xs: 12, sm: 12 },
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+              color: 'text.secondary',
+              '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
+            }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, pt: '12px !important', pb: 2 }}>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: { xs: 2.5, sm: 3.5 },
+            pt: '16px !important',
+            pb: 2,
+            px: { xs: 2, sm: 2.5 },
+            flex: isMobile ? 1 : undefined,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
           {/* Template Info Card */}
           <Box
             sx={{
-              p: 2.5,
+              p: { xs: 1.75, sm: 2.5 },
               borderRadius: '16px',
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+              bgcolor: assignKpiSurfaceBg,
               border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
             }}
           >
@@ -3329,58 +3311,66 @@ const TasksPage = () => {
             </Typography>
             {assigningTemplate?.description && (
               <RichTextContent
+                className="tiptap-content"
                 content={assigningTemplate.description}
-                sx={{ mb: 2, fontSize: '0.85rem' }}
+                sx={{ ...assignDialogRichTextSx, mb: 2 }}
               />
             )}
 
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', mb: 1 }}>
               KPI Targets Included ({assigningTemplate?.kpis.length || 0})
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.25, sm: 1.5 } }}>
               {assigningTemplate?.kpis.map((kpi, idx) => (
                 <Box
                   key={idx}
                   sx={{
-                    p: 1.5,
+                    p: { xs: 1.25, sm: 1.5 },
                     borderRadius: '12px',
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    bgcolor: assignKpiSurfaceBg,
                     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem', mb: 1 }}>
                     {kpi.name}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <TextField
-                      size="small"
-                      label="Target"
-                      type="number"
-                      defaultValue={kpi.targetValue ?? ''}
-                      onChange={(e) => setAssignItemOverrides((prev) => ({
-                        ...prev,
-                        [idx]: { ...prev[idx], targetValue: e.target.value === '' ? undefined : Number(e.target.value) },
-                      }))}
-                      sx={{ width: 100 }}
-                    />
-                    <TextField
-                      select
-                      size="small"
-                      label="Priority"
-                      defaultValue="medium"
-                      onChange={(e) => setAssignItemOverrides((prev) => ({
-                        ...prev,
-                        [idx]: { ...prev[idx], priority: e.target.value as KpiPriority },
-                      }))}
-                      sx={{ width: 120 }}
-                    >
-                      {KPI_PRIORITY_OPTIONS.map((p) => (
-                        <MenuItem key={p} value={p}>{p}</MenuItem>
-                      ))}
-                    </TextField>
+                  <Grid container spacing={1.5} alignItems="flex-start">
+                    <Grid item xs={12} sm="auto">
+                      <TextField
+                        size="small"
+                        label="Target"
+                        type="number"
+                        fullWidth
+                        defaultValue={kpi.targetValue ?? ''}
+                        onChange={(e) => setAssignItemOverrides((prev) => ({
+                          ...prev,
+                          [idx]: { ...prev[idx], targetValue: e.target.value === '' ? undefined : Number(e.target.value) },
+                        }))}
+                        sx={{ ...assignDialogFieldSx, width: { sm: 100 } }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm="auto">
+                      <TextField
+                        select
+                        size="small"
+                        label="Priority"
+                        fullWidth
+                        defaultValue="medium"
+                        onChange={(e) => setAssignItemOverrides((prev) => ({
+                          ...prev,
+                          [idx]: { ...prev[idx], priority: e.target.value as KpiPriority },
+                        }))}
+                        sx={{ ...assignDialogFieldSx, width: { sm: 120 } }}
+                      >
+                        {KPI_PRIORITY_OPTIONS.map((p) => (
+                          <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
                     {(kpi.daysOfWeek?.length ?? 0) === 0 ? (
+                      <Grid item xs={12} sm="auto">
                       <MobileDateTimePicker
-                        label="Due Date & Time"
+                        label={isMobile ? 'Due date & time' : 'Due Date & Time'}
                         ampm={false}
                         value={assignItemOverrides[idx]?.dueDate ? new Date(assignItemOverrides[idx]!.dueDate!) : null}
                         onChange={(newValue) => setAssignItemOverrides((prev) => ({
@@ -3388,7 +3378,11 @@ const TasksPage = () => {
                           [idx]: { ...prev[idx], dueDate: newValue ? newValue.toISOString() : undefined },
                         }))}
                         slotProps={{
-                          textField: { size: 'small', sx: { width: 200 } },
+                          textField: {
+                            size: 'small',
+                            fullWidth: isMobile,
+                            sx: { ...assignDialogFieldSx, width: { sm: 200 } },
+                          },
                           dialog: {
                             sx: {
                               '& .MuiPickersDay-root.Mui-selected': {
@@ -3413,25 +3407,31 @@ const TasksPage = () => {
                           },
                         }}
                       />
+                      </Grid>
                     ) : (
-                      <Chip
-                        label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
-                        size="small"
-                        sx={{ fontWeight: 700, fontSize: '0.72rem', height: 28, alignSelf: 'center', bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
-                      />
+                      <Grid item xs={12}>
+                        <Chip
+                          label={`${formatDaysLabel(kpi.daysOfWeek)}${kpi.recurrenceMode === 'once' ? ' · once' : ' · weekly'}`}
+                          size="small"
+                          sx={{ fontWeight: 700, fontSize: '0.72rem', height: 28, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                        />
+                      </Grid>
                     )}
-                  </Box>
+                  </Grid>
                 </Box>
               ))}
             </Box>
           </Box>
 
           {/* User selection Autocomplete */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Assign to Team Member
-            </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', minWidth: 0 }}>
+            {!isMobile && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 750, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Assign to Team Member
+              </Typography>
+            )}
             <Autocomplete
+              fullWidth
               options={assignableUsers}
               getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim() || option.email}
               value={assignableUsers.find((u) => u._id === selectedUserId) || dbUsers.find((u) => u._id === selectedUserId) || null}
@@ -3439,10 +3439,11 @@ const TasksPage = () => {
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  placeholder="Search and select team member"
+                  label={isMobile ? 'Assign member' : undefined}
+                  placeholder={isMobile ? 'Select team member' : 'Search and select team member'}
                   variant="outlined"
-                  InputLabelProps={{ shrink: true }}
                   sx={{
+                    ...assignDialogFieldSx,
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '16px',
                       bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -3498,14 +3499,25 @@ const TasksPage = () => {
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pb: { xs: 3, sm: 2.5 },
+            pt: 1,
+            gap: 1.5,
+            flexShrink: 0,
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
+        >
           <Button
             onClick={() => setIsAssignOpen(false)}
+            fullWidth={isMobile}
             sx={{
               textTransform: 'none',
               color: 'text.secondary',
               fontWeight: 700,
-              borderRadius: '20px',
+              borderRadius: '12px',
               px: 3,
             }}
           >
@@ -3515,12 +3527,14 @@ const TasksPage = () => {
             variant="contained"
             onClick={handleAssignTemplate}
             disabled={assignTemplateMutation.isPending || !selectedUserId}
+            fullWidth={isMobile}
             sx={{
               bgcolor: tokens.brand.solid,
               color: '#fff',
-              borderRadius: '20px',
+              borderRadius: '12px',
               textTransform: 'none',
               px: 3.5,
+              py: isMobile ? 1.25 : undefined,
               fontWeight: 700,
               boxShadow: 'none',
               '&:hover': {
