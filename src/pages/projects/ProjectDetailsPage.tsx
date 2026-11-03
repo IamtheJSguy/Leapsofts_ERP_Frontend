@@ -6,6 +6,7 @@ import {
   Typography,
   Button,
   useTheme,
+  useMediaQuery,
   Chip,
   IconButton,
   CircularProgress,
@@ -42,6 +43,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { canManageProjectMembers, memberUserId, userIdsEqual } from '@/lib/projectAccess';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import { BoardCard } from '@/components/projects/BoardCard';
@@ -81,6 +83,8 @@ export const ProjectDetailsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMdDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const initialTab = searchParams.get('tab') || 'Board';
   const initialTabIndex = TABS.indexOf(initialTab) !== -1 ? TABS.indexOf(initialTab) : 0;
@@ -132,16 +136,9 @@ export const ProjectDetailsPage = () => {
   const project = data?.project;
   const boards = data?.boards || [];
 
-  const ownerId =
-    typeof project?.ownerId === 'string'
-      ? project.ownerId
-      : (project?.ownerId as { _id?: string } | undefined)?._id;
-  const isProjectOwner = !!ownerId && ownerId === currentUser?._id;
-  const isProjectAdminMember = !!project?.members?.some((m) => {
-    const memberId = typeof m.userId === 'string' ? m.userId : m.userId?._id;
-    return memberId === currentUser?._id && (m.role === 'owner' || m.role === 'admin');
-  });
-  const canManageProject = isProjectOwner || isProjectAdminMember || isElevated;
+  const canManageProject = canManageProjectMembers(currentUser, project);
+  const isOverviewTab = activeTab === 1;
+  const hideHeaderDescriptionOnCompact = isCompact && isOverviewTab;
 
   const handleTabChange = (index: number) => {
     setActiveTab(index);
@@ -211,6 +208,34 @@ export const ProjectDetailsPage = () => {
         },
       );
     }
+  };
+
+  const handleProjectMemberRoleChange = (userId: string, role: 'admin' | 'member') => {
+    if (!projectId) return;
+    addProjectMemberMutation.mutate(
+      { id: projectId, userId, role },
+      {
+        onSuccess: () => {
+          addToast({ message: 'Member role updated', severity: 'success' });
+        },
+        onError: (err) => showApiError(err),
+      },
+    );
+  };
+
+  const projectRoleChipSx = (role: ProjectMember['role']) => {
+    const isOwnerRole = role === 'owner';
+    return {
+      bgcolor: isOwnerRole
+        ? 'rgba(167, 139, 250, 0.1)'
+        : role === 'admin'
+          ? 'rgba(59, 130, 246, 0.1)'
+          : 'rgba(255, 255, 255, 0.05)',
+      color: isOwnerRole ? '#a78bfa' : role === 'admin' ? '#3b82f6' : 'text.secondary',
+      fontWeight: 750,
+      fontSize: '0.65rem',
+      height: 22,
+    };
   };
 
   const handleCreateBoard = () => {
@@ -352,29 +377,164 @@ export const ProjectDetailsPage = () => {
 
   const statusConfig = getStatusConfig(project.status);
 
+  const projectActions = canManageProject ? (
+    isCompact ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        <Tooltip title="Edit Details" arrow>
+          <IconButton
+            aria-label="Edit project details"
+            onClick={() => setIsEditOpen(true)}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                color: tokens.brand.primary,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+              },
+            }}
+          >
+            <EditIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+        {!project.isDefault && (
+          <Tooltip title="Delete Project" arrow>
+            <IconButton
+              aria-label="Delete project"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              sx={{
+                color: tokens.semantic.error,
+                '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+              }}
+            >
+              <DeleteIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+    ) : (
+      <Box sx={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
+        <Button
+          variant="outlined"
+          startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+          onClick={() => setIsEditOpen(true)}
+          sx={{
+            borderRadius: '24px',
+            textTransform: 'none',
+            fontWeight: 700,
+            color: 'text.primary',
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            '&:hover': {
+              borderColor: tokens.brand.primary,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+            },
+          }}
+        >
+          Edit Details
+        </Button>
+        {!project.isDefault && (
+          <Button
+            variant="outlined"
+            startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            sx={{
+              borderRadius: '24px',
+              textTransform: 'none',
+              fontWeight: 700,
+              color: tokens.semantic.error,
+              borderColor: 'rgba(239, 68, 68, 0.2)',
+              '&:hover': {
+                borderColor: tokens.semantic.error,
+                bgcolor: 'rgba(239, 68, 68, 0.04)',
+              },
+            }}
+          >
+            Delete
+          </Button>
+        )}
+      </Box>
+    )
+  ) : null;
+
   return (
-    <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
-      {/* Back button */}
-      <Button
-        onClick={() => navigate('/projects')}
-        startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+    <Box className="animate-fade-in-up" sx={{ pb: { xs: 4, sm: 6 } }}>
+      {/* Back + actions (compact header row) */}
+      <Box
         sx={{
-          color: 'text.secondary',
-          fontWeight: 700,
-          fontSize: '0.85rem',
-          mb: 3,
-          textTransform: 'none',
-          '&:hover': { bgcolor: 'transparent', color: tokens.brand.primary },
+          mb: hideHeaderDescriptionOnCompact ? { xs: 1.25, sm: 3 } : { xs: 2, sm: 3 },
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 0.5,
+          minHeight: 40,
         }}
       >
-        Back to Projects
-      </Button>
+        {isCompact ? (
+          <Tooltip title="Back to Projects" arrow>
+            <IconButton
+              aria-label="Back to Projects"
+              onClick={() => navigate('/projects')}
+              sx={{
+                color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'text.secondary',
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  color: tokens.brand.primary,
+                },
+              }}
+            >
+              <ArrowBackIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Button
+            onClick={() => navigate('/projects')}
+            startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              textTransform: 'none',
+              px: 0,
+              '&:hover': { bgcolor: 'transparent', color: tokens.brand.primary },
+            }}
+          >
+            Back to Projects
+          </Button>
+        )}
+        {isCompact && projectActions}
+      </Box>
 
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4, flexWrap: 'wrap', gap: 3 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em', color: 'text.primary' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: hideHeaderDescriptionOnCompact ? { xs: 1.5, sm: 4 } : { xs: 2.5, sm: 4 },
+          flexWrap: 'wrap',
+          gap: hideHeaderDescriptionOnCompact ? { xs: 1, sm: 3 } : { xs: 2, sm: 3 },
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: '1 1 auto' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: { xs: 1, sm: 2 },
+              mb: hideHeaderDescriptionOnCompact ? 0 : 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography
+              component="h1"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: 'text.primary',
+                fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.25rem' },
+                lineHeight: 1.2,
+                overflowWrap: 'break-word',
+              }}
+            >
               {project.name}
             </Typography>
             <Chip
@@ -386,12 +546,25 @@ export const ProjectDetailsPage = () => {
                 fontWeight: 750,
                 fontSize: '0.72rem',
                 border: 'none',
+                flexShrink: 0,
               }}
             />
           </Box>
-          <Typography variant="body1" sx={{ color: 'text.secondary', maxW: '700px', mb: 2 }}>
-            {project.description || 'No description provided.'}
-          </Typography>
+          {!hideHeaderDescriptionOnCompact && (
+            <Typography
+              variant="body1"
+              sx={{
+                color: 'text.secondary',
+                maxWidth: '700px',
+                mb: { xs: 1.5, sm: 2 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                lineHeight: 1.55,
+                overflowWrap: 'break-word',
+              }}
+            >
+              {project.description || 'No description provided.'}
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {project.tags?.map((tag) => (
               <Chip
@@ -410,48 +583,7 @@ export const ProjectDetailsPage = () => {
           </Box>
         </Box>
 
-        {canManageProject && (
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setIsEditOpen(true)}
-              sx={{
-                borderRadius: '24px',
-                textTransform: 'none',
-                fontWeight: 700,
-                color: 'text.primary',
-                borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                '&:hover': {
-                  borderColor: tokens.brand.primary,
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                },
-              }}
-            >
-              Edit Details
-            </Button>
-            {!project.isDefault && (
-              <Button
-                variant="outlined"
-                startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setIsDeleteConfirmOpen(true)}
-                sx={{
-                  borderRadius: '24px',
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  color: tokens.semantic.error,
-                  borderColor: 'rgba(239, 68, 68, 0.2)',
-                  '&:hover': {
-                    borderColor: tokens.semantic.error,
-                    bgcolor: 'rgba(239, 68, 68, 0.04)',
-                  },
-                }}
-              >
-                Delete
-              </Button>
-            )}
-          </Box>
-        )}
+        {!isCompact && projectActions}
       </Box>
 
       {/* Tabs Menu */}
@@ -459,8 +591,12 @@ export const ProjectDetailsPage = () => {
         sx={{
           display: 'flex',
           borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-          mb: 4,
-          gap: 3,
+          mb: hideHeaderDescriptionOnCompact ? { xs: 1.75, sm: 4 } : { xs: 2.5, sm: 4 },
+          gap: isMdDown ? 0 : 3,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
         {TABS.map((tab, idx) => (
@@ -469,18 +605,24 @@ export const ProjectDetailsPage = () => {
             onClick={() => handleTabChange(idx)}
             sx={{
               pb: 1.5,
+              pt: 0.25,
+              px: isMdDown ? 2 : 0,
+              flex: isMdDown ? '1 0 auto' : undefined,
+              minWidth: isMdDown ? 0 : undefined,
+              textAlign: isMdDown ? 'center' : 'left',
+              whiteSpace: 'nowrap',
               cursor: 'pointer',
               position: 'relative',
               color: activeTab === idx ? 'text.primary' : 'text.secondary',
               fontWeight: activeTab === idx ? 800 : 600,
-              fontSize: '0.95rem',
+              fontSize: { xs: '0.875rem', sm: '0.95rem' },
               transition: 'color 0.2s ease',
               '&::after': activeTab === idx ? {
                 content: '""',
                 position: 'absolute',
                 bottom: 0,
-                left: 0,
-                right: 0,
+                left: isMdDown ? 8 : 0,
+                right: isMdDown ? 8 : 0,
                 height: '3px',
                 bgcolor: tokens.brand.solid,
                 borderRadius: '2px',
@@ -497,16 +639,40 @@ export const ProjectDetailsPage = () => {
         {/* BOARD TAB */}
         {activeTab === 0 && (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: isCompact ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isCompact ? 'stretch' : 'center',
+                gap: isCompact ? 1.5 : 2,
+                mb: { xs: 2, sm: 3 },
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 800,
+                  color: 'text.primary',
+                  fontSize: { xs: '1.1rem', sm: '1.5rem' },
+                }}
+              >
                 {boards.length} boards
               </Typography>
               {canCreateProjectsAndBoards && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: isCompact ? 'column' : 'row',
+                    gap: 1,
+                    width: isCompact ? '100%' : 'auto',
+                  }}
+                >
                   <Button
                     variant="outlined"
                     startIcon={<FileUploadIcon />}
                     onClick={() => setIsImportBoardOpen(true)}
+                    fullWidth={isCompact}
                     sx={{
                       color: 'text.primary',
                       fontWeight: 700,
@@ -514,12 +680,13 @@ export const ProjectDetailsPage = () => {
                       textTransform: 'none',
                     }}
                   >
-                    Import Board
+                    {isCompact ? 'Import' : 'Import Board'}
                   </Button>
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => setIsCreateBoardOpen(true)}
+                    fullWidth={isCompact}
                     sx={{
                       bgcolor: tokens.brand.solid,
                       color: '#fff',
@@ -550,11 +717,22 @@ export const ProjectDetailsPage = () => {
                   This project has no boards yet.
                 </Typography>
                 {canCreateProjectsAndBoards && (
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      gap: 1,
+                      justifyContent: 'center',
+                      px: { xs: 2, sm: 0 },
+                      maxWidth: 360,
+                      mx: 'auto',
+                    }}
+                  >
                     <Button
                       variant="outlined"
                       startIcon={<FileUploadIcon />}
                       onClick={() => setIsImportBoardOpen(true)}
+                      fullWidth={isCompact}
                       sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
                     >
                       Import Board
@@ -563,6 +741,7 @@ export const ProjectDetailsPage = () => {
                       variant="outlined"
                       startIcon={<AddIcon />}
                       onClick={() => setIsCreateBoardOpen(true)}
+                      fullWidth={isCompact}
                       sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
                     >
                       Create the First Board
@@ -575,7 +754,7 @@ export const ProjectDetailsPage = () => {
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-                  gap: 3,
+                  gap: { xs: 2, sm: 3 },
                 }}
               >
                 {boards.map((board) => {
@@ -621,7 +800,7 @@ export const ProjectDetailsPage = () => {
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
-              gap: 4,
+              gap: { xs: 1.5, sm: 4 },
             }}
           >
             {/* Main Info */}
@@ -629,34 +808,81 @@ export const ProjectDetailsPage = () => {
               sx={{
                 bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                borderRadius: '24px',
-                p: 4,
+                borderRadius: { xs: '16px', sm: '24px' },
+                p: { xs: 1.5, sm: 3, md: 4 },
               }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: { xs: 1.25, sm: 3 },
+                  gap: 1,
+                  minHeight: isCompact ? 32 : undefined,
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '1rem', sm: '1.5rem' },
+                    lineHeight: 1.25,
+                  }}
+                >
                   Project Description
                 </Typography>
-                {canManageProject && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon sx={{ fontSize: 16 }} />}
-                    onClick={() => setIsEditOpen(true)}
-                    sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 700 }}
-                  >
-                    Edit Details
-                  </Button>
-                )}
+                {canManageProject &&
+                  (isCompact ? (
+                    <Tooltip title="Edit Details" arrow>
+                      <IconButton
+                        aria-label="Edit project details"
+                        onClick={() => setIsEditOpen(true)}
+                        size="small"
+                        sx={{ flexShrink: 0, color: 'text.secondary', ml: 0.5 }}
+                      >
+                        <EditIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+                      onClick={() => setIsEditOpen(true)}
+                      sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                    >
+                      Edit Details
+                    </Button>
+                  ))}
               </Box>
-              <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4, lineHeight: 1.7 }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'text.secondary',
+                  mb: { xs: 2, sm: 4 },
+                  lineHeight: { xs: 1.55, sm: 1.7 },
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                }}
+              >
                 {project.description || 'No description provided.'}
               </Typography>
-              <Divider sx={{ mb: 4 }} />
-              <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>
+              <Divider sx={{ mb: { xs: 2, sm: 4 } }} />
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: 800, mb: { xs: 1.25, sm: 3 }, fontSize: { xs: '1rem', sm: '1.5rem' } }}
+              >
                 Status & Tags
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 2 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  lineHeight: 1.55,
+                  mb: { xs: 1.25, sm: 2 },
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                }}
+              >
                 This is a <strong>{project.isDefault ? 'default system' : 'custom'}</strong> project currently in the{' '}
                 <strong>{project.status.replace('_', ' ')}</strong> phase.
               </Typography>
@@ -688,28 +914,41 @@ export const ProjectDetailsPage = () => {
               sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 3,
+                gap: { xs: 1.5, sm: 3 },
               }}
             >
               <Box
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
-                  borderRadius: '24px',
-                  p: 3,
+                  borderRadius: { xs: '16px', sm: '24px' },
+                  p: { xs: 1.5, sm: 3 },
                 }}
               >
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 800, mb: { xs: 1.25, sm: 2 }, fontSize: { xs: '0.9375rem', sm: '1rem' } }}
+                >
                   Metadata
                 </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <InfoIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                    <Box>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.25, sm: 2.5 } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+                    <InfoIcon sx={{ color: 'text.secondary', fontSize: { xs: 16, sm: 18 }, flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          display: 'block',
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          letterSpacing: { xs: '0.04em', sm: 'normal' },
+                          lineHeight: 1.2,
+                          mb: 0.15,
+                        }}
+                      >
                         PROJECT OWNER
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
                         {projectOwnerUser
                           ? `${projectOwnerUser.firstName || ''} ${projectOwnerUser.lastName || ''}`.trim() ||
                             projectOwnerUser.email
@@ -718,13 +957,23 @@ export const ProjectDetailsPage = () => {
                     </Box>
                   </Box>
 
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CalendarTodayIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                    <Box>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+                    <CalendarTodayIcon sx={{ color: 'text.secondary', fontSize: { xs: 16, sm: 18 }, flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          display: 'block',
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          letterSpacing: { xs: '0.04em', sm: 'normal' },
+                          lineHeight: 1.2,
+                          mb: 0.15,
+                        }}
+                      >
                         CREATED ON
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
                         {new Date(project.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'long',
@@ -734,13 +983,23 @@ export const ProjectDetailsPage = () => {
                     </Box>
                   </Box>
 
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <GroupIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                    <Box>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+                    <GroupIcon sx={{ color: 'text.secondary', fontSize: { xs: 16, sm: 18 }, flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          display: 'block',
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          letterSpacing: { xs: '0.04em', sm: 'normal' },
+                          lineHeight: 1.2,
+                          mb: 0.15,
+                        }}
+                      >
                         TEAM MEMBERS
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
                         {project.members?.length || 0} users
                       </Typography>
                     </Box>
@@ -754,8 +1013,20 @@ export const ProjectDetailsPage = () => {
         {/* TEAM TAB */}
         {activeTab === 2 && (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: isCompact ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isCompact ? 'stretch' : 'center',
+                gap: isCompact ? 1.5 : 2,
+                mb: { xs: 2, sm: 3 },
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: 800, color: 'text.primary', fontSize: { xs: '1.1rem', sm: '1.5rem' } }}
+              >
                 {project.members?.length || 0} members
               </Typography>
               {canManageProject && (
@@ -763,6 +1034,7 @@ export const ProjectDetailsPage = () => {
                   variant="outlined"
                   startIcon={<PersonAddIcon />}
                   onClick={() => setIsAddMemberOpen(true)}
+                  fullWidth={isCompact}
                   sx={{ borderRadius: '24px', textTransform: 'none', fontWeight: 700 }}
                 >
                   Add Member
@@ -779,7 +1051,7 @@ export const ProjectDetailsPage = () => {
               }}
             >
               {project.members.map((member, idx) => {
-                const id = typeof member.userId === 'string' ? member.userId : member.userId?._id;
+                const id = memberUserId(member.userId);
                 const user = dbUsers.find((u) => u._id === id);
                 if (!user) return null;
 
@@ -793,18 +1065,20 @@ export const ProjectDetailsPage = () => {
                     key={member._id || idx}
                     sx={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: isCompact ? 'flex-start' : 'center',
                       justifyContent: 'space-between',
-                      p: 2.5,
+                      flexDirection: isCompact ? 'column' : 'row',
+                      gap: isCompact ? 1.5 : 0,
+                      p: { xs: 2, sm: 2.5 },
                       borderBottom:
                         idx < project.members.length - 1
                           ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
                           : 'none',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar src={user.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700 }}>{initial}</Avatar>
-                      <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, width: isCompact ? '100%' : 'auto' }}>
+                      <Avatar src={user.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted, fontWeight: 700, flexShrink: 0 }}>{initial}</Avatar>
+                      <Box sx={{ minWidth: 0 }}>
                         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                           {name}
                         </Typography>
@@ -819,26 +1093,48 @@ export const ProjectDetailsPage = () => {
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Chip
-                        label={member.role.toUpperCase()}
-                        size="small"
-                        icon={<ShieldIcon sx={{ fontSize: '12px !important' }} />}
-                        sx={{
-                          bgcolor: isOwner
-                            ? 'rgba(167, 139, 250, 0.1)'
-                            : member.role === 'admin'
-                            ? 'rgba(59, 130, 246, 0.1)'
-                            : 'rgba(255, 255, 255, 0.05)',
-                          color: isOwner ? '#a78bfa' : member.role === 'admin' ? '#3b82f6' : 'text.secondary',
-                          fontWeight: 750,
-                          fontSize: '0.65rem',
-                          height: 22,
-                        }}
-                      />
-                      {canManageProject && !isOwner && member.userId !== currentUser?._id && (
-                        <IconButton
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        alignSelf: isCompact ? 'flex-end' : 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {canManageProject && !isOwner && !userIdsEqual(id, currentUser?._id) ? (
+                        <FormControl size="small" sx={{ minWidth: isCompact ? '100%' : 120 }}>
+                          <Select
+                            value={member.role === 'admin' ? 'admin' : 'member'}
+                            onChange={(e) =>
+                              handleProjectMemberRoleChange(id!, e.target.value as 'admin' | 'member')
+                            }
+                            disabled={addProjectMemberMutation.isPending}
+                            aria-label={`Role for ${name}`}
+                            sx={{
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              height: 32,
+                              '& .MuiSelect-select': { py: 0.75 },
+                            }}
+                          >
+                            <MenuItem value="member">Member</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                          </Select>
+                        </FormControl>
+                      ) : (
+                        <Chip
+                          label={member.role.toUpperCase()}
                           size="small"
+                          icon={<ShieldIcon sx={{ fontSize: '12px !important' }} />}
+                          sx={projectRoleChipSx(member.role)}
+                        />
+                      )}
+                      {canManageProject && !isOwner && !userIdsEqual(id, currentUser?._id) && (
+                        <IconButton
+                          size={isCompact ? 'medium' : 'small'}
+                          aria-label={`Remove ${name} from project`}
                           onClick={() => handleRemoveMemberClick(id!, name)}
                           sx={{
                             color: 'text.secondary',
