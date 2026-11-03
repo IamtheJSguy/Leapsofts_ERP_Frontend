@@ -14,11 +14,10 @@ import {
   ToggleButtonGroup,
   Typography,
   Tooltip,
+  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
 import { loadKanbanCardRouteInfo, kanbanCardNavigatePath } from '@/utils/kanbanCardNavigation';
@@ -88,6 +87,8 @@ export default function MemberKpiDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
+  const isToolbarStacked = useMediaQuery(theme.breakpoints.down('sm'));
   const entitlements = useEntitlements();
   const salesModuleOn = entitlements.salesModule;
   const projectsOn = entitlements.projectsAndBoards;
@@ -214,7 +215,17 @@ export default function MemberKpiDetailPage() {
 
   const periodLabel = formatPeriodLabel(mode, period.startDate, period.endDate);
   const filterCaption =
-    mode === 'day' ? 'Filter by Date' : mode === 'week' ? 'Filter by Week' : 'Date Range';
+    mode === 'day'
+      ? isCompact
+        ? 'Date'
+        : 'Filter by Date'
+      : mode === 'week'
+        ? isCompact
+          ? 'Week'
+          : 'Filter by Week'
+        : isCompact
+          ? 'Range'
+          : 'Date Range';
 
   const weekSections = useMemo(() => {
     const slices =
@@ -328,88 +339,122 @@ export default function MemberKpiDetailPage() {
       <Box
         sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { md: 'center' },
-          gap: 2,
-          p: 2.5,
+          flexDirection: 'column',
+          gap: { xs: 1.25, sm: 1.5 },
+          p: { xs: 1.25, sm: 2.5 },
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
-          borderRadius: '24px',
+          borderRadius: { xs: '16px', sm: '24px' },
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
-          flexWrap: 'wrap',
         }}
       >
-        <ToggleButtonGroup
-          value={mode}
-          exclusive
-          onChange={handleModeChange}
-          size="small"
+        <Box
           sx={{
-            bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)',
-            p: 0.5,
-            borderRadius: '16px',
-            border: 'none',
-            height: 56,
-            '& .MuiToggleButtonGroup-grouped': {
-              border: 0,
-              borderRadius: '12px !important',
-              px: 2,
-              textTransform: 'none',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-            },
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap',
+            width: '100%',
           }}
         >
-          {(['day', 'week', 'range'] as PeriodMode[]).map((value) => (
-            <ToggleButton
-              key={value}
-              value={value}
+          <ToggleButtonGroup
+            value={mode}
+            exclusive
+            onChange={handleModeChange}
+            size="small"
+            fullWidth={isCompact}
+            sx={{
+              bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)',
+              p: 0.5,
+              borderRadius: { xs: '12px', sm: '16px' },
+              border: 'none',
+              height: { xs: 44, sm: 56 },
+              width: { xs: '100%', sm: 'fit-content' },
+              maxWidth: '100%',
+              alignSelf: { xs: 'stretch', sm: 'flex-start' },
+              flexShrink: 0,
+              '& .MuiToggleButtonGroup-grouped': {
+                border: 0,
+                borderRadius: '10px !important',
+                px: { xs: 1.25, sm: 2 },
+                flex: isCompact ? 1 : '0 0 auto',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: { xs: '0.8rem', sm: '0.85rem' },
+                whiteSpace: 'nowrap',
+              },
+            }}
+          >
+            {(['day', 'week', 'range'] as PeriodMode[]).map((value) => (
+              <ToggleButton
+                key={value}
+                value={value}
+                sx={{
+                  color: 'text.secondary',
+                  '&.Mui-selected': {
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#fff',
+                    color: tokens.brand.primary,
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                {value === 'day' ? 'Day' : value === 'week' ? 'Week' : 'Range'}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+
+          {mode === 'range' ? (
+            <Box
               sx={{
-                color: 'text.secondary',
-                '&.Mui-selected': {
-                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#fff',
-                  color: tokens.brand.primary,
-                  boxShadow: 'none',
-                },
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                flex: { sm: 1 },
+                minWidth: 0,
+                width: { xs: '100%', sm: 'auto' },
               }}
             >
-              {value === 'day' ? 'Day' : value === 'week' ? 'Week' : 'Range'}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-
-        {mode === 'range' ? (
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            <GlassDatePicker
-              value={date}
-              onChange={(v) => writePeriod(mode, v, rangeEnd < v ? v : rangeEnd)}
-              isDarkMode={isDarkMode}
-              label="Start Date"
-            />
-            <GlassDatePicker
-              value={rangeEnd}
-              onChange={(v) => writePeriod(mode, date, v)}
-              isDarkMode={isDarkMode}
-              label="End Date"
-            />
-          </Box>
-        ) : (
-          <GlassDatePicker
-            value={date}
-            onChange={(v) => writePeriod(mode, v, rangeEnd)}
-            isDarkMode={isDarkMode}
-            label={filterCaption}
-            displayValue={periodLabel}
-          />
-        )}
+              <GlassDatePicker
+                value={date}
+                onChange={(v) => writePeriod(mode, v, rangeEnd < v ? v : rangeEnd)}
+                isDarkMode={isDarkMode}
+                label="Start"
+                fullWidth={isToolbarStacked}
+                compact={isCompact}
+              />
+              <GlassDatePicker
+                value={rangeEnd}
+                onChange={(v) => writePeriod(mode, date, v)}
+                isDarkMode={isDarkMode}
+                label="End"
+                fullWidth={isToolbarStacked}
+                compact={isCompact}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ width: { xs: '100%', sm: 'auto' }, maxWidth: '100%', flexShrink: 0 }}>
+              <GlassDatePicker
+                value={date}
+                onChange={(v) => writePeriod(mode, v, rangeEnd)}
+                isDarkMode={isDarkMode}
+                label={filterCaption}
+                displayValue={periodLabel}
+                fullWidth={isToolbarStacked}
+                compact={isCompact}
+              />
+            </Box>
+          )}
+        </Box>
 
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: { xs: 0.5, sm: 1 },
             flexWrap: 'wrap',
-            ml: { md: 'auto' },
+            width: '100%',
+            pt: { xs: 0.25, sm: 0 },
           }}
         >
           {salesModuleOn && (
@@ -599,9 +644,12 @@ export default function MemberKpiDetailPage() {
           })}
         </Grid>
         ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, width: '100%' }}>
           {weekSections.map((section) => (
-            <Box key={`${section.startDate}-${section.endDate}`} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box
+              key={`${section.startDate}-${section.endDate}`}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, width: '100%' }}
+            >
               {(section.model.rows.length > 0 || section.kanban.length > 0) && (
                 <Typography
                   sx={{
@@ -712,6 +760,8 @@ function KpiDetailCard({
   completedAt?: string | null;
   onClick?: () => void;
 }) {
+  const theme = useTheme();
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const hasTarget = target != null && target > 0;
   const isIncomplete = !isCompleted && !isOverdue;
   const statusColor = isOverdue
@@ -734,10 +784,10 @@ function KpiDetailCard({
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.85)',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
         boxShadow: isDarkMode ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.03)',
-        p: 2.5,
+        p: { xs: 1.5, sm: 2.5 },
         display: 'flex',
         flexDirection: 'column',
-        gap: 1.5,
+        gap: { xs: 1.25, sm: 1.5 },
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s ease',
         '&:hover': onClick ? {
@@ -745,42 +795,80 @@ function KpiDetailCard({
         } : {},
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-        {isCompleted ? (
-          <CheckCircleIcon
+      <Box sx={{ width: '100%', minWidth: 0 }}>
+          <Box
             sx={{
-              fontSize: 22,
-              color: isCompletedLate ? tokens.semantic.warning : tokens.semantic.success,
-              mt: 0.25,
-            }}
-          />
-        ) : (
-          <AccessTimeIcon
-            sx={{
-              fontSize: 22,
-              color: isOverdue ? tokens.semantic.error : tokens.semantic.warning,
-              mt: 0.25,
-            }}
-          />
-        )}
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: '1rem',
-              color: isDarkMode ? '#fff' : tokens.text.primary,
+              display: 'flex',
+              flexDirection: isCompact ? 'column' : 'row',
+              alignItems: isCompact ? 'flex-start' : 'center',
+              flexWrap: isCompact ? 'nowrap' : 'wrap',
+              gap: { xs: 0.75, sm: 1 },
+              mb: 0.25,
+              width: '100%',
             }}
           >
-            {name}
-          </Typography>
+            <Typography
+              sx={{
+                flex: isCompact ? 'none' : '1 1 auto',
+                minWidth: 0,
+                width: isCompact ? '100%' : undefined,
+                fontWeight: 800,
+                fontSize: { xs: '0.92rem', sm: '1rem' },
+                lineHeight: 1.3,
+                color: isDarkMode ? '#fff' : tokens.text.primary,
+                overflowWrap: 'break-word',
+              }}
+            >
+              {name}
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 0.75,
+                flexShrink: 0,
+                width: isCompact ? '100%' : 'auto',
+              }}
+            >
+              <Chip
+                size="small"
+                label={kind === 'sales' ? 'Sales' : kind === 'kanban' ? 'Kanban' : 'Standalone'}
+                sx={{
+                  height: 22,
+                  fontWeight: 700,
+                  fontSize: '0.68rem',
+                  ...(kind === 'sales'
+                    ? { bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }
+                    : kind === 'kanban'
+                      ? { bgcolor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }
+                      : {
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                          color: 'text.secondary',
+                        }),
+                }}
+              />
+              <Chip
+                size="small"
+                label={statusLabel}
+                sx={{
+                  height: 22,
+                  fontWeight: 700,
+                  fontSize: '0.68rem',
+                  bgcolor: statusBg,
+                  color: statusColor,
+                }}
+              />
+            </Box>
+          </Box>
           {Boolean(description?.trim()) && (
             <RichTextContent
               content={description}
               sx={{
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.78rem', sm: '0.8rem' },
                 lineHeight: 1.4,
                 color: 'text.secondary',
-                mt: 0.25,
+                maxWidth: '100%',
+                overflowWrap: 'break-word',
                 '& p': { m: 0 },
               }}
             />
@@ -797,35 +885,6 @@ function KpiDetailCard({
               </Typography>
             </Tooltip>
           )}
-        </Box>
-        <Chip
-          size="small"
-          label={kind === 'sales' ? 'Sales' : kind === 'kanban' ? 'Kanban' : 'Standalone'}
-          sx={{
-            height: 22,
-            fontWeight: 700,
-            fontSize: '0.68rem',
-            ...(kind === 'sales'
-              ? { bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }
-              : kind === 'kanban'
-                ? { bgcolor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }
-                : {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                    color: 'text.secondary',
-                  }),
-          }}
-        />
-        <Chip
-          size="small"
-          label={statusLabel}
-          sx={{
-            height: 22,
-            fontWeight: 700,
-            fontSize: '0.68rem',
-            bgcolor: statusBg,
-            color: statusColor,
-          }}
-        />
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>

@@ -24,6 +24,23 @@ import {
   SALES_KPI_EXTRA_TOOLTIP,
 } from '@/lib/salesKpi';
 
+const KPI_COL_WIDTH = { xs: 132, sm: 160 };
+const DAY_COL_MIN_WIDTH = 72;
+const TOTAL_COL_MIN_WIDTH = 88;
+
+const kpiStickyCellSx = (isDarkMode: boolean) => ({
+  fontWeight: 700,
+  position: 'sticky' as const,
+  left: 0,
+  zIndex: 1,
+  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
+  borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+  width: KPI_COL_WIDTH,
+  minWidth: KPI_COL_WIDTH,
+  maxWidth: KPI_COL_WIDTH,
+  boxShadow: '4px 0 12px rgba(0, 0, 0, 0.06)',
+});
+
 const statusColors = (display: TaskDisplay) => {
   if (display.isOverdue) {
     return {
@@ -88,6 +105,10 @@ export function MemberKpiWeekTable({
 }) {
   if (model.workingDays.length === 0 || model.rows.length === 0) return null;
 
+  const dayCount = model.columnLabels.length;
+  const tableMinWidth =
+    KPI_COL_WIDTH.sm + dayCount * DAY_COL_MIN_WIDTH + TOTAL_COL_MIN_WIDTH;
+
   const emptySx = {
     color: 'text.disabled',
     bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
@@ -102,25 +123,54 @@ export function MemberKpiWeekTable({
           {title}
         </Typography>
       )}
-      <TableContainer
+      <Box
         sx={{
-          borderRadius: '16px',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-          overflowX: 'auto',
+          position: 'relative',
+          width: '100%',
+          minWidth: 0,
+          maxWidth: '100%',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 1,
+            right: 1,
+            bottom: 1,
+            width: 28,
+            borderRadius: '0 15px 15px 0',
+            pointerEvents: 'none',
+            display: { xs: 'block', md: 'none' },
+            background: isDarkMode
+              ? 'linear-gradient(to left, rgba(30, 27, 36, 0.92), transparent)'
+              : 'linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent)',
+          },
         }}
       >
-        <Table size="small" sx={{ minWidth: 640 }}>
+        <TableContainer
+          sx={{
+            borderRadius: '16px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            maxWidth: '100%',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'thin',
+          }}
+        >
+          <Table
+            size="small"
+            sx={{
+              tableLayout: 'fixed',
+              width: tableMinWidth,
+              minWidth: tableMinWidth,
+            }}
+          >
           <TableHead>
             <TableRow>
               <TableCell
                 sx={{
+                  ...kpiStickyCellSx(isDarkMode),
                   fontWeight: 800,
-                  position: 'sticky',
-                  left: 0,
                   zIndex: 2,
-                  bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
-                  minWidth: 160,
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                 }}
               >
                 KPI
@@ -132,6 +182,8 @@ export function MemberKpiWeekTable({
                   sx={{
                     fontWeight: 800,
                     whiteSpace: 'nowrap',
+                    minWidth: DAY_COL_MIN_WIDTH,
+                    width: DAY_COL_MIN_WIDTH,
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                   }}
                 >
@@ -143,6 +195,8 @@ export function MemberKpiWeekTable({
                 sx={{
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
+                  minWidth: TOTAL_COL_MIN_WIDTH,
+                  width: TOTAL_COL_MIN_WIDTH,
                   borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                 }}
               >
@@ -168,17 +222,21 @@ export function MemberKpiWeekTable({
                 .join(' · ');
               return (
                 <TableRow key={row.id}>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      position: 'sticky',
-                      left: 0,
-                      zIndex: 1,
-                      bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                    }}
-                  >
-                    {row.name}
+                  <TableCell sx={kpiStickyCellSx(isDarkMode)}>
+                    <Typography
+                      component="span"
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        fontSize: { xs: '0.78rem', sm: '0.82rem' },
+                        lineHeight: 1.35,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {row.name}
+                    </Typography>
                   </TableCell>
                   {row.cells.map((cell, idx) => {
                     if (cell === 'covered') return null;
@@ -212,8 +270,9 @@ export function MemberKpiWeekTable({
               );
             })}
           </TableBody>
-        </Table>
-      </TableContainer>
+          </Table>
+        </TableContainer>
+      </Box>
     </Box>
   );
 }
