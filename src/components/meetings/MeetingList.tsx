@@ -7,6 +7,7 @@ import {
   Box,
   CircularProgress,
   useTheme,
+  useMediaQuery,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -80,6 +81,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const addToast = useUIStore((s) => s.addToast);
   const { user, isElevated } = useAuth();
 
@@ -99,6 +101,12 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'today' | 'upcoming'>('all');
+
+  useEffect(() => {
+    if (isCompact) {
+      setViewMode('list');
+    }
+  }, [isCompact]);
 
   useEffect(() => {
     const meetingId = searchParams.get('meetingId');
@@ -158,27 +166,50 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
   return (
     <>
       {/* Controls Row: Time Filter & View Toggle */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 4, gap: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          mb: { xs: 3, sm: 4 },
+          gap: 2,
+          minWidth: 0,
+        }}
+      >
         {/* iOS style segmented control for Time Filter */}
         <Box
           sx={{
-            display: 'inline-flex',
-            bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
-            borderRadius: '20px',
-            p: 0.5,
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            width: { xs: '100%', sm: 'auto' },
+            maxWidth: '100%',
           }}
         >
-          {['all', 'past', 'today', 'upcoming'].map((filter) => (
+          <Box
+            sx={{
+              display: 'inline-flex',
+              minWidth: 'min-content',
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+              borderRadius: '20px',
+              p: 0.5,
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+            }}
+          >
+          {(['all', 'past', 'today', 'upcoming'] as const).map((filter) => (
             <Button
               key={filter}
-              onClick={() => setTimeFilter(filter as any)}
+              onClick={() => setTimeFilter(filter)}
               sx={{
-                px: 3, py: 0.75,
+                px: { xs: 2, sm: 3 },
+                py: 0.75,
                 borderRadius: '16px',
                 textTransform: 'capitalize',
                 fontWeight: 700,
-                fontSize: '0.85rem',
+                fontSize: { xs: '0.78rem', sm: '0.85rem' },
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
                 color: timeFilter === filter 
                   ? (isDarkMode ? '#fff' : tokens.brand.primary) 
                   : 'text.secondary',
@@ -194,36 +225,53 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                 }
               }}
             >
-              {filter}
+              {filter === 'upcoming' && isCompact ? 'Next' : filter}
             </Button>
           ))}
+          </Box>
         </Box>
 
-        {/* View Toggle */}
-        <Box sx={{ display: 'flex', gap: 0.5, bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)', p: 0.5, borderRadius: '12px' }}>
-          <IconButton 
-            onClick={() => setViewMode('grid')}
-            sx={{ 
-              bgcolor: viewMode === 'grid' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
-              color: viewMode === 'grid' ? tokens.brand.primaryLight : 'text.secondary',
-              boxShadow: viewMode === 'grid' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-              borderRadius: '10px'
+        {/* View toggle — hidden on compact (below sm); list-only enforced via useEffect */}
+        {!isCompact && (
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 0.5,
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+              p: 0.5,
+              borderRadius: '12px',
             }}
           >
-            <ViewModuleIcon fontSize="small" />
-          </IconButton>
-          <IconButton 
-            onClick={() => setViewMode('list')}
-            sx={{ 
-              bgcolor: viewMode === 'list' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
-              color: viewMode === 'list' ? tokens.brand.primaryLight : 'text.secondary',
-              boxShadow: viewMode === 'list' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-              borderRadius: '10px'
-            }}
-          >
-            <ViewListIcon fontSize="small" />
-          </IconButton>
-        </Box>
+            <Tooltip title="Grid view" arrow>
+              <IconButton
+                aria-label="Grid view"
+                onClick={() => setViewMode('grid')}
+                sx={{
+                  bgcolor: viewMode === 'grid' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
+                  color: viewMode === 'grid' ? tokens.brand.primaryLight : 'text.secondary',
+                  boxShadow: viewMode === 'grid' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                  borderRadius: '10px',
+                }}
+              >
+                <ViewModuleIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="List view" arrow>
+              <IconButton
+                aria-label="List view"
+                onClick={() => setViewMode('list')}
+                sx={{
+                  bgcolor: viewMode === 'list' ? (isDarkMode ? 'rgba(255,255,255,0.1)' : '#fff') : 'transparent',
+                  color: viewMode === 'list' ? tokens.brand.primaryLight : 'text.secondary',
+                  boxShadow: viewMode === 'list' && !isDarkMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                  borderRadius: '10px',
+                }}
+              >
+                <ViewListIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
 
       {filteredMeetings.length === 0 ? (
@@ -234,7 +282,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
           onAction={onScheduleTrigger}
         />
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {filteredMeetings.map((meeting) => {
             const isMeetingPast = meeting.status === 'cancelled' || isPast(new Date(meeting.scheduledAt));
 
@@ -256,10 +304,12 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   position: 'relative',
                   overflow: 'hidden',
                   cursor: 'pointer',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: tokens.shadow.cardHover,
-                    borderColor: isDarkMode ? 'rgba(123, 61, 168, 0.25)' : 'rgba(93, 26, 137, 0.15)',
+                  '@media (hover: hover)': {
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: tokens.shadow.cardHover,
+                      borderColor: isDarkMode ? 'rgba(123, 61, 168, 0.25)' : 'rgba(93, 26, 137, 0.15)',
+                    },
                   },
                 }}
               >
@@ -292,7 +342,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Tooltip>
                 )}
 
-                <Box sx={{ p: 3, pt: viewMode === 'list' ? 3 : 3.5, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : { xs: 'column', sm: 'row' }, alignItems: viewMode === 'grid' ? 'stretch' : { xs: 'stretch', sm: 'center' }, gap: viewMode === 'list' ? { xs: 2, sm: 0 } : 0, width: '100%' }}>
+                <Box sx={{ p: { xs: 2, sm: 3 }, pt: viewMode === 'list' ? { xs: 2, sm: 3 } : { xs: 2.5, sm: 3.5 }, flexGrow: 1, display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : { xs: 'column', sm: 'row' }, alignItems: viewMode === 'grid' ? 'stretch' : { xs: 'stretch', sm: 'center' }, gap: viewMode === 'list' ? { xs: 2, sm: 0 } : 0, width: '100%', minWidth: 0 }}>
                   {/* Top Row: Category Icon Box & Badge */}
                   {viewMode === 'grid' && (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, pr: 4 }}>
@@ -319,7 +369,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   )}
 
                   {viewMode === 'list' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: { xs: 0, sm: 3 }, minWidth: { xs: 0, sm: 200 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: { xs: 0, sm: 3 }, minWidth: 0, flex: { sm: '0 1 220px' }, pr: { xs: 4, sm: 0 } }}>
                       <Box
                         sx={{
                           width: 42,
@@ -339,7 +389,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       >
                         <VideocamIcon sx={{ fontSize: 22 }} />
                       </Box>
-                      <Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography
                           variant="h6"
                           sx={{
@@ -418,11 +468,13 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                       borderRadius: '16px',
                       border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}`,
                       flexGrow: viewMode === 'list' ? 1 : 0,
-                      mr: viewMode === 'list' ? 3 : 0,
-                      flexDirection: viewMode === 'list' ? 'row' : 'column',
+                      mr: viewMode === 'list' ? { xs: 0, sm: 3 } : 0,
+                      flexDirection: viewMode === 'list' ? { xs: 'column', sm: 'row' } : 'column',
+                      minWidth: 0,
+                      width: viewMode === 'list' ? { xs: '100%', sm: 'auto' } : 'auto',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 3 }, flexWrap: 'wrap', width: '100%' }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Typography variant="caption" sx={{ color: 'text.muted', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
                           Date
@@ -450,7 +502,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
                   </Box>
 
                   {/* Participants Avatars stacked list */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: viewMode === 'grid' ? 'space-between' : 'flex-end', mt: viewMode === 'grid' ? 'auto' : 0, pt: viewMode === 'grid' ? 1 : 0, minWidth: viewMode === 'list' ? 150 : 'auto', pr: viewMode === 'list' ? 6 : 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: viewMode === 'grid' ? 'space-between' : { xs: 'space-between', sm: 'flex-end' }, mt: viewMode === 'grid' ? 'auto' : { xs: 0.5, sm: 0 }, pt: viewMode === 'grid' ? 1 : 0, minWidth: 0, width: viewMode === 'list' ? { xs: '100%', sm: 'auto' } : 'auto', pr: viewMode === 'list' ? { xs: 0, sm: 6 } : 0 }}>
                     {viewMode === 'grid' && (
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
                         Participants
@@ -611,6 +663,7 @@ export const MeetingList = ({ onScheduleTrigger, currentUser }: MeetingListProps
         onClose={() => setEditMeeting(null)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isCompact}
         scroll="paper"
         PaperProps={{
           sx: {
@@ -759,7 +812,18 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
           guestEmailsHelperText="Press Enter to add each guest email. Remove with × on the chip."
         />
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: 2,
+          pt: 1,
+          gap: 1.5,
+          flexShrink: 0,
+          flexWrap: 'wrap',
+          justifyContent: { xs: 'stretch', sm: 'flex-end' },
+          '& .MuiButton-root': { minWidth: { xs: 0, sm: 64 } },
+        }}
+      >
         {canDelete && (
           <Button
             onClick={() => {

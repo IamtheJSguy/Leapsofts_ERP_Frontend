@@ -11,6 +11,7 @@ import {
   Button,
   CircularProgress,
   useTheme,
+  useMediaQuery,
   Typography,
 } from '@mui/material';
 import { MeetingFormFields } from '@/components/meetings/MeetingFormFields';
@@ -45,9 +46,16 @@ interface MeetingSchedulerProps {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
   currentUser?: any;
+  /** When false, only schedule/detail dialogs render (no calendar). */
+  showCalendar?: boolean;
 }
 
-export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: MeetingSchedulerProps) => {
+export const MeetingScheduler = ({
+  dialogOpen,
+  setDialogOpen,
+  currentUser,
+  showCalendar = true,
+}: MeetingSchedulerProps) => {
   const { data: meetings = [] } = useMeetings();
   const createMeeting = useCreateMeeting();
   const updateMeeting = useUpdateMeeting();
@@ -61,6 +69,7 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
@@ -252,11 +261,14 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
 
   return (
     <Box>
+      {showCalendar && (
       <Box
         sx={{
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
-          p: 3,
-          borderRadius: '24px',
+          p: { xs: 1.5, sm: 3 },
+          borderRadius: { xs: '16px', sm: '24px' },
+          minWidth: 0,
+          overflow: 'hidden',
           border: '1px solid',
           borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.05)',
           boxShadow: tokens.shadow.card,
@@ -335,10 +347,14 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               gap: '4px',
             },
             '& .rbc-toolbar-label': {
-              fontSize: '1.2rem',
+              fontSize: { xs: '1rem', sm: '1.2rem' },
               fontWeight: 800,
               color: 'text.primary',
               letterSpacing: '-0.01em',
+              width: { xs: '100%', sm: 'auto' },
+              textAlign: { xs: 'center', sm: 'inherit' },
+              order: { xs: -1, sm: 0 },
+              flexBasis: { xs: '100%', sm: 'auto' },
             },
             '& button': {
               bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
@@ -371,14 +387,23 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           }
         }}
       >
-        <Calendar
+        <Box
+          sx={{
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            mx: { xs: -1, sm: 0 },
+            px: { xs: 1, sm: 0 },
+          }}
+        >
+          <Box sx={{ minWidth: { xs: 560, sm: 0 } }}>
+            <Calendar
           localizer={localizer}
           events={events}
           view={view}
           onView={setView}
           date={date}
           onNavigate={(newDate) => setDate(newDate)}
-          style={{ height: 600 }}
+          style={{ height: isCompact ? 480 : 600 }}
           onSelectSlot={(slot) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -395,14 +420,18 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
           }}
           eventPropGetter={eventPropGetter}
           selectable
-        />
+            />
+          </Box>
+        </Box>
       </Box>
+      )}
 
       <Dialog
         open={dialogOpen}
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
+        fullScreen={isCompact}
         scroll="paper"
         PaperProps={{
           sx: {
@@ -457,7 +486,16 @@ export const MeetingScheduler = ({ dialogOpen, setDialogOpen, currentUser }: Mee
               isCreate={!editingMeeting}
             />
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1.5, flexShrink: 0 }}>
+          <DialogActions
+            sx={{
+              px: 3,
+              pb: 2,
+              pt: 1,
+              gap: 1.5,
+              flexShrink: 0,
+              flexWrap: 'wrap',
+            }}
+          >
             {editingMeeting && canEditOrDelete(editingMeeting) && (
               <Button
                 onClick={handleDelete}

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
+import { Box, Button, Chip, Typography, useTheme, useMediaQuery } from '@mui/material';
 import EventIcon from '@mui/icons-material/Event';
 import {
   useCalendarStatus,
@@ -19,6 +19,7 @@ import { showApiError } from '@/utils/apiError';
 export const GoogleCalendarConnectPanel = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const { data: calendarStatus, refetch: refetchCalendarStatus } = useCalendarStatus();
   const calendarAuth = useCalendarAuthUrl();
   const disconnectCalendar = useDisconnectCalendar();
@@ -100,12 +101,22 @@ export const GoogleCalendarConnectPanel = () => {
           )}
         </Box>
       </Box>
-      <Box sx={{ flexShrink: 0, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          flexShrink: 0,
+          display: 'flex',
+          gap: 1,
+          flexWrap: 'wrap',
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'stretch', sm: 'flex-end' },
+        }}
+      >
         {connected ? (
           <>
             <Button
               variant="contained"
               startIcon={<SyncIcon />}
+              fullWidth={isCompact}
               disabled={syncCalendar.isPending}
               onClick={() =>
                 syncCalendar.mutate(undefined, {
@@ -127,6 +138,7 @@ export const GoogleCalendarConnectPanel = () => {
                 textTransform: 'none',
                 fontWeight: 700,
                 borderRadius: '12px',
+                flex: { xs: '1 1 100%', sm: '0 0 auto' },
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -135,13 +147,19 @@ export const GoogleCalendarConnectPanel = () => {
             <Button
               variant="outlined"
               color="inherit"
+              fullWidth={isCompact}
               disabled={disconnectCalendar.isPending}
               onClick={() =>
                 disconnectCalendar.mutate(undefined, {
                   onSuccess: () => addToast({ message: 'Google Calendar disconnected', severity: 'info' }),
                 })
               }
-              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: '12px',
+                flex: { xs: '1 1 100%', sm: '0 0 auto' },
+              }}
             >
               Disconnect
             </Button>
@@ -149,6 +167,7 @@ export const GoogleCalendarConnectPanel = () => {
         ) : (
           <Button
             variant="contained"
+            fullWidth={isCompact}
             disabled={calendarAuth.isPending}
             onClick={() => {
               calendarAuth.mutate(undefined, {
@@ -164,7 +183,7 @@ export const GoogleCalendarConnectPanel = () => {
               '&:hover': { bgcolor: tokens.brand.primaryDark },
             }}
           >
-            Connect Google Calendar
+            {isCompact ? 'Connect Calendar' : 'Connect Google Calendar'}
           </Button>
         )}
       </Box>

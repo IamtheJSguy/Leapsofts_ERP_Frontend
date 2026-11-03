@@ -11,6 +11,7 @@ import {
   Avatar,
   Chip,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -50,6 +51,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const { user: currentUser, isElevated } = useAuth();
 
   const { data: allUsers = [] } = useUsers();
@@ -129,15 +131,20 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isCompact}
+      scroll="paper"
       PaperProps={{
         sx: {
-          borderRadius: '24px',
+          borderRadius: isCompact ? 0 : '24px',
           border: '1px solid',
           borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
           p: 1,
           bgcolor: 'background.paper',
           boxShadow: tokens.shadow.cardHover,
           overflow: 'hidden',
+          maxHeight: isCompact ? '100dvh' : 'calc(100dvh - 48px)',
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
@@ -148,6 +155,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             {canEditOrDelete() && onEdit && (
               <IconButton
                 size="small"
+                aria-label="Edit meeting"
                 onClick={() => {
                   onEdit(meeting);
                   onClose();
@@ -163,17 +171,27 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                 <EditOutlinedIcon fontSize="small" />
               </IconButton>
             )}
-            <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+            <IconButton onClick={onClose} size="small" aria-label="Close" sx={{ color: 'text.secondary' }}>
               <CloseIcon />
             </IconButton>
           </Box>
         </Box>
-        <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: '-0.02em', lineHeight: 1.3, color: 'text.primary' }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 850,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.3,
+            color: 'text.primary',
+            fontSize: { xs: '1.15rem', sm: '1.5rem' },
+            pr: 1,
+          }}
+        >
           {meeting.title}
         </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, py: 1.5, overflowX: 'hidden' }}>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 1.5, overflowX: 'hidden', flex: '1 1 auto', minHeight: 0 }}>
         {/* Timing Grid */}
         <Box
           sx={{
@@ -210,16 +228,18 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             <Typography variant="caption" sx={{ color: tokens.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Scheduled Time
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <AccessTimeIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
-              <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                {meeting.scheduledAt
-                  ? formatMeetingInstant(meeting.scheduledAt, meetingTz, {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })
-                  : 'N/A'}
-              </Typography>
+            <Box sx={{ mt: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <AccessTimeIcon sx={{ color: tokens.brand.primaryLight, fontSize: 18 }} />
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                  {meeting.scheduledAt
+                    ? formatMeetingInstant(meeting.scheduledAt, meetingTz, {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : 'N/A'}
+                </Typography>
+              </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                 {meetingTz}
                 {viewerTz !== meetingTz && meeting.scheduledAt
@@ -447,17 +467,18 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                     borderRadius: '12px',
                     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`,
                     bgcolor: isDarkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <Avatar src={details?.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
+                  <Avatar src={details?.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 800, bgcolor: 'secondary.light', color: 'secondary.contrastText', flexShrink: 0 }}>
                     {initials}
                   </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  <Box sx={{ flex: '1 1 120px', minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, wordBreak: 'break-word' }}>
                       {name}
                     </Typography>
                     {email && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', wordBreak: 'break-all' }}>
                         {email}
                       </Typography>
                     )}
@@ -469,6 +490,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                       borderRadius: '8px',
                       fontWeight: 750,
                       fontSize: '0.62rem',
+                      flexShrink: 0,
                       bgcolor: role === 'admin' ? 'rgba(217, 82, 54, 0.08)' : role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
                       color: role === 'admin' ? '#d95236' : role === 'manager' ? '#10B981' : tokens.brand.primaryLight,
                     }}
@@ -618,12 +640,13 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
         )}
 
         {/* Main Action Row */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 1.5, width: '100%' }}>
           <Button
             variant="outlined"
             onClick={onClose}
             sx={{
-              flex: 1,
+              flex: { xs: 'none', sm: 1 },
+              width: { xs: '100%', sm: 'auto' },
               py: 1,
               borderRadius: '14px',
               textTransform: 'none',
@@ -645,7 +668,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                 onClose();
               }}
               sx={{
-                flex: 1,
+                flex: { xs: 'none', sm: 1 },
+                width: { xs: '100%', sm: 'auto' },
                 py: 1,
                 borderRadius: '14px',
                 textTransform: 'none',
@@ -669,7 +693,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
               endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
               onClick={() => window.open(joinUrl, '_blank', 'noopener,noreferrer')}
               sx={{
-                flex: 1.5,
+                flex: { xs: 'none', sm: 1.5 },
+                width: { xs: '100%', sm: 'auto' },
                 py: 1,
                 borderRadius: '14px',
                 textTransform: 'none',
