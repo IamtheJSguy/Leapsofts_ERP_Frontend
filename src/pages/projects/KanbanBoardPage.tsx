@@ -47,7 +47,7 @@ import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import type { CreateMeetingPayload, KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { MeetingCreateFormBlock } from '@/components/meetings/MeetingCreateFormBlock';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { useLead } from '@/hooks/api/useLeads';
@@ -92,6 +92,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { QueryState } from '@/components/common/QueryState';
 import { showApiError } from '@/utils/apiError';
 import { TransferCardDialog, type TransferCardContext } from '@/components/kanban/TransferCardDialog';
 
@@ -130,57 +131,6 @@ const kanbanActiveMoverRingSx = (isActive: boolean) =>
         outlineOffset: '1px',
       }
     : {};
-
-// Custom Modern Premium Confirmation Dialog Component
-const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
-  return (
-    <Dialog
-      open={open}
-      onClose={onCancel}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: '20px',
-          p: 1.5,
-          /* backdropFilter: 'blur(10px)' (removed for performance) */
-          boxShadow: '0 10px 40px rgba(0,0,0,0.12)'
-        }
-      }}
-    >
-      <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>{title}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, lineHeight: 1.5 }}>
-          {description}
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, gap: 1 }}>
-        <Button
-          onClick={onCancel}
-          sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 2.5 }}
-        >
-          {cancelText}
-        </Button>
-        <Button
-          onClick={onConfirm}
-          variant="contained"
-          disableElevation
-          sx={{
-            bgcolor: '#ef4444',
-            color: '#fff',
-            fontWeight: 700,
-            borderRadius: '24px',
-            textTransform: 'none',
-            px: 3,
-            '&:hover': { bgcolor: '#dc2626' }
-          }}
-        >
-          {confirmText}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 const DEFAULT_DUE_TIME = '23:59';
 
@@ -276,7 +226,7 @@ const CardImageLightbox = ({
       <Box
         component="img"
         src={src}
-        alt=""
+        alt="Card attachment preview"
         onClick={stopCardImageEvent}
         sx={{
           display: 'block',
@@ -2313,7 +2263,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         overflow: 'hidden',
                       }}
                     >
-                      <RichTextEditor
+                      <LazyRichTextEditor
                         value={editDesc}
                         onChange={setEditDesc}
                         submitOnEnter={false}
@@ -3111,7 +3061,7 @@ export const KanbanBoardPage = () => {
   const queryClient = useQueryClient();
   const organizationId = useAuthStore((s) => s.user?.organizationId);
 
-  const { data: board, isLoading, error } = useKanbanBoard(activeBoardId);
+  const { data: board, isLoading, error, isError, refetch } = useKanbanBoard(activeBoardId);
   const { data: allUsers = [] } = useUsers();
   const { data: conversations = [] } = useConversations();
   const createBoardConversation = useCreateBoardConversation();
@@ -3718,11 +3668,24 @@ export const KanbanBoardPage = () => {
     return <KanbanPageSkeleton />;
   }
 
-  if (error || !actualBoard) {
+  if ((isError || !actualBoard) && !board) {
+    return (
+      <QueryState isLoading={false} isError={isError || !actualBoard} onRetry={() => refetch()} hasData={false}>
+        <Box />
+      </QueryState>
+    );
+  }
+
+  if (!actualBoard) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h6" color="error">Error loading board details.</Typography>
-        <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }} variant="outlined">Back to Projects</Button>
+        <Button onClick={() => refetch()} sx={{ mt: 2, mr: 1 }} variant="contained">
+          Retry
+        </Button>
+        <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }} variant="outlined">
+          Back to Projects
+        </Button>
       </Box>
     );
   }
@@ -3979,53 +3942,65 @@ export const KanbanBoardPage = () => {
           </MenuItem>
         ))}
 
-        {isElevated && (
-          <>
-            <Divider sx={{ my: 1 }} />
+        {isElevated
+          ? [
+              <Divider key="filter-user-divider" sx={{ my: 1 }} />,
+              <Typography
+                key="filter-user-label"
+                variant="caption"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  display: 'block',
+                  fontWeight: 800,
+                  color: 'text.secondary',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Filter by User
+              </Typography>,
+              ...boardMembers.map((m: any) => {
+                const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+                const checked = assigneeFilterIds.includes(m._id);
+                return (
+                  <MenuItem
+                    key={m._id}
+                    onClick={() => {
+                      setAssigneeFilterIds((prev) =>
+                        prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id],
+                      );
+                    }}
+                    sx={{ borderRadius: '8px', mx: 1 }}
+                  >
+                    <Checkbox size="small" checked={checked} sx={{ p: 0.5, mr: 1 }} />
+                    <Typography variant="body2" sx={{ fontWeight: checked ? 700 : 500 }}>
+                      {name}
+                    </Typography>
+                  </MenuItem>
+                );
+              }),
+            ]
+          : null}
 
-            <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Filter by User
-            </Typography>
-            {boardMembers.map((m: any) => {
-              const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
-              const checked = assigneeFilterIds.includes(m._id);
-              return (
-                <MenuItem
-                  key={m._id}
-                  onClick={() => {
-                    setAssigneeFilterIds((prev) =>
-                      prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
-                    );
-                  }}
-                  sx={{ borderRadius: '8px', mx: 1 }}
-                >
-                  <Checkbox size="small" checked={checked} sx={{ p: 0.5, mr: 1 }} />
-                  <Typography variant="body2" sx={{ fontWeight: checked ? 700 : 500 }}>
-                    {name}
-                  </Typography>
-                </MenuItem>
-              );
-            })}
-          </>
-        )}
-
-        {(priorityFilter !== 'All' || assigneeFilterIds.length > 0) && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <MenuItem
-              onClick={() => {
-                setPriorityFilter('All');
-                setAssigneeFilterIds([]);
-                setFilterMenuAnchor(null);
-              }}
-              sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                Clear Filters
-              </Typography>
-            </MenuItem>
-          </>
-        )}
+        {priorityFilter !== 'All' || assigneeFilterIds.length > 0
+          ? [
+              <Divider key="clear-filters-divider" sx={{ my: 1 }} />,
+              <MenuItem
+                key="clear-filters"
+                onClick={() => {
+                  setPriorityFilter('All');
+                  setAssigneeFilterIds([]);
+                  setFilterMenuAnchor(null);
+                }}
+                sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  Clear Filters
+                </Typography>
+              </MenuItem>,
+            ]
+          : null}
       </Menu>
 
       {/* Add Column Dialog */}
@@ -4260,7 +4235,7 @@ export const KanbanBoardPage = () => {
                 overflow: 'hidden',
               }}
             >
-              <RichTextEditor
+              <LazyRichTextEditor
                 value={newCardDescription}
                 onChange={setNewCardDescription}
                 submitOnEnter={false}
@@ -4470,12 +4445,13 @@ export const KanbanBoardPage = () => {
       ) : null}
 
       {/* Custom Column Delete Confirmation */}
-      <ModernConfirmDialog
+      <ConfirmDialog
         open={columnConfirmOpen}
         title="Delete Column"
-        description="Are you sure you want to delete this column? Sibling card leads will automatically move to the first active column."
+        message="Are you sure you want to delete this column? Sibling card leads will automatically move to the first active column."
         onConfirm={handleDeleteColumnConfirm}
         onCancel={() => setColumnConfirmOpen(false)}
+        confirmLabel="Delete"
       />
       {/* Share Board Dialog */}
       <Dialog open={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}>

@@ -66,7 +66,12 @@ export const ChatSidebar = () => {
   const { data: conversations = [] } = useConversations();
   const { data: boards = [] } = useKanbanBoards();
   const { data: dbUsers = [] } = useUsers();
-  const { activeConversationId, setActiveConversation, typingUsers, unreadCounts, clearUnread, presenceByUserId } = useChatStore();
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+  const typingUsers = useChatStore((s) => s.typingUsers);
+  const unreadCounts = useChatStore((s) => s.unreadCounts);
+  const clearUnread = useChatStore((s) => s.clearUnread);
+  const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -453,6 +458,7 @@ export const ChatSidebar = () => {
         />
         <IconButton
           onClick={() => setIsNewChatModalOpen(true)}
+          aria-label="Start new conversation"
           sx={{
             bgcolor: tokens.brand.solid,
             color: '#fff',

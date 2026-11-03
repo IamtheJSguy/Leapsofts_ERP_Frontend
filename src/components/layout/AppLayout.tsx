@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
@@ -16,7 +16,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
-import api from '@/lib/axios';
+import { useAcknowledgeMonitoring, useMonitoringConfig } from '@/hooks/api/useAdmin';
 import { DRIVE_CONNECTED_EVENT, refreshDriveConnection } from '@/hooks/api/useDrive';
 import { useLogout } from '@/hooks/api/useAuth';
 import { useEntitlements, type OrgModuleFlags } from '@/hooks/useEntitlements';
@@ -56,6 +56,14 @@ export const AppLayout = () => {
   const previousOrganizationId = useRef(organizationId);
   const logout = useLogout();
   const [monitoringOpen, setMonitoringOpen] = useState(false);
+  const acknowledgeMonitoring = useAcknowledgeMonitoring();
+  const monitoringConfigEnabled = useMemo(() => {
+    if (!user?._id) return false;
+    if (hasCompletedMonitoringPromptThisSession(user._id)) return false;
+    if (user.monitoringPolicyAcknowledgedAt) return false;
+    return isMonitoringPromptPending();
+  }, [user]);
+  const { data: monitoringCfg, isError: monitoringCfgError } = useMonitoringConfig(monitoringConfigEnabled);
   const entitlements: OrgModuleFlags = useEntitlements();
   const chatEnabled = entitlements.chat;
   useMe();
@@ -167,36 +175,54 @@ export const AppLayout = () => {
 
   useEffect(() => {
     if (!user?._id) return;
-    // Already handled for this browser session (covers refresh + org switch).
-    if (hasCompletedMonitoringPromptThisSession(user._id)) return;
-    // Already acknowledged in the past — don't prompt again this session.
     if (user.monitoringPolicyAcknowledgedAt) {
       markMonitoringPromptCompleted(user._id);
       return;
     }
-    // Only arm this dialog from a fresh login/register, not refresh or org switch.
-    if (!isMonitoringPromptPending()) return;
-
-    let cancelled = false;
-    api.get('/admin/monitoring-config').then((res) => {
-      if (cancelled) return;
-      const cfg = res.data.data as { screenshotsEnabled?: boolean; appUsageEnabled?: boolean };
-      // Consume the pending flag whether or not monitoring is enabled, so refresh won't re-open.
-      markMonitoringPromptCompleted(user._id);
-      if (cfg.screenshotsEnabled || cfg.appUsageEnabled) setMonitoringOpen(true);
-    }).catch(() => {
-      if (!cancelled) markMonitoringPromptCompleted(user._id);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+    if (!monitoringConfigEnabled) return;
+    if (!monitoringCfg && !monitoringCfgError) return;
+    markMonitoringPromptCompleted(user._id);
+    if (monitoringCfg?.screenshotsEnabled || monitoringCfg?.appUsageEnabled) {
+      setMonitoringOpen(true);
+    }
+  }, [user, monitoringConfigEnabled, monitoringCfg, monitoringCfgError]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.surface.main }}>
+      <Box
+        component="a"
+        href="#app-main-content"
+        sx={{
+          position: 'absolute',
+          left: -9999,
+          top: 'auto',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          '&:focus': {
+            position: 'fixed',
+            left: 16,
+            top: 16,
+            width: 'auto',
+            height: 'auto',
+            overflow: 'visible',
+            zIndex: tokens.zIndex.skipLink,
+            px: 2,
+            py: 1,
+            bgcolor: tokens.surface.card,
+            color: tokens.text.primary,
+            borderRadius: 2,
+            boxShadow: 2,
+            textDecoration: 'none',
+            fontWeight: 700,
+          },
+        }}
+      >
+        Skip to main content
+      </Box>
       <Sidebar />
       <Box
+        id="app-main-content"
         component="main"
         sx={{
           flexGrow: 1,
@@ -280,11 +306,17 @@ export const AppLayout = () => {
         <DialogActions>
           <Button
             variant="contained"
-            onClick={async () => {
-              await api.post('/users/me/acknowledge-monitoring');
-              useAuthStore.getState().updateUser({ monitoringPolicyAcknowledgedAt: new Date().toISOString() });
-              if (user?._id) markMonitoringPromptCompleted(user._id);
-              setMonitoringOpen(false);
+            disabled={acknowledgeMonitoring.isPending}
+            onClick={() => {
+              acknowledgeMonitoring.mutate(undefined, {
+                onSuccess: () => {
+                  useAuthStore.getState().updateUser({
+                    monitoringPolicyAcknowledgedAt: new Date().toISOString(),
+                  });
+                  if (user?._id) markMonitoringPromptCompleted(user._id);
+                  setMonitoringOpen(false);
+                },
+              });
             }}
           >
             I understand

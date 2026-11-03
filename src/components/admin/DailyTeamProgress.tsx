@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import api from '@/lib/axios';
+import { loadKanbanCardRouteInfo, kanbanCardNavigatePath } from '@/utils/kanbanCardNavigation';
 import {
   Box,
   Typography,
@@ -338,11 +338,9 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                   navigate(kanbanLink);
                 } else {
                   try {
-                    const res = await api.get(`/kanban/cards/${task.kanbanCardId}`);
-                    const card = res.data.data;
-                    if (card && card.boardId) {
-                      navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                    }
+                    const card = await loadKanbanCardRouteInfo(task.kanbanCardId);
+                    const path = kanbanCardNavigatePath(card);
+                    if (path) navigate(path);
                   } catch (err) {
                     console.error('Could not route to kanban card', err);
                   }

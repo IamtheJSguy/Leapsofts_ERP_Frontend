@@ -21,7 +21,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDailyKpiEntries } from '@/hooks/api/useKPIs';
 import { useTeamSalesKpis } from '@/hooks/api/useSalesKpis';
-import api from '@/lib/axios';
+import { loadKanbanCardRouteInfo, kanbanCardNavigatePath } from '@/utils/kanbanCardNavigation';
 import { GlassDatePicker } from '@/components/kpi/GlassDatePicker';
 import { MemberKpiWeekTable } from '@/components/kpi/MemberKpiWeekTable';
 import { RichTextContent } from '@/components/common/RichTextContent';
@@ -529,11 +529,11 @@ export default function MemberKpiDetailPage() {
                     navigate(kanbanLink);
                   } else {
                     try {
-                      const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
-                      const card = res.data.data;
-                      if (card && card.boardId) {
-                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                      }
+                      const cardId = (entry as { kanbanCardId?: string }).kanbanCardId;
+                      if (!cardId) return;
+                      const card = await loadKanbanCardRouteInfo(cardId);
+                      const path = kanbanCardNavigatePath(card);
+                      if (path) navigate(path);
                     } catch(err) {
                       console.error("Failed to route to kanban card", err);
                     }
@@ -583,11 +583,11 @@ export default function MemberKpiDetailPage() {
                     navigate(kanbanLink);
                   } else {
                     try {
-                      const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
-                      const card = res.data.data;
-                      if (card && card.boardId) {
-                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                      }
+                      const cardId = (entry as { kanbanCardId?: string }).kanbanCardId;
+                      if (!cardId) return;
+                      const card = await loadKanbanCardRouteInfo(cardId);
+                      const path = kanbanCardNavigatePath(card);
+                      if (path) navigate(path);
                     } catch(err) {
                       console.error("Failed to route to kanban card", err);
                     }
@@ -656,11 +656,11 @@ export default function MemberKpiDetailPage() {
                               navigate(kanbanLink);
                             } else {
                               try {
-                                const res = await api.get(`/kanban/cards/${(entry as any).kanbanCardId}`);
-                                const card = res.data.data;
-                                if (card && card.boardId) {
-                                  navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                                }
+                                const cardId = (entry as { kanbanCardId?: string }).kanbanCardId;
+                                if (!cardId) return;
+                                const card = await loadKanbanCardRouteInfo(cardId);
+                                const path = kanbanCardNavigatePath(card);
+                                if (path) navigate(path);
                               } catch(err) {
                                 console.error("Failed to route to kanban card", err);
                               }

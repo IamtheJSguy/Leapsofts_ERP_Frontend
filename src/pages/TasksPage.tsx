@@ -46,7 +46,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { RichTextContent } from '@/components/common/RichTextContent';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
@@ -63,88 +63,24 @@ import { WeekdayPicker } from '@/components/kpi/WeekdayPicker';
 import { SalesKpiPanel } from '@/components/kpi/SalesKpiPanel';
 import { useKPIs, useDeleteKPI } from '@/hooks/api/useKPIs';
 import { usePendingKPIChangeRequests, useMyKPIChangeRequests } from '@/hooks/api/useKPIChangeRequests';
+import { buildAssignerInfoFromPopulatedUsers, useAssignerNames } from '@/hooks/useAssignerNames';
 import { KPI_PRIORITY_OPTIONS } from '@/lib/priorityConfig';
 import { WEEKDAY_SHORT_LABELS } from '@/lib/constants';
 import type { KpiPriority, KPI, KpiRecurrenceMode, KpiScheduleMode } from '@/types';
-import api from '@/lib/axios';
+import {
+  type ActiveAssignment,
+  type ActiveAssignmentItem,
+  type UIKPITemplate,
+  type UIKPITemplateItem,
+  EMPTY_KPI_LIST,
+  emptyTemplateItem,
+  formatDaysLabel,
+  invalidItemTimeWindow,
+} from '@/components/tasks/kpiAssignmentTypes';
 import type { User } from '@/types';
 import { showApiError } from '@/utils/apiError';
 
-// Interfaces for templates and assignments matching the exact structure
-interface UIKPITemplateItem {
-  name: string;
-  description: string;
-  targetValue?: number;
-  assignedTo: string[];
-  daysOfWeek?: number[];
-  scheduleMode?: KpiScheduleMode;
-  startTime?: string;
-  endTime?: string;
-  recurrenceMode?: KpiRecurrenceMode;
-}
-
-interface UIKPITemplate {
-  _id: string;
-  name: string;
-  description?: string;
-  kpis: UIKPITemplateItem[];
-}
-
-interface ActiveAssignmentItem {
-  _id?: string;
-  itemId?: string;
-  name: string;
-  description: string;
-  targetValue?: number;
-  dueDate?: string;
-  daysOfWeek?: number[];
-  scheduleMode?: KpiScheduleMode;
-  startTime?: string | null;
-  endTime?: string | null;
-  recurrenceMode?: KpiRecurrenceMode;
-  priority?: KpiPriority;
-  assignedTo: string[];
-  completed: boolean;
-}
-
-/** Stable empty list — inline `= []` on React Query `data` is a new array every render. */
-const EMPTY_LIST: never[] = [];
-
-const emptyTemplateItem = (): UIKPITemplateItem => ({
-  name: '',
-  description: '',
-  targetValue: undefined,
-  assignedTo: [],
-  daysOfWeek: [],
-  scheduleMode: 'per_day',
-  startTime: '',
-  endTime: '',
-  recurrenceMode: 'weekly',
-});
-
-const formatDaysLabel = (days?: number[]) => {
-  if (!days?.length) return '';
-  return [...days].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT_LABELS[d]).join(', ');
-};
-
-const invalidItemTimeWindow = (item: UIKPITemplateItem) => {
-  if (!item.startTime || !item.endTime || !item.daysOfWeek?.length) return false;
-  const sameDay = item.scheduleMode !== 'span' || item.daysOfWeek.length <= 1;
-  return sameDay && item.startTime >= item.endTime;
-};
-
-interface ActiveAssignment {
-  _id: string;
-  templateId: string;
-  templateName: string;
-  assignedTo: string[]; // user IDs
-  assignedBy?: string; // user ID who assigned
-  deadlineDate: string;
-  deadlineTime: string;
-  kpis: ActiveAssignmentItem[];
-}
-
-
+const EMPTY_LIST = EMPTY_KPI_LIST;
 const TasksPage = () => {
   const { user } = useAuth();
   const { isElevated } = usePermissions();
@@ -244,103 +180,34 @@ const TasksPage = () => {
     });
   }, [apiAssignments]);
 
-  // Active assignments state — populated exclusively from the API
-  const [activeAssignments, setActiveAssignments] = useState<ActiveAssignment[]>([]);
+  const populatedAssignerInfo = useMemo(
+    () => buildAssignerInfoFromPopulatedUsers(apiAssignments),
+    [apiAssignments],
+  );
 
-  // Sync API assignments to local state — skip if the mapped list is referentially or content-equal
-  useEffect(() => {
-    setActiveAssignments((prev) => {
-      if (prev === mappedAssignments) return prev;
-      // Both empty: do not replace with a new [] reference (that retriggers this effect)
-      if (prev.length === 0 && mappedAssignments.length === 0) return prev;
-      return mappedAssignments;
-    });
-  }, [mappedAssignments]);
+  const assignerIdList = useMemo(
+    () =>
+      mappedAssignments
+        .map((a) => a.assignedBy)
+        .filter((id): id is string => !!id && typeof id === 'string'),
+    [mappedAssignments],
+  );
 
-  // State to store resolved assigner names fetched directly from DB by ID (or resolved from populated api response)
-  const [assignerNames, setAssignerNames] = useState<Record<string, { name: string; email: string; initial: string; jobTitle?: string }>>({});
+  const assignerNames = useAssignerNames(assignerIdList, dbUsers, populatedAssignerInfo);
 
-  // Pre-populate assigner details from already-populated nested user objects returned by the API
-  useEffect(() => {
-    if (!apiAssignments || apiAssignments.length === 0) return;
+  const [localKpiCompletion, setLocalKpiCompletion] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
-    const fromApi: Record<string, { name: string; email: string; initial: string; jobTitle?: string }> = {};
-    apiAssignments.forEach((a) => {
-      [a.assignedBy, a.userId].forEach((u) => {
-        if (u && typeof u === 'object' && u._id && !fromApi[u._id]) {
-          const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Admin';
-          const initial = name.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A';
-          const jobTitle = u.jobTitle || (u.role === 'admin' ? 'Administrator' : 'Agent');
-          fromApi[u._id] = { name, email: u.email || 'N/A', initial, jobTitle };
-        }
-      });
-    });
-
-    if (Object.keys(fromApi).length === 0) return;
-
-    setAssignerNames((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const [id, info] of Object.entries(fromApi)) {
-        if (!next[id]) {
-          next[id] = info;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [apiAssignments]);
-
-  useEffect(() => {
-    const assignerIds = Array.from(
-      new Set(
-        activeAssignments
-          .map((a) => a.assignedBy)
-          .filter((id): id is string => !!id && typeof id === 'string')
-      )
-    );
-
-    const fetchAssigners = async () => {
-      for (const id of assignerIds) {
-        if (assignerNames[id] || dbUsers.some((u) => u._id === id)) continue;
-
-        try {
-          // Pre-populate with a temporary state so we don't fetch it again
-          setAssignerNames((prev) => ({
-            ...prev,
-            [id]: { name: 'Loading...', email: 'N/A', initial: '...' },
-          }));
-
-          const response = await api.get<{ data: User }>(`/users/${id}`);
-          if (response.data?.data) {
-            const u = response.data.data;
-            const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Admin';
-            const initial = name.split(' ').map((n) => n[0]).join('').toUpperCase() || 'A';
-            const jobTitle = u.jobTitle || (u.role === 'admin' ? 'Administrator' : 'Agent');
-            setAssignerNames((prev) => ({
-              ...prev,
-              [id]: { name, email: u.email, initial, jobTitle },
-            }));
-          } else {
-            setAssignerNames((prev) => ({
-              ...prev,
-              [id]: { name: 'Admin', email: 'N/A', initial: 'A', jobTitle: 'Administrator' },
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to fetch assigner details', err);
-          setAssignerNames((prev) => ({
-            ...prev,
-            [id]: { name: 'Admin', email: 'N/A', initial: 'A', jobTitle: 'Administrator' },
-          }));
-        }
-      }
-    };
-
-    if (assignerIds.length > 0) {
-      fetchAssigners();
-    }
-  }, [activeAssignments, dbUsers]);
+  const activeAssignments = useMemo(() => {
+    return mappedAssignments.map((assign) => ({
+      ...assign,
+      kpis: assign.kpis.map((k) => ({
+        ...k,
+        completed: localKpiCompletion[assign._id]?.[k.name] ?? k.completed,
+      })),
+    }));
+  }, [mappedAssignments, localKpiCompletion]);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -671,10 +538,6 @@ const TasksPage = () => {
       },
       {
         onSuccess: () => {
-          // Immediately remove the card from local state — don't wait for refetch
-          setActiveAssignments((prev) =>
-            prev.filter((a) => a._id !== pendingUnassign._id)
-          );
           addToast({ message: 'Target unassigned successfully!', severity: 'success' });
           setConfirmUnassignOpen(false);
           if (viewMode === 'details' && selectedAssignment?._id === pendingUnassign._id) {
@@ -734,32 +597,6 @@ const TasksPage = () => {
       },
       {
         onSuccess: () => {
-          const activeKpis: ActiveAssignmentItem[] = assigningTemplate.kpis.map((k) => ({
-            name: k.name,
-            description: k.description,
-            targetValue: k.targetValue,
-            daysOfWeek: k.daysOfWeek ?? [],
-            scheduleMode: k.scheduleMode ?? 'per_day',
-            startTime: k.startTime ?? '',
-            endTime: k.endTime ?? '',
-            recurrenceMode: k.recurrenceMode ?? 'weekly',
-            assignedTo: [selectedUserId],
-            completed: false,
-          }));
-
-          const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-          const newAssignment: ActiveAssignment = {
-            _id: `assign-${Date.now()}`,
-            templateId: assigningTemplate._id,
-            templateName: assigningTemplate.name,
-            assignedTo: [selectedUserId],
-            deadlineDate: tomorrowDate,
-            deadlineTime: '18:00',
-            kpis: activeKpis,
-          };
-
-          setActiveAssignments((prev) => [newAssignment, ...prev]);
           addToast({
             message: 'KPI Template successfully assigned to the user.',
             severity: 'success',
@@ -780,20 +617,20 @@ const TasksPage = () => {
 
   // Toggle KPI milestone checkmark on active assignment details view
   const handleToggleKpiCompletion = (assignmentId: string, kpiName: string) => {
-    setActiveAssignments((prev) =>
-      prev.map((assign) => {
-        if (assign._id === assignmentId) {
-          const nextKpis = assign.kpis.map((k) => {
-            if (k.name === kpiName) {
-              return { ...k, completed: !k.completed };
-            }
-            return k;
-          });
-          return { ...assign, kpis: nextKpis };
-        }
-        return assign;
-      })
-    );
+    setLocalKpiCompletion((prev) => {
+      const assignment = activeAssignments.find((a) => a._id === assignmentId);
+      const current =
+        prev[assignmentId]?.[kpiName] ??
+        assignment?.kpis.find((k) => k.name === kpiName)?.completed ??
+        false;
+      return {
+        ...prev,
+        [assignmentId]: {
+          ...prev[assignmentId],
+          [kpiName]: !current,
+        },
+      };
+    });
 
     setSelectedAssignment((prev) => {
       if (prev && prev._id === assignmentId) {
@@ -1099,7 +936,7 @@ const TasksPage = () => {
                           overflow: 'hidden',
                         }}
                       >
-                        <RichTextEditor
+                        <LazyRichTextEditor
                           value={newTemplateDesc}
                           onChange={setNewTemplateDesc}
                           submitOnEnter={false}

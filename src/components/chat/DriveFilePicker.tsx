@@ -17,6 +17,8 @@ import {
   InputAdornment,
   Chip,
   useTheme,
+  useMediaQuery,
+  Tooltip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -79,6 +81,7 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
   const { activeConversationId, replyingTo, setReplyingTo } = useChatStore();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
 
   const isConnected = driveStatus?.connected ?? false;
   const { data, isFetching, isError, error } = useDriveFiles(debouncedQuery, open && isConnected);
@@ -137,13 +140,17 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={isCompact}
       PaperProps={{
         sx: {
-          borderRadius: '24px',
+          borderRadius: isCompact ? 0 : '24px',
           bgcolor: isDarkMode ? '#1e1b24' : '#fff',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+          border: isCompact
+            ? 'none'
+            : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
           p: 0,
           overflow: 'hidden',
+          ...(isCompact ? { display: 'flex', flexDirection: 'column', maxHeight: '100dvh' } : {}),
         },
       }}
     >
@@ -152,13 +159,14 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
         sx={{
           fontWeight: 800,
           pb: 0,
-          pr: 6,
-          pt: 3,
-          px: 3,
+          pr: { xs: 7, sm: 6 },
+          pt: { xs: 2, sm: 3 },
+          px: { xs: 2, sm: 3 },
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
           gap: 1.5,
+          flexShrink: 0,
         }}
       >
         <Box
@@ -175,8 +183,8 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
         >
           <CloudQueueIcon sx={{ color: '#fff', fontSize: 22 }} />
         </Box>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}>
             Google Drive
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.25 }}>
@@ -212,16 +220,45 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
             )}
           </Box>
         </Box>
+        {isConnected && isCompact && (
+          <Tooltip title="Disconnect Google Drive">
+            <IconButton
+              onClick={handleDisconnect}
+              disabled={disconnectDrive.isPending}
+              aria-label="Disconnect Google Drive"
+              sx={{
+                position: 'absolute',
+                right: 48,
+                top: 10,
+                color: 'text.secondary',
+              }}
+            >
+              <LinkOffIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
         <IconButton
           onClick={onClose}
-          sx={{ position: 'absolute', right: 16, top: 16, color: 'text.secondary' }}
+          sx={{ position: 'absolute', right: { xs: 8, sm: 16 }, top: { xs: 10, sm: 16 }, color: 'text.secondary' }}
           aria-label="Close files picker"
         >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important', px: 3, pb: 3 }}>
+      <DialogContent
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: { xs: 1.5, sm: 2 },
+          pt: '12px !important',
+          px: { xs: 2, sm: 3 },
+          pb: { xs: 'max(16px, env(safe-area-inset-bottom))', sm: 3 },
+          flex: isCompact ? 1 : undefined,
+          minHeight: isCompact ? 0 : undefined,
+          overflow: 'hidden',
+        }}
+      >
         {/* Not Connected State */}
         {!isConnected && !statusLoading && (
           <Box
@@ -284,7 +321,15 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
         {isConnected && (
           <>
             {/* Action Bar */}
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                alignItems: { xs: 'stretch', sm: 'center' },
+                flexShrink: 0,
+              }}
+            >
               <TextField
                 size="small"
                 fullWidth
@@ -303,6 +348,7 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
                     borderRadius: '14px',
                     bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                     fontSize: '0.85rem',
+                    minHeight: 44,
                     '& fieldset': {
                       borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                     },
@@ -312,29 +358,31 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
                   },
                 }}
               />
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<LinkOffIcon sx={{ fontSize: '18px !important' }} />}
-                onClick={handleDisconnect}
-                disabled={disconnectDrive.isPending}
-                sx={{
-                  flexShrink: 0,
-                  borderRadius: '12px',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.78rem',
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    borderColor: '#EA4335',
-                    color: '#EA4335',
-                    bgcolor: 'rgba(234, 67, 53, 0.04)',
-                  },
-                }}
-              >
-                Disconnect
-              </Button>
+              {!isCompact && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<LinkOffIcon sx={{ fontSize: '18px !important' }} />}
+                  onClick={handleDisconnect}
+                  disabled={disconnectDrive.isPending}
+                  sx={{
+                    flexShrink: 0,
+                    borderRadius: '12px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+                    color: 'text.secondary',
+                    '&:hover': {
+                      borderColor: '#EA4335',
+                      color: '#EA4335',
+                      bgcolor: 'rgba(234, 67, 53, 0.04)',
+                    },
+                  }}
+                >
+                  Disconnect
+                </Button>
+              )}
             </Box>
 
             {/* File List */}
@@ -358,11 +406,15 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
                 </Typography>
               </Box>
             ) : (
+              <Box sx={{ flex: isCompact ? 1 : undefined, minHeight: isCompact ? 0 : undefined, display: 'flex', flexDirection: 'column' }}>
               <List
                 sx={{
-                  maxHeight: 360,
+                  flex: isCompact ? 1 : undefined,
+                  maxHeight: isCompact ? 'none' : 360,
+                  minHeight: isCompact ? 0 : undefined,
                   overflow: 'auto',
-                  mx: -1,
+                  mx: -0.5,
+                  py: 0.25,
                   '&::-webkit-scrollbar': { width: '5px' },
                   '&::-webkit-scrollbar-track': { background: 'transparent' },
                   '&::-webkit-scrollbar-thumb': {
@@ -379,31 +431,33 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
                       onClick={() => handleSelect(file)}
                       disabled={!onSelect && sendMessage.isPending}
                       sx={{
-                        px: 2,
-                        py: 1.5,
+                        px: { xs: 1.25, sm: 2 },
+                        py: { xs: 1, sm: 1.5 },
                         mb: 0.5,
-                        borderRadius: '14px',
+                        borderRadius: '12px',
                         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}`,
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)',
-                          borderColor: color,
-                          transform: 'translateX(4px)',
+                        transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                        alignItems: 'flex-start',
+                        '@media (hover: hover) and (pointer: fine)': {
+                          '&:hover': {
+                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)',
+                            borderColor: color,
+                          },
                         },
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 44 }}>
+                      <ListItemIcon sx={{ minWidth: { xs: 40, sm: 44 }, mt: 0.25 }}>
                         <Box
                           sx={{
-                            width: 36,
-                            height: 36,
+                            width: { xs: 32, sm: 36 },
+                            height: { xs: 32, sm: 36 },
                             borderRadius: '10px',
                             bgcolor: `${color}14`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: color,
-                            '& svg': { fontSize: 20 },
+                            '& svg': { fontSize: { xs: 18, sm: 20 } },
                           }}
                         >
                           {icon}
@@ -411,20 +465,42 @@ export const DriveFilePicker = ({ open, onClose, onSelect }: DriveFilePickerProp
                       </ListItemIcon>
                       <ListItemText
                         primary={
-                          <Typography variant="body2" noWrap sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 600,
+                              color: 'text.primary',
+                              lineHeight: 1.35,
+                              wordBreak: 'break-word',
+                              ...(isCompact
+                                ? {
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                  }
+                                : {
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }),
+                            }}
+                          >
                             {file.name}
                           </Typography>
                         }
                         secondary={
-                          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 500 }}>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 500, display: 'block', mt: 0.25 }}>
                             {label}
                           </Typography>
                         }
+                        sx={{ minWidth: 0, my: 0 }}
                       />
                     </ListItemButton>
                   );
                 })}
               </List>
+              </Box>
             )}
           </>
         )}

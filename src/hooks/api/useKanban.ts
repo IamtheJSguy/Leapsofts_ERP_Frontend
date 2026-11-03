@@ -300,6 +300,18 @@ export const useKanbanBoard = (id: string | undefined) => {
   });
 };
 
+export const useKanbanCard = (id: string | undefined) => {
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  return useQuery({
+    queryKey: ['kanbanCard', id, organizationId],
+    queryFn: () => kanbanApi.getCard(id!).then((r) => r.data.data),
+    enabled: !!id,
+  });
+};
+
+export const fetchKanbanCardById = (id: string) =>
+  kanbanApi.getCard(id).then((r) => r.data.data);
+
 export const useCreateBoard = () => {
   const queryClient = useQueryClient();
   return useMutation({

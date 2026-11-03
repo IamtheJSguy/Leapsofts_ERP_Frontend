@@ -49,6 +49,8 @@ export const useUser = (id: string | undefined) => {
   });
 };
 
+export const fetchUserById = (id: string) => userApi.getUser(id).then((r) => r.data.data);
+
 export const useUserSummary = (userId: string | undefined, date?: string) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({

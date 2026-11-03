@@ -36,7 +36,7 @@ import { MyChangeRequestsPanel } from '@/components/kpi/MyChangeRequestsPanel';
 import { KPI_PRIORITY_OPTIONS, PRIORITY_CONFIG } from '@/lib/priorityConfig';
 import { tokens } from '@/styles/tokens';
 import { RichTextContent } from '@/components/common/RichTextContent';
-import api from '@/lib/axios';
+import { loadKanbanCardRouteInfo, kanbanCardNavigatePath } from '@/utils/kanbanCardNavigation';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
 import type { GroupedKpiCounts, GroupedSalesKpis, PriorityBucket, SalesKpiEntry, SectionCounts } from '@/types';
 
@@ -454,11 +454,9 @@ export const UserDailyKpisView = () => {
                     } else {
                       try {
                         const cardId = typeof kId === 'object' ? kId._id : kId;
-                        const res = await api.get(`/kanban/cards/${cardId}`);
-                        const card = res.data.data;
-                        if (card && card.boardId) {
-                          navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                        }
+                        const card = await loadKanbanCardRouteInfo(cardId);
+                        const path = kanbanCardNavigatePath(card);
+                        if (path) navigate(path);
                       } catch (err) {
                         console.error('Could not route to kanban card', err);
                       }
@@ -547,11 +545,9 @@ export const UserDailyKpisView = () => {
                     try {
                       const kId = kpi.kanbanCardId;
                       const cardId = typeof kId === 'object' ? (kId as any)._id : kId;
-                      const res = await api.get(`/kanban/cards/${cardId}`);
-                      const card = res.data.data;
-                      if (card && card.boardId) {
-                        navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                      }
+                      const card = await loadKanbanCardRouteInfo(cardId);
+                      const path = kanbanCardNavigatePath(card);
+                      if (path) navigate(path);
                     } catch (err) {
                       console.error('Could not route to kanban card', err);
                     }

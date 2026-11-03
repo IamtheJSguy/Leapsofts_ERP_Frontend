@@ -64,7 +64,8 @@ const getChatMentionMessageId = (notification: Notification): string | undefined
 
 export const NotificationPanel = () => {
   const navigate = useNavigate();
-  const { notificationPanelOpen, setNotificationPanelOpen } = useUIStore();
+  const notificationPanelOpen = useUIStore((s) => s.notificationPanelOpen);
+  const setNotificationPanelOpen = useUIStore((s) => s.setNotificationPanelOpen);
   const {
     data,
     isLoading,
