@@ -40,17 +40,17 @@ const getFallbackPhases = (
     const steps = [
       {
         stepId: 'fb_enrich_1',
-        label: 'Loading lead record & checking company domain...',
+        label: 'Loading lead record & region...',
         thresholdSec: 0,
       },
       {
         stepId: 'fb_enrich_2',
-        label: 'Inspecting public company website & metadata...',
+        label: 'Searching the public web for email & phone...',
         thresholdSec: 0.6,
       },
       {
         stepId: 'fb_enrich_3',
-        label: `Searching live web sources with ${providerName} grounding...`,
+        label: `Reading discovered pages with ${providerName} grounding...`,
         thresholdSec: 1.8,
       },
       {

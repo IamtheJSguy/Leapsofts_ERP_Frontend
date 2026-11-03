@@ -64,6 +64,13 @@ const FIELD_LABELS: Record<string, string> = {
   sendGoogleInvite: 'Google Calendar',
 };
 
+const SOURCE_TIER_LABELS: Record<string, string> = {
+  discovered_page: 'Discovered page',
+  web_search: 'Web search',
+  provider: 'Provider',
+  generic_inbox: 'Generic inbox',
+};
+
 const HIDDEN_PROPOSED_KEYS = new Set([
   'participants',
   'googleCalendarConnected',
@@ -430,6 +437,22 @@ export const AiActionPreviewCard = ({
                     />
                   )}
                 </Box>
+                {action.enrichmentMeta?.fields?.[fieldKey] && (
+                  <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
+                    {SOURCE_TIER_LABELS[action.enrichmentMeta.fields[fieldKey].tier] || action.enrichmentMeta.fields[fieldKey].tier}
+                    {action.enrichmentMeta.fields[fieldKey].provider
+                      ? ` · ${action.enrichmentMeta.fields[fieldKey].provider}`
+                      : ''}
+                    {action.enrichmentMeta.regionLabel
+                      ? action.enrichmentMeta.fields[fieldKey].regionMatch
+                        ? ` · matches ${action.enrichmentMeta.regionLabel}`
+                        : ` · outside ${action.enrichmentMeta.regionLabel}`
+                      : ''}
+                    {action.enrichmentMeta.fields[fieldKey].sourceUrl
+                      ? ` · ${action.enrichmentMeta.fields[fieldKey].sourceUrl}`
+                      : ''}
+                  </Typography>
+                )}
                 {isPending ? (
                   <TextField
                     fullWidth

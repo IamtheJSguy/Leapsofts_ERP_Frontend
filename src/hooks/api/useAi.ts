@@ -38,6 +38,17 @@ export interface AiPendingAction {
   proposed: Record<string, unknown>;
   applied?: Record<string, unknown>;
   sources?: AiCitationSource[];
+  enrichmentMeta?: {
+    regionLabel?: string;
+    countryCode?: string;
+    provider?: string;
+    fields?: Record<string, {
+      tier: 'discovered_page' | 'web_search' | 'provider' | 'generic_inbox';
+      sourceUrl?: string;
+      regionMatch?: boolean;
+      provider?: string;
+    }>;
+  };
   createdAt: string;
   resolvedAt?: string;
 }
@@ -329,3 +340,11 @@ export const useUpdateAdminUserAiQuota = () => {
     },
   });
 };
+
+export const useBulkEnrichLeads = () =>
+  useMutation({
+    mutationFn: (body: { leadIds?: string[]; filter?: 'missing_contact'; max?: number }) =>
+      api
+        .post<ApiResponse<{ queued: number; batchId: string; leadIds: string[] }>>('/leads/bulk-enrich', body)
+        .then((r) => r.data.data),
+  });

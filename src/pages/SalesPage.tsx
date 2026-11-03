@@ -61,6 +61,7 @@ import {
 } from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
+import { useBulkEnrichLeads } from '@/hooks/api/useAi';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
@@ -79,6 +80,7 @@ import {
 } from '@/lib/salesEditDraftDb';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import EventIcon from '@mui/icons-material/Event';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
@@ -296,6 +298,7 @@ export const SalesPage = () => {
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
   const { user, isAdmin } = useAuth();
+  const bulkEnrichLeads = useBulkEnrichLeads();
   const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>('linkedin');
 
   useEffect(() => {
@@ -2141,6 +2144,45 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
+                {isElevated && (
+                  <Button
+                    variant="outlined"
+                    startIcon={bulkEnrichLeads.isPending ? <CircularProgress size={14} color="inherit" /> : <TravelExploreIcon sx={{ fontSize: 16 }} />}
+                    disabled={bulkEnrichLeads.isPending}
+                    onClick={() => {
+                      bulkEnrichLeads.mutate(
+                        { filter: 'missing_contact', max: 25 },
+                        {
+                          onSuccess: (result) => {
+                            addToast({
+                              message: result.queued
+                                ? `Queued ${result.queued} lead${result.queued === 1 ? '' : 's'} for web enrichment. Review proposals in Lumi.`
+                                : 'No leads are missing an email or phone.',
+                              severity: result.queued ? 'success' : 'info',
+                            });
+                          },
+                          onError: (err) => showApiError(err),
+                        },
+                      );
+                    }}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Enrich missing contacts
+                  </Button>
+                )}
                 {isAdmin && (
                   <Button
                     variant="outlined"

@@ -67,6 +67,41 @@ const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp',
 const isSmallChatImage = (file: File) =>
   SMALL_CHAT_IMAGE_TYPES.has(file.type) && file.size <= SMALL_CHAT_IMAGE_BYTES;
 
+const EXTENSION_MIME: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  pdf: 'application/pdf',
+};
+
+const normalizeDroppedFile = (file: File): File => {
+  if (file.type) return file;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const type = ext ? EXTENSION_MIME[ext] : undefined;
+  if (!type) return file;
+  return new File([file], file.name, { type, lastModified: file.lastModified });
+};
+
+const dataTransferHasFiles = (dataTransfer: DataTransfer | null) => {
+  if (!dataTransfer) return false;
+  if ([...dataTransfer.types].includes('Files')) return true;
+  return Array.from(dataTransfer.items ?? []).some((item) => item.kind === 'file');
+};
+
+const getFirstDroppedFile = (dataTransfer: DataTransfer | null): File | null => {
+  if (!dataTransfer) return null;
+  const fromList = dataTransfer.files?.[0];
+  if (fromList) return normalizeDroppedFile(fromList);
+  for (const item of Array.from(dataTransfer.items ?? [])) {
+    if (item.kind !== 'file') continue;
+    const file = item.getAsFile();
+    if (file) return normalizeDroppedFile(file);
+  }
+  return null;
+};
+
 const httpUrl = (value?: string) => (value && value.startsWith('http') ? value : undefined);
 
 interface ChatWindowProps {
@@ -865,10 +900,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     <Box
       sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden', bgcolor: 'transparent', position: 'relative' }}
       onDragOver={(e) => {
-        if ([...e.dataTransfer.types].includes('Files')) {
-          e.preventDefault();
-          setIsDraggingImage(true);
-        }
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setIsDraggingImage(true);
       }}
       onDragLeave={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -876,9 +911,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }}
       onDrop={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDraggingImage(false);
-        const file = e.dataTransfer.files?.[0];
-        stageFile(file);
+        stageFile(getFirstDroppedFile(e.dataTransfer));
       }}
     >
       {isDraggingImage && (

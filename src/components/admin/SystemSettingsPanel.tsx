@@ -37,6 +37,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const [aiDefaultUserTokenLimit, setAiDefaultUserTokenLimit] = useState<number>(10000);
   const [aiDefaultProvider, setAiDefaultProvider] = useState<'gemini' | 'claude'>('gemini');
   const [aiEnrichmentEnabled, setAiEnrichmentEnabled] = useState<boolean>(true);
+  const [providerEnrichmentEnabled, setProviderEnrichmentEnabled] = useState<boolean>(true);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -57,6 +58,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         setAiDefaultUserTokenLimit(settings.aiSettings.defaultUserTokenLimit ?? 10000);
         setAiDefaultProvider(settings.aiSettings.defaultProvider ?? 'gemini');
         setAiEnrichmentEnabled(settings.aiSettings.enrichmentEnabled ?? true);
+        setProviderEnrichmentEnabled(settings.aiSettings.providerEnrichmentEnabled ?? true);
       }
     }
   }, [settings]);
@@ -81,6 +83,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           defaultUserTokenLimit: Math.max(0, Number(aiDefaultUserTokenLimit) || 0),
           defaultProvider: aiDefaultProvider,
           enrichmentEnabled: aiEnrichmentEnabled,
+          providerEnrichmentEnabled,
         },
       },
       {
@@ -248,6 +251,18 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                     color="primary"
                     checked={aiEnrichmentEnabled}
                     onChange={(e) => setAiEnrichmentEnabled(e.target.checked)}
+                    disabled={readOnly}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)` }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Use B2B contact provider</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>When a treg token or Apollo key is configured, look up work email and phone after web search. Treg also runs the web search.</Typography>
+                  </Box>
+                  <Switch
+                    color="primary"
+                    checked={providerEnrichmentEnabled}
+                    onChange={(e) => setProviderEnrichmentEnabled(e.target.checked)}
                     disabled={readOnly}
                   />
                 </Box>

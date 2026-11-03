@@ -1331,6 +1331,7 @@ export interface SystemSettings {
     defaultUserTokenLimit?: number;
     defaultProvider?: 'gemini' | 'claude';
     enrichmentEnabled?: boolean;
+    providerEnrichmentEnabled?: boolean;
   };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];
