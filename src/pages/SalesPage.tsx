@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -61,7 +61,6 @@ import {
 } from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
-import { useBulkEnrichLeads } from '@/hooks/api/useAi';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
@@ -73,6 +72,9 @@ import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow
 import { LeadCommentButton, type LeadCommentAddPayload } from '@/components/leads/LeadCommentButton';
 import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import { ExportLeadsDialog } from '@/components/leads/ExportLeadsDialog';
+import { EnrichMissingContactsDialog } from '@/components/leads/EnrichMissingContactsDialog';
+import { BulkEnrichResultsDialog } from '@/components/leads/BulkEnrichResultsDialog';
+import { EnrichmentHistoryDialog } from '@/components/leads/EnrichmentHistoryDialog';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
@@ -139,6 +141,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
@@ -298,7 +301,6 @@ export const SalesPage = () => {
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
   const { user, isAdmin } = useAuth();
-  const bulkEnrichLeads = useBulkEnrichLeads();
   const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>('linkedin');
 
   useEffect(() => {
@@ -321,7 +323,21 @@ export const SalesPage = () => {
     if (user?._id) localStorage.setItem(`sales-outreach-channel:${user._id}`, channel);
   };
   const [exportOpen, setExportOpen] = useState(false);
+  const [enrichOpen, setEnrichOpen] = useState(false);
+  const [enrichHistoryOpen, setEnrichHistoryOpen] = useState(false);
+  const [enrichBatchId, setEnrichBatchId] = useState<string | null>(null);
+  const [enrichResultsOpen, setEnrichResultsOpen] = useState(false);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const batch = searchParams.get('enrichBatch');
+    if (!batch) return;
+    setEnrichBatchId(batch);
+    setEnrichResultsOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('enrichBatch');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleCopyName = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
@@ -2145,26 +2161,11 @@ export const SalesPage = () => {
                   Add Multiple
                 </Button>
                 {isElevated && (
+                  <>
                   <Button
                     variant="outlined"
-                    startIcon={bulkEnrichLeads.isPending ? <CircularProgress size={14} color="inherit" /> : <TravelExploreIcon sx={{ fontSize: 16 }} />}
-                    disabled={bulkEnrichLeads.isPending}
-                    onClick={() => {
-                      bulkEnrichLeads.mutate(
-                        { filter: 'missing_contact', max: 25 },
-                        {
-                          onSuccess: (result) => {
-                            addToast({
-                              message: result.queued
-                                ? `Queued ${result.queued} lead${result.queued === 1 ? '' : 's'} for web enrichment. Review proposals in Lumi.`
-                                : 'No leads are missing an email or phone.',
-                              severity: result.queued ? 'success' : 'info',
-                            });
-                          },
-                          onError: (err) => showApiError(err),
-                        },
-                      );
-                    }}
+                    startIcon={<TravelExploreIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setEnrichOpen(true)}
                     sx={{
                       borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                       color: isDarkMode ? '#fff' : tokens.text.primary,
@@ -2182,6 +2183,27 @@ export const SalesPage = () => {
                   >
                     Enrich missing contacts
                   </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setEnrichHistoryOpen(true)}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Enrichment history
+                  </Button>
+                  </>
                 )}
                 {isAdmin && (
                   <Button
@@ -3064,6 +3086,36 @@ export const SalesPage = () => {
         onCancel={() => setDisqualifyLeadId('')}
         isPending={disqualifyLead.isPending}
       />
+      {isElevated && (
+        <>
+          <EnrichMissingContactsDialog
+            open={enrichOpen}
+            onClose={() => setEnrichOpen(false)}
+            leadFilters={leadFilters}
+            defaultTopN={rowsPerPage}
+            onBatchStarted={(batchId) => {
+              setEnrichBatchId(batchId);
+              setEnrichResultsOpen(true);
+            }}
+          />
+          <BulkEnrichResultsDialog
+            open={enrichResultsOpen}
+            batchId={enrichBatchId}
+            onClose={() => {
+              setEnrichResultsOpen(false);
+              setEnrichBatchId(null);
+            }}
+          />
+          <EnrichmentHistoryDialog
+            open={enrichHistoryOpen}
+            onClose={() => setEnrichHistoryOpen(false)}
+            onOpenBatch={(batchId) => {
+              setEnrichBatchId(batchId);
+              setEnrichResultsOpen(true);
+            }}
+          />
+        </>
+      )}
       {isAdmin && (
         <ExportLeadsDialog
           open={exportOpen}

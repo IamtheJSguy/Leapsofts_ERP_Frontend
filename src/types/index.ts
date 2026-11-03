@@ -80,7 +80,8 @@ export type NotificationType =
   | 'kanban_task_completed'
   | 'kpi_overdue'
   | 'task_due_soon'
-  | 'report_ready';
+  | 'report_ready'
+  | 'lead_enrichment_batch';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
 

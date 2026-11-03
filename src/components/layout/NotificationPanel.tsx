@@ -286,7 +286,13 @@ export const NotificationPanel = () => {
                   <Box
                     onClick={() => {
                       if (!n.isRead) markAsRead.mutate(n._id);
-                      if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
+                      if (n.type === NOTIFICATION_TYPE.LEAD_ENRICHMENT_BATCH) {
+                        const batchId = (n as { metadata?: { batchId?: string } }).metadata?.batchId;
+                        if (batchId) {
+                          setNotificationPanelOpen(false);
+                          navigate(`/sales?enrichBatch=${encodeURIComponent(batchId)}`);
+                        }
+                      } else if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
                         setNotificationPanelOpen(false);
                         navigate('/tasks?tab=change_requests');
                       } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {

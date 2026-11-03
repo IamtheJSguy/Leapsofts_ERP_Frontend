@@ -80,6 +80,7 @@ export const NOTIFICATION_TYPE = {
   KPI_OVERDUE: 'kpi_overdue',
   TASK_DUE_SOON: 'task_due_soon',
   REPORT_READY: 'report_ready',
+  LEAD_ENRICHMENT_BATCH: 'lead_enrichment_batch',
 } as const;
 
 export const ROLES = {

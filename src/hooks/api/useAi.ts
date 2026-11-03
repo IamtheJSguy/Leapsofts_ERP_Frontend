@@ -341,10 +341,131 @@ export const useUpdateAdminUserAiQuota = () => {
   });
 };
 
-export const useBulkEnrichLeads = () =>
-  useMutation({
-    mutationFn: (body: { leadIds?: string[]; filter?: 'missing_contact'; max?: number }) =>
+export interface LeadEnrichmentBatchItem {
+  leadId: string;
+  leadName: string;
+  company?: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  missingEmailBefore: boolean;
+  missingPhoneBefore: boolean;
+  foundEmail?: boolean;
+  foundPhone?: boolean;
+  proposed?: Record<string, unknown>;
+  summary?: string;
+  conversationId?: string;
+  pendingActionId?: string;
+  actionStatus?: 'pending' | 'confirmed' | 'rejected';
+  applied?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface LeadEnrichmentBatchStats {
+  total: number;
+  completed: number;
+  failed: number;
+  emailFound: number;
+  emailNotFound: number;
+  phoneFound: number;
+  phoneNotFound: number;
+  noChanges: number;
+}
+
+export interface LeadEnrichmentBatch {
+  batchId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  stats: LeadEnrichmentBatchStats;
+  items: LeadEnrichmentBatchItem[];
+  filterSnapshot?: Record<string, unknown>;
+  completedAt?: string;
+  createdAt?: string;
+}
+
+export interface LeadEnrichmentBatchListEntry {
+  batchId: string;
+  status: LeadEnrichmentBatch['status'];
+  stats: LeadEnrichmentBatchStats;
+  createdAt: string;
+  completedAt?: string;
+  pendingReview: number;
+}
+
+export interface LeadEnrichmentBatchHistoryResponse {
+  batches: LeadEnrichmentBatchListEntry[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const useLeadEnrichmentBatchHistory = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['leads', 'bulk-enrich-batches'],
+    queryFn: () =>
+      api
+        .get<ApiResponse<LeadEnrichmentBatchHistoryResponse>>('/leads/bulk-enrich/batches', {
+          params: { page: 1, limit: 30 },
+        })
+        .then((r) => r.data.data),
+    enabled,
+  });
+
+export const useLeadEnrichmentBatch = (batchId: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['leads', 'bulk-enrich-batch', batchId],
+    queryFn: () =>
+      api
+        .get<ApiResponse<LeadEnrichmentBatch>>(`/leads/bulk-enrich/batches/${batchId}`)
+        .then((r) => r.data.data),
+    enabled: enabled && Boolean(batchId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'queued' || status === 'running') return 5000;
+      return false;
+    },
+  });
+
+export const useBulkEnrichLeads = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { leadIds: string[]; filterSnapshot?: Record<string, unknown> }) =>
       api
         .post<ApiResponse<{ queued: number; batchId: string; leadIds: string[] }>>('/leads/bulk-enrich', body)
         .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads', 'bulk-enrich-batches'] });
+    },
   });
+};
+
+export const useConfirmBulkEnrichItem = (batchId: string | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { leadId: string; fields: string[] }) =>
+      api
+        .post<ApiResponse<{ lead: unknown; applied: Record<string, unknown> }>>(
+          `/leads/bulk-enrich/batches/${batchId}/items/${input.leadId}/confirm`,
+          { fields: input.fields },
+        )
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads', 'bulk-enrich-batch', batchId] });
+      queryClient.invalidateQueries({ queryKey: ['leads', 'bulk-enrich-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+};
+
+export const useRejectBulkEnrichItem = (batchId: string | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: string) =>
+      api
+        .post<ApiResponse<{ leadId: string; status: string }>>(
+          `/leads/bulk-enrich/batches/${batchId}/items/${leadId}/reject`,
+        )
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads', 'bulk-enrich-batch', batchId] });
+      queryClient.invalidateQueries({ queryKey: ['leads', 'bulk-enrich-batches'] });
+    },
+  });
+};
