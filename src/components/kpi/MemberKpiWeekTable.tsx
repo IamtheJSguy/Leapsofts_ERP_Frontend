@@ -28,17 +28,19 @@ const KPI_COL_WIDTH = { xs: 132, sm: 160 };
 const DAY_COL_MIN_WIDTH = 72;
 const TOTAL_COL_MIN_WIDTH = 88;
 
-const kpiStickyCellSx = (isDarkMode: boolean) => ({
+const kpiCellSx = (isDarkMode: boolean) => ({
   fontWeight: 700,
-  position: 'sticky' as const,
-  left: 0,
-  zIndex: 1,
   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
   borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-  width: KPI_COL_WIDTH,
-  minWidth: KPI_COL_WIDTH,
-  maxWidth: KPI_COL_WIDTH,
-  boxShadow: '4px 0 12px rgba(0, 0, 0, 0.06)',
+  width: { xs: KPI_COL_WIDTH.xs, sm: '20%' },
+  minWidth: { xs: KPI_COL_WIDTH.xs, sm: KPI_COL_WIDTH.sm },
+  position: { xs: 'static', sm: 'sticky' },
+  left: { sm: 0 },
+  zIndex: { xs: 'auto', sm: 1 },
+  boxShadow: {
+    xs: 'none',
+    sm: '4px 0 12px rgba(0, 0, 0, 0.06)',
+  },
 });
 
 const statusColors = (display: TaskDisplay) => {
@@ -123,28 +125,7 @@ export function MemberKpiWeekTable({
           {title}
         </Typography>
       )}
-      <Box
-        sx={{
-          position: 'relative',
-          width: '100%',
-          minWidth: 0,
-          maxWidth: '100%',
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            top: 1,
-            right: 1,
-            bottom: 1,
-            width: 28,
-            borderRadius: '0 15px 15px 0',
-            pointerEvents: 'none',
-            display: { xs: 'block', md: 'none' },
-            background: isDarkMode
-              ? 'linear-gradient(to left, rgba(30, 27, 36, 0.92), transparent)'
-              : 'linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent)',
-          },
-        }}
-      >
+      <Box sx={{ width: '100%', minWidth: 0, maxWidth: '100%' }}>
         <TableContainer
           sx={{
             borderRadius: '16px',
@@ -160,17 +141,17 @@ export function MemberKpiWeekTable({
             size="small"
             sx={{
               tableLayout: 'fixed',
-              width: tableMinWidth,
-              minWidth: tableMinWidth,
+              width: { xs: tableMinWidth, sm: '100%' },
+              minWidth: { xs: tableMinWidth, sm: '100%' },
             }}
           >
           <TableHead>
             <TableRow>
               <TableCell
                 sx={{
-                  ...kpiStickyCellSx(isDarkMode),
+                  ...kpiCellSx(isDarkMode),
                   fontWeight: 800,
-                  zIndex: 2,
+                  zIndex: { xs: 'auto', sm: 2 },
                 }}
               >
                 KPI
@@ -182,8 +163,8 @@ export function MemberKpiWeekTable({
                   sx={{
                     fontWeight: 800,
                     whiteSpace: 'nowrap',
-                    minWidth: DAY_COL_MIN_WIDTH,
-                    width: DAY_COL_MIN_WIDTH,
+                    minWidth: { xs: DAY_COL_MIN_WIDTH, sm: 0 },
+                    width: { xs: DAY_COL_MIN_WIDTH, sm: 'auto' },
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                   }}
                 >
@@ -195,8 +176,8 @@ export function MemberKpiWeekTable({
                 sx={{
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
-                  minWidth: TOTAL_COL_MIN_WIDTH,
-                  width: TOTAL_COL_MIN_WIDTH,
+                  minWidth: { xs: TOTAL_COL_MIN_WIDTH, sm: TOTAL_COL_MIN_WIDTH },
+                  width: { xs: TOTAL_COL_MIN_WIDTH, sm: '12%' },
                   borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                 }}
               >
@@ -222,7 +203,7 @@ export function MemberKpiWeekTable({
                 .join(' · ');
               return (
                 <TableRow key={row.id}>
-                  <TableCell sx={kpiStickyCellSx(isDarkMode)}>
+                  <TableCell sx={kpiCellSx(isDarkMode)}>
                     <Typography
                       component="span"
                       sx={{
@@ -258,6 +239,8 @@ export function MemberKpiWeekTable({
                       fontSize: '0.82rem',
                       borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                       whiteSpace: 'nowrap',
+                      minWidth: { xs: TOTAL_COL_MIN_WIDTH, sm: TOTAL_COL_MIN_WIDTH },
+                      width: { xs: TOTAL_COL_MIN_WIDTH, sm: '12%' },
                     }}
                   >
                     <Tooltip title={totalLabel}>
