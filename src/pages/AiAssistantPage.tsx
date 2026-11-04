@@ -607,9 +607,9 @@ export const AiAssistantPage = () => {
               <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, lineHeight: 1.2 }}>
                 {activeConversation?.title || 'New Lumi Chat'}
               </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
+              {/* <Typography variant="caption" color="text.secondary" noWrap>
                 Web-grounded B2B lead enrichment, sales analytics, meetings & profile management
-              </Typography>
+              </Typography> */}
             </Box>
           </Box>
 
