@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   Collapse,
@@ -16,6 +17,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
 import type { AiAgentPhaseItem, PendingAiOperation } from '@/store/useAiChatSessionStore';
 import type { AiToolCallLog } from '@/hooks/api/useAi';
 
@@ -28,6 +30,7 @@ const pulseGlow = keyframes`
 interface AiAgentPhaseTimelineProps {
   pendingOp: PendingAiOperation;
   compact?: boolean;
+  onStop?: () => void;
 }
 
 const getFallbackPhases = (
@@ -104,6 +107,7 @@ const getFallbackPhases = (
 export const AiAgentPhaseTimeline: React.FC<AiAgentPhaseTimelineProps> = ({
   pendingOp,
   compact = false,
+  onStop,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [elapsedMs, setElapsedMs] = useState<number>(() =>
@@ -192,7 +196,36 @@ export const AiAgentPhaseTimeline: React.FC<AiAgentPhaseTimelineProps> = ({
             </Box>
           </Stack>
 
-          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ flexShrink: 0 }}>
+            {onStop && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                startIcon={<StopRoundedIcon sx={{ fontSize: 13 }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStop();
+                }}
+                sx={{
+                  height: 22,
+                  px: 0.9,
+                  py: 0,
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  borderRadius: '6px',
+                  borderColor: (theme) => alpha(theme.palette.error.main, 0.4),
+                  bgcolor: (theme) => alpha(theme.palette.error.main, 0.06),
+                  '&:hover': {
+                    bgcolor: (theme) => alpha(theme.palette.error.main, 0.14),
+                    borderColor: 'error.main',
+                  },
+                }}
+              >
+                Stop
+              </Button>
+            )}
             <Chip
               size="small"
               label={`${elapsedSec.toFixed(1)}s`}

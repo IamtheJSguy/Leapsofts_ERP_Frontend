@@ -154,9 +154,12 @@ export const useAiConversations = (options?: { enabled?: boolean }) => {
 
 export const useAiConversation = (conversationId: string | null) => {
   const userId = useAuthStore((s) => s.user?._id);
+  const isValidObjectId = Boolean(
+    conversationId && /^[0-9a-fA-F]{24}$/.test(conversationId),
+  );
   return useQuery({
     queryKey: ['ai', 'conversation', conversationId, userId],
-    enabled: Boolean(conversationId && userId),
+    enabled: Boolean(isValidObjectId && userId),
     queryFn: () =>
       api
         .get<ApiResponse<AiConversation>>(`/ai/conversations/${conversationId}`)
@@ -184,16 +187,19 @@ export const useSendAiMessage = () => {
       provider?: AiProviderType;
       contextLeadId?: string;
       requestId?: string;
-    }) =>
-      api
+      signal?: AbortSignal;
+    }) => {
+      const { signal, ...body } = payload;
+      return api
         .post<
           ApiResponse<{
             conversation: AiConversation;
             replyMessage: AiMessage;
             quota: AiQuotaSummary;
           }>
-        >('/ai/chat', payload)
-        .then((r) => r.data.data),
+        >('/ai/chat', body, { signal })
+        .then((r) => r.data.data);
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(
         ['ai', 'conversation', data.conversation._id, useAuthStore.getState().user?._id],
@@ -214,12 +220,14 @@ export const useEnrichLeadWithAi = () => {
       extraInstructions,
       conversationId,
       requestId,
+      signal,
     }: {
       leadId: string;
       provider?: AiProviderType;
       extraInstructions?: string;
       conversationId?: string;
       requestId?: string;
+      signal?: AbortSignal;
     }) =>
       api
         .post<
@@ -234,12 +242,16 @@ export const useEnrichLeadWithAi = () => {
             replyMessage: AiMessage;
             quota: AiQuotaSummary;
           }>
-        >(`/ai/enrich-lead/${leadId}`, {
-          provider,
-          extraInstructions,
-          conversationId,
-          requestId,
-        })
+        >(
+          `/ai/enrich-lead/${leadId}`,
+          {
+            provider,
+            extraInstructions,
+            conversationId,
+            requestId,
+          },
+          { signal },
+        )
         .then((r) => r.data.data),
     onSuccess: (data) => {
       queryClient.setQueryData(
@@ -249,6 +261,13 @@ export const useEnrichLeadWithAi = () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'conversations'] });
       queryClient.invalidateQueries({ queryKey: ['ai', 'config'] });
     },
+  });
+};
+
+export const useCancelAiRequest = () => {
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      api.post(`/ai/cancel/${requestId}`).then((r) => r.data),
   });
 };
 

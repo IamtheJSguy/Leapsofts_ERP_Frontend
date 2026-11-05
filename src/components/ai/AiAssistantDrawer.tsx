@@ -15,15 +15,18 @@ import {
   Tooltip,
   Divider,
   useTheme,
+  alpha,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
 import AddCommentOutlinedIcon from '@mui/icons-material/AddCommentOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -39,6 +42,8 @@ import {
   useAiChatSessionStore,
   getConvKey,
   NEW_CONV_KEY,
+  isDraftKey,
+  generateClientObjectId,
   type AiChatDisplayMessage,
 } from '@/store/useAiChatSessionStore';
 import { getApiErrorMessage, showApiError } from '@/utils/apiError';
@@ -73,6 +78,10 @@ export const AiAssistantDrawer = () => {
   const clearConversationEphemeral = useAiChatSessionStore((s) => s.clearConversationEphemeral);
   const moveConversationState = useAiChatSessionStore((s) => s.moveConversationState);
   const setPendingOperation = useAiChatSessionStore((s) => s.setPendingOperation);
+  const registerAbortController = useAiChatSessionStore((s) => s.registerAbortController);
+  const unregisterAbortController = useAiChatSessionStore((s) => s.unregisterAbortController);
+  const abortOperation = useAiChatSessionStore((s) => s.abortOperation);
+  const removeDraft = useAiChatSessionStore((s) => s.removeDraft);
 
   const { data: config } = useAiConfig({ enabled: aiDrawerOpen });
   const { data: conversations = [] } = useAiConversations({ enabled: aiDrawerOpen });
@@ -120,10 +129,27 @@ export const AiAssistantDrawer = () => {
     if (!promptOverride) setInput('');
 
     const originConvId = activeConversationId;
-    const originKey = getConvKey(originConvId);
+    const isNewDraft = !originConvId || isDraftKey(originConvId);
+    const targetConvId = isNewDraft ? generateClientObjectId() : originConvId;
+    const targetKey = targetConvId;
     const selectedProvider = provider;
     const tempUserMsgId = `temp-user-${Date.now()}`;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
+
+    if (isNewDraft && originConvId && isDraftKey(originConvId)) {
+      moveConversationState(originConvId, targetKey);
+      removeDraft(originConvId);
+    }
+    if (isNewDraft) {
+      setActiveConversationId(targetConvId);
+    }
+
+    // Clear any previous stopped/failed ephemeral markers for this conversation
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.filter((m) => !m.isStopped && !m.isError),
+    );
 
     const optimisticUserMsg: AiChatDisplayMessage = {
       _id: tempUserMsgId,
@@ -133,9 +159,9 @@ export const AiAssistantDrawer = () => {
       isOptimistic: true,
     };
 
-    appendEphemeralMessage(originKey, optimisticUserMsg);
-    setPendingOperation(originKey, {
-      conversationKey: originKey,
+    appendEphemeralMessage(targetKey, optimisticUserMsg);
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
       requestId,
       provider: selectedProvider,
       kind: 'chat',
@@ -145,31 +171,47 @@ export const AiAssistantDrawer = () => {
 
     sendMessage.mutate(
       {
-        conversationId: originConvId ?? undefined,
+        conversationId: targetConvId,
         message: text,
         provider: selectedProvider,
         contextLeadId: aiContextLeadId ?? undefined,
         requestId,
+        signal: controller.signal,
       },
       {
         onSuccess: (res) => {
+          unregisterAbortController(targetKey);
           const resolvedId = res.conversation._id;
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) =>
-            prev.filter((m) => m._id !== tempUserMsgId),
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId && !m.isStopped),
           );
-          if (originKey === NEW_CONV_KEY) {
-            moveConversationState(NEW_CONV_KEY, resolvedId);
-          }
-          // Only switch active conversation if the user is still looking at the origin thread
-          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
-            setActiveConversationId(resolvedId);
+          if (resolvedId !== targetKey) {
+            moveConversationState(targetKey, resolvedId);
+            if (useAiChatSessionStore.getState().activeConversationId === targetKey) {
+              setActiveConversationId(resolvedId);
+            }
           }
         },
         onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) =>
+                m._id === tempUserMsgId ? { ...m, isOptimistic: false, isStopped: true } : m,
+              ),
+            );
+            return;
+          }
+
           const errorText = getApiErrorMessage(err);
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) => [
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
             ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
             {
               _id: `err-${Date.now()}`,
@@ -191,20 +233,36 @@ export const AiAssistantDrawer = () => {
     if (!aiContextLeadId || Boolean(currentPendingOp)) return;
 
     const originConvId = activeConversationId;
-    const originKey = getConvKey(originConvId);
+    const isNewDraft = !originConvId || isDraftKey(originConvId);
+    const targetConvId = isNewDraft ? generateClientObjectId() : originConvId;
+    const targetKey = targetConvId;
     const selectedProvider = provider;
     const tempUserMsgId = `temp-enrich-${Date.now()}`;
     const requestId = `enrich-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
 
-    appendEphemeralMessage(originKey, {
+    if (isNewDraft && originConvId && isDraftKey(originConvId)) {
+      moveConversationState(originConvId, targetKey);
+      removeDraft(originConvId);
+    }
+    if (isNewDraft) {
+      setActiveConversationId(targetConvId);
+    }
+
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.filter((m) => !m.isStopped && !m.isError),
+    );
+
+    appendEphemeralMessage(targetKey, {
       _id: tempUserMsgId,
       role: 'user',
       content: 'Enrich lead data with missing phone, email, and company details.',
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     });
-    setPendingOperation(originKey, {
-      conversationKey: originKey,
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
       requestId,
       provider: selectedProvider,
       kind: 'enrich',
@@ -216,27 +274,43 @@ export const AiAssistantDrawer = () => {
       {
         leadId: aiContextLeadId,
         provider: selectedProvider,
-        conversationId: originConvId ?? undefined,
+        conversationId: targetConvId,
         requestId,
+        signal: controller.signal,
       },
       {
         onSuccess: (res) => {
+          unregisterAbortController(targetKey);
           const resolvedId = res.conversation._id;
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) =>
-            prev.filter((m) => m._id !== tempUserMsgId),
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId && !m.isStopped),
           );
-          if (originKey === NEW_CONV_KEY) {
-            moveConversationState(NEW_CONV_KEY, resolvedId);
-          }
-          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
-            setActiveConversationId(resolvedId);
+          if (resolvedId !== targetKey) {
+            moveConversationState(targetKey, resolvedId);
+            if (useAiChatSessionStore.getState().activeConversationId === targetKey) {
+              setActiveConversationId(resolvedId);
+            }
           }
         },
         onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) =>
+                m._id === tempUserMsgId ? { ...m, isOptimistic: false, isStopped: true } : m,
+              ),
+            );
+            return;
+          }
           const errorText = getApiErrorMessage(err);
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) => [
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
             ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
             {
               _id: `err-${Date.now()}`,
@@ -277,8 +351,115 @@ export const AiAssistantDrawer = () => {
     navigate(activeConversationId ? `/ai/${activeConversationId}` : '/ai');
   };
 
-  const serverMessages: AiChatDisplayMessage[] = activeConversation?.messages ?? [];
-  const messages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeral];
+  const handleContinue = () => {
+    if (Boolean(currentPendingOp)) return;
+
+    const targetConvId = activeConversationId;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (!targetConvId || isDraftKey(targetConvId)) {
+      if (lastUserMsg?.content) {
+        handleSend(lastUserMsg.content);
+      }
+      return;
+    }
+    const targetKey = targetConvId;
+    const selectedProvider = provider;
+    const requestId = `req-cont-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
+
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.map((m) => (m.isStopped ? { ...m, isStopped: false } : m)),
+    );
+
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
+      requestId,
+      provider: selectedProvider,
+      kind: 'chat',
+      startedAt: Date.now(),
+      phases: [],
+    });
+
+    sendMessage.mutate(
+      {
+        conversationId: targetConvId,
+        message: 'continue',
+        provider: selectedProvider,
+        contextLeadId: aiContextLeadId ?? undefined,
+        requestId,
+        signal: controller.signal,
+      },
+      {
+        onSuccess: () => {
+          unregisterAbortController(targetKey);
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => prev.filter((m) => !m.isStopped));
+        },
+        onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) => ({ ...m, isStopped: true })),
+            );
+            return;
+          }
+          const errorText = getApiErrorMessage(err);
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
+            ...prev,
+            {
+              _id: `err-${Date.now()}`,
+              role: 'system',
+              content: errorText,
+              provider: selectedProvider,
+              createdAt: new Date().toISOString(),
+              isError: true,
+            },
+          ]);
+        },
+      },
+    );
+  };
+
+  const serverMessages: AiChatDisplayMessage[] = (activeConversation?.messages ?? []).map((s) => {
+    const matchingEphemeral = currentEphemeral.find(
+      (e) => e._id === s._id || (e.role === s.role && e.content === s.content),
+    );
+    if (matchingEphemeral?.isStopped) {
+      return { ...s, isStopped: true };
+    }
+    return s;
+  });
+
+  const currentEphemeralFiltered = currentEphemeral.filter(
+    (e) =>
+      !serverMessages.some(
+        (s) => s._id === e._id || (s.role === e.role && s.content === e.content),
+      ),
+  );
+
+  const rawMessages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeralFiltered];
+
+  // Deduplicate consecutive identical messages and hide internal continuation prompts
+  const messages: AiChatDisplayMessage[] = rawMessages.filter((m, idx, arr) => {
+    const trimmed = m.content?.trim().toLowerCase() ?? '';
+    if (trimmed === 'continue' || trimmed === 'continue where you left off.') {
+      return false;
+    }
+    if (idx > 0) {
+      const prev = arr[idx - 1];
+      if (prev.role === m.role && prev.content?.trim() === m.content?.trim()) {
+        return false;
+      }
+    }
+    return true;
+  });
   const hasActiveByok =
     provider === 'gemini' ? Boolean(config?.hasGeminiKey) : Boolean(config?.hasClaudeKey);
 
@@ -540,7 +721,7 @@ export const AiAssistantDrawer = () => {
           ) : (
             messages.map((m, idx) => {
               const isUser = m.role === 'user';
-              const isErrorMsg = Boolean(m.isError || m.role === 'system');
+              const isErrorMsg = Boolean(m.isError || (m.role === 'system' && !m.isStopped));
 
               if (isErrorMsg) {
                 const isKeyOrQuotaIssue =
@@ -649,13 +830,18 @@ export const AiAssistantDrawer = () => {
                 <Box
                   key={m._id || idx}
                   sx={{
-                    alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: isUser ? '85%' : '96%',
-                    width: m.pendingAction ? '100%' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    width: '100%',
+                    gap: 1,
                   }}
                 >
                   <Box
                     sx={{
+                      alignSelf: isUser ? 'flex-end' : 'flex-start',
+                      maxWidth: isUser ? '85%' : '96%',
+                      width: m.pendingAction ? '100%' : isUser ? 'fit-content' : 'auto',
                       p: 1.5,
                       borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                       bgcolor: isUser
@@ -800,6 +986,75 @@ export const AiAssistantDrawer = () => {
                     )}
                   </Box>
 
+                  {/* Clean Retry with 'Message was stopped' indicator on the AI side (LEFT) */}
+                  {idx === messages.length - 1 &&
+                    !currentPendingOp &&
+                    (m.isStopped || isUser) && (
+                      <Box
+                        sx={{
+                          alignSelf: 'flex-start',
+                          mt: 2,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 1,
+                        }}
+                      >
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box
+                            sx={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: '50%',
+                              bgcolor: '#ef4444',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Typography
+                            sx={{
+                              color: isDarkMode ? '#f87171' : '#dc2626',
+                              fontWeight: 600,
+                              fontSize: '0.82rem',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            Message was stopped
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<ReplayRoundedIcon sx={{ fontSize: '13px !important' }} />}
+                          disabled={Boolean(currentPendingOp)}
+                          onClick={handleContinue}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.74rem',
+                            py: 0.25,
+                            px: 1.25,
+                            minHeight: 26,
+                            borderRadius: '8px',
+                            color: 'text.secondary',
+                            borderColor: tokens.surface.border,
+                            bgcolor: isDarkMode
+                              ? 'rgba(255,255,255,0.03)'
+                              : 'rgba(0,0,0,0.02)',
+                            '&:hover': {
+                              borderColor: tokens.brand.primary,
+                              color: tokens.brand.primary,
+                              bgcolor: isDarkMode
+                                ? 'rgba(138, 63, 252, 0.08)'
+                                : 'rgba(93, 26, 137, 0.04)',
+                            },
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      </Box>
+                    )}
+
                   {/* Interactive Before/After Diff Preview Card */}
                   {m.pendingAction && <AiActionPreviewCard action={m.pendingAction} />}
                 </Box>
@@ -808,7 +1063,11 @@ export const AiAssistantDrawer = () => {
           )}
 
           {currentPendingOp && (
-            <AiAgentPhaseTimeline pendingOp={currentPendingOp} compact />
+            <AiAgentPhaseTimeline
+              pendingOp={currentPendingOp}
+              compact
+              onStop={() => abortOperation(currentConvKey)}
+            />
           )}
 
           <div ref={messagesEndRef} />
@@ -827,7 +1086,10 @@ export const AiAssistantDrawer = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Escape' && currentPendingOp) {
+                e.preventDefault();
+                abortOperation(currentConvKey);
+              } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
@@ -838,26 +1100,48 @@ export const AiAssistantDrawer = () => {
               },
             }}
           />
-          <IconButton
-            color="primary"
-            onClick={() => handleSend()}
-            disabled={!input.trim() || Boolean(currentPendingOp)}
-            sx={{
-              bgcolor: tokens.brand.solid,
-              color: '#fff',
-              width: 40,
-              height: 40,
-              '&:hover': {
+          {currentPendingOp ? (
+            <Tooltip title="Stop generating (Esc)" arrow>
+              <IconButton
+                color="error"
+                onClick={() => abortOperation(currentConvKey)}
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.12)',
+                  color: theme.palette.error.main,
+                  width: 40,
+                  height: 40,
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                  '&:hover': {
+                    bgcolor: theme.palette.error.main,
+                    color: '#fff',
+                  },
+                }}
+              >
+                <StopRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <IconButton
+              color="primary"
+              onClick={() => handleSend()}
+              disabled={!input.trim()}
+              sx={{
                 bgcolor: tokens.brand.solid,
-                opacity: 0.9,
-              },
-              '&.Mui-disabled': {
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-              },
-            }}
-          >
-            <SendRoundedIcon fontSize="small" />
-          </IconButton>
+                color: '#fff',
+                width: 40,
+                height: 40,
+                '&:hover': {
+                  bgcolor: tokens.brand.solid,
+                  opacity: 0.9,
+                },
+                '&.Mui-disabled': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                },
+              }}
+            >
+              <SendRoundedIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
       </Drawer>
 
