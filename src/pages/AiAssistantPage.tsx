@@ -1276,9 +1276,32 @@ export const AiAssistantPage = () => {
                           mt: 0.5,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1,
+                          gap: 1.25,
                         }}
                       >
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6 }}>
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: '#ef4444',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: isDarkMode ? '#f87171' : '#dc2626',
+                              fontWeight: 600,
+                              fontSize: '0.74rem',
+                              lineHeight: 1,
+                            }}
+                          >
+                            Stopped
+                          </Typography>
+                        </Box>
+
                         <Button
                           size="small"
                           variant="outlined"
