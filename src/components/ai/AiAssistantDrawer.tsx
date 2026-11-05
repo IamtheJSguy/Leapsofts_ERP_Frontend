@@ -986,17 +986,18 @@ export const AiAssistantDrawer = () => {
                     )}
                   </Box>
 
-                  {/* Clean, small Retry button on the AI side (LEFT) */}
+                  {/* Clean Retry with 'Message was stopped' indicator on the AI side (LEFT) */}
                   {idx === messages.length - 1 &&
                     !currentPendingOp &&
                     (m.isStopped || isUser) && (
                       <Box
                         sx={{
                           alignSelf: 'flex-start',
-                          mt: 0.5,
+                          mt: 0.75,
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.25,
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 0.75,
                         }}
                       >
                         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6 }}>
@@ -1018,7 +1019,7 @@ export const AiAssistantDrawer = () => {
                               lineHeight: 1,
                             }}
                           >
-                            Stopped
+                            Message was stopped
                           </Typography>
                         </Box>
 
