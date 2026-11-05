@@ -1273,30 +1273,29 @@ export const AiAssistantPage = () => {
                       <Box
                         sx={{
                           alignSelf: 'flex-start',
-                          mt: 0.75,
+                          mt: 2,
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'flex-start',
-                          gap: 0.75,
+                          gap: 1,
                         }}
                       >
-                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6 }}>
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
                           <Box
                             sx={{
-                              width: 6,
-                              height: 6,
+                              width: 7,
+                              height: 7,
                               borderRadius: '50%',
                               bgcolor: '#ef4444',
                               flexShrink: 0,
                             }}
                           />
                           <Typography
-                            variant="caption"
                             sx={{
                               color: isDarkMode ? '#f87171' : '#dc2626',
                               fontWeight: 600,
-                              fontSize: '0.74rem',
-                              lineHeight: 1,
+                              fontSize: '0.84rem',
+                              lineHeight: 1.2,
                             }}
                           >
                             Message was stopped
@@ -1306,15 +1305,15 @@ export const AiAssistantPage = () => {
                         <Button
                           size="small"
                           variant="outlined"
-                          startIcon={<ReplayRoundedIcon sx={{ fontSize: '13px !important' }} />}
+                          startIcon={<ReplayRoundedIcon sx={{ fontSize: '14px !important' }} />}
                           disabled={Boolean(currentPendingOp)}
                           onClick={handleContinue}
                           sx={{
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '0.74rem',
-                            py: 0.25,
-                            px: 1.25,
+                            fontSize: '0.76rem',
+                            py: 0.3,
+                            px: 1.35,
                             minHeight: 28,
                             borderRadius: '8px',
                             color: 'text.secondary',

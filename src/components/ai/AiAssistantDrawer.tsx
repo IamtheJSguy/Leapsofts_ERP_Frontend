@@ -993,30 +993,29 @@ export const AiAssistantDrawer = () => {
                       <Box
                         sx={{
                           alignSelf: 'flex-start',
-                          mt: 0.75,
+                          mt: 2,
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'flex-start',
-                          gap: 0.75,
+                          gap: 1,
                         }}
                       >
-                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6 }}>
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
                           <Box
                             sx={{
-                              width: 6,
-                              height: 6,
+                              width: 7,
+                              height: 7,
                               borderRadius: '50%',
                               bgcolor: '#ef4444',
                               flexShrink: 0,
                             }}
                           />
                           <Typography
-                            variant="caption"
                             sx={{
                               color: isDarkMode ? '#f87171' : '#dc2626',
                               fontWeight: 600,
-                              fontSize: '0.72rem',
-                              lineHeight: 1,
+                              fontSize: '0.82rem',
+                              lineHeight: 1.2,
                             }}
                           >
                             Message was stopped
@@ -1032,8 +1031,8 @@ export const AiAssistantDrawer = () => {
                           sx={{
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '0.72rem',
-                            py: 0.2,
+                            fontSize: '0.74rem',
+                            py: 0.25,
                             px: 1.25,
                             minHeight: 26,
                             borderRadius: '8px',
