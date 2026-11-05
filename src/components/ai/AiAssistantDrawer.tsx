@@ -355,7 +355,13 @@ export const AiAssistantDrawer = () => {
     if (Boolean(currentPendingOp)) return;
 
     const targetConvId = activeConversationId;
-    if (!targetConvId || isDraftKey(targetConvId)) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (!targetConvId || isDraftKey(targetConvId)) {
+      if (lastUserMsg?.content) {
+        handleSend(lastUserMsg.content);
+      }
+      return;
+    }
     const targetKey = targetConvId;
     const selectedProvider = provider;
     const requestId = `req-cont-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -421,14 +427,39 @@ export const AiAssistantDrawer = () => {
     );
   };
 
-  const serverMessages: AiChatDisplayMessage[] = activeConversation?.messages ?? [];
+  const serverMessages: AiChatDisplayMessage[] = (activeConversation?.messages ?? []).map((s) => {
+    const matchingEphemeral = currentEphemeral.find(
+      (e) => e._id === s._id || (e.role === s.role && e.content === s.content),
+    );
+    if (matchingEphemeral?.isStopped) {
+      return { ...s, isStopped: true };
+    }
+    return s;
+  });
+
   const currentEphemeralFiltered = currentEphemeral.filter(
     (e) =>
       !serverMessages.some(
         (s) => s._id === e._id || (s.role === e.role && s.content === e.content),
       ),
   );
-  const messages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeralFiltered];
+
+  const rawMessages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeralFiltered];
+
+  // Deduplicate consecutive identical messages and hide internal continuation prompts
+  const messages: AiChatDisplayMessage[] = rawMessages.filter((m, idx, arr) => {
+    const trimmed = m.content?.trim().toLowerCase() ?? '';
+    if (trimmed === 'continue' || trimmed === 'continue where you left off.') {
+      return false;
+    }
+    if (idx > 0) {
+      const prev = arr[idx - 1];
+      if (prev.role === m.role && prev.content?.trim() === m.content?.trim()) {
+        return false;
+      }
+    }
+    return true;
+  });
   const hasActiveByok =
     provider === 'gemini' ? Boolean(config?.hasGeminiKey) : Boolean(config?.hasClaudeKey);
 
@@ -955,83 +986,51 @@ export const AiAssistantDrawer = () => {
                     )}
                   </Box>
 
-                  {/* Tareeqa 1 (ChatGPT style): Response stopped card on the assistant side (LEFT) */}
-                  {m.isStopped && (
-                    <Box
-                      sx={{
-                        alignSelf: 'flex-start',
-                        maxWidth: '96%',
-                        width: '100%',
-                      }}
-                    >
+                  {/* Clean, small Retry button on the AI side (LEFT) */}
+                  {idx === messages.length - 1 &&
+                    !currentPendingOp &&
+                    (m.isStopped || isUser) && (
                       <Box
                         sx={{
-                          p: 1.25,
-                          borderRadius: '16px 16px 16px 4px',
-                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f8f7fa',
-                          border: `1px solid ${
-                            isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
-                          }`,
+                          alignSelf: 'flex-start',
+                          mt: 0.5,
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 1.5,
-                          flexWrap: 'wrap',
+                          gap: 1,
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.85 }}>
-                          <Box
-                            sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              bgcolor: '#ef4444',
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontSize: '0.78rem',
-                              color: isDarkMode ? '#fca5a5' : '#b91c1c',
-                              fontWeight: 500,
-                            }}
-                          >
-                            Response generation was stopped.
-                          </Typography>
-                        </Box>
-
                         <Button
                           size="small"
                           variant="outlined"
-                          startIcon={<PlayArrowRoundedIcon sx={{ fontSize: '14px !important' }} />}
+                          startIcon={<ReplayRoundedIcon sx={{ fontSize: '13px !important' }} />}
                           disabled={Boolean(currentPendingOp)}
                           onClick={handleContinue}
                           sx={{
                             textTransform: 'none',
-                            fontWeight: 700,
+                            fontWeight: 600,
                             fontSize: '0.72rem',
-                            py: 0.25,
+                            py: 0.2,
                             px: 1.25,
+                            minHeight: 26,
                             borderRadius: '8px',
-                            color: tokens.brand.primary,
-                            borderColor: tokens.brand.primary,
+                            color: 'text.secondary',
+                            borderColor: tokens.surface.border,
                             bgcolor: isDarkMode
-                              ? 'rgba(138, 63, 252, 0.08)'
-                              : 'rgba(93, 26, 137, 0.05)',
+                              ? 'rgba(255,255,255,0.03)'
+                              : 'rgba(0,0,0,0.02)',
                             '&:hover': {
                               borderColor: tokens.brand.primary,
+                              color: tokens.brand.primary,
                               bgcolor: isDarkMode
-                                ? 'rgba(138, 63, 252, 0.16)'
-                                : 'rgba(93, 26, 137, 0.1)',
+                                ? 'rgba(138, 63, 252, 0.08)'
+                                : 'rgba(93, 26, 137, 0.04)',
                             },
                           }}
                         >
-                          Continue
+                          Retry
                         </Button>
                       </Box>
-                    </Box>
-                  )}
+                    )}
 
                   {/* Interactive Before/After Diff Preview Card */}
                   {m.pendingAction && <AiActionPreviewCard action={m.pendingAction} />}
