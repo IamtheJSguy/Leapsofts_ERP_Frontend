@@ -15,14 +15,18 @@ import {
   useTheme,
   useMediaQuery,
   Drawer,
+  alpha,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
+import CloseIcon from '@mui/icons-material/Close';
 import AddCommentOutlinedIcon from '@mui/icons-material/AddCommentOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import MenuOpenRoundedIcon from '@mui/icons-material/MenuOpenRounded';
 import {
@@ -39,6 +43,8 @@ import {
   useAiChatSessionStore,
   getConvKey,
   NEW_CONV_KEY,
+  isDraftKey,
+  generateClientObjectId,
   type AiChatDisplayMessage,
 } from '@/store/useAiChatSessionStore';
 import { getApiErrorMessage, showApiError } from '@/utils/apiError';
@@ -81,6 +87,7 @@ export const AiAssistantPage = () => {
   const setActiveConversationId = useAiChatSessionStore((s) => s.setActiveConversationId);
   const provider = useAiChatSessionStore((s) => s.provider);
   const setProvider = useAiChatSessionStore((s) => s.setProvider);
+  const drafts = useAiChatSessionStore((s) => s.drafts);
   const ephemeralByConv = useAiChatSessionStore((s) => s.ephemeralByConv);
   const pendingByConv = useAiChatSessionStore((s) => s.pendingByConv);
   const lastCompletedPhasesByConv = useAiChatSessionStore(
@@ -91,6 +98,11 @@ export const AiAssistantPage = () => {
   const clearConversationEphemeral = useAiChatSessionStore((s) => s.clearConversationEphemeral);
   const moveConversationState = useAiChatSessionStore((s) => s.moveConversationState);
   const setPendingOperation = useAiChatSessionStore((s) => s.setPendingOperation);
+  const createDraftConversation = useAiChatSessionStore((s) => s.createDraftConversation);
+  const removeDraft = useAiChatSessionStore((s) => s.removeDraft);
+  const registerAbortController = useAiChatSessionStore((s) => s.registerAbortController);
+  const unregisterAbortController = useAiChatSessionStore((s) => s.unregisterAbortController);
+  const abortOperation = useAiChatSessionStore((s) => s.abortOperation);
 
   const { data: config } = useAiConfig();
   const { data: conversations = [], isLoading: isLoadingList } = useAiConversations();
@@ -104,7 +116,7 @@ export const AiAssistantPage = () => {
   useEffect(() => {
     if (routeConversationId && routeConversationId !== activeConversationId) {
       setActiveConversationId(routeConversationId);
-    } else if (!routeConversationId && activeConversationId) {
+    } else if (!routeConversationId && activeConversationId && !isDraftKey(activeConversationId)) {
       setActiveConversationId(null);
     }
   }, [routeConversationId]);
@@ -138,12 +150,40 @@ export const AiAssistantPage = () => {
   const handleSelectConversation = (id: string | null) => {
     setActiveConversationId(id);
     setMobileHistoryOpen(false);
-    if (id) {
+    if (id && !isDraftKey(id)) {
       navigate(`/ai/${id}`, { replace: true });
     } else {
       navigate('/ai', { replace: true });
     }
   };
+
+  const handleNewChat = () => {
+    const hasRunningTask = Boolean(currentPendingOp);
+    const hasMessages =
+      currentEphemeral.length > 0 || (activeConversation?.messages?.length ?? 0) > 0;
+
+    if (hasRunningTask || hasMessages || activeConversationId !== null) {
+      createDraftConversation();
+    } else {
+      setActiveConversationId(null);
+    }
+    setMobileHistoryOpen(false);
+    navigate('/ai', { replace: true });
+  };
+
+  const activeDraftKeys = Array.from(
+    new Set([
+      ...drafts,
+      ...Object.keys(pendingByConv).filter(isDraftKey),
+      ...Object.keys(ephemeralByConv).filter(isDraftKey),
+    ]),
+  ).filter((key) => {
+    const isCurrent =
+      key === activeConversationId || (activeConversationId === null && key === NEW_CONV_KEY);
+    const hasPending = Boolean(pendingByConv[key]);
+    const hasEphemeral = (ephemeralByConv[key]?.length ?? 0) > 0;
+    return isCurrent || hasPending || hasEphemeral;
+  });
 
   const handleDeleteConversation = (
     e: React.MouseEvent,
@@ -183,10 +223,28 @@ export const AiAssistantPage = () => {
     if (!promptOverride) setInput('');
 
     const originConvId = activeConversationId;
-    const originKey = getConvKey(originConvId);
+    const isNewDraft = !originConvId || isDraftKey(originConvId);
+    const targetConvId = isNewDraft ? generateClientObjectId() : originConvId;
+    const targetKey = targetConvId;
     const selectedProvider = provider;
     const tempUserMsgId = `temp-user-${Date.now()}`;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
+
+    if (isNewDraft && originConvId && isDraftKey(originConvId)) {
+      moveConversationState(originConvId, targetKey);
+      removeDraft(originConvId);
+    }
+    if (isNewDraft) {
+      setActiveConversationId(targetConvId);
+      navigate(`/ai/${targetConvId}`, { replace: true });
+    }
+
+    // Clear any previous stopped/failed ephemeral markers for this conversation
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.filter((m) => !m.isStopped && !m.isError),
+    );
 
     const optimisticUserMsg: AiChatDisplayMessage = {
       _id: tempUserMsgId,
@@ -196,9 +254,9 @@ export const AiAssistantPage = () => {
       isOptimistic: true,
     };
 
-    appendEphemeralMessage(originKey, optimisticUserMsg);
-    setPendingOperation(originKey, {
-      conversationKey: originKey,
+    appendEphemeralMessage(targetKey, optimisticUserMsg);
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
       requestId,
       provider: selectedProvider,
       kind: 'chat',
@@ -208,32 +266,48 @@ export const AiAssistantPage = () => {
 
     sendMessage.mutate(
       {
-        conversationId: originConvId ?? undefined,
+        conversationId: targetConvId,
         message: text,
         provider: selectedProvider,
         contextLeadId: aiContextLeadId ?? undefined,
         requestId,
+        signal: controller.signal,
       },
       {
         onSuccess: (res) => {
+          unregisterAbortController(targetKey);
           const resolvedId = res.conversation._id;
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) =>
-            prev.filter((m) => m._id !== tempUserMsgId),
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId && !m.isStopped),
           );
-          if (originKey === NEW_CONV_KEY) {
-            moveConversationState(NEW_CONV_KEY, resolvedId);
-          }
-          // Only switch active conversation if the user is still viewing the thread that initiated the request
-          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
-            setActiveConversationId(resolvedId);
-            navigate(`/ai/${resolvedId}`, { replace: true });
+          if (resolvedId !== targetKey) {
+            moveConversationState(targetKey, resolvedId);
+            if (useAiChatSessionStore.getState().activeConversationId === targetKey) {
+              setActiveConversationId(resolvedId);
+              navigate(`/ai/${resolvedId}`, { replace: true });
+            }
           }
         },
         onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) =>
+                m._id === tempUserMsgId ? { ...m, isOptimistic: false, isStopped: true } : m,
+              ),
+            );
+            return;
+          }
+
           const errorText = getApiErrorMessage(err);
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) => [
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
             ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
             {
               _id: `err-${Date.now()}`,
@@ -255,20 +329,37 @@ export const AiAssistantPage = () => {
     if (!aiContextLeadId || Boolean(currentPendingOp)) return;
 
     const originConvId = activeConversationId;
-    const originKey = getConvKey(originConvId);
+    const isNewDraft = !originConvId || isDraftKey(originConvId);
+    const targetConvId = isNewDraft ? generateClientObjectId() : originConvId;
+    const targetKey = targetConvId;
     const selectedProvider = provider;
     const tempUserMsgId = `temp-enrich-${Date.now()}`;
     const requestId = `enrich-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
 
-    appendEphemeralMessage(originKey, {
+    if (isNewDraft && originConvId && isDraftKey(originConvId)) {
+      moveConversationState(originConvId, targetKey);
+      removeDraft(originConvId);
+    }
+    if (isNewDraft) {
+      setActiveConversationId(targetConvId);
+      navigate(`/ai/${targetConvId}`, { replace: true });
+    }
+
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.filter((m) => !m.isStopped && !m.isError),
+    );
+
+    appendEphemeralMessage(targetKey, {
       _id: tempUserMsgId,
       role: 'user',
       content: 'Enrich lead data with missing phone, email, and company details.',
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     });
-    setPendingOperation(originKey, {
-      conversationKey: originKey,
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
       requestId,
       provider: selectedProvider,
       kind: 'enrich',
@@ -280,28 +371,45 @@ export const AiAssistantPage = () => {
       {
         leadId: aiContextLeadId,
         provider: selectedProvider,
-        conversationId: originConvId ?? undefined,
+        conversationId: targetConvId,
         requestId,
+        signal: controller.signal,
       },
       {
         onSuccess: (res) => {
+          unregisterAbortController(targetKey);
           const resolvedId = res.conversation._id;
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) =>
-            prev.filter((m) => m._id !== tempUserMsgId),
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) =>
+            prev.filter((m) => m._id !== tempUserMsgId && !m.isStopped),
           );
-          if (originKey === NEW_CONV_KEY) {
-            moveConversationState(NEW_CONV_KEY, resolvedId);
-          }
-          if (useAiChatSessionStore.getState().activeConversationId === originConvId) {
-            setActiveConversationId(resolvedId);
-            navigate(`/ai/${resolvedId}`, { replace: true });
+          if (resolvedId !== targetKey) {
+            moveConversationState(targetKey, resolvedId);
+            if (useAiChatSessionStore.getState().activeConversationId === targetKey) {
+              setActiveConversationId(resolvedId);
+              navigate(`/ai/${resolvedId}`, { replace: true });
+            }
           }
         },
         onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) =>
+                m._id === tempUserMsgId ? { ...m, isOptimistic: false, isStopped: true } : m,
+              ),
+            );
+            return;
+          }
+
           const errorText = getApiErrorMessage(err);
-          setPendingOperation(originKey, null);
-          updateEphemeralMessages(originKey, (prev) => [
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
             ...prev.map((m) => (m._id === tempUserMsgId ? { ...m, isOptimistic: false } : m)),
             {
               _id: `err-${Date.now()}`,
@@ -317,8 +425,84 @@ export const AiAssistantPage = () => {
     );
   };
 
+  const handleContinue = () => {
+    if (Boolean(currentPendingOp)) return;
+
+    const targetConvId = activeConversationId;
+    if (!targetConvId || isDraftKey(targetConvId)) return;
+    const targetKey = targetConvId;
+    const selectedProvider = provider;
+    const requestId = `req-cont-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    registerAbortController(targetKey, controller);
+
+    updateEphemeralMessages(targetKey, (prev) =>
+      prev.map((m) => (m.isStopped ? { ...m, isStopped: false } : m)),
+    );
+
+    setPendingOperation(targetKey, {
+      conversationKey: targetKey,
+      requestId,
+      provider: selectedProvider,
+      kind: 'chat',
+      startedAt: Date.now(),
+      phases: [],
+    });
+
+    sendMessage.mutate(
+      {
+        conversationId: targetConvId,
+        message: 'continue',
+        provider: selectedProvider,
+        contextLeadId: aiContextLeadId ?? undefined,
+        requestId,
+        signal: controller.signal,
+      },
+      {
+        onSuccess: () => {
+          unregisterAbortController(targetKey);
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => prev.filter((m) => !m.isStopped));
+        },
+        onError: (err: unknown) => {
+          unregisterAbortController(targetKey);
+          if (
+            (err as { name?: string })?.name === 'CanceledError' ||
+            (err as { code?: string })?.code === 'ERR_CANCELED' ||
+            (err as { response?: { status?: number } })?.response?.status === 499
+          ) {
+            setPendingOperation(targetKey, null);
+            updateEphemeralMessages(targetKey, (prev) =>
+              prev.map((m) => ({ ...m, isStopped: true })),
+            );
+            return;
+          }
+          const errorText = getApiErrorMessage(err);
+          setPendingOperation(targetKey, null);
+          updateEphemeralMessages(targetKey, (prev) => [
+            ...prev,
+            {
+              _id: `err-${Date.now()}`,
+              role: 'system',
+              content: errorText,
+              provider: selectedProvider,
+              createdAt: new Date().toISOString(),
+              isError: true,
+            },
+          ]);
+        },
+      },
+    );
+  };
+
   const serverMessages: AiChatDisplayMessage[] = activeConversation?.messages ?? [];
-  const messages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeral];
+  const currentEphemeralFiltered = currentEphemeral.filter(
+    (e) =>
+      !serverMessages.some(
+        (s) => s._id === e._id || (s.role === e.role && s.content === e.content),
+      ),
+  );
+  const messages: AiChatDisplayMessage[] = [...serverMessages, ...currentEphemeralFiltered];
   const hasActiveByok =
     provider === 'gemini' ? Boolean(config?.hasGeminiKey) : Boolean(config?.hasClaudeKey);
 
@@ -340,7 +524,7 @@ export const AiAssistantPage = () => {
           fullWidth
           variant="contained"
           startIcon={<AddCommentOutlinedIcon />}
-          onClick={() => handleSelectConversation(null)}
+          onClick={handleNewChat}
           sx={{
             textTransform: 'none',
             fontWeight: 700,
@@ -359,46 +543,95 @@ export const AiAssistantPage = () => {
         </Button>
       </Box>
 
-      {/* Unsaved draft thread item if a new chat has pending/ephemeral messages */}
-      {(Boolean(pendingByConv[NEW_CONV_KEY]) ||
-        (ephemeralByConv[NEW_CONV_KEY]?.length ?? 0) > 0) && (
-        <Box sx={{ px: 1.25, pt: 1.25 }}>
-          <Box
-            onClick={() => handleSelectConversation(null)}
-            sx={{
-              p: 1.25,
-              borderRadius: '10px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1,
-              bgcolor:
-                activeConversationId === null
+      {/* Unsaved draft thread items (active or running in background) */}
+      {activeDraftKeys.map((draftKey) => {
+        const isCurrent =
+          activeConversationId === draftKey ||
+          (activeConversationId === null && draftKey === NEW_CONV_KEY);
+        const isPending = Boolean(pendingByConv[draftKey]);
+        const firstUserMsg = ephemeralByConv[draftKey]?.find(
+          (m) => m.role === 'user',
+        )?.content;
+        const draftTitle = firstUserMsg
+          ? firstUserMsg.slice(0, 36) + (firstUserMsg.length > 36 ? '...' : '')
+          : 'New Lumi Chat';
+
+        return (
+          <Box key={draftKey} sx={{ px: 1.25, pt: 1 }}>
+            <Box
+              onClick={() => handleSelectConversation(draftKey === NEW_CONV_KEY ? null : draftKey)}
+              sx={{
+                p: 1.25,
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+                bgcolor: isCurrent
                   ? isDarkMode
                     ? 'rgba(138, 63, 252, 0.18)'
                     : 'rgba(93, 26, 137, 0.1)'
                   : 'transparent',
-              border: `1px solid ${
-                activeConversationId === null
-                  ? 'rgba(138, 63, 252, 0.35)'
-                  : 'transparent'
-              }`,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-              {pendingByConv[NEW_CONV_KEY] ? (
-                <CircularProgress size={14} sx={{ color: tokens.brand.primary, flexShrink: 0 }} />
-              ) : (
-                <AutoAwesomeIcon sx={{ fontSize: 16, color: tokens.brand.primary, flexShrink: 0 }} />
-              )}
-              <Typography variant="body2" noWrap sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
-                New conversation...
-              </Typography>
+                border: `1px solid ${
+                  isCurrent
+                    ? 'rgba(138, 63, 252, 0.35)'
+                    : 'transparent'
+                }`,
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                  '& .draft-close-btn': { opacity: 1 },
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
+                {isPending ? (
+                  <CircularProgress size={14} sx={{ color: tokens.brand.primary, flexShrink: 0 }} />
+                ) : (
+                  <AutoAwesomeIcon sx={{ fontSize: 16, color: tokens.brand.primary, flexShrink: 0 }} />
+                )}
+                <Typography variant="body2" noWrap sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
+                  {draftTitle}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {isPending && (
+                  <Chip
+                    size="small"
+                    label="Running"
+                    sx={{
+                      height: 18,
+                      fontSize: '0.62rem',
+                      fontWeight: 700,
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+                      color: 'primary.main',
+                    }}
+                  />
+                )}
+                <Tooltip title="Close chat">
+                  <IconButton
+                    size="small"
+                    className="draft-close-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeDraft(draftKey);
+                    }}
+                    sx={{
+                      p: 0.25,
+                      opacity: isCurrent ? 0.7 : 0,
+                      transition: 'opacity 0.15s ease',
+                      '&:hover': { opacity: 1, color: 'error.main' },
+                    }}
+                  >
+                    <CloseIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
           </Box>
-        </Box>
-      )}
+        );
+      })}
 
       {/* Conversations List */}
       <Box sx={{ flex: 1, overflowY: 'auto', p: 1.25, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -739,7 +972,7 @@ export const AiAssistantPage = () => {
           ) : (
             messages.map((m, idx) => {
               const isUser = m.role === 'user';
-              const isErrorMsg = Boolean(m.isError || m.role === 'system');
+              const isErrorMsg = Boolean(m.isError || (m.role === 'system' && !m.isStopped));
 
               if (isErrorMsg) {
                 const isKeyOrQuotaIssue =
@@ -846,13 +1079,18 @@ export const AiAssistantPage = () => {
                 <Box
                   key={m._id || idx}
                   sx={{
-                    alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: isUser ? '75%' : 820,
-                    width: m.pendingAction ? '100%' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    width: '100%',
+                    gap: 1.25,
                   }}
                 >
                   <Box
                     sx={{
+                      alignSelf: isUser ? 'flex-end' : 'flex-start',
+                      maxWidth: isUser ? '75%' : 820,
+                      width: m.pendingAction ? '100%' : isUser ? 'fit-content' : 'auto',
                       p: 2,
                       borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                       bgcolor: isUser
@@ -997,6 +1235,84 @@ export const AiAssistantPage = () => {
                     )}
                   </Box>
 
+                  {/* Tareeqa 1 (ChatGPT style): Response stopped card on the assistant side (LEFT) */}
+                  {m.isStopped && (
+                    <Box
+                      sx={{
+                        alignSelf: 'flex-start',
+                        maxWidth: 720,
+                        width: '100%',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          borderRadius: '16px 16px 16px 4px',
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f8f7fa',
+                          border: `1px solid ${
+                            isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
+                          }`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 2,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: '50%',
+                              bgcolor: '#ef4444',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '0.82rem',
+                              color: isDarkMode ? '#fca5a5' : '#b91c1c',
+                              fontWeight: 500,
+                            }}
+                          >
+                            Response generation was stopped.
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<PlayArrowRoundedIcon sx={{ fontSize: '15px !important' }} />}
+                          disabled={Boolean(currentPendingOp)}
+                          onClick={handleContinue}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.74rem',
+                            py: 0.35,
+                            px: 1.5,
+                            borderRadius: '8px',
+                            color: tokens.brand.primary,
+                            borderColor: tokens.brand.primary,
+                            bgcolor: isDarkMode
+                              ? 'rgba(138, 63, 252, 0.08)'
+                              : 'rgba(93, 26, 137, 0.05)',
+                            '&:hover': {
+                              borderColor: tokens.brand.primary,
+                              bgcolor: isDarkMode
+                                ? 'rgba(138, 63, 252, 0.16)'
+                                : 'rgba(93, 26, 137, 0.1)',
+                            },
+                          }}
+                        >
+                          Continue generating
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+
                   {/* Interactive Before/After Diff Preview Card */}
                   {m.pendingAction && <AiActionPreviewCard action={m.pendingAction} />}
                 </Box>
@@ -1004,7 +1320,12 @@ export const AiAssistantPage = () => {
             })
           )}
 
-          {currentPendingOp && <AiAgentPhaseTimeline pendingOp={currentPendingOp} />}
+          {currentPendingOp && (
+            <AiAgentPhaseTimeline
+              pendingOp={currentPendingOp}
+              onStop={() => abortOperation(currentConvKey)}
+            />
+          )}
 
           <div ref={messagesEndRef} />
         </Box>
@@ -1022,7 +1343,10 @@ export const AiAssistantPage = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Escape' && currentPendingOp) {
+                e.preventDefault();
+                abortOperation(currentConvKey);
+              } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
@@ -1033,26 +1357,48 @@ export const AiAssistantPage = () => {
               },
             }}
           />
-          <IconButton
-            color="primary"
-            onClick={() => handleSend()}
-            disabled={!input.trim() || Boolean(currentPendingOp)}
-            sx={{
-              bgcolor: tokens.brand.solid,
-              color: '#fff',
-              width: 42,
-              height: 42,
-              '&:hover': {
+          {currentPendingOp ? (
+            <Tooltip title="Stop generating (Esc)" arrow>
+              <IconButton
+                color="error"
+                onClick={() => abortOperation(currentConvKey)}
+                sx={{
+                  bgcolor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.12)',
+                  color: theme.palette.error.main,
+                  width: 42,
+                  height: 42,
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                  '&:hover': {
+                    bgcolor: theme.palette.error.main,
+                    color: '#fff',
+                  },
+                }}
+              >
+                <StopRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <IconButton
+              color="primary"
+              onClick={() => handleSend()}
+              disabled={!input.trim()}
+              sx={{
                 bgcolor: tokens.brand.solid,
-                opacity: 0.9,
-              },
-              '&.Mui-disabled': {
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-              },
-            }}
-          >
-            <SendRoundedIcon fontSize="small" />
-          </IconButton>
+                color: '#fff',
+                width: 42,
+                height: 42,
+                '&:hover': {
+                  bgcolor: tokens.brand.solid,
+                  opacity: 0.9,
+                },
+                '&.Mui-disabled': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                },
+              }}
+            >
+              <SendRoundedIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
