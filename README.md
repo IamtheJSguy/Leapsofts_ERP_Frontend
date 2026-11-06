@@ -1,75 +1,47 @@
-# React + TypeScript + Vite
+# Leapsofts Sales Automation (tenant web app)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite SPA for **tenant organizations**: dashboard, leads, projects/Kanban, meetings, chat, AI assistant, invoicing, team, attendance, org settings, and more. It talks to the backend at **`/api/v1`** (JWT session).
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20+
+- Running API: [leapsoft-sales-automation-backend](../leapsoft-sales-automation-backend/Readme.md) (MongoDB + Redis as documented there)
 
-## React Compiler
+## Environment
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Create `.env` in this folder (see Vite [env loading](https://vite.dev/guide/env-and-mode.html)):
 
-Note: This will impact Vite dev & build performances.
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_URL` | **Required for API calls.** Tenant API root passed to Axios as `baseURL` (`src/lib/axios.ts`). Use the backend mount point, e.g. `http://127.0.0.1:5000/api/v1`. Paths in hooks are relative to that (`/users`, `/leads`, …). |
 
-## Expanding the ESLint configuration
+`vite.config.ts` also sets a dev `server.proxy` from `/api` → `VITE_API_URL` (useful if anything calls relative `/api/...`; the main client uses the absolute `baseURL` above).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Scripts
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # Vite dev server (--host)
+npm run build    # TypeScript project references + production bundle
+npm run lint
+npm run preview  # Preview production build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Optional Node tests: `npm run test:teams`, `test:sales-kpi-refresh`, `test:lead-updates`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Auth
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- Access token is stored in `localStorage` (`accessToken`); refresh uses the backend `/auth/refresh` flow with credentials (see `src/lib/axios.ts`).
+- After a failed refresh, the client clears auth and redirects to `/login`.
+
+## Routing
+
+Main router: `src/router/index.tsx` (dashboard, tasks, sales, projects, Kanban, meetings, chat, AI, invoices, team, attendance, admin, profile, OAuth return paths for integrations, etc.). Lazy route loaders live in `src/router/lazy-pages.ts`.
+
+For full API coverage and roles, see the backend README route table.
+
+## Related packages
+
+- [Backend API](../leapsoft-sales-automation-backend/Readme.md)
+- [Platform console](../leapsofts-erp-admin/README.md) (operator UI, not this app)
+- [Tauri desktop](../leapsofts-erp-app/README.md)
