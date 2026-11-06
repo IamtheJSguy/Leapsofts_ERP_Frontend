@@ -73,7 +73,7 @@ export const SecurityComplianceSection = () => {
                 variant="h2"
                 sx={{
                   fontWeight: 850,
-                  fontSize: { xs: '2rem', sm: '2.8rem', md: '3.2rem' },
+                  fontSize: { xs: '1.65rem', sm: '2.5rem', md: '3.2rem' },
                   letterSpacing: '-0.03em',
                   background: isDark
                     ? 'linear-gradient(135deg, #FFFFFF 30%, #10B981 70%, #818CF8 100%)'
@@ -119,8 +119,8 @@ export const SecurityComplianceSection = () => {
               <Box
                 sx={{
                   height: '100%',
-                  p: { xs: 3, md: 3.5 },
-                  borderRadius: '24px',
+                  p: { xs: 2.25, sm: 3, md: 3.5 },
+                  borderRadius: { xs: '20px', sm: '24px' },
                   bgcolor: isDark ? 'rgba(23, 18, 32, 0.92)' : 'rgba(255, 255, 255, 0.9)',
                   backgroundImage: isDark
                     ? `radial-gradient(circle at 15% 15%, ${pillar.ambientGlow} 0%, transparent 65%)`

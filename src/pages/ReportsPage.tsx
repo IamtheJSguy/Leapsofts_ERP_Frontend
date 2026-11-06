@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Suspense, useState, useMemo, useEffect, useRef } from 'react';
 import {
   Typography,
   Box,
@@ -13,10 +13,14 @@ import {
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { ReportTable } from '@/components/reports/ReportTable';
 import { ReportExportButton } from '@/components/reports/ReportExportButton';
-import { AttendanceReportView } from '@/components/reports/AttendanceReportView';
-import { KpiPerformanceView } from '@/components/reports/KpiPerformanceView';
-import { CombinedKpiView, fromLegacyKpiPerformance } from '@/components/reports/CombinedKpiView';
-import { TeamOverviewView } from '@/components/reports/TeamOverviewView';
+import {
+  AttendanceReportView,
+  CombinedKpiView,
+  KpiPerformanceView,
+  TeamOverviewView,
+} from '@/components/reports/lazyReportViews';
+import { fromLegacyKpiPerformance } from '@/components/reports/combinedKpiLegacy';
+import { ReportResultSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useReport } from '@/hooks/api/useReports';
@@ -169,7 +173,7 @@ const ReportsPage = () => {
         return (
           <Box>
             <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary }} />
+              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.solid }} />
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.02em' }}>
                   {overall.user?.name || userName}
@@ -222,7 +226,7 @@ const ReportsPage = () => {
         return (
           <Box>
             <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.primary, backgroundImage: `linear-gradient(180deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent} 100%)` }} />
+              <Box sx={{ width: 8, height: 32, borderRadius: 4, bgcolor: tokens.brand.solid, backgroundImage: `linear-gradient(180deg, ${tokens.brand.solid} 0%, ${tokens.brand.accent} 100%)` }} />
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1 }}>
                   {fullMetrics.user?.name || userName}
@@ -384,7 +388,7 @@ const ReportsPage = () => {
             p: 0.5,
             minHeight: '44px',
             '& .MuiTabs-indicator': {
-              backgroundColor: tokens.brand.primary,
+              backgroundColor: tokens.brand.solid,
               borderRadius: '12px',
               height: '100%',
               boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',
@@ -426,7 +430,7 @@ const ReportsPage = () => {
           />
 
           {/* Report Result View */}
-          {renderReportResult()}
+          <Suspense fallback={<ReportResultSkeleton />}>{renderReportResult()}</Suspense>
 
           {/* Export Toolbar */}
           {selectedReport && selectedReport.status === 'completed' && (

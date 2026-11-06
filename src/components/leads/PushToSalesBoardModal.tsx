@@ -33,7 +33,7 @@ import { useUsers } from '@/hooks/api/useUsers';
 import { useUIStore } from '@/store/useUIStore';
 import { tokens } from '@/styles/tokens';
 import { showApiError } from '@/utils/apiError';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { toPlainText } from '@/components/common/RichTextContent';
 import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { ModernTimePicker } from '@/components/common/ModernTimePicker';
@@ -355,7 +355,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                     <Box sx={{
                       width: 22, height: 22, borderRadius: '7px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      bgcolor: isSelected ? tokens.brand.primary : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
+                      bgcolor: isSelected ? tokens.brand.solid : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
                       color: isSelected ? '#fff' : tokens.text.muted,
                       fontSize: '0.68rem', fontWeight: 800, flexShrink: 0,
                       transition: 'all 0.18s ease',
@@ -415,7 +415,7 @@ export const PushToSalesBoardModal = ({ open, lead, onClose, onSuccess }: PushTo
                   overflow: 'hidden',
                 }}
               >
-                <RichTextEditor
+                <LazyRichTextEditor
                   value={cardDescription}
                   onChange={setCardDescription}
                   submitOnEnter={false}

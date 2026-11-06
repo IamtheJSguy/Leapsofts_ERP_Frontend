@@ -3,11 +3,11 @@ import { useMemo, useState } from 'react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SystemSettingsPanel } from '@/components/admin/SystemSettingsPanel';
+import { CrmConnectionsPanel } from '@/components/admin/CrmConnectionsPanel';
 import { tokens } from '@/styles/tokens';
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/axios';
+import { useAdminUsage, useRevokeAdminSessions } from '@/hooks/api/useAdmin';
+import { QueryState } from '@/components/common/QueryState';
 import { useUIStore } from '@/store/useUIStore';
-import { useAuthStore } from '@/store/useAuthStore';
 
 type AdminTabId = 'users' | 'system' | 'usage';
 
@@ -17,26 +17,20 @@ const AdminPage = () => {
   const { canManageUsers, canManageSystemSettings } = usePermissions();
 
   const tabs = useMemo(() => {
-    const list: { id: AdminTabId; label: string }[] = [];
-    if (canManageUsers) list.push({ id: 'users', label: 'Users List' });
-    if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings' });
-    if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage' });
+    const list: { id: AdminTabId; label: string; shortLabel: string }[] = [];
+    if (canManageUsers) list.push({ id: 'users', label: 'Users List', shortLabel: 'Users' });
+    if (canManageSystemSettings) list.push({ id: 'system', label: 'System Settings', shortLabel: 'Settings' });
+    if (canManageSystemSettings) list.push({ id: 'usage', label: 'Usage', shortLabel: 'Usage' });
     return list;
   }, [canManageUsers, canManageSystemSettings]);
 
   const addToast = useUIStore((s) => s.addToast);
-  const organizationId = useAuthStore((s) => s.user?.organizationId);
-  const { data: usage } = useQuery({
-    queryKey: ['admin', 'usage', organizationId],
-    enabled: canManageSystemSettings,
-    queryFn: async () => {
-      const res = await api.get('/admin/usage');
-      return res.data.data as { usage: Record<string, number | string | null> };
-    },
-  });
-
   const [tab, setTab] = useState<AdminTabId>(tabs[0]?.id ?? 'users');
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
+  const { data: usage, isLoading: isUsageLoading, isError: isUsageError, refetch: refetchUsage } = useAdminUsage(
+    canManageSystemSettings && activeTab === 'usage',
+  );
+  const revokeSessions = useRevokeAdminSessions();
 
   return (
     <Box className="animate-fade-in-up" sx={{ pb: 6 }}>
@@ -74,7 +68,8 @@ const AdminPage = () => {
             p: 0.5,
             gap: 0.5,
             mb: 4,
-            width: 'fit-content',
+            width: { xs: '100%', sm: 'fit-content' },
+            maxWidth: '100%',
           }}
         >
           {tabs.map((item) => (
@@ -82,21 +77,28 @@ const AdminPage = () => {
               key={item.id}
               onClick={() => setTab(item.id)}
               sx={{
+                flex: { xs: 1, sm: 'initial' },
+                whiteSpace: 'nowrap',
                 borderRadius: '16px',
-                px: 3,
-                py: 0.75,
+                px: { xs: 1.5, sm: 2.5, md: 3 },
+                py: { xs: 0.85, sm: 0.75 },
                 bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'transparent',
                 color: activeTab === item.id ? (isDarkMode ? '#1A1625' : '#fff') : 'text.secondary',
                 fontWeight: 700,
                 textTransform: 'none',
-                fontSize: '0.84rem',
+                fontSize: { xs: '0.82rem', sm: '0.84rem' },
                 '&:hover': {
                   bgcolor: activeTab === item.id ? (isDarkMode ? '#fff' : '#1A1625') : 'rgba(0,0,0,0.05)',
                 },
                 transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
-              {item.label}
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                {item.shortLabel}
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {item.label}
+              </Box>
             </Button>
           ))}
         </Box>
@@ -106,25 +108,39 @@ const AdminPage = () => {
         {activeTab === 'users' && canManageUsers ? (
           <UserManagementTable />
         ) : activeTab === 'system' && canManageSystemSettings ? (
-          <SystemSettingsPanel readOnly={!canManageSystemSettings} />
+          <>
+            <CrmConnectionsPanel />
+            <SystemSettingsPanel readOnly={!canManageSystemSettings} />
+          </>
         ) : activeTab === 'usage' && canManageSystemSettings ? (
-          <Box>
-            <Typography sx={{ mb: 2 }}>
-              Leads {String(usage?.usage?.leads ?? 0)} · Projects {String(usage?.usage?.projects ?? 0)} · Boards{' '}
-              {String(usage?.usage?.boards ?? 0)} · Storage {String(usage?.usage?.storageMb ?? 0)} MB · Seats{' '}
-              {String((usage as { seats?: { used: number; purchased: number } } | undefined)?.seats?.used ?? '—')}
-            </Typography>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={async () => {
-                await api.post('/admin/sessions/revoke', {});
-                addToast({ message: 'All organization sessions were signed out', severity: 'success' });
-              }}
-            >
-              Sign out all sessions
-            </Button>
-          </Box>
+          <QueryState
+            isLoading={isUsageLoading}
+            isError={isUsageError}
+            onRetry={() => refetchUsage()}
+            hasData={!!usage}
+          >
+            <Box>
+              <Typography sx={{ mb: 2 }}>
+                Leads {String(usage?.usage?.leads ?? 0)} · Projects {String(usage?.usage?.projects ?? 0)} · Boards{' '}
+                {String(usage?.usage?.boards ?? 0)} · Storage {String(usage?.usage?.storageMb ?? 0)} MB · Seats{' '}
+                {String((usage as { seats?: { used: number; purchased: number } } | undefined)?.seats?.used ?? '—')}
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                disabled={revokeSessions.isPending}
+                onClick={() => {
+                  revokeSessions.mutate(undefined, {
+                    onSuccess: () => {
+                      addToast({ message: 'All organization sessions were signed out', severity: 'success' });
+                    },
+                  });
+                }}
+              >
+                Sign out all sessions
+              </Button>
+            </Box>
+          </QueryState>
         ) : null}
       </Box>
     </Box>

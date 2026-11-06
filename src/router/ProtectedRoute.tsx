@@ -4,7 +4,6 @@ import { PageLoader } from '@/components/common/PageLoader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { resolvePermissions, type PermissionKey } from '@/lib/permissions';
 import { useEntitlements, useOrgEntitlements, type OrgModuleKey } from '@/hooks/useEntitlements';
-import { useMe } from '@/hooks/api/useUsers';
 import type { Role } from '@/types';
 
 interface ProtectedRouteProps {
@@ -23,7 +22,6 @@ export const ProtectedRoute = ({
   const { user, isAuthenticated } = useAuthStore();
   const entitlements = useEntitlements();
   const entitlementsQuery = useOrgEntitlements();
-  const meQuery = useMe();
   const isRestoringQueryCache = useIsRestoring();
   const location = useLocation();
 
@@ -36,11 +34,9 @@ export const ProtectedRoute = ({
     return <PageLoader />;
   }
 
-  if (user && requireEntitlement && entitlementsQuery.isPending) {
-    return <PageLoader />;
-  }
-
-  if (user && requirePermission && meQuery.isPending) {
+  // Role and permissions already live on the auth user. Wait only when an
+  // entitlement gate has no cached flags yet (hard reload before IDB restore).
+  if (user && requireEntitlement && !entitlementsQuery.data && entitlementsQuery.isPending) {
     return <PageLoader />;
   }
 

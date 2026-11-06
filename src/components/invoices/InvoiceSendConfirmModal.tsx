@@ -133,7 +133,7 @@ export const InvoiceSendConfirmModal = ({
             fontWeight: 800,
             borderRadius: '12px',
             px: 2.5,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             '&:hover': { bgcolor: tokens.brand.primaryDark },
           }}
         >

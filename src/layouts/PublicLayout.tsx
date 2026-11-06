@@ -48,7 +48,7 @@ export const PublicLayout = ({ children }: PublicLayoutProps) => {
           flex: 1,
           position: 'relative',
           zIndex: 1,
-          pt: { xs: 12, sm: 14, md: 16 },
+          pt: { xs: 9.5, sm: 12, md: 16 },
         }}
       >
         {children}

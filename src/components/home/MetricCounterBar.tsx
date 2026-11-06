@@ -54,7 +54,7 @@ export const MetricCounterBar: React.FC = () => {
     <Box
       id="features"
       sx={{
-        py: { xs: 6, md: 9 },
+        py: { xs: 4.5, sm: 6, md: 9 },
         bgcolor: 'transparent',
         position: 'relative',
       }}
@@ -64,7 +64,7 @@ export const MetricCounterBar: React.FC = () => {
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' },
-            gap: { xs: 3, lg: 3.5 },
+            gap: { xs: 2, sm: 2.5, lg: 3.5 },
           }}
         >
           {STATS.map((item, idx) => (
@@ -81,8 +81,8 @@ export const MetricCounterBar: React.FC = () => {
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  p: { xs: 3, md: 3.5 },
-                  borderRadius: '24px',
+                  p: { xs: 2.25, sm: 3, md: 3.5 },
+                  borderRadius: { xs: '20px', sm: '24px' },
                   bgcolor: isDark ? 'rgba(23, 18, 32, 0.92)' : 'rgba(255, 255, 255, 0.9)',
                   backgroundImage: isDark
                     ? `radial-gradient(circle at 15% 15%, ${item.ambientGlow} 0%, transparent 65%)`

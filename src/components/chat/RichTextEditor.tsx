@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -58,6 +58,7 @@ export const RichTextEditor = ({
   const [isToolbarVisible, setIsToolbarVisible] = useState(defaultShowToolbar || alwaysShowToolbar);
   const [hasSelection, setHasSelection] = useState(false);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [colorAnchorEl, setColorAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   const mentionableUsersRef = useRef(mentionableUsers);
   mentionableUsersRef.current = mentionableUsers;
@@ -68,10 +69,11 @@ export const RichTextEditor = ({
   const minH = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
   const maxH = typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight;
 
-  const editor = useEditor({
-    autofocus: autoFocus ? 'end' : false,
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
+        link: false,
+        underline: false,
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }),
@@ -98,6 +100,12 @@ export const RichTextEditor = ({
         ),
       }),
     ],
+    [placeholder],
+  );
+
+  const editor = useEditor({
+    autofocus: autoFocus ? 'end' : false,
+    extensions,
     content: value,
     onSelectionUpdate: ({ editor }) => {
       const { empty } = editor.state.selection;
@@ -146,26 +154,35 @@ export const RichTextEditor = ({
   });
 
   useEffect(() => {
-    if (editor) {
-      const currentHtml = editor.getHTML();
-      if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
-        editor.commands.setContent(value || '');
-        if (autoFocus || editor.isFocused) {
-          editor.commands.focus('end');
-        }
+    if (!editor || editor.isDestroyed) return;
+    const currentHtml = editor.getHTML();
+    if (value !== currentHtml && !(value === '' && editor.isEmpty)) {
+      editor.commands.setContent(value || '');
+      if (autoFocus || editor.isFocused) {
+        editor.commands.focus('end');
       }
     }
   }, [value, editor, autoFocus]);
 
   useEffect(() => {
-    if (editor && autoFocus) {
-      editor.commands.focus('end');
-    }
+    if (!editor || editor.isDestroyed || !autoFocus) return;
+    editor.commands.focus('end');
   }, [editor, autoFocus]);
 
-  if (!editor) return null;
-
-  const [colorAnchorEl, setColorAnchorEl] = useState<HTMLButtonElement | null>(null);
+  if (!editor) {
+    return (
+      <Box
+        id="rich-text-editor-wrapper"
+        sx={{
+          width: '100%',
+          minHeight: minH,
+          borderRadius: 1,
+          bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+        }}
+        aria-hidden
+      />
+    );
+  }
 
   const menuButtonSx = {
     p: 0.5,
@@ -249,6 +266,10 @@ export const RichTextEditor = ({
             gap: 0.25,
             p: 0.75,
             px: 1.5,
+            overflowX: 'auto',
+            maxWidth: '100%',
+            '&::-webkit-scrollbar': { display: 'none' },
+            scrollbarWidth: 'none',
             borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
             bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.9)' : 'rgba(248, 245, 255, 0.95)',
           }}
@@ -257,7 +278,7 @@ export const RichTextEditor = ({
         </Box>
       </Collapse>
       
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+      <Box className="rte-input-row" sx={{ display: 'flex', alignItems: 'center', position: 'relative', width: '100%' }}>
         <Box
           sx={{
             flex: 1,
@@ -311,12 +332,15 @@ export const RichTextEditor = ({
         </Box>
 
         {/* Inline Tools (A button and Emoji) */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: '10px', pr: '10px' }}>
+        <Box className="rte-tools" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.25, sm: 0.5 }, pr: { xs: 0.25, sm: 0.75 }, flexShrink: 0 }}>
           <Tooltip title="Formatting options" arrow>
             <IconButton 
               size="small" 
               onClick={() => setIsToolbarVisible(!isToolbarVisible)}
               sx={{
+                width: { xs: 26, sm: 30 },
+                height: { xs: 26, sm: 30 },
+                p: { xs: 0.25, sm: 0.5 },
                 color: isToolbarVisible ? tokens.brand.primary : 'text.secondary',
                 bgcolor: isToolbarVisible ? (isDarkMode ? 'rgba(93, 26, 137, 0.25)' : 'rgba(93, 26, 137, 0.1)') : 'transparent',
                 '&:hover': {
@@ -326,7 +350,7 @@ export const RichTextEditor = ({
                 }
               }}
             >
-              <TextFormatIcon fontSize="small" />
+              <TextFormatIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
             </IconButton>
           </Tooltip>
           
@@ -335,11 +359,14 @@ export const RichTextEditor = ({
               size="small" 
               onClick={(e) => setEmojiAnchorEl(e.currentTarget)}
               sx={{ 
+                width: { xs: 26, sm: 30 },
+                height: { xs: 26, sm: 30 },
+                p: { xs: 0.25, sm: 0.5 },
                 color: emojiAnchorEl ? tokens.brand.primary : 'text.secondary',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }
               }}
             >
-              <SentimentSatisfiedAltIcon fontSize="small" />
+              <SentimentSatisfiedAltIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -387,11 +414,16 @@ export const RichTextEditor = ({
             sx: { 
               borderRadius: 3, 
               mt: -1, 
-              width: 352, // Fixed width so MUI calculates bounds correctly
-              height: 435, // Fixed height
+              width: { xs: 'calc(100vw - 24px)', sm: 352 },
+              maxWidth: { xs: 'calc(100vw - 24px)', sm: 352 },
+              height: 435,
               boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)', 
               bgcolor: 'transparent',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              '& em-emoji-picker': {
+                width: '100% !important',
+                maxWidth: '100% !important',
+              },
             } 
           } 
         }}

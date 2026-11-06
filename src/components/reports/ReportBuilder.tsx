@@ -186,7 +186,7 @@ export const ReportBuilder = ({
                 color: tokens.text.muted,
                 transition: 'all 0.2s ease',
                 '&.Mui-selected': {
-                  backgroundColor: tokens.brand.primary,
+                  backgroundColor: tokens.brand.solid,
                   color: '#FFFFFF',
                   boxShadow: '0 4px 12px rgba(93, 26, 137, 0.25)',
                   '&:hover': {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Box, Typography, Button, useTheme, IconButton, InputAdornment,
+  Box, Typography, Button, useTheme, useMediaQuery, IconButton, InputAdornment,
   TextField, Avatar, AvatarGroup, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, Drawer, CircularProgress, Modal,
   Menu, MenuItem, ListItemIcon, ListItemText, FormControl,
@@ -9,6 +9,7 @@ import {
   Popover, Checkbox, Autocomplete, Collapse,
 } from '@mui/material';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { KanbanPageSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -23,6 +24,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import SendIcon from '@mui/icons-material/Send';
 import EditIcon from '@mui/icons-material/Edit';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -46,7 +48,7 @@ import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 import type { CreateMeetingPayload, KanbanCardLink, KanbanLabel, Meeting } from '@/types';
 import { MeetingCreateFormBlock } from '@/components/meetings/MeetingCreateFormBlock';
 import { formatDate, formatKpiDueDate, hasDisplayableClockTime } from '@/utils/formatters';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { RichTextContent, toPlainText } from '@/components/common/RichTextContent';
 import { QualifyEnrichModal } from '@/components/leads/QualifyEnrichModal';
 import { useLead } from '@/hooks/api/useLeads';
@@ -54,7 +56,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import {
   DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
-  PointerSensor, useSensor, useSensors, type DragStartEvent,
+  MouseSensor, TouchSensor, useSensor, useSensors, type DragStartEvent,
   type DragEndEvent, type DragOverEvent, type CollisionDetection,
   useDroppable, MeasuringStrategy, pointerWithin, rectIntersection,
 } from '@dnd-kit/core';
@@ -71,7 +73,7 @@ import {
   useKanbanBoard, useMoveCard, useAddComment, useCreateColumn,
   useRenameColumn, useDeleteColumn, useReorderColumns,
   useCreateCard, useUpdateCard, useDeleteCard, useAssignCard,
-  useEditComment, useDeleteComment,
+  useEditComment, useDeleteComment, useCard,
   useCreateLabel, useDeleteLabel,
   useAttachCardMeeting, useDetachCardMeeting, useCreateMeetingOnCard,
   useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
@@ -81,9 +83,10 @@ import type { MoveCopyCardMode, MoveCopyCardPayload } from '@/hooks/api/useKanba
 import { useUploadCardImage, useDeleteCardImage } from '@/hooks/api/useKanbanCardImage';
 import { useMeetings } from '@/hooks/api/useMeetings';
 import { useCalendarStatus } from '@/hooks/api/useCalendar';
-import { useAddBoardMember, useRemoveBoardMember } from '@/hooks/api/useProjects';
+import { useAddBoardMember, useRemoveBoardMember, useProject } from '@/hooks/api/useProjects';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
+import { canManageBoardTeam, memberUserId, userIdsEqual } from '@/lib/projectAccess';
 import { useUIStore } from '@/store/useUIStore';
 import { useUsers } from '@/hooks/api/useUsers';
 import { useConversations, useCreateBoardConversation } from '@/hooks/api/useChat';
@@ -91,6 +94,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { CommentText } from '@/components/kanban/CommentText';
 import { MentionInput } from '@/components/kanban/MentionInput';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { QueryState } from '@/components/common/QueryState';
 import { showApiError } from '@/utils/apiError';
 import { TransferCardDialog, type TransferCardContext } from '@/components/kanban/TransferCardDialog';
 
@@ -129,57 +133,6 @@ const kanbanActiveMoverRingSx = (isActive: boolean) =>
         outlineOffset: '1px',
       }
     : {};
-
-// Custom Modern Premium Confirmation Dialog Component
-const ModernConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmText = "Delete", cancelText = "Cancel" }: any) => {
-  return (
-    <Dialog
-      open={open}
-      onClose={onCancel}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: '20px',
-          p: 1.5,
-          /* backdropFilter: 'blur(10px)' (removed for performance) */
-          boxShadow: '0 10px 40px rgba(0,0,0,0.12)'
-        }
-      }}
-    >
-      <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>{title}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, lineHeight: 1.5 }}>
-          {description}
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, gap: 1 }}>
-        <Button
-          onClick={onCancel}
-          sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none', px: 2.5 }}
-        >
-          {cancelText}
-        </Button>
-        <Button
-          onClick={onConfirm}
-          variant="contained"
-          disableElevation
-          sx={{
-            bgcolor: '#ef4444',
-            color: '#fff',
-            fontWeight: 700,
-            borderRadius: '24px',
-            textTransform: 'none',
-            px: 3,
-            '&:hover': { bgcolor: '#dc2626' }
-          }}
-        >
-          {confirmText}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 const DEFAULT_DUE_TIME = '23:59';
 
@@ -275,7 +228,7 @@ const CardImageLightbox = ({
       <Box
         component="img"
         src={src}
-        alt=""
+        alt="Card attachment preview"
         onClick={stopCardImageEvent}
         sx={{
           display: 'block',
@@ -369,7 +322,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
               size="small"
               sx={{
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 fontWeight: 750,
                 fontSize: '0.68rem',
                 height: 22,
@@ -537,7 +490,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                     height: 22,
                     fontSize: '0.6rem',
                     fontWeight: 800,
-                    bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                    bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                     ...kanbanActiveMoverRingSx(createdByUser._id === lastMovedById),
                   }}
                 >
@@ -567,7 +520,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                 py: 0.25,
                 height: 24,
                 borderRadius: '8px',
-                color: isDarkMode ? '#a78bfa' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 bgcolor: isDarkMode ? 'rgba(167,139,250,0.1)' : 'rgba(93,26,137,0.06)',
                 border: `1px solid ${isDarkMode ? 'rgba(167,139,250,0.2)' : 'rgba(93,26,137,0.12)'}`,
                 '&:hover': {
@@ -585,7 +538,7 @@ const TaskCardVisual = ({ task, isDarkMode, onClick, onViewLead }: any) => {
                   <Avatar
                     src={u.avatarUrl || undefined}
                     sx={{
-                      bgcolor: tokens.brand.primary,
+                      bgcolor: tokens.brand.solid,
                       ...kanbanActiveMoverRingSx(u._id === lastMovedById),
                     }}
                   >
@@ -610,11 +563,14 @@ const SortableTask = ({ task, isDarkMode, onTaskClick, onViewLead }: any) => {
     data: { type: 'Task', task },
   });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
     cursor: isDragging ? 'grabbing' : 'grab',
+    touchAction: isDragging ? 'none' : 'manipulation',
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
   };
 
   return (
@@ -769,7 +725,17 @@ const SortableBoardColumn = ({
         <Box 
           {...attributes} 
           {...listeners} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, cursor: isDragging ? 'grabbing' : 'grab', py: 0.5 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            flex: 1,
+            cursor: isDragging ? 'grabbing' : 'grab',
+            py: 0.5,
+            touchAction: isDragging ? 'none' : 'manipulation',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{col.title}</Typography>
           <Chip label={colTasks.length} size="small" sx={{ bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', color: 'text.secondary', fontWeight: 700, height: 24, fontSize: '0.75rem' }} />
@@ -1118,7 +1084,7 @@ const CardLabelsSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '8px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -1287,7 +1253,7 @@ const CardLinksSection = ({
                 textTransform: 'none',
                 fontWeight: 750,
                 borderRadius: '10px',
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 '&:hover': { bgcolor: tokens.brand.primaryDark },
               }}
             >
@@ -1588,9 +1554,21 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const [pendingPriority, setPendingPriority] = useState<string>('medium');
   const [priorityMenuAnchor, setPriorityMenuAnchor] = useState<null | HTMLElement>(null);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const openedCardIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!open) {
+      openedCardIdRef.current = null;
+      return;
+    }
+
     if (task && open) {
+      const isNewCardOpen = openedCardIdRef.current !== task.id;
+      if (isNewCardOpen) {
+        openedCardIdRef.current = task.id;
+        setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
+      }
+
       setEditTitle(task.title || '');
       setEditDesc(task.description || '');
       setPendingAssignees(Array.isArray(task.rawCard?.assignedTo)
@@ -1601,7 +1579,6 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
       setPendingDueTime(dueParts.time);
       setPendingKpiEndDate(task.rawCard?.kpiEndDate ? task.rawCard.kpiEndDate.split('T')[0] : '');
       setPendingPriority(task.rawCard?.priority || 'medium');
-      setActiveTab(searchParams.get('subtask') ? 'subtasks' : 'details');
       setNewSubPriority((task.rawCard?.priority as keyof typeof PRIORITY_CONFIG) || 'medium');
     }
   }, [task, open, searchParams]);
@@ -1721,11 +1698,56 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
     runFieldUpdates(finishOk);
   };
 
+  // Fetch detailed card data (including comments) directly from /kanban/cards/:cardId
+  const { data: cardDetail } = useCard(task?.id);
+  const [localComments, setLocalComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const incoming = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+    if (incoming.length > 0) {
+      setLocalComments((prev) => {
+        const map = new Map<string, any>();
+        prev.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        incoming.forEach((c: any) => {
+          const key = c._id ? String(c._id) : (c.createdAt ? String(c.createdAt) : null);
+          if (key) map.set(key, c);
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [task?.id, cardDetail?.comments, task?.rawCard?.comments]);
+
+  useEffect(() => {
+    if (task?.id) {
+      const initial = (cardDetail?.comments?.length ? cardDetail.comments : task?.rawCard?.comments) || [];
+      if (initial.length > 0) {
+        setLocalComments(initial);
+      }
+    }
+  }, [task?.id]);
+
+  // NOTE: useMemo must come BEFORE any early return to obey the Rules of Hooks.
+  const rawCard = task?.rawCard;
+  const rawComments = localComments.length > 0
+    ? localComments
+    : ((cardDetail?.comments?.length ? cardDetail.comments : rawCard?.comments) || []);
+
+  const commentsList = useMemo(() => {
+    const list = rawComments.filter((c: any) => c.isActive !== false);
+    return [...list].sort((a: any, b: any) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
+  }, [rawComments]);
+
   if (!task) return null;
 
   const lead = task.lead;
-  const rawCard = task.rawCard;
-  const commentsList = rawCard?.comments || [];
+  const commentsCount = commentsList.length;
   const assignedToIds = Array.isArray(rawCard?.assignedTo)
     ? rawCard.assignedTo.map((u: any) => typeof u === 'object' ? u._id : u)
     : [];
@@ -1742,15 +1764,32 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         : lead?._id;
 
   const handleSendComment = () => {
-    if (commentText.trim() && !addCommentMutation.isPending) {
+    const textToSend = commentText.trim();
+    if (textToSend && !addCommentMutation.isPending) {
+      setCommentText('');
+      const optimisticComment = {
+        _id: `temp-${Date.now()}`,
+        userId: currentUser?._id,
+        author: currentUser,
+        text: textToSend,
+        createdAt: new Date().toISOString(),
+        isActive: true,
+      };
+      setLocalComments((prev) => [...prev, optimisticComment]);
+
       addCommentMutation.mutate({
         cardId: task.id,
-        data: { text: commentText.trim() }
+        data: { text: textToSend }
       }, {
-        onSuccess: () => {
-          setCommentText('');
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
         },
         onError: (err: any) => {
+          setLocalComments((prev) => prev.filter((c) => c._id !== optimisticComment._id));
+          setCommentText(textToSend);
           showApiError(err);
         },
       });
@@ -1759,12 +1798,20 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
 
   const handleSaveCommentEdit = (commentId: string) => {
     if (editCommentText.trim()) {
+      const newText = editCommentText.trim();
+      setLocalComments((prev) =>
+        prev.map((c) => (c._id === commentId ? { ...c, text: newText } : c))
+      );
       editCommentMutation.mutate({
         cardId: task.id,
         commentId,
-        text: editCommentText.trim()
+        text: newText
       }, {
-        onSuccess: () => {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
           setEditingCommentId(null);
           setEditCommentText('');
         },
@@ -1793,9 +1840,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
   const handleConfirmAction = () => {
     setConfirmOpen(false);
     if (confirmAction === 'deleteComment' && targetCommentId) {
+      setLocalComments((prev) => prev.filter((c) => c._id !== targetCommentId));
       deleteCommentMutation.mutate({
         cardId: task.id,
         commentId: targetCommentId
+      }, {
+        onSuccess: (res: any) => {
+          const card = res?.data?.data || res?.data;
+          if (card?.comments && Array.isArray(card.comments)) {
+            setLocalComments(card.comments);
+          }
+        }
       });
     } else if (confirmAction === 'deleteCard') {
       deleteCardMutation.mutate(task.id, {
@@ -2035,7 +2090,8 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
         <Box sx={{ px: 3, pt: 3, pb: 1 }}>
           <Box
             sx={{
-              display: 'inline-flex',
+              display: 'flex',
+              width: '100%',
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
               borderRadius: '20px',
               p: 0.5,
@@ -2045,17 +2101,22 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
             {[
               { id: 'details', label: 'Details & Assignees' },
               { id: 'subtasks', label: 'Sub-tasks' },
-              { id: 'comments', label: 'Comments' },
+              {
+                id: 'comments',
+                label: commentsCount > 0 ? `Comments (${commentsCount})` : 'Comments',
+              },
             ].map((tab) => (
               <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as 'details' | 'subtasks' | 'comments')}
                 sx={{
-                  px: 3, py: 0.75,
+                  flex: 1,
+                  px: 1.5, py: 0.75,
                   borderRadius: '16px',
                   textTransform: 'none',
                   fontWeight: 700,
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
+                  whiteSpace: 'nowrap',
                   color: activeTab === tab.id
                     ? (isDarkMode ? '#fff' : tokens.brand.primary)
                     : 'text.secondary',
@@ -2204,7 +2265,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         overflow: 'hidden',
                       }}
                     >
-                      <RichTextEditor
+                      <LazyRichTextEditor
                         value={editDesc}
                         onChange={setEditDesc}
                         submitOnEnter={false}
@@ -2253,7 +2314,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           ...kanbanActiveMoverRingSx(true),
                         }}
                       >
@@ -2278,7 +2339,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                           height: 28,
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          bgcolor: tokens.brand.primaryMuted || tokens.brand.primary,
+                          bgcolor: tokens.brand.primaryMuted || tokens.brand.solid,
                         }}
                       >
                         {kanbanUserInitial(task.createdBy)}
@@ -2367,7 +2428,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                         py: 1.5,
                         borderRadius: '12px',
                         fontWeight: 750,
-                        bgcolor: tokens.brand.primary,
+                        bgcolor: tokens.brand.solid,
                         color: '#fff',
                         textTransform: 'none',
                         boxShadow: '0 4px 14px rgba(93, 26, 137, 0.4)',
@@ -2861,12 +2922,17 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                 </Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {commentsList.map((comm: any, idx: number) => {
-                    const commentUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
-                    const isCommentAuthor = currentUser && currentUser._id === commentUserId;
+                    const rawUserId = comm.userId || (typeof comm.author === 'object' ? comm.author?._id : comm.author);
+                    const commentUserId = typeof rawUserId === 'object' && rawUserId ? rawUserId._id : rawUserId;
+                    const isCommentAuthor = Boolean(currentUser && commentUserId && currentUser._id === commentUserId);
 
                     let matchingUser: any = null;
                     if (typeof comm.author === 'object' && comm.author?.firstName) {
                       matchingUser = comm.author;
+                    }
+
+                    if (!matchingUser && typeof comm.userId === 'object' && comm.userId?.firstName) {
+                      matchingUser = comm.userId;
                     }
 
                     if (!matchingUser && commentUserId) {
@@ -2883,7 +2949,7 @@ const TaskDetailDrawer = ({ task, open, onClose, isDarkMode, allUsers = [], boar
                     const initial = name.charAt(0).toUpperCase() || 'U';
 
                     return (
-                      <Box key={comm._id || idx} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
+                      <Box key={comm._id ? String(comm._id) : `comm-${idx}`} sx={{ display: 'flex', gap: 1.5, position: 'relative', '&:hover .comment-actions': { opacity: 1 } }}>
                         <Avatar src={matchingUser?.avatarUrl || undefined} sx={{ width: 32, height: 32, bgcolor: idx % 2 === 0 ? tokens.brand.primaryMuted : tokens.brand.accentLight, fontSize: '0.8rem', fontWeight: 800 }}>{initial}</Avatar>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
@@ -2994,10 +3060,12 @@ export const KanbanBoardPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompactShare = useMediaQuery(theme.breakpoints.down('sm'));
   const queryClient = useQueryClient();
   const organizationId = useAuthStore((s) => s.user?.organizationId);
 
-  const { data: board, isLoading, error } = useKanbanBoard(activeBoardId);
+  const { data: board, isLoading, error, isError, refetch } = useKanbanBoard(activeBoardId);
+  const { data: projectBundle } = useProject(projectId);
   const { data: allUsers = [] } = useUsers();
   const { data: conversations = [] } = useConversations();
   const createBoardConversation = useCreateBoardConversation();
@@ -3059,7 +3127,8 @@ export const KanbanBoardPage = () => {
 
   const currentUser = useAuthStore((s) => s.user);
   const { isElevated } = useAuth();
-  const canManageTeam = actualBoard?.ownerId === currentUser?._id || isElevated;
+  const project = projectBundle?.project;
+  const canManageTeam = canManageBoardTeam(currentUser, project, actualBoard);
   const canEditBoard = Boolean(
     isElevated ||
     currentUser?.role === 'admin' ||
@@ -3109,10 +3178,10 @@ export const KanbanBoardPage = () => {
 
   const boardMembers = useMemo(() => {
     if (!actualBoard) return [];
-    const owner = allUsers.find((u: any) => u._id === actualBoard.ownerId);
+    const owner = allUsers.find((u: any) => userIdsEqual(u._id, actualBoard.ownerId));
     const membersList = (actualBoard.members || []).map((m: any) => {
-      const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
-      return allUsers.find((u: any) => u._id === uid);
+      const uid = memberUserId(m.userId);
+      return allUsers.find((u: any) => userIdsEqual(u._id, uid));
     }).filter(Boolean);
     
     // De-duplicate in case owner is also in members
@@ -3207,8 +3276,20 @@ export const KanbanBoardPage = () => {
   const [pendingRemoveUserId, setPendingRemoveUserId] = useState<string>('');
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   // Transform board columns and cards into flattened lists for dnd-kit
@@ -3437,6 +3518,25 @@ export const KanbanBoardPage = () => {
     }
   };
 
+  const getBoardMemberRole = (userId: string): 'admin' | 'member' | null => {
+    const entry = (actualBoard?.members || []).find((m: { userId: unknown; role: string }) =>
+      userIdsEqual(m.userId, userId),
+    );
+    if (!entry) return null;
+    return entry.role === 'admin' ? 'admin' : 'member';
+  };
+
+  const handleBoardMemberRoleChange = (userId: string, role: 'admin' | 'member') => {
+    if (!activeBoardId || !projectId) return;
+    addBoardMemberMutation.mutate(
+      { id: projectId, boardId: activeBoardId, userId, role },
+      {
+        onSuccess: () => addToast({ message: 'Board role updated', severity: 'success' }),
+        onError: (err: unknown) => showApiError(err),
+      },
+    );
+  };
+
   // Invite member and keep share dialog open for more invites
   const handleShareSubmit = () => {
     if (activeBoardId && selectedUserToShare && projectId) {
@@ -3588,43 +3688,241 @@ export const KanbanBoardPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !board) {
+    return <KanbanPageSkeleton />;
+  }
+
+  if ((isError || !actualBoard) && !board) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress sx={{ color: tokens.brand.primary }} />
-      </Box>
+      <QueryState isLoading={false} isError={isError || !actualBoard} onRetry={() => refetch()} hasData={false}>
+        <Box />
+      </QueryState>
     );
   }
 
-  if (error || !actualBoard) {
+  if (!actualBoard) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h6" color="error">Error loading board details.</Typography>
-        <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }} variant="outlined">Back to Projects</Button>
+        <Button onClick={() => refetch()} sx={{ mt: 2, mr: 1 }} variant="contained">
+          Retry
+        </Button>
+        <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }} variant="outlined">
+          Back to Projects
+        </Button>
       </Box>
     );
   }
 
+  const boardDisplayTitle = boardLead
+    ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
+    : `${actualBoard.name}`;
+
+  const renderBoardMemberAvatars = (max: number) => (
+    <AvatarGroup
+      max={max}
+      sx={{
+        flexShrink: 0,
+        '& .MuiAvatar-root': {
+          width: max <= 3 ? 26 : 32,
+          height: max <= 3 ? 26 : 32,
+          fontSize: max <= 3 ? '0.68rem' : '0.8rem',
+          fontWeight: 700,
+          borderColor: isDarkMode ? '#1E1B24' : '#fff',
+        },
+      }}
+    >
+      {boardMembers.map((member: any, idx: number) => {
+        const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
+        const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
+        const tooltipText = (
+          <Box sx={{ p: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{name}</Typography>
+            <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)' }}>{member.email}</Typography>
+            {member.jobTitle && <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{member.jobTitle}</Typography>}
+          </Box>
+        );
+        return (
+          <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
+            <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
+          </Tooltip>
+        );
+      })}
+    </AvatarGroup>
+  );
+
+  const filterActive = priorityFilter !== 'All' || assigneeFilterIds.length > 0;
+  const filterButtonSx = {
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+    borderRadius: '50%',
+    flexShrink: 0,
+    bgcolor: filterActive ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent',
+  } as const;
+
+  const boardChatLabel = boardChat ? 'Open board chat' : 'Create board chat';
+
+  const mobileHeaderActions = (
+    <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+      {canEditBoard && (
+        <Tooltip title="Edit Board Name" arrow>
+          <IconButton
+            size="small"
+            aria-label="Edit Board Name"
+            onClick={handleOpenEditBoardModal}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
+            }}
+          >
+            <EditIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+      {canManageBoardChat && (
+        <Tooltip title={boardChatLabel} arrow>
+          <span>
+            <IconButton
+              size="small"
+              aria-label={boardChatLabel}
+              onClick={handleBoardChatClick}
+              disabled={createBoardConversation.isPending}
+              sx={{
+                color: tokens.brand.primary,
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(155, 107, 184, 0.15)' : 'rgba(93, 26, 137, 0.1)' },
+              }}
+            >
+              <ForumOutlinedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+      {canManageTeam && (
+        <Tooltip title="Share Board" arrow>
+          <IconButton
+            size="small"
+            aria-label="Share Board"
+            onClick={() => setIsShareDialogOpen(true)}
+            sx={{
+              color: '#FF5733',
+              '&:hover': { bgcolor: 'rgba(255, 87, 51, 0.08)' },
+            }}
+          >
+            <ShareOutlinedIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+
+  const goToProjectBoards = () => navigate(`/projects/${projectId}?tab=Board`);
+
   return (
     <Box className="animate-fade-in-up" sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '100%' }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Box
+        sx={{
+          mb: { xs: 1.25, sm: 3 },
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          gap: { xs: 1, sm: 2 },
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: { sm: 1 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mb: { xs: 0.5, sm: 1 }, minWidth: 0 }}>
+            <Tooltip title="Back to project boards" arrow>
+              <IconButton
+                aria-label="Back to project boards"
+                onClick={goToProjectBoards}
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  flexShrink: 0,
+                  color: 'text.secondary',
+                  p: 0.5,
+                  '&:hover': { color: 'text.primary', bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' },
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
             <Button
               startIcon={<ArrowBackIcon fontSize="small" />}
-              onClick={() => navigate(`/projects/${projectId}?tab=Board`)}
-              sx={{ color: 'text.secondary', textTransform: 'none', minWidth: 0, p: 0, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
+              onClick={goToProjectBoards}
+              sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
+                color: 'text.secondary',
+                textTransform: 'none',
+                minWidth: 0,
+                p: 0,
+                flexShrink: 0,
+                '&:hover': { bgcolor: 'transparent', color: 'text.primary' },
+              }}
             >
               Project
             </Button>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>/</Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>{actualBoard.name}</Typography>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'text.secondary',
+                flexShrink: 0,
+              }}
+            >
+              /
+            </Typography>
+            <Typography
+              variant="body2"
+              noWrap
+              onClick={goToProjectBoards}
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'text.secondary',
+                cursor: 'pointer',
+                minWidth: 0,
+                '&:hover': { color: 'text.primary' },
+              }}
+            >
+              {actualBoard.name}
+            </Typography>
+            <Typography
+              variant="caption"
+              noWrap
+              sx={{
+                display: { xs: 'block', sm: 'none' },
+                color: 'text.secondary',
+                minWidth: 0,
+                flex: 1,
+                lineHeight: 1.3,
+              }}
+            >
+              <Box
+                component="span"
+                onClick={goToProjectBoards}
+                sx={{ cursor: 'pointer', '&:hover': { color: 'text.primary' } }}
+              >
+                Project
+              </Box>
+              {' / '}
+              {actualBoard.name}
+            </Typography>
+            {mobileHeaderActions}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
-              {boardLead
-                ? ([boardLead.firstName, boardLead.lastName].filter(Boolean).join(' ').trim() || boardLead.company || actualBoard.name)
-                : `${actualBoard.name}`}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            <Typography
+              variant="h4"
+              noWrap
+              sx={{
+                fontWeight: 800,
+                color: 'text.primary',
+                letterSpacing: '-0.02em',
+                minWidth: 0,
+                flex: 1,
+                fontSize: { xs: '1.05rem', sm: '2.125rem' },
+                lineHeight: { xs: 1.35, sm: 1.2 },
+              }}
+            >
+              {boardDisplayTitle}
             </Typography>
             {canEditBoard && (
               <Tooltip title="Edit Board Name">
@@ -3632,8 +3930,10 @@ export const KanbanBoardPage = () => {
                   size="small"
                   onClick={handleOpenEditBoardModal}
                   sx={{
+                    display: { xs: 'none', sm: 'inline-flex' },
                     color: 'text.secondary',
                     p: 0.5,
+                    flexShrink: 0,
                     '&:hover': { color: tokens.brand.primary, bgcolor: 'rgba(255, 87, 51, 0.08)' },
                   }}
                 >
@@ -3641,48 +3941,60 @@ export const KanbanBoardPage = () => {
                 </IconButton>
               </Tooltip>
             )}
+            <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexShrink: 0 }}>
+              {renderBoardMemberAvatars(3)}
+            </Box>
           </Box>
           {boardLead?.company && (
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 600,
+                mt: { xs: 0.25, sm: 0.5 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
+            >
               {boardLead.company}{(boardLead.jobTitle || boardLead.title) ? ` · ${boardLead.jobTitle || boardLead.title}` : ''}
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-          <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, borderColor: isDarkMode ? '#1E1B24' : '#fff' } }}>
-            {boardMembers.map((member: any, idx: number) => {
-              const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
-              const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
-              const tooltipText = (
-                <Box sx={{ p: 0.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{name}</Typography>
-                  <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)' }}>{member.email}</Typography>
-                  {member.jobTitle && <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>{member.jobTitle}</Typography>}
-                </Box>
-              );
-              return (
-                <Tooltip key={member._id || idx} title={tooltipText} arrow enterDelay={100} leaveDelay={100}>
-                  <Avatar src={member.avatarUrl || undefined} sx={{ bgcolor: tokens.brand.primaryMuted }}>{initial}</Avatar>
-                </Tooltip>
-              );
-            })}
-          </AvatarGroup>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 1.5 },
+            alignItems: 'center',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            width: { xs: '100%', sm: 'auto' },
+            flexShrink: 0,
+          }}
+        >
+          <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>{renderBoardMemberAvatars(4)}</Box>
           <TextField
             placeholder="Search cards..."
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 200 }, '& .MuiOutlinedInput-root': { borderRadius: '24px', bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff', '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } }}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} /></InputAdornment> }}
-          />
-          <IconButton
-            onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
             sx={{
-              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              borderRadius: '50%',
-              bgcolor: (priorityFilter !== 'All' || assigneeFilterIds.length > 0) ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') : 'transparent'
+              flex: { xs: 1, sm: 'none' },
+              minWidth: 0,
+              width: { xs: 'auto', sm: 200 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '24px',
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#fff',
+                '& fieldset': { borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' },
+              },
             }}
-          >
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <IconButton onClick={(e) => setFilterMenuAnchor(e.currentTarget)} sx={filterButtonSx}>
             <FilterListIcon fontSize="small" />
           </IconButton>
           {canManageBoardChat && (
@@ -3692,6 +4004,7 @@ export const KanbanBoardPage = () => {
               disabled={createBoardConversation.isPending}
               variant="outlined"
               sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
                 color: tokens.brand.primary,
                 borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(93,26,137,0.2)',
                 fontWeight: 700,
@@ -3700,11 +4013,28 @@ export const KanbanBoardPage = () => {
                 px: 2.5,
               }}
             >
-              {boardChat ? 'Open board chat' : 'Create board chat'}
+              {boardChatLabel}
             </Button>
           )}
           {canManageTeam && (
-            <Button onClick={() => setIsShareDialogOpen(true)} variant="contained" sx={{ bgcolor: '#FF5733', color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', px: 3, ml: 1, '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' } }}>Share</Button>
+            <Button
+              onClick={() => setIsShareDialogOpen(true)}
+              variant="contained"
+              sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
+                bgcolor: '#FF5733',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: '24px',
+                textTransform: 'none',
+                boxShadow: 'none',
+                px: 3,
+                ml: 1,
+                '&:hover': { bgcolor: '#E04A2A', boxShadow: 'none' },
+              }}
+            >
+              Share
+            </Button>
           )}
         </Box>
       </Box>
@@ -3715,6 +4045,13 @@ export const KanbanBoardPage = () => {
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        autoScroll={{
+          threshold: {
+            x: 0.2,
+            y: 0.2,
+          },
+          acceleration: 10,
+        }}
         measuring={{
           droppable: {
             strategy: MeasuringStrategy.Always,
@@ -3729,7 +4066,7 @@ export const KanbanBoardPage = () => {
         gap: 3,
         overflowX: 'auto',
         overflowY: 'hidden',
-        pb: 2,
+        pb: { xs: 1, sm: 2 },
         '&::-webkit-scrollbar': { height: 8 },
         '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
         '&::-webkit-scrollbar-thumb': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 4 },
@@ -3762,7 +4099,7 @@ export const KanbanBoardPage = () => {
               easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
             }}>
               {activeColumn ? (
-                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9 }}>
+                <Box sx={{ minWidth: { xs: 280, sm: 320 }, width: { xs: 280, sm: 320 }, display: 'flex', flexDirection: 'column', opacity: 0.9, pointerEvents: 'none' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, py: 0.5, cursor: 'grabbing' }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>{activeColumn.title}</Typography>
@@ -3780,7 +4117,7 @@ export const KanbanBoardPage = () => {
                   </Box>
                 </Box>
               ) : activeTask ? (
-                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing' }}>
+                <Box sx={{ width: '100%', height: '100%', cursor: 'grabbing', pointerEvents: 'none' }}>
                   <TaskCardVisual task={activeTask} isDarkMode={isDarkMode} />
                 </Box>
               ) : null}
@@ -3850,53 +4187,65 @@ export const KanbanBoardPage = () => {
           </MenuItem>
         ))}
 
-        {isElevated && (
-          <>
-            <Divider sx={{ my: 1 }} />
+        {isElevated
+          ? [
+              <Divider key="filter-user-divider" sx={{ my: 1 }} />,
+              <Typography
+                key="filter-user-label"
+                variant="caption"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  display: 'block',
+                  fontWeight: 800,
+                  color: 'text.secondary',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Filter by User
+              </Typography>,
+              ...boardMembers.map((m: any) => {
+                const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+                const checked = assigneeFilterIds.includes(m._id);
+                return (
+                  <MenuItem
+                    key={m._id}
+                    onClick={() => {
+                      setAssigneeFilterIds((prev) =>
+                        prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id],
+                      );
+                    }}
+                    sx={{ borderRadius: '8px', mx: 1 }}
+                  >
+                    <Checkbox size="small" checked={checked} sx={{ p: 0.5, mr: 1 }} />
+                    <Typography variant="body2" sx={{ fontWeight: checked ? 700 : 500 }}>
+                      {name}
+                    </Typography>
+                  </MenuItem>
+                );
+              }),
+            ]
+          : null}
 
-            <Typography variant="caption" sx={{ px: 2, py: 1, display: 'block', fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Filter by User
-            </Typography>
-            {boardMembers.map((m: any) => {
-              const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
-              const checked = assigneeFilterIds.includes(m._id);
-              return (
-                <MenuItem
-                  key={m._id}
-                  onClick={() => {
-                    setAssigneeFilterIds((prev) =>
-                      prev.includes(m._id) ? prev.filter((id) => id !== m._id) : [...prev, m._id]
-                    );
-                  }}
-                  sx={{ borderRadius: '8px', mx: 1 }}
-                >
-                  <Checkbox size="small" checked={checked} sx={{ p: 0.5, mr: 1 }} />
-                  <Typography variant="body2" sx={{ fontWeight: checked ? 700 : 500 }}>
-                    {name}
-                  </Typography>
-                </MenuItem>
-              );
-            })}
-          </>
-        )}
-
-        {(priorityFilter !== 'All' || assigneeFilterIds.length > 0) && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <MenuItem
-              onClick={() => {
-                setPriorityFilter('All');
-                setAssigneeFilterIds([]);
-                setFilterMenuAnchor(null);
-              }}
-              sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                Clear Filters
-              </Typography>
-            </MenuItem>
-          </>
-        )}
+        {priorityFilter !== 'All' || assigneeFilterIds.length > 0
+          ? [
+              <Divider key="clear-filters-divider" sx={{ my: 1 }} />,
+              <MenuItem
+                key="clear-filters"
+                onClick={() => {
+                  setPriorityFilter('All');
+                  setAssigneeFilterIds([]);
+                  setFilterMenuAnchor(null);
+                }}
+                sx={{ borderRadius: '8px', mx: 1, color: 'error.main', justifyContent: 'center' }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  Clear Filters
+                </Typography>
+              </MenuItem>,
+            ]
+          : null}
       </Menu>
 
       {/* Add Column Dialog */}
@@ -3955,7 +4304,7 @@ export const KanbanBoardPage = () => {
             onClick={handleSaveBoardName}
             disabled={!editBoardNameValue.trim() || updateBoardMutation.isPending}
             variant="contained"
-            sx={{ bgcolor: tokens.brand.primary, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.primary } }}
+            sx={{ bgcolor: tokens.brand.solid, borderRadius: '24px', '&:hover': { bgcolor: tokens.brand.solid } }}
           >
             {updateBoardMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save'}
           </Button>
@@ -4131,7 +4480,7 @@ export const KanbanBoardPage = () => {
                 overflow: 'hidden',
               }}
             >
-              <RichTextEditor
+              <LazyRichTextEditor
                 value={newCardDescription}
                 onChange={setNewCardDescription}
                 submitOnEnter={false}
@@ -4274,7 +4623,7 @@ export const KanbanBoardPage = () => {
             disabled={!newCardTitle.trim() || createCardMutation.isPending || uploadCardImageMutation.isPending}
             variant="contained"
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               fontWeight: 700,
               borderRadius: '24px',
@@ -4341,12 +4690,13 @@ export const KanbanBoardPage = () => {
       ) : null}
 
       {/* Custom Column Delete Confirmation */}
-      <ModernConfirmDialog
+      <ConfirmDialog
         open={columnConfirmOpen}
         title="Delete Column"
-        description="Are you sure you want to delete this column? Sibling card leads will automatically move to the first active column."
+        message="Are you sure you want to delete this column? Sibling card leads will automatically move to the first active column."
         onConfirm={handleDeleteColumnConfirm}
         onCancel={() => setColumnConfirmOpen(false)}
+        confirmLabel="Delete"
       />
       {/* Share Board Dialog */}
       <Dialog open={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}>
@@ -4375,20 +4725,31 @@ export const KanbanBoardPage = () => {
               boardMembers.map((member: any, idx: number) => {
                 const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'User';
                 const initial = (member.firstName?.charAt(0) || member.email?.charAt(0) || 'U').toUpperCase();
-                const isOwner = member._id === actualBoard?.ownerId;
-                const isInMembersList = (actualBoard?.members || []).some((m: any) => {
-                  const uid = typeof m.userId === 'string' ? m.userId : m.userId?._id;
-                  return uid === member._id;
-                });
-                const canRemove = canManageTeam && !isOwner && isInMembersList && member._id !== currentUser?._id;
+                const isOwner = userIdsEqual(member._id, actualBoard?.ownerId);
+                const isInMembersList = (actualBoard?.members || []).some((m: any) =>
+                  userIdsEqual(m.userId, member._id),
+                );
+                const boardRole = getBoardMemberRole(member._id);
+                const canEditRole =
+                  canManageTeam &&
+                  !isOwner &&
+                  isInMembersList &&
+                  !userIdsEqual(member._id, currentUser?._id) &&
+                  boardRole;
+                const canRemove =
+                  canManageTeam &&
+                  !isOwner &&
+                  isInMembersList &&
+                  !userIdsEqual(member._id, currentUser?._id);
 
                 return (
                   <Box
                     key={member._id || idx}
                     sx={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: isCompactShare ? 'flex-start' : 'center',
                       justifyContent: 'space-between',
+                      flexDirection: isCompactShare ? 'column' : 'row',
                       gap: 1.5,
                       px: 2,
                       py: 1.5,
@@ -4398,7 +4759,7 @@ export const KanbanBoardPage = () => {
                           : 'none',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, width: isCompactShare ? '100%' : 'auto' }}>
                       <Avatar src={member.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: '0.8rem', fontWeight: 700, bgcolor: tokens.brand.primaryMuted }}>
                         {initial}
                       </Avatar>
@@ -4407,24 +4768,65 @@ export const KanbanBoardPage = () => {
                           {name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {isOwner ? 'Owner' : member.email}
+                          {isOwner ? 'Board owner' : member.email}
                         </Typography>
                       </Box>
                     </Box>
-                    {canRemove && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveMemberClick(member._id)}
-                        disabled={removeBoardMemberMutation.isPending}
-                        sx={{
-                          color: 'text.secondary',
-                          flexShrink: 0,
-                          '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        alignSelf: isCompactShare ? 'stretch' : 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isOwner ? (
+                        <Chip label="OWNER" size="small" sx={{ fontWeight: 700, fontSize: '0.65rem', height: 22 }} />
+                      ) : canEditRole ? (
+                        <FormControl size="small" fullWidth={isCompactShare} sx={{ minWidth: isCompactShare ? undefined : 108 }}>
+                          <Select
+                            value={boardRole}
+                            onChange={(e) =>
+                              handleBoardMemberRoleChange(member._id, e.target.value as 'admin' | 'member')
+                            }
+                            disabled={addBoardMemberMutation.isPending}
+                            aria-label={`Board role for ${name}`}
+                            sx={{
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              height: 32,
+                              '& .MuiSelect-select': { py: 0.75 },
+                            }}
+                          >
+                            <MenuItem value="member">Member</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                          </Select>
+                        </FormControl>
+                      ) : boardRole ? (
+                        <Chip
+                          label={boardRole.toUpperCase()}
+                          size="small"
+                          sx={{ fontWeight: 700, fontSize: '0.65rem', height: 22 }}
+                        />
+                      ) : null}
+                      {canRemove && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveMemberClick(member._id)}
+                          disabled={removeBoardMemberMutation.isPending}
+                          sx={{
+                            color: 'text.secondary',
+                            flexShrink: 0,
+                            ml: isCompactShare ? 'auto' : 0,
+                            '&:hover': { color: tokens.semantic.error, bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
                   </Box>
                 );
               })
@@ -4452,7 +4854,7 @@ export const KanbanBoardPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setIsShareDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 700, borderRadius: '24px', textTransform: 'none' }}>Cancel</Button>
-          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
+          <Button onClick={handleShareSubmit} variant="contained" disabled={!selectedUserToShare || addBoardMemberMutation.isPending} sx={{ bgcolor: tokens.brand.solid, color: '#fff', fontWeight: 700, borderRadius: '24px', textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: tokens.brand.primaryMuted, boxShadow: 'none' } }}>
             Invite
           </Button>
         </DialogActions>

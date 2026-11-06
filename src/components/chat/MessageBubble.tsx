@@ -9,6 +9,7 @@ import {
   Tooltip,
   Popover,
   ClickAwayListener,
+  Divider,
 } from '@mui/material';
 import type { Message, MessageReaction, User } from '@/types';
 import { chatMentionSx, sanitizeChatHtml } from '@/utils/chatHtml';
@@ -118,6 +119,19 @@ export const MessageBubble = React.memo(({
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
   const setReaction = useSetMessageReaction();
 
+  // Mobile long-press detection without interfering with scrolling
+  const touchStartPos = React.useRef<{ x: number; y: number } | null>(null);
+  const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressActive = React.useRef(false);
+
+  // Mobile swipe-to-reply
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const isSwipingRef = React.useRef(false);
+  const hasTriggeredHapticRef = React.useRef(false);
+  const swipeRafRef = React.useRef<number | null>(null);
+  const SWIPE_TRIGGER_THRESHOLD = 32;
+  const SWIPE_MAX_OFFSET = 56;
+
   const senderRef = message.sender || message.senderId;
   const senderUser: User | undefined =
     typeof senderRef === 'object' && senderRef
@@ -183,7 +197,131 @@ export const MessageBubble = React.memo(({
     return String(message.conversationId || '');
   })();
 
-  const canReact = Boolean(currentUserId && conversationId && !message._id.startsWith('temp-'));
+  const targetMessageId = (message as any).originalMessageId || message._id.replace(/-(attachment|text)$/, '');
+  const canReact = Boolean(currentUserId && conversationId && !targetMessageId.startsWith('temp-') && !targetMessageId.startsWith('optimistic-'));
+
+  const reactionTooltip = useMemo(() => {
+    if (!reactions.length) return '';
+    const byEmoji: Record<string, string[]> = {};
+    for (const r of reactions) {
+      const u =
+        typeof r.userId === 'object' && r.userId
+          ? r.userId
+          : mentionableUsers.find((mu) => mu._id === (typeof r.userId === 'string' ? r.userId : ''));
+      const uid = typeof r.userId === 'string' ? r.userId : r.userId?._id;
+      const isMe = Boolean(currentUserId && uid === currentUserId);
+      const name = isMe ? 'You' : u ? getDisplayName(u) : 'Someone';
+      if (!byEmoji[r.emoji]) byEmoji[r.emoji] = [];
+      byEmoji[r.emoji].push(name);
+    }
+    return Object.entries(byEmoji)
+      .map(([em, names]) => `${em} ${names.join(', ')}`)
+      .join(' • ');
+  }, [reactions, mentionableUsers, currentUserId]);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartPos.current = { x: t.clientX, y: t.clientY };
+    isLongPressActive.current = false;
+    isSwipingRef.current = false;
+    hasTriggeredHapticRef.current = false;
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (swipeRafRef.current) {
+      cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = null;
+    }
+
+    if (canReact) {
+      const target = e.currentTarget;
+      longPressTimer.current = setTimeout(() => {
+        isLongPressActive.current = true;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(40); } catch (_) {}
+        }
+        setQuickAnchor(target);
+      }, 450);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    if (!touchStartPos.current) return;
+    const t = e.touches[0];
+    const diffX = t.clientX - touchStartPos.current.x;
+    const diffY = t.clientY - touchStartPos.current.y;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+
+    // Cancel long-press if movement detected (8px jitter threshold)
+    if (absX > 8 || absY > 8) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    }
+
+    if (!onReply || isLongPressActive.current) return;
+
+    // Detect horizontal swipe intent (swiping rightwards)
+    if (!isSwipingRef.current) {
+      if (diffX > 6 && absX > absY) {
+        isSwipingRef.current = true;
+      }
+    }
+
+    // Once swipe is active, smoothly follow finger without sticky pauses
+    if (isSwipingRef.current) {
+      if (diffX <= 0) {
+        if (swipeRafRef.current) cancelAnimationFrame(swipeRafRef.current);
+        swipeRafRef.current = requestAnimationFrame(() => setSwipeOffset(0));
+        return;
+      }
+
+      // 1:1 smooth follow up to threshold, then gentle elastic resistance
+      const offset = diffX < SWIPE_TRIGGER_THRESHOLD
+        ? diffX * 0.95
+        : SWIPE_TRIGGER_THRESHOLD + (diffX - SWIPE_TRIGGER_THRESHOLD) * 0.35;
+      const clampedOffset = Math.min(SWIPE_MAX_OFFSET, Math.max(0, offset));
+
+      if (swipeRafRef.current) cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = requestAnimationFrame(() => {
+        setSwipeOffset(clampedOffset);
+      });
+
+      // Haptic feedback when passing trigger threshold
+      if (clampedOffset >= SWIPE_TRIGGER_THRESHOLD && !hasTriggeredHapticRef.current) {
+        hasTriggeredHapticRef.current = true;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(25); } catch (_) {}
+        }
+      } else if (clampedOffset < SWIPE_TRIGGER_THRESHOLD) {
+        hasTriggeredHapticRef.current = false;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (swipeRafRef.current) {
+      cancelAnimationFrame(swipeRafRef.current);
+      swipeRafRef.current = null;
+    }
+
+    if (isSwipingRef.current && swipeOffset >= SWIPE_TRIGGER_THRESHOLD && onReply) {
+      onReply(message);
+    }
+
+    setSwipeOffset(0);
+    isSwipingRef.current = false;
+    hasTriggeredHapticRef.current = false;
+    touchStartPos.current = null;
+  };
 
   if (isBoardEvent) {
     const actionText = (message.content || message.boardEvent?.cardTitle || 'updated the board').trim();
@@ -227,7 +365,7 @@ export const MessageBubble = React.memo(({
     setPickerAnchor(null);
     setReaction.mutate({
       conversationId,
-      messageId: message._id,
+      messageId: targetMessageId,
       emoji,
     });
   };
@@ -274,7 +412,7 @@ export const MessageBubble = React.memo(({
       )}
 
       {/* Bubble Container */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '75%', minWidth: 0, position: 'relative' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: { xs: 'calc(100% - 44px)', sm: '80%', md: '75%' }, minWidth: 0, position: 'relative' }}>
         {/* Message Header (Name + Time) */}
         <Box
           sx={{
@@ -344,10 +482,70 @@ export const MessageBubble = React.memo(({
 
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', maxWidth: '100%', minWidth: 0 }}>
           {/* Message bubble card */}
-          <Box sx={{ position: 'relative', maxWidth: '100%', minWidth: 0 }}>
+          <Box
+            sx={{
+              position: 'relative',
+              maxWidth: '100%',
+              minWidth: 0,
+              userSelect: 'text',
+              touchAction: 'pan-y',
+              WebkitTouchCallout: 'none',
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onContextMenu={(e) => {
+              if (isLongPressActive.current || isSwipingRef.current) e.preventDefault();
+            }}
+          >
+            {/* Animated Reply Icon behind swiping bubble */}
+            {swipeOffset > 0 && onReply && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: -30,
+                  top: '50%',
+                  transform: `translateY(-50%) scale(${
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? 1.15
+                      : Math.max(0.6, swipeOffset / SWIPE_TRIGGER_THRESHOLD)
+                  })`,
+                  opacity: Math.min(1, swipeOffset / 16),
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  bgcolor:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? tokens.brand.primary
+                      : isDarkMode
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(93, 26, 137, 0.14)',
+                  color:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? '#ffffff'
+                      : tokens.brand.primary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 0,
+                  pointerEvents: 'none',
+                  transition: 'background-color 0.15s ease, transform 0.12s ease',
+                  boxShadow:
+                    swipeOffset >= SWIPE_TRIGGER_THRESHOLD
+                      ? '0 2px 8px rgba(93, 26, 137, 0.35)'
+                      : 'none',
+                }}
+              >
+                <ReplyIcon sx={{ fontSize: 15 }} />
+              </Box>
+            )}
+
           <Paper
             elevation={0}
             sx={{
+              transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : 'none',
+              transition: isSwipingRef.current ? 'none' : 'transform 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.15)',
               p: compactMedia ? '0' : '8px 12px',
               borderRadius: '16px',
               borderBottomRightRadius: isOwn ? '4px' : '16px',
@@ -361,11 +559,13 @@ export const MessageBubble = React.memo(({
                 : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
               boxShadow: 'none',
               overflow: 'hidden',
-              ...(isDriveFile ? { width: 280 } : {}),
+              ...(isDriveFile ? { width: { xs: '100%', sm: 280 }, maxWidth: 280 } : {}),
               maxWidth: '100%',
-              minWidth: 0,
+              minWidth: { xs: 52, sm: 0 },
+              minHeight: 34,
               overflowWrap: 'anywhere',
               wordBreak: 'break-word',
+              willChange: isSwipingRef.current ? 'transform' : 'auto',
             }}
           >
             {replySnippet && (
@@ -589,64 +789,70 @@ export const MessageBubble = React.memo(({
 
           {/* Aggregated reaction pill (WhatsApp-style overlap) */}
           {aggregated.count > 0 && (
-            <Box
-              component="button"
-              type="button"
-              aria-label="View reactions"
-              onClick={(e) => {
-                e.stopPropagation();
-                setReactionsOpen(true);
-              }}
-              sx={{
-                position: 'absolute',
-                bottom: -12,
-                [isOwn ? 'right' : 'left']: 10,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.35,
-                px: 0.85,
-                py: 0.2,
-                minHeight: 24,
-                borderRadius: '999px',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-                bgcolor: isDarkMode ? 'rgba(36, 30, 46, 0.98)' : '#fff',
-                boxShadow: isDarkMode
-                  ? '0 2px 8px rgba(0,0,0,0.35)'
-                  : '0 2px 8px rgba(0,0,0,0.08)',
-                cursor: 'pointer',
-                zIndex: 2,
-                transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-                outline: myReaction
-                  ? `1.5px solid ${tokens.brand.primary}`
-                  : 'none',
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: isDarkMode
-                    ? '0 4px 12px rgba(0,0,0,0.45)'
-                    : '0 4px 12px rgba(93, 26, 137, 0.15)',
-                },
-              }}
+            <Tooltip
+              title={reactionTooltip || 'View reactions'}
+              arrow
+              placement="bottom"
             >
-              <Typography
-                component="span"
-                sx={{ fontSize: '0.82rem', lineHeight: 1, letterSpacing: '0.02em' }}
+              <Box
+                component="button"
+                type="button"
+                aria-label="View reactions"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReactionsOpen(true);
+                }}
+                sx={{
+                  position: 'absolute',
+                  bottom: -12,
+                  [isOwn ? 'right' : 'left']: 10,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.35,
+                  px: 0.85,
+                  py: 0.2,
+                  minHeight: 24,
+                  borderRadius: '999px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  bgcolor: isDarkMode ? 'rgba(36, 30, 46, 0.98)' : '#fff',
+                  boxShadow: isDarkMode
+                    ? '0 2px 8px rgba(0,0,0,0.35)'
+                    : '0 2px 8px rgba(0,0,0,0.08)',
+                  cursor: 'pointer',
+                  zIndex: 2,
+                  transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+                  outline: myReaction
+                    ? `1.5px solid ${tokens.brand.primary}`
+                    : 'none',
+                  '&:hover': {
+                    transform: 'translateY(-1px)',
+                    boxShadow: isDarkMode
+                      ? '0 4px 12px rgba(0,0,0,0.45)'
+                      : '0 4px 12px rgba(93, 26, 137, 0.15)',
+                  },
+                }}
               >
-                {aggregated.emojis.slice(0, 3).join('')}
-              </Typography>
-              {aggregated.count > 1 && (
                 <Typography
                   component="span"
-                  sx={{
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    color: 'text.secondary',
-                    ml: 0.15,
-                  }}
+                  sx={{ fontSize: '0.82rem', lineHeight: 1, letterSpacing: '0.02em' }}
                 >
-                  {aggregated.count}
+                  {aggregated.emojis.slice(0, 3).join('')}
                 </Typography>
-              )}
-            </Box>
+                {aggregated.count > 1 && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: 'text.secondary',
+                      ml: 0.15,
+                    }}
+                  >
+                    {aggregated.count}
+                  </Typography>
+                )}
+              </Box>
+            </Tooltip>
           )}
           </Box>
 
@@ -655,15 +861,27 @@ export const MessageBubble = React.memo(({
               className="msg-hover-action"
               sx={{
                 position: 'absolute',
-                bottom: 0,
-                display: 'flex',
+                display: { xs: 'none', md: 'flex' },
                 alignItems: 'center',
                 gap: 0.5,
+                zIndex: 3,
+                bottom: 4,
                 ...(isOwn
-                  ? { right: '100%', mr: 0.5 }
-                  : { left: '100%', ml: 0.5 }),
-                opacity: { xs: 1, md: 0 },
-                transition: 'opacity 0.15s ease',
+                  ? {
+                      right: '100%',
+                      mr: 1,
+                    }
+                  : {
+                      left: '100%',
+                      ml: 1,
+                    }),
+                opacity: 0,
+                bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: '20px',
+                p: '3px 4px',
+                boxShadow: isDarkMode ? '0 4px 14px rgba(0,0,0,0.45)' : '0 4px 14px rgba(0,0,0,0.08)',
+                transition: 'opacity 0.15s ease, transform 0.15s ease',
               }}
             >
               {canReact && (
@@ -722,6 +940,7 @@ export const MessageBubble = React.memo(({
       onClose={() => setQuickAnchor(null)}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      marginThreshold={8}
       slotProps={{
         paper: {
           sx: {
@@ -731,6 +950,7 @@ export const MessageBubble = React.memo(({
             display: 'flex',
             alignItems: 'center',
             gap: 0.25,
+            maxWidth: 'calc(100vw - 16px)',
             // Solid opaque surface (no Paper gradient / translucent wash)
             bgcolor: isDarkMode ? '#241E2E' : '#FFFFFF',
             backgroundImage: 'none',
@@ -822,6 +1042,52 @@ export const MessageBubble = React.memo(({
       >
         <AddIcon sx={{ fontSize: 18, opacity: 1 }} />
       </Box>
+
+      {onReply && (
+        <>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{
+              mx: 0.35,
+              my: 0.75,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+            }}
+          />
+          <Tooltip title="Reply" arrow>
+            <Box
+              component="button"
+              type="button"
+              onClick={() => {
+                setQuickAnchor(null);
+                onReply(message);
+              }}
+              aria-label="Reply to message"
+              sx={{
+                width: 34,
+                height: 34,
+                p: 0,
+                m: 0,
+                border: 'none',
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: tokens.brand.primary,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(93, 26, 137, 0.08)',
+                transition: 'background-color 0.12s ease, transform 0.12s ease',
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(93, 26, 137, 0.14)',
+                  transform: 'scale(1.15)',
+                },
+              }}
+            >
+              <ReplyIcon sx={{ fontSize: 17 }} />
+            </Box>
+          </Tooltip>
+        </>
+      )}
     </Popover>
 
     {/* Full emoji picker */}
@@ -834,12 +1100,14 @@ export const MessageBubble = React.memo(({
       }}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      marginThreshold={8}
       slotProps={{
         paper: {
           sx: {
             borderRadius: '16px',
             overflow: 'hidden',
             bgcolor: 'transparent',
+            maxWidth: 'calc(100vw - 16px)',
             boxShadow: isDarkMode
               ? '0 12px 40px rgba(0,0,0,0.5)'
               : '0 12px 40px rgba(0,0,0,0.15)',
@@ -853,12 +1121,12 @@ export const MessageBubble = React.memo(({
           setQuickAnchor(null);
         }}
       >
-        <Box>
+        <Box sx={{ maxWidth: '100%', overflow: 'hidden' }}>
           <EmojiPicker
             onEmojiClick={handlePickerSelect}
             theme={isDarkMode ? EmojiTheme.DARK : EmojiTheme.LIGHT}
-            width={320}
-            height={400}
+            width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 24, 320) : 320}
+            height={380}
             searchPlaceHolder="Search emoji"
             previewConfig={{ showPreview: false }}
             lazyLoadEmojis
@@ -891,7 +1159,7 @@ export const MessageBubble = React.memo(({
           ? (emoji) => {
               setReaction.mutate({
                 conversationId,
-                messageId: message._id,
+                messageId: targetMessageId,
                 emoji,
               });
             }

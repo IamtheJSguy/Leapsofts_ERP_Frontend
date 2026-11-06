@@ -49,6 +49,8 @@ export const useUser = (id: string | undefined) => {
   });
 };
 
+export const fetchUserById = (id: string) => userApi.getUser(id).then((r) => r.data.data);
+
 export const useUserSummary = (userId: string | undefined, date?: string) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
@@ -184,6 +186,7 @@ export const useMe = () => {
   const updateAuthUser = useAuthStore((s) => s.updateUser);
   return useQuery({
     queryKey: ['me'],
+    staleTime: 5 * 60 * 1000,
     queryFn: () => userApi.getMe().then((r) => {
       if (r.data?.data) {
         updateAuthUser(r.data.data);

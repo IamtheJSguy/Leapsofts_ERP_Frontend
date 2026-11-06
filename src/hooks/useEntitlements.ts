@@ -10,6 +10,7 @@ export type OrgModuleKey =
   | 'projectsAndBoards'
   | 'scheduledReports'
   | 'googleSheetsSync'
+  | 'crmSync'
   | 'desktopApp'
   | 'invoicingModule'
   | 'screenshotsEnabled';
@@ -24,6 +25,7 @@ export const DEFAULT_ORG_MODULE_FLAGS: OrgModuleFlags = {
   projectsAndBoards: true,
   scheduledReports: true,
   googleSheetsSync: true,
+  crmSync: false,
   desktopApp: true,
   invoicingModule: false,
   screenshotsEnabled: true,

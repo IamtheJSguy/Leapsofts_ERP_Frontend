@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import api from '@/lib/axios';
+import { loadKanbanCardRouteInfo, kanbanCardNavigatePath } from '@/utils/kanbanCardNavigation';
 import {
   Box,
   Typography,
@@ -17,6 +17,7 @@ import {
   Chip,
   Divider,
   Tooltip,
+  useMediaQuery,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -76,6 +77,8 @@ interface UserProgressCardProps {
 const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgressCardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const entitlements = useEntitlements();
   const [expanded, setExpanded] = useState(false);
 
@@ -121,31 +124,50 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
   return (
     <Card
       sx={{
-        borderRadius: '24px',
+        borderRadius: { xs: '16px', sm: '24px' },
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : 'rgba(255, 255, 255, 0.85)',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
         boxShadow: isDarkMode ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.03)',
         overflow: 'hidden',
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        '&:hover': {
-          boxShadow: isDarkMode
-            ? '0 10px 40px rgba(0, 0, 0, 0.3)'
-            : '0 20px 50px rgba(0, 0, 0, 0.06)',
-          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-        },
+        ...(!isCompact && {
+          '&:hover': {
+            boxShadow: isDarkMode
+              ? '0 10px 40px rgba(0, 0, 0, 0.3)'
+              : '0 20px 50px rgba(0, 0, 0, 0.06)',
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+          },
+        }),
       }}
     >
       <Box
         onClick={openDetail}
         sx={{
-          p: 3,
+          p: { xs: 1.25, sm: 3 },
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: 1,
           cursor: detailPath ? 'pointer' : 'default',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, minWidth: 0, flex: 1 }}>
+          {isCompact ? (
+            <Avatar
+              src={group.user.avatarUrl || undefined}
+              sx={{
+                width: 40,
+                height: 40,
+                flexShrink: 0,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#F2EEEC',
+                color: isDarkMode ? '#FFFFFF' : '#1A1625',
+                fontSize: '0.9rem',
+                fontWeight: 800,
+              }}
+            >
+              {initial}
+            </Avatar>
+          ) : (
           <Box sx={{ position: 'relative', display: 'inline-flex' }}>
             <CircularProgress
               variant="determinate"
@@ -194,24 +216,28 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
               </Avatar>
             </Box>
           </Box>
+          )}
 
-          <Box>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1.15rem',
+                fontSize: { xs: '0.92rem', sm: '1.15rem' },
+                lineHeight: 1.25,
                 color: isDarkMode ? '#fff' : tokens.text.primary,
                 letterSpacing: '-0.015em',
+                overflowWrap: 'anywhere',
               }}
             >
               {name}
             </Typography>
             <Typography
-              sx={{ fontSize: '0.82rem', color: 'text.secondary', fontWeight: 600, mt: 0.25 }}
+              sx={{ fontSize: { xs: '0.72rem', sm: '0.82rem' }, color: 'text.secondary', fontWeight: 600, mt: 0.25, lineHeight: 1.35 }}
             >
               {group.completedCount} of {group.totalCount} completed
-              {hasTargetRollup && ` · Actual ${totalActual} / Target ${totalTarget}`}
+              {!isCompact && hasTargetRollup && ` · Actual ${totalActual} / Target ${totalTarget}`}
             </Typography>
+            {!isCompact && (
             <Box sx={{ display: 'flex', gap: 0.75, mt: 0.75, flexWrap: 'wrap' }}>
               {dailyCount > 0 && (
                 <Chip
@@ -241,15 +267,16 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                 />
               )}
             </Box>
+            )}
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
           <Box
             sx={{
-              px: 2,
-              py: 0.75,
-              borderRadius: '14px',
+              px: { xs: 1, sm: 2 },
+              py: { xs: 0.35, sm: 0.75 },
+              borderRadius: '12px',
               bgcolor:
                 percentage === 100
                   ? 'rgba(16, 185, 129, 0.1)'
@@ -268,7 +295,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1rem',
+                fontSize: { xs: '0.78rem', sm: '1rem' },
                 color:
                   percentage === 100
                     ? tokens.semantic.success
@@ -280,6 +307,8 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
               {percentage}%
             </Typography>
           </Box>
+          {!isCompact && (
+          <>
           <IconButton
             size="small"
             onClick={(e) => {
@@ -306,9 +335,12 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
               <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
             )}
           </IconButton>
+          </>
+          )}
         </Box>
       </Box>
 
+      {!isCompact && (
       <Collapse in={expanded}>
         <Divider sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
         <Box sx={{ px: 3, py: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
@@ -335,11 +367,9 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
                   navigate(kanbanLink);
                 } else {
                   try {
-                    const res = await api.get(`/kanban/cards/${task.kanbanCardId}`);
-                    const card = res.data.data;
-                    if (card && card.boardId) {
-                      navigate(`/projects/${card.projectId || card.boardId}/boards/${card.boardId}?card=${card._id}`);
-                    }
+                    const card = await loadKanbanCardRouteInfo(task.kanbanCardId);
+                    const path = kanbanCardNavigatePath(card);
+                    if (path) navigate(path);
                   } catch (err) {
                     console.error('Could not route to kanban card', err);
                   }
@@ -430,6 +460,7 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
         })}
         </Box>
       </Collapse>
+      )}
     </Card>
   );
 };
@@ -437,6 +468,8 @@ const UserProgressCard = ({ group, isDarkMode, mode, date, rangeEnd }: UserProgr
 export const DailyTeamProgress = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
+  const isToolbarStacked = useMediaQuery(theme.breakpoints.down('sm'));
   const entitlements = useEntitlements();
 
   const today = new Date().toLocaleDateString('en-CA');
@@ -555,7 +588,7 @@ export const DailyTeamProgress = () => {
 
   const periodLabel = formatPeriodLabel(mode, period.startDate, period.endDate);
   const filterCaption =
-    mode === 'day' ? 'Filter by Date' : mode === 'week' ? 'Filter by Week' : 'Date Range';
+    mode === 'day' ? (isCompact ? 'Date' : 'Filter by Date') : mode === 'week' ? (isCompact ? 'Week' : 'Filter by Week') : (isCompact ? 'Range' : 'Date Range');
 
   const handleModeChange = (_: React.MouseEvent<HTMLElement>, next: PeriodMode | null) => {
     if (!next) return;
@@ -570,14 +603,14 @@ export const DailyTeamProgress = () => {
       <Box
         sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { md: 'center' },
-          gap: 2,
-          mb: 4,
-          p: 2.5,
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 1, sm: 2 },
+          mb: { xs: 2, sm: 4 },
+          p: { xs: 1.25, sm: 2.5 },
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : 'rgba(255, 255, 255, 0.65)',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.7)'}`,
-          borderRadius: '24px',
+          borderRadius: { xs: '16px', sm: '24px' },
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
           flexWrap: 'wrap',
         }}
@@ -587,19 +620,26 @@ export const DailyTeamProgress = () => {
           exclusive
           onChange={handleModeChange}
           size="small"
+          fullWidth={isCompact}
           sx={{
             bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)',
             p: 0.5,
-            borderRadius: '16px',
+            borderRadius: { xs: '12px', sm: '16px' },
             border: 'none',
-            height: 56,
+            height: { xs: 44, sm: 56 },
+            width: { xs: '100%', sm: 'fit-content' },
+            maxWidth: '100%',
+            alignSelf: { xs: 'stretch', sm: 'flex-start' },
+            flexShrink: 0,
             '& .MuiToggleButtonGroup-grouped': {
               border: 0,
-              borderRadius: '12px !important',
-              px: 2,
+              borderRadius: '10px !important',
+              px: { xs: 1.25, sm: 2 },
+              flex: isCompact ? 1 : '0 0 auto',
               textTransform: 'none',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: { xs: '0.8rem', sm: '0.85rem' },
+              whiteSpace: 'nowrap',
             },
           }}
         >
@@ -622,7 +662,16 @@ export const DailyTeamProgress = () => {
         </ToggleButtonGroup>
 
         {mode === 'range' ? (
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 1,
+              flex: { sm: 1 },
+              minWidth: 0,
+              width: { xs: '100%', sm: 'auto' },
+            }}
+          >
             <GlassDatePicker
               value={date}
               onChange={(v) => {
@@ -630,28 +679,36 @@ export const DailyTeamProgress = () => {
                 if (rangeEnd < v) setRangeEnd(v);
               }}
               isDarkMode={isDarkMode}
-              label="Start Date"
+              label="Start"
+              fullWidth={isToolbarStacked}
+              compact={isCompact}
             />
             <GlassDatePicker
               value={rangeEnd}
               onChange={setRangeEnd}
               isDarkMode={isDarkMode}
-              label="End Date"
+              label="End"
+              fullWidth={isToolbarStacked}
+              compact={isCompact}
             />
           </Box>
         ) : (
-          <GlassDatePicker
-            value={date}
-            onChange={setDate}
-            isDarkMode={isDarkMode}
-            label={filterCaption}
-            displayValue={periodLabel}
-          />
+          <Box sx={{ width: { xs: '100%', sm: 'auto' }, maxWidth: '100%', flexShrink: 0 }}>
+            <GlassDatePicker
+              value={date}
+              onChange={setDate}
+              isDarkMode={isDarkMode}
+              label={filterCaption}
+              displayValue={periodLabel}
+              fullWidth={isToolbarStacked}
+              compact={isCompact}
+            />
+          </Box>
         )}
 
         <TextField
           size="small"
-          placeholder="Search team member..."
+          placeholder={isCompact ? 'Search member…' : 'Search team member...'}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           InputProps={{
@@ -663,11 +720,12 @@ export const DailyTeamProgress = () => {
           }}
           sx={{
             flexGrow: 1,
-            minWidth: 200,
+            minWidth: { xs: 0, sm: 200 },
+            width: { xs: '100%', sm: 'auto' },
             '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
+              borderRadius: { xs: '12px', sm: '16px' },
               bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
-              height: '56px',
+              height: { xs: 44, sm: 56 },
               '& fieldset': {
                 borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
               },
@@ -727,7 +785,7 @@ export const DailyTeamProgress = () => {
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={3.5}>
+        <Grid container spacing={{ xs: 1.25, sm: 3.5 }}>
           {filteredGroupedEntries.map((group, idx) => (
             <Grid item xs={12} lg={6} key={group.user?._id || idx}>
               <UserProgressCard

@@ -103,7 +103,7 @@ export const InteractiveFeatureTabs = () => {
               border: '1px solid',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(93, 26, 137, 0.08)',
               '& .MuiTabs-indicator': {
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 height: '100%',
                 borderRadius: '16px',
                 zIndex: 0,
@@ -198,7 +198,7 @@ export const InteractiveFeatureTabs = () => {
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar sx={{ bgcolor: tokens.brand.primary, width: 40, height: 40, fontWeight: 700 }}>
+                        <Avatar sx={{ bgcolor: tokens.brand.solid, width: 40, height: 40, fontWeight: 700 }}>
                           {lead.name.charAt(0)}
                         </Avatar>
                         <Box>
@@ -238,7 +238,7 @@ export const InteractiveFeatureTabs = () => {
                             textTransform: 'none',
                             fontWeight: 700,
                             fontSize: '0.78rem',
-                            bgcolor: isPushed ? 'transparent' : tokens.brand.primary,
+                            bgcolor: isPushed ? 'transparent' : tokens.brand.solid,
                             '&:hover': { bgcolor: isPushed ? 'transparent' : tokens.brand.primaryLight },
                           }}
                         >
@@ -299,7 +299,7 @@ export const InteractiveFeatureTabs = () => {
                       textTransform: 'none',
                       fontWeight: 700,
                       fontSize: '0.8rem',
-                      bgcolor: selectedInvoiceStyle === style.id ? tokens.brand.primary : 'transparent',
+                      bgcolor: selectedInvoiceStyle === style.id ? tokens.brand.solid : 'transparent',
                       borderColor: selectedInvoiceStyle === style.id ? tokens.brand.primary : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                       color: selectedInvoiceStyle === style.id ? '#fff' : isDark ? '#fff' : tokens.text.primary,
                     }}
@@ -328,7 +328,7 @@ export const InteractiveFeatureTabs = () => {
                     </Typography>
                     <Typography variant="caption" sx={{ opacity: 0.6 }}>NTN: 8294710-3 · Issued to: Vanguard Global Inc.</Typography>
                   </Box>
-                  <Chip label={`Template: ${selectedInvoiceStyle.toUpperCase()}`} size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.primary, color: '#fff' }} />
+                  <Chip label={`Template: ${selectedInvoiceStyle.toUpperCase()}`} size="small" sx={{ fontWeight: 800, bgcolor: tokens.brand.solid, color: '#fff' }} />
                 </Box>
 
                 <Box sx={{ my: 2, p: 2, borderRadius: '12px', bgcolor: isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF' }}>
@@ -372,7 +372,7 @@ export const InteractiveFeatureTabs = () => {
                         borderRadius: '10px',
                         fontWeight: 750,
                         fontSize: '0.76rem',
-                        bgcolor: activeBoardDept === dept ? tokens.brand.primary : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                        bgcolor: activeBoardDept === dept ? tokens.brand.solid : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
                         color: activeBoardDept === dept ? '#fff' : 'inherit',
                       }}
                     >
@@ -435,7 +435,7 @@ export const InteractiveFeatureTabs = () => {
                   DAY SHIFT TIMELINE (09:00 AM — 05:00 PM)
                 </Typography>
                 <Box sx={{ height: 24, borderRadius: '8px', bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)', display: 'flex', overflow: 'hidden' }}>
-                  <Box sx={{ width: '45%', bgcolor: tokens.brand.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.65rem', fontWeight: 750 }}>Active Focus</Box>
+                  <Box sx={{ width: '45%', bgcolor: tokens.brand.solid, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.65rem', fontWeight: 750 }}>Active Focus</Box>
                   <Box sx={{ width: '10%', bgcolor: tokens.brand.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.65rem', fontWeight: 750 }}>Break</Box>
                   <Box sx={{ width: '35%', bgcolor: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.65rem', fontWeight: 750 }}>Client Meeting</Box>
                   <Box sx={{ width: '10%', bgcolor: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.65rem', fontWeight: 750 }}>Review</Box>

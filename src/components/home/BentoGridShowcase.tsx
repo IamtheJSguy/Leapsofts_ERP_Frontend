@@ -18,8 +18,8 @@ export const BentoGridShowcase = () => {
 
   // Base Modern Card Styling with Glassmorphism, Ambient Aura & Physics
   const getCardStyle = (accentGlow: string, topLightColor: string) => ({
-    p: { xs: 3, md: 4 },
-    borderRadius: '24px',
+    p: { xs: 2.25, sm: 3, md: 4 },
+    borderRadius: { xs: '20px', sm: '24px' },
     position: 'relative' as const,
     overflow: 'hidden' as const,
     bgcolor: isDark ? 'rgba(23, 18, 32, 0.94)' : '#FFFFFF',
@@ -87,7 +87,7 @@ export const BentoGridShowcase = () => {
                 variant="h2"
                 sx={{
                   fontWeight: 850,
-                  fontSize: { xs: '2rem', sm: '2.8rem', md: '3.2rem' },
+                  fontSize: { xs: '1.65rem', sm: '2.4rem', md: '3.2rem' },
                   letterSpacing: '-0.03em',
                   background: isDark
                     ? 'linear-gradient(135deg, #FFFFFF 25%, #C084FC 65%, #FF7F11 100%)'

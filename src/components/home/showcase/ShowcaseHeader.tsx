@@ -9,9 +9,10 @@ import { tokens } from '@/styles/tokens';
 interface ShowcaseHeaderProps {
   onToggleTheme?: () => void;
   demoTheme?: 'dark' | 'light';
+  onToggleMobileSidebar?: () => void;
 }
 
-export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, demoTheme }) => {
+export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, demoTheme, onToggleMobileSidebar }) => {
   const theme = useTheme();
   const isDarkMode = demoTheme !== undefined ? demoTheme === 'dark' : theme.palette.mode === 'dark';
 
@@ -32,11 +33,19 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
         <IconButton
           size="small"
+          onClick={onToggleMobileSidebar}
+          aria-label="Toggle navigation sidebar"
           sx={{
             color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary',
             p: 0.5,
             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
             borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0,0,0,0.04)',
+              color: isDarkMode ? '#FFFFFF' : tokens.brand.primary,
+            },
           }}
         >
           <MenuIcon sx={{ fontSize: 16 }} />
@@ -73,7 +82,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           onClick={onToggleTheme}
           title={isDarkMode ? 'Switch demo to Light Mode' : 'Switch demo to Dark Mode'}
           sx={{
-            color: isDarkMode ? '#FCD34D' : '#5D1A89',
+            color: isDarkMode ? '#FCD34D' : tokens.brand.primary,
             p: 0.5,
             borderRadius: '8px',
             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'}`,
@@ -89,7 +98,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           {isDarkMode ? (
             <LightModeOutlinedIcon sx={{ fontSize: 16, color: '#FCD34D' }} />
           ) : (
-            <DarkModeOutlinedIcon sx={{ fontSize: 16, color: '#5D1A89' }} />
+            <DarkModeOutlinedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
           )}
         </IconButton>
 
@@ -122,7 +131,7 @@ export const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ onToggleTheme, d
           sx={{
             width: 26,
             height: 26,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             backgroundImage: `linear-gradient(135deg, ${tokens.brand.primary}, ${tokens.brand.primaryLight})`,
             color: '#fff',
             fontWeight: 800,

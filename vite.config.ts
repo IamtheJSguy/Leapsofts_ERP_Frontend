@@ -36,6 +36,27 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
+          if (id.includes('/xlsx/') || id.includes('\\xlsx\\')) return 'xlsx';
+          if (id.includes('html2pdf') || id.includes('html2canvas') || id.includes('jspdf')) {
+            return 'html2pdf';
+          }
+          if (id.includes('emoji-mart') || id.includes('@emoji-mart')) return 'emoji';
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {

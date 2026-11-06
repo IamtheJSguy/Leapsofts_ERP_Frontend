@@ -37,10 +37,11 @@ import { useChatStore } from '@/store/useChatStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageBubble } from './MessageBubble';
+import { ChatVirtualMessageList } from './ChatVirtualMessageList';
 import { GroupSettingsModal } from './GroupSettingsModal';
 import { DriveFilePicker } from './DriveFilePicker';
 import { useDriveAuthUrl, useDriveStatus, useUploadDriveFile, openDriveOAuthPopup } from '@/hooks/api/useDrive';
-import { RichTextEditor } from './RichTextEditor';
+import { LazyRichTextEditor } from './LazyRichTextEditor';
 import { tokens } from '@/styles/tokens';
 import { PRESENCE_COLORS } from '@/lib/constants';
 import { getDisplayName, getPresenceLabel } from '@/utils/formatters';
@@ -67,6 +68,41 @@ const SMALL_CHAT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp',
 const isSmallChatImage = (file: File) =>
   SMALL_CHAT_IMAGE_TYPES.has(file.type) && file.size <= SMALL_CHAT_IMAGE_BYTES;
 
+const EXTENSION_MIME: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  pdf: 'application/pdf',
+};
+
+const normalizeDroppedFile = (file: File): File => {
+  if (file.type) return file;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const type = ext ? EXTENSION_MIME[ext] : undefined;
+  if (!type) return file;
+  return new File([file], file.name, { type, lastModified: file.lastModified });
+};
+
+const dataTransferHasFiles = (dataTransfer: DataTransfer | null) => {
+  if (!dataTransfer) return false;
+  if ([...dataTransfer.types].includes('Files')) return true;
+  return Array.from(dataTransfer.items ?? []).some((item) => item.kind === 'file');
+};
+
+const getFirstDroppedFile = (dataTransfer: DataTransfer | null): File | null => {
+  if (!dataTransfer) return null;
+  const fromList = dataTransfer.files?.[0];
+  if (fromList) return normalizeDroppedFile(fromList);
+  for (const item of Array.from(dataTransfer.items ?? [])) {
+    if (item.kind !== 'file') continue;
+    const file = item.getAsFile();
+    if (file) return normalizeDroppedFile(file);
+  }
+  return null;
+};
+
 const httpUrl = (value?: string) => (value && value.startsWith('http') ? value : undefined);
 
 interface ChatWindowProps {
@@ -75,7 +111,10 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
-  const { activeConversationId, setActiveConversation, clearUnread, setReplyingTo } = useChatStore();
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+  const clearUnread = useChatStore((s) => s.clearUnread);
+  const setReplyingTo = useChatStore((s) => s.setReplyingTo);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightMessageId = searchParams.get('message');
@@ -131,13 +170,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
   const [pendingFilesByConv, setPendingFilesByConv] = useState<
     Record<string, { file: File; previewUrl: string | null }>
   >({});
+  const [pendingDriveFilesByConv, setPendingDriveFilesByConv] = useState<
+    Record<string, DriveFile>
+  >({});
 
   const currentPending = activeConversationId ? pendingFilesByConv[activeConversationId] : null;
   const pendingFile = currentPending?.file || null;
   const pendingPreviewUrl = currentPending?.previewUrl || null;
+  const pendingDriveFile = activeConversationId ? pendingDriveFilesByConv[activeConversationId] || null : null;
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [drivePromptOpen, setDrivePromptOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const isSendingRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
@@ -289,8 +333,33 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     void removeDraftAttachment(id);
   }, [activeConversationId]);
 
+  const clearPendingDriveFile = useCallback((targetConvId?: string) => {
+    const id = targetConvId || activeConversationId;
+    if (!id) return;
+    setPendingDriveFilesByConv((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, [activeConversationId]);
+
+  const stageDriveFile = useCallback((file: DriveFile | null) => {
+    if (!activeConversationId) return;
+    if (!file) {
+      clearPendingDriveFile(activeConversationId);
+      return;
+    }
+    clearPendingFile(activeConversationId);
+    setPendingDriveFilesByConv((prev) => ({
+      ...prev,
+      [activeConversationId]: file,
+    }));
+  }, [activeConversationId, clearPendingDriveFile, clearPendingFile]);
+
   const stageFile = useCallback((file: File | undefined | null) => {
     if (!file || !activeConversationId) return;
+    clearPendingDriveFile(activeConversationId);
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
     setPendingFilesByConv((prev) => {
       const existing = prev[activeConversationId];
@@ -303,7 +372,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       };
     });
     void saveDraftAttachment(activeConversationId, file);
-  }, [activeConversationId]);
+  }, [activeConversationId, clearPendingDriveFile]);
 
   const connectDrive = useCallback(() => {
     driveAuth.mutate(undefined, {
@@ -440,8 +509,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   // Memoize enhanced messages list so it doesn't recalculate on every keystroke
   const enhancedMessages = useMemo(() => {
-    return displayMessages.map((msg: any) => {
-      const senderRef = msg.sender || msg.senderId;
+    const list: Array<{ msg: any; isOwn: boolean }> = [];
+
+    displayMessages.forEach((rawMsg: any) => {
+      const senderRef = rawMsg.sender || rawMsg.senderId;
       let senderObj = typeof senderRef === 'string' ? (userMap.get(senderRef) || senderRef) : senderRef;
       if (typeof senderObj === 'object' && senderObj?._id && !senderObj.avatarUrl) {
         const fromDb = userMap.get(senderObj._id);
@@ -449,7 +520,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
       const isOwn = (typeof senderObj === 'object' ? senderObj?._id : senderObj) === user?._id;
 
-      let replyTo = msg.replyTo;
+      let replyTo = rawMsg.replyTo;
       if (replyTo && typeof replyTo === 'object') {
         const replySenderRef = replyTo.sender || replyTo.senderId;
         const replySenderObj =
@@ -459,8 +530,55 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         replyTo = { ...replyTo, sender: replySenderObj, senderId: replySenderObj };
       }
 
-      return { msg: { ...msg, sender: senderObj, replyTo }, isOwn };
+      const msg = { ...rawMsg, sender: senderObj, replyTo };
+
+      // WhatsApp/Instagram style: check if message has BOTH an attachment AND separate text caption
+      const hasImageAttachment = msg.type === 'file' && Boolean(msg.fileUrl);
+      const hasDriveAttachment =
+        msg.type === 'drive_file' &&
+        Boolean(msg.driveFileId || msg.driveFileName || msg.driveWebViewLink);
+      const isAttachment = hasImageAttachment || hasDriveAttachment;
+
+      const hasSeparateCaption =
+        isAttachment &&
+        Boolean(msg.content?.trim()) &&
+        (!hasDriveAttachment || msg.content.trim() !== (msg.driveFileName?.trim() || ''));
+
+      if (isAttachment && hasSeparateCaption) {
+        // Message 1: Independent Attachment Bubble
+        const attachmentMsg = {
+          ...msg,
+          _id: msg._id ? `${msg._id}-attachment` : `att-${Date.now()}`,
+          originalMessageId: msg._id,
+          content: hasDriveAttachment ? (msg.driveFileName || '') : '',
+        };
+
+        // Message 2: Independent Text Caption Bubble
+        const textMsg = {
+          ...msg,
+          _id: msg._id ? `${msg._id}-text` : `txt-${Date.now()}`,
+          originalMessageId: msg._id,
+          type: 'text' as const,
+          fileUrl: undefined,
+          filePublicId: undefined,
+          driveFileId: undefined,
+          driveFileName: undefined,
+          driveMimeType: undefined,
+          driveWebViewLink: undefined,
+          driveIconLink: undefined,
+          driveThumbnailLink: undefined,
+          content: msg.content.trim(),
+          replyTo: undefined,
+        };
+
+        list.push({ msg: attachmentMsg, isOwn });
+        list.push({ msg: textMsg, isOwn });
+      } else {
+        list.push({ msg, isOwn });
+      }
     });
+
+    return list;
   }, [displayMessages, userMap, user?._id]);
 
   const contentWrapperRef = useRef<HTMLDivElement>(null);
@@ -522,6 +640,19 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     }
   }, [loadOlderMessages]);
 
+  // Auto-scroll when virtual keyboard toggles on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleViewportChange = () => {
+      shouldStickToBottomRef.current = true;
+      scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
+    };
+    vv.addEventListener('resize', handleViewportChange);
+    return () => vv.removeEventListener('resize', handleViewportChange);
+  }, [scrollToBottom]);
+
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
     if (isPrependingRef.current && el) {
@@ -536,6 +667,19 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       requestAnimationFrame(() => scrollToBottom('auto'));
     }
   }, [enhancedMessages, isFetchingNextPage, scrollToBottom]);
+
+  // Auto-scroll when virtual keyboard toggles on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleViewportChange = () => {
+      shouldStickToBottomRef.current = true;
+      scrollToBottom('auto');
+      requestAnimationFrame(() => scrollToBottom('auto'));
+    };
+    vv.addEventListener('resize', handleViewportChange);
+    return () => vv.removeEventListener('resize', handleViewportChange);
+  }, [scrollToBottom]);
 
   useLayoutEffect(() => {
     const el = contentWrapperRef.current;
@@ -569,9 +713,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
 
   const handleSend = () => {
     if (!activeConversationId) return;
-    if (sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
+    if (isSendingRef.current) return;
+    if (sendMessage.isPending || sendChatImage.isPending || uploadDriveFile.isPending || createConversation.isPending) {
       return;
     }
+    isSendingRef.current = true;
+    setTimeout(() => {
+      isSendingRef.current = false;
+    }, 450);
     // Force stick to bottom and lock it so any in-flight scroll or user position is overridden
     shouldStickToBottomRef.current = true;
     pendingImageScrollRef.current = true;
@@ -590,10 +739,11 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     const caption = text.trim();
 
     const postDriveFile = (conversationId: string, file: DriveFile, content: string, replyTo?: string, fallbackFile?: File) => {
+      const messageContent = !isDraftEmpty(content) ? content : file.name;
       sendMessage.mutate(
         {
           conversationId,
-          content: content || file.name,
+          content: messageContent,
           type: 'drive_file',
           driveFileId: file.id,
           driveFileName: file.name,
@@ -607,6 +757,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           onError: (err) => {
             if (content) setText(content);
             if (fallbackFile) stageFile(fallbackFile);
+            else stageDriveFile(file);
             showApiError(err);
           },
         }
@@ -634,7 +785,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           {
             conversationId,
             file: fileToUpload,
-            content: contentToUpload || undefined,
+            content: undefined,
             replyTo: replyToIdToUpload,
           },
           {
@@ -645,6 +796,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             },
           }
         );
+
+        // Send accompanying text as a completely separate message bubble
+        if (contentToUpload && !isDraftEmpty(contentToUpload)) {
+          setTimeout(() => {
+            sendMessage.mutate({
+              conversationId,
+              content: contentToUpload,
+            });
+          }, 40);
+        }
         return;
       }
 
@@ -656,7 +817,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }
 
       uploadDriveFile.mutate(fileToUpload, {
-        onSuccess: (uploaded) => postDriveFile(conversationId, uploaded, contentToUpload, replyToIdToUpload, fileToUpload),
+        onSuccess: (uploaded) => {
+          postDriveFile(conversationId, uploaded, '', replyToIdToUpload, fileToUpload);
+          // Send accompanying text as a completely separate message bubble
+          if (contentToUpload && !isDraftEmpty(contentToUpload)) {
+            setTimeout(() => {
+              sendMessage.mutate({
+                conversationId,
+                content: contentToUpload,
+              });
+            }, 40);
+          }
+        },
         onError: (err) => {
           if (contentToUpload) setText(contentToUpload);
           stageFile(fileToUpload);
@@ -687,6 +859,56 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         return;
       }
       sendAttachment(activeConversationId);
+      return;
+    }
+
+    if (pendingDriveFile) {
+      const fileToSend = pendingDriveFile;
+      const contentToSend = caption;
+      const replyToIdToSend = replyToId;
+
+      clearPendingDriveFile(activeConversationId);
+      removeDraft(activeConversationId);
+      setReplyingTo(null);
+
+      const doSendDrive = (convId: string) => {
+        postDriveFile(convId, fileToSend, '', replyToIdToSend);
+        if (contentToSend && !isDraftEmpty(contentToSend)) {
+          setTimeout(() => {
+            sendMessage.mutate({
+              conversationId: convId,
+              content: contentToSend,
+            });
+          }, 40);
+        }
+      };
+
+      if (activeConversationId.startsWith('mock-conv-')) {
+        const targetUserId = activeConversationId.replace('mock-conv-', '');
+        createConversation.mutate(
+          { participantId: targetUserId },
+          {
+            onSuccess: (response: any) => {
+              const newConvId = response.data?.data?._id || response.data?._id;
+              if (newConvId) {
+                setActiveConversation(newConvId);
+                navigate(`/chat/${newConvId}`, { replace: true });
+                clearPendingDriveFile(newConvId);
+                removeDraft(newConvId);
+                doSendDrive(newConvId);
+              }
+            },
+            onError: (err) => {
+              stageDriveFile(fileToSend);
+              if (contentToSend) setText(contentToSend);
+              showApiError(err);
+            },
+          },
+        );
+        return;
+      }
+
+      doSendDrive(activeConversationId);
       return;
     }
 
@@ -865,10 +1087,10 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
     <Box
       sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden', bgcolor: 'transparent', position: 'relative' }}
       onDragOver={(e) => {
-        if ([...e.dataTransfer.types].includes('Files')) {
-          e.preventDefault();
-          setIsDraggingImage(true);
-        }
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setIsDraggingImage(true);
       }}
       onDragLeave={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -876,9 +1098,9 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       }}
       onDrop={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDraggingImage(false);
-        const file = e.dataTransfer.files?.[0];
-        stageFile(file);
+        stageFile(getFirstDroppedFile(e.dataTransfer));
       }}
     >
       {isDraggingImage && (
@@ -911,13 +1133,16 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       {/* Dynamic Conversational Header Bar */}
       <Box
         sx={{
+          position: 'sticky',
+          top: 0,
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: { xs: 1.5, md: 3 },
-          py: { xs: 1.5, md: 2 },
+          px: { xs: 1.25, md: 3 },
+          py: { xs: 1, md: 1.5 },
           borderBottom: 'none',
-          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+          bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           /* backdropFilter: 'blur(20px)' (removed for performance) */
           /* WebkitBackdropFilter: 'blur(20px)' (removed for performance) */
           boxShadow: isDarkMode ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.02)',
@@ -925,23 +1150,27 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         }}
       >
         {chatHeaderDetails && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1.5, md: 2 }, flex: 1, minWidth: 0, mr: 1 }}>
             <IconButton
-              onClick={() => navigate('/chat', { replace: true })}
-              sx={{ display: { xs: 'flex', md: 'none' }, ml: -1, mr: -0.5, color: 'text.secondary' }}
+              onClick={() => {
+                setActiveConversation(null);
+                navigate('/chat', { replace: true });
+              }}
+              sx={{ display: { xs: 'flex', md: 'none' }, ml: { xs: -0.5, sm: -1 }, mr: -0.5, color: 'text.secondary', p: 0.75 }}
+              aria-label="Back to conversations"
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
             </IconButton>
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
               <Avatar
                 src={chatHeaderDetails.avatarUrl || undefined}
                 sx={{
-                  width: 40,
-                  height: 40,
-                  bgcolor: tokens.brand.primary,
+                  width: { xs: 36, sm: 40 },
+                  height: { xs: 36, sm: 40 },
+                  bgcolor: tokens.brand.solid,
                   color: '#fff',
                   fontWeight: 700,
-                  fontSize: '0.9rem',
+                  fontSize: '0.85rem',
                 }}
               >
                 {chatHeaderDetails.initial}
@@ -962,7 +1191,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               )}
             </Box>
             <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2 }}>
+              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.2, fontSize: { xs: '0.88rem', sm: '1rem' } }}>
                 {chatHeaderDetails.name}
               </Typography>
               <Typography
@@ -977,6 +1206,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                         ? PRESENCE_COLORS.away
                         : 'text.secondary',
                   fontWeight: 600,
+                  fontSize: { xs: '0.68rem', sm: '0.75rem' },
                 }}
               >
                 {chatHeaderDetails.presenceLabel}
@@ -986,19 +1216,23 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
         )}
 
         {/* Action Header Tools */}
-        <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 1.5 }, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 0.25, sm: 1, md: 1.5 }, flexShrink: 0, alignItems: 'center' }}>
           {conversations.find((c) => c._id === activeConversationId)?.isGroup && (
             <Tooltip title="Group Info" arrow>
               <IconButton
                 onClick={() => setIsGroupSettingsOpen(true)}
                 size="small"
+                aria-label="Group info"
                 sx={{
+                  width: { xs: 32, sm: 36 },
+                  height: { xs: 32, sm: 36 },
+                  p: { xs: 0.5, sm: 1 },
                   bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                   transition: 'all 0.2s',
                   '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
                 }}
               >
-                <InfoOutlinedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                <InfoOutlinedIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
               </IconButton>
             </Tooltip>
           )}
@@ -1006,26 +1240,37 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             <IconButton
               onClick={onSearchOpen}
               size="small"
+              aria-label="Search messages"
               sx={{
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
+                p: { xs: 0.5, sm: 1 },
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
               }}
             >
-              <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              <SearchIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Google Drive Files" arrow>
             <IconButton
-              onClick={onDriveOpen}
+              onClick={() => {
+                if (onDriveOpen) onDriveOpen();
+                else setDrivePickerOpen(true);
+              }}
               size="small"
+              aria-label="Browse Google Drive files"
               sx={{
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
+                p: { xs: 0.5, sm: 1 },
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
                 transition: 'all 0.2s',
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6', transform: 'scale(1.05)' }
               }}
             >
-              <FolderIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              <FolderIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -1075,24 +1320,29 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 ) : null}
               </Box>
             )}
-            {enhancedMessages.map(({ msg, isOwn }: any, index: number) => {
+            <ChatVirtualMessageList
+              items={enhancedMessages}
+              scrollRef={messagesContainerRef}
+              getItemKey={(row: { msg: { clientId?: string; _id: string } }, index) =>
+                row.msg.clientId || row.msg._id || String(index)
+              }
+              renderItem={({ msg, isOwn }: { msg: Message; isOwn: boolean }, index: number) => {
               const prevMsg = index > 0 ? enhancedMessages[index - 1]?.msg : null;
               const showDaySeparator =
                 Boolean(msg.createdAt) &&
                 (!prevMsg || !isSameMessageDay(prevMsg.createdAt, msg.createdAt));
 
               return (
-                <Box key={msg.clientId || msg._id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: '100%', minWidth: 0, pb: showDaySeparator ? 0.25 : 0 }}>
                   {showDaySeparator && (
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        my: index === 0 ? 0.5 : 1,
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 2,
+                        py: index === 0 ? 0.75 : 1.25,
+                        width: '100%',
+                        flexShrink: 0,
                       }}
                     >
                       <Typography
@@ -1130,7 +1380,8 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                   />
                 </Box>
               );
-            })}
+            }}
+            />
             <div
               ref={bottomRef}
               style={{
@@ -1158,7 +1409,18 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
       )}
 
       {/* Floating Capsule Composer Area */}
-      <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 0.5, pb: { xs: 1.5, md: 2 }, bgcolor: 'transparent', position: 'relative', zIndex: 10 }}>
+      <Box
+        sx={{
+          px: { xs: 0.75, sm: 2, md: 3 },
+          pt: { xs: 0.75, md: 0.75 },
+          pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 2 },
+          bgcolor: isDarkMode ? '#18141f' : '#fcfaff',
+          borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(93,26,137,0.06)'}`,
+          position: 'relative',
+          zIndex: 10,
+          flexShrink: 0,
+        }}
+      >
         {replyingTo && (
           <Box
             sx={{
@@ -1245,14 +1507,67 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             </IconButton>
           </Box>
         )}
+
+        {/* Pending Google Drive Document Preview */}
+        {pendingDriveFile && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              mb: 1,
+              mx: 0.5,
+              px: 1.5,
+              py: 1,
+              borderRadius: '18px',
+              bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.75)' : 'rgba(255,255,255,0.9)',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(15, 157, 88, 0.2)'}`,
+            }}
+          >
+            {pendingDriveFile.thumbnailLink ? (
+              <Box
+                component="img"
+                src={pendingDriveFile.thumbnailLink}
+                alt={pendingDriveFile.name}
+                sx={{ width: 56, height: 56, borderRadius: '10px', objectFit: 'cover' }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: isDarkMode ? 'rgba(15, 157, 88, 0.12)' : 'rgba(15, 157, 88, 0.08)',
+                  color: '#0F9D58',
+                }}
+              >
+                <InsertDriveFileIcon />
+              </Box>
+            )}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" noWrap sx={{ fontWeight: 800, display: 'block' }}>
+                {pendingDriveFile.name}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Google Drive document • Add an optional caption below, then send
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => clearPendingDriveFile()} aria-label="Remove Google Drive file">
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        )}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1.5,
-            p: 1,
-            px: 2,
-            borderRadius: '32px',
+            gap: { xs: 0.5, sm: 1.5 },
+            p: { xs: 0.35, sm: 1 },
+            px: { xs: 0.75, sm: 2 },
+            borderRadius: { xs: '24px', sm: '32px' },
             bgcolor: isDarkMode ? 'rgba(20, 18, 25, 0.8)' : 'rgba(255, 255, 255, 0.85)',
             /* backdropFilter: 'blur(24px)' (removed for performance) */
             /* WebkitBackdropFilter: 'blur(24px)' (removed for performance) */
@@ -1272,13 +1587,14 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               sx={{
                 color: 'text.secondary',
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                width: 36,
-                height: 36,
+                width: { xs: 30, sm: 36 },
+                height: { xs: 30, sm: 36 },
+                flexShrink: 0,
                 '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#f3f4f6' }
               }}
               aria-label="Attach file"
             >
-              <AttachFileIcon sx={{ fontSize: 20 }} />
+              <AttachFileIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
             </IconButton>
           </Tooltip>
 
@@ -1316,7 +1632,53 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           </Menu>
 
           <Box
-            sx={{ flex: 1, minWidth: 0 }}
+            sx={{
+              flex: 1,
+              width: '100%',
+              minWidth: 0,
+              alignSelf: 'center',
+              '& .tiptap, & .ProseMirror, & .ProseMirror p': {
+                width: '100% !important',
+                maxWidth: '100% !important',
+                margin: '0 !important',
+                boxSizing: 'border-box',
+                textAlign: 'left',
+              },
+              '& .ProseMirror': {
+                minHeight: { xs: '28px !important', sm: '40px !important' },
+                maxHeight: { xs: '120px !important', sm: '200px !important' },
+                padding: { xs: '4px 6px !important', sm: '0 !important' },
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              },
+              '& .ProseMirror a': {
+                overflowWrap: 'anywhere',
+              },
+              '& .rte-input-row': {
+                width: '100%',
+                display: 'flex !important',
+                flexDirection: 'row !important',
+                alignItems: 'center !important',
+                gap: { xs: '2px', sm: '6px' },
+              },
+              '& .rte-input-row > :first-child': {
+                flex: '1 1 auto',
+                width: 'auto',
+                minWidth: 0,
+              },
+              '& .rte-tools': {
+                display: 'flex !important',
+                flexDirection: 'row !important',
+                alignItems: 'center !important',
+                justifyContent: 'flex-end',
+                flexShrink: 0,
+                pt: '0 !important',
+                pb: '0 !important',
+                pr: '0 !important',
+                gap: { xs: '2px', sm: '4px' },
+              },
+            }}
             onPaste={(e) => {
               const item = [...(e.clipboardData?.items || [])].find((i) => i.kind === 'file');
               if (!item) return;
@@ -1327,7 +1689,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
               }
             }}
           >
-            <RichTextEditor
+            <LazyRichTextEditor
               key={activeConversationId}
               value={text}
               onChange={(html) => {
@@ -1339,7 +1701,7 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
                 }
               }}
               onSubmit={handleSend}
-              placeholder={pendingFile ? 'Add a caption (optional)...' : 'Type a message...'}
+              placeholder={pendingFile || pendingDriveFile ? 'Add a caption (optional)...' : 'Type a message...'}
               autoFocus={true}
               mentionableUsers={mentionableUsers}
             />
@@ -1348,15 +1710,17 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
           <IconButton
             onClick={handleSend}
             disabled={
-              (!pendingFile && isDraftEmpty(text)) ||
+              (!pendingFile && !pendingDriveFile && isDraftEmpty(text)) ||
               uploadDriveFile.isPending ||
               sendChatImage.isPending ||
-              createConversation.isPending
+              createConversation.isPending ||
+              sendMessage.isPending
             }
             sx={{
-              width: 44,
-              height: 44,
-              bgcolor: tokens.brand.primary,
+              width: { xs: 32, sm: 44 },
+              height: { xs: 32, sm: 44 },
+              flexShrink: 0,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               boxShadow: '0 4px 12px rgba(93, 26, 137, 0.3)',
@@ -1376,13 +1740,20 @@ export const ChatWindow = ({ onSearchOpen, onDriveOpen }: ChatWindowProps) => {
             }}
             aria-label="Send message"
           >
-            <SendIcon sx={{ fontSize: 18, ml: 0.5 }} />
+            <SendIcon sx={{ fontSize: { xs: 16, sm: 18 }, ml: { xs: 0.25, sm: 0.5 } }} />
           </IconButton>
         </Box>
       </Box>
 
       {/* Google Drive File Picker */}
-      <DriveFilePicker open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
+      <DriveFilePicker
+        open={drivePickerOpen}
+        onClose={() => setDrivePickerOpen(false)}
+        onSelect={(file) => {
+          stageDriveFile(file);
+          setDrivePickerOpen(false);
+        }}
+      />
       <Dialog open={drivePromptOpen} onClose={() => setDrivePromptOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Connect Google Drive</DialogTitle>
         <DialogContent>

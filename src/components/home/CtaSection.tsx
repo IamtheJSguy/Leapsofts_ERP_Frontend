@@ -18,8 +18,8 @@ export const CtaSection = () => {
         <ScrollReveal variant="scale-up" duration={0.85} distance={36}>
           <Box
             sx={{
-              borderRadius: { xs: '24px', md: '36px' },
-              p: { xs: 4, sm: 6, md: 8 },
+              borderRadius: { xs: '20px', md: '36px' },
+              p: { xs: 3, sm: 6, md: 8 },
               textAlign: 'center',
               position: 'relative',
               overflow: 'hidden',
@@ -51,7 +51,7 @@ export const CtaSection = () => {
               variant="h2"
               sx={{
                 fontWeight: 850,
-                fontSize: { xs: '2.2rem', sm: '3rem', md: '3.6rem' },
+                fontSize: { xs: '1.75rem', sm: '2.6rem', md: '3.6rem' },
                 letterSpacing: '-0.035em',
                 lineHeight: 1.15,
                 background: 'linear-gradient(135deg, #FFFFFF 40%, #FED7AA 75%, #FF7F11 100%)',

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -49,6 +49,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 
 import { tokens, connectionStatusTokens, messageStatusTokens, coldOutreachStatusTokens, coldResponseStatusTokens } from '@/styles/tokens';
+import { PipelineRowSkeleton, SalesTableSkeleton } from '@/components/page-skeletons/PageSkeletons';
 import type { Lead, OutreachChannel } from '@/types';
 import { useLeads, useQualifyLead, useDisqualifyLead, useCreateLead, useUpdateLead, useLogFollowUp, useAddLeadComment } from '@/hooks/api/useLeads';
 import { getLatestLeadComment, leadHasComment } from '@/utils/getLatestLeadComment';
@@ -71,6 +72,9 @@ import { SalesEditRow, SalesInlineAddRow } from '@/components/leads/SalesEditRow
 import { LeadCommentButton, type LeadCommentAddPayload } from '@/components/leads/LeadCommentButton';
 import { LeadTimelinePopover } from '@/components/leads/LeadTimelinePopover';
 import { ExportLeadsDialog } from '@/components/leads/ExportLeadsDialog';
+import { EnrichMissingContactsDialog } from '@/components/leads/EnrichMissingContactsDialog';
+import { BulkEnrichResultsDialog } from '@/components/leads/BulkEnrichResultsDialog';
+import { EnrichmentHistoryDialog } from '@/components/leads/EnrichmentHistoryDialog';
 import {
   clearSalesEditDraft,
   loadSalesEditDraft,
@@ -78,54 +82,22 @@ import {
 } from '@/lib/salesEditDraftDb';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import EventIcon from '@mui/icons-material/Event';
 import { format, startOfMonth } from 'date-fns';
 import { useMe, useUsers } from '@/hooks/api/useUsers';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
+import { useDebounce } from '@/hooks/useDebounce';
 import { resolvePermissions } from '@/lib/permissions';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
-import api from '@/lib/axios';
+import { OverflowTooltip } from '@/components/sales/OverflowTooltip';
+import { QueryState } from '@/components/common/QueryState';
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
-
-const OverflowTooltip = ({ title, children, ...props }: any) => {
-  const textElementRef = useRef<HTMLElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  const checkOverflow = useCallback(() => {
-    if (textElementRef.current) {
-      setIsOverflowing(textElementRef.current.scrollWidth > textElementRef.current.clientWidth);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [checkOverflow]);
-
-  const child = React.isValidElement(children)
-    ? React.cloneElement(children as any, {
-        ref: textElementRef,
-        onMouseEnter: (e: any) => {
-          checkOverflow();
-          if ((children as any).props.onMouseEnter) {
-            (children as any).props.onMouseEnter(e);
-          }
-        },
-      })
-    : <span ref={textElementRef} onMouseEnter={checkOverflow} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{children}</span>;
-
-  return (
-    <Tooltip title={title} disableHoverListener={!isOverflowing} {...props}>
-      {child}
-    </Tooltip>
-  );
-};
 
 export const SalesPage = () => {
   useMe(); // Fetch and hydrate store with latest profile data on mount
@@ -136,6 +108,7 @@ export const SalesPage = () => {
   const disqualifyLead = useDisqualifyLead();
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleOpenQualifyConfirm = (leadId: string) => {
@@ -317,7 +290,21 @@ export const SalesPage = () => {
     if (user?._id) localStorage.setItem(`sales-outreach-channel:${user._id}`, channel);
   };
   const [exportOpen, setExportOpen] = useState(false);
+  const [enrichOpen, setEnrichOpen] = useState(false);
+  const [enrichHistoryOpen, setEnrichHistoryOpen] = useState(false);
+  const [enrichBatchId, setEnrichBatchId] = useState<string | null>(null);
+  const [enrichResultsOpen, setEnrichResultsOpen] = useState(false);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const batch = searchParams.get('enrichBatch');
+    if (!batch) return;
+    setEnrichBatchId(batch);
+    setEnrichResultsOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('enrichBatch');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleCopyName = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
@@ -331,6 +318,7 @@ export const SalesPage = () => {
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
   const [selectedUserId, setSelectedUserId] = useState('All Users');
   const [selectedIcp, setSelectedIcp] = useState('');
   const [selectedProfile, setSelectedProfile] = useState('');
@@ -361,7 +349,6 @@ export const SalesPage = () => {
   // Pagination
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
   const [dateFilterField, setDateFilterField] = useState<'date' | 'updatedAt'>('date');
@@ -486,59 +473,53 @@ export const SalesPage = () => {
   );
   const [markingSentIds, setMarkingSentIds] = useState<Record<string, true>>({});
   const [markingAcceptedIds, setMarkingAcceptedIds] = useState<Record<string, true>>({});
+  const markingSentInFlight = useRef(new Set<string>());
+  const markingAcceptedInFlight = useRef(new Set<string>());
 
-  const handleAdvanceConnectionStatus = useCallback((id: string, currentStatus?: string) => {
-    if (markingAcceptedIds[id]) return;
+  const handleAdvanceConnectionStatus = useCallback(async (id: string, currentStatus?: string) => {
+    if (markingAcceptedInFlight.current.has(id)) return;
     const nextStatus = currentStatus === 'sent' ? 'accepted' : currentStatus === 'pending' || !currentStatus
       ? 'sent'
       : null;
     if (!nextStatus) return;
+    markingAcceptedInFlight.current.add(id);
     setMarkingAcceptedIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { connectionStatus: nextStatus } },
-      {
-        onSuccess: () => {
-          addToast({
-            message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
-            severity: 'success',
-          });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingAcceptedIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingAcceptedIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { connectionStatus: nextStatus } });
+      addToast({
+        message: nextStatus === 'sent' ? 'Marked as sent' : 'Marked as accepted',
+        severity: 'success',
+      });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingAcceptedInFlight.current.delete(id);
+      setMarkingAcceptedIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
 
-  const handleMarkMessageSent = useCallback((id: string) => {
-    if (markingSentIds[id]) return;
+  const handleMarkMessageSent = useCallback(async (id: string) => {
+    if (markingSentInFlight.current.has(id)) return;
+    markingSentInFlight.current.add(id);
     setMarkingSentIds((prev) => ({ ...prev, [id]: true }));
-    updateLead.mutate(
-      { id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } },
-      {
-        onSuccess: () => {
-          addToast({ message: 'Marked as sent', severity: 'success' });
-        },
-        onError: (err: any) => {
-          showApiError(err);
-        },
-        onSettled: () => {
-          setMarkingSentIds((prev) => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        },
-      },
-    );
-  }, [markingSentIds, updateLead, addToast]);
+    try {
+      await updateLead.mutateAsync({ id, data: { messageStatus: 'sent', linkedinMsg: 'sent' } });
+      addToast({ message: 'Marked as sent', severity: 'success' });
+    } catch (err: unknown) {
+      showApiError(err);
+    } finally {
+      markingSentInFlight.current.delete(id);
+      setMarkingSentIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [updateLead, addToast]);
   const handleAdvanceColdOutreach = useCallback((lead: Lead) => {
     const current = lead.coldCalling?.outreachStatus || 'pending';
     const next = current === 'pending' ? 'dialed_1' : current === 'dialed_1' ? 'dialed_2' : current === 'dialed_2' ? 'dialed_3' : null;
@@ -685,11 +666,6 @@ export const SalesPage = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 10);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  useEffect(() => {
     setPage(1);
   }, [debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
@@ -768,7 +744,7 @@ export const SalesPage = () => {
     return filters;
   }, [page, rowsPerPage, debouncedSearch, selectedUserId, selectedIcp, selectedProfile, selectedStatus, selectedConnectionStatus, activeCard, startDate, endDate, dateFilterField, futureLeadWindow, messagedOnly, followUpView, coldFollowUpView, totalView, coldTotalView, dialedView, outreachChannel]);
 
-  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching } = useLeads(leadFilters);
+  const { data: leadsResponse, isLoading: isLeadsLoading, isFetching: isLeadsFetching, isError: isLeadsError, error: leadsError, refetch: refetchLeads } = useLeads(leadFilters);
   const prospects = leadsResponse?.data ?? [];
   const totalProspects = leadsResponse?.meta.total ?? 0;
   const filterToolbarRef = useRef<HTMLDivElement>(null);
@@ -1191,14 +1167,16 @@ export const SalesPage = () => {
             sx={{
               mb: 0.5,
               display: 'flex',
-              alignItems: 'center',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               flexWrap: 'wrap',
-              gap: 1.5,
+              gap: { xs: 1, sm: 1.5 },
             }}
           >
             <Typography
               variant="h4"
               sx={{
+                fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.1rem' },
+                lineHeight: { xs: 1.25, sm: 1.3 },
                 fontWeight: 800,
                 letterSpacing: '-0.025em',
                 color: isDarkMode ? '#fff' : tokens.text.primary,
@@ -1206,14 +1184,15 @@ export const SalesPage = () => {
             >
               {outreachChannel === 'cold_calling' ? 'Cold Calling & Pipeline' : 'LinkedIn Outreach & Pipeline'}
             </Typography>
-            <FormControl size="small">
+            <FormControl size="small" sx={{ width: 'auto' }}>
               <Select
                 value={outreachChannel}
                 onChange={(e) => handleOutreachChannelChange(e.target.value as OutreachChannel)}
                 aria-label="Outreach channel"
                 sx={{
                   height: 30,
-                  minWidth: 154,
+                  minWidth: { xs: 136, sm: 154 },
+                  width: 'auto',
                   borderRadius: '999px',
                   bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.15)' : 'rgba(93, 26, 137, 0.06)',
                   color: tokens.brand.primary,
@@ -1237,7 +1216,8 @@ export const SalesPage = () => {
             sx={{
               color: isDarkMode ? 'rgba(255, 255, 255, 0.55)' : tokens.text.secondary,
               fontWeight: 500,
-              fontSize: '0.92rem',
+              fontSize: { xs: '0.82rem', sm: '0.92rem' },
+              mt: { xs: 0.25, sm: 0 },
             }}
           >
             {outreachChannel === 'cold_calling'
@@ -1248,7 +1228,7 @@ export const SalesPage = () => {
 
         {/* Date Range Filter in Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: '100%', sm: 380 }, maxWidth: { sm: 520 }, flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 168 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 168 }, width: { xs: '100%', sm: 'auto' }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
             <Select
               value={dateFilterField}
               onChange={(e) => setDateFilterField(e.target.value as 'date' | 'updatedAt')}
@@ -1270,7 +1250,7 @@ export const SalesPage = () => {
             </Select>
   
           </FormControl>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
             <DateRangePicker
               startDate={startDate}
               endDate={endDate}
@@ -1307,10 +1287,8 @@ export const SalesPage = () => {
       </Box>
 
       {/* Stats Counter Row */}
-      {isPipelineLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, mb: 4.5 }}>
-          <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
-        </Box>
+      {isPipelineLoading && !pipelineStats ? (
+        <PipelineRowSkeleton />
       ) : (
         <>
         <Box
@@ -1593,7 +1571,7 @@ export const SalesPage = () => {
               border: '1px solid rgba(245, 158, 11, 0.3)',
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 140 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 }, width: { xs: '100%', sm: 'auto' } }}>
             <Select
               value={futureLeadWindow}
               displayEmpty
@@ -1704,10 +1682,10 @@ export const SalesPage = () => {
             ref={filterToolbarRef}
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
+              flexDirection: { xs: 'row', sm: 'column', md: 'row' },
               flexWrap: 'wrap',
               gap: 1.5,
-              alignItems: { xs: 'stretch', md: 'center' },
+              alignItems: { xs: 'center', sm: 'stretch', md: 'center' },
               mb: 3.5,
             }}
           >
@@ -1726,6 +1704,7 @@ export const SalesPage = () => {
               }}
               sx={{
                 flexGrow: 1,
+                width: { xs: '100%', sm: 'auto' },
                 minWidth: { xs: '100%', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
@@ -1766,8 +1745,9 @@ export const SalesPage = () => {
                 disableClearable
                 sx={{
                   flexGrow: 1,
-                  minWidth: { xs: '100%', sm: 220 },
-                  maxWidth: { sm: 260 },
+                  width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                  minWidth: { xs: 0, sm: 220 },
+                  maxWidth: { xs: 'calc(50% - 6px)', sm: 260 },
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '20px',
                     bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1818,8 +1798,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1869,8 +1850,9 @@ export const SalesPage = () => {
               disableClearable
               sx={{
                 flexGrow: 1,
-                minWidth: { xs: '100%', sm: 180 },
-                maxWidth: { sm: 240 },
+                width: { xs: 'calc(50% - 6px)', sm: 'auto' },
+                minWidth: { xs: 0, sm: 180 },
+                maxWidth: { xs: 'calc(50% - 6px)', sm: 240 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
                   bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
@@ -1913,7 +1895,7 @@ export const SalesPage = () => {
             />
 
             {/* Connection Status Filter */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedConnectionStatus}
                 displayEmpty
@@ -1942,7 +1924,7 @@ export const SalesPage = () => {
             </FormControl>
 
             {/* Status Select Dropdown */}
-            <FormControl sx={filterSelectSx}>
+            <FormControl sx={{ ...filterSelectSx, width: { xs: 'calc(50% - 6px)', sm: 'auto' }, minWidth: { xs: 0, sm: 160 }, maxWidth: { xs: 'calc(50% - 6px)', sm: 'none' } }}>
               <Select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -1985,7 +1967,29 @@ export const SalesPage = () => {
 
             {/* Action Buttons — users & managers can add leads; sheet sync/bulk stay user-facing */}
             
-              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto', flexWrap: 'nowrap' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  alignItems: 'center',
+                  ml: { xs: 0, md: 'auto' },
+                  width: { xs: '100%', md: 'auto' },
+                  flexWrap: 'nowrap',
+                  overflowX: { xs: 'auto', md: 'visible' },
+                  pb: { xs: 0.5, md: 0 },
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  '& > .MuiButton-root': {
+                    whiteSpace: 'nowrap',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    minWidth: { xs: 0, md: 64 },
+                    px: { xs: 2, md: 3 },
+                    height: { xs: 38, md: 42 },
+                    fontSize: { xs: '0.8rem', md: '0.84rem' },
+                  },
+                }}
+              >
                 {(isEditAllMode || draftRestored || !draftReady || draftSaving) && (
                   <Box
                     sx={{
@@ -2042,7 +2046,7 @@ export const SalesPage = () => {
                   sx={{
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                     color: isEditAllMode ? '#fff' : (isDarkMode ? '#fff' : tokens.text.primary),
-                    bgcolor: isEditAllMode ? tokens.brand.primary : 'transparent',
+                    bgcolor: isEditAllMode ? tokens.brand.solid : 'transparent',
                     textTransform: 'none',
                     borderRadius: '24px',
                     height: 42,
@@ -2127,6 +2131,51 @@ export const SalesPage = () => {
                 >
                   Add Multiple
                 </Button>
+                {isElevated && (
+                  <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<TravelExploreIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setEnrichOpen(true)}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Enrich missing contacts
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setEnrichHistoryOpen(true)}
+                    sx={{
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      color: isDarkMode ? '#fff' : tokens.text.primary,
+                      textTransform: 'none',
+                      borderRadius: '24px',
+                      height: 42,
+                      px: 3,
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      '&:hover': {
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    Enrichment history
+                  </Button>
+                  </>
+                )}
                 {isAdmin && (
                   <Button
                     variant="outlined"
@@ -2154,11 +2203,15 @@ export const SalesPage = () => {
             
           </Box>
 
-          {isLeadsLoading && !leadsResponse ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-              <CircularProgress sx={{ color: tokens.brand.primary }} />
-            </Box>
-          ) : prospects.length === 0 && !isAddingInline ? (
+          <QueryState
+            isLoading={isLeadsLoading}
+            isError={isLeadsError}
+            error={leadsError}
+            onRetry={() => refetchLeads()}
+            hasData={!!leadsResponse}
+            loadingFallback={<SalesTableSkeleton />}
+          >
+          {prospects.length === 0 && !isAddingInline ? (
             /* Unlinked Prospects View - Show Empty State Graphic below the toolbar */
             <Box
               sx={{
@@ -2648,6 +2701,7 @@ export const SalesPage = () => {
                                   fontSize: '0.64rem',
                                   height: 20,
                                   borderRadius: '6px',
+                                  border: `1px solid ${`color-mix(in srgb, ${messageStatusTokens.follow_up.color} 12%, transparent)`}`,
                                 }}
                               />
                             )}
@@ -2822,7 +2876,7 @@ export const SalesPage = () => {
                                       borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                                       color: 'text.secondary',
                                       '&:hover': {
-                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.primary,
+                                        bgcolor: !isElevated ? 'transparent' : tokens.brand.solid,
                                         borderColor: !isElevated ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : tokens.brand.primary,
                                         color: !isElevated ? 'text.secondary' : '#fff',
                                       },
@@ -2862,13 +2916,43 @@ export const SalesPage = () => {
                 setPage(1);
               }}
               rowsPerPageOptions={[10, 20, 50, 100]}
+              labelRowsPerPage={typeof window !== 'undefined' && window.innerWidth < 600 ? 'Rows:' : 'Rows per page:'}
               sx={{
-                mt: 1,
+                mt: 1.5,
                 borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
                 color: 'text.secondary',
-                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                overflowX: 'auto',
+                '& .MuiTablePagination-toolbar': {
+                  minHeight: { xs: 44, sm: 52 },
+                  px: { xs: 1, sm: 2 },
+                  flexWrap: 'wrap',
+                  justifyContent: { xs: 'center', sm: 'flex-end' },
+                  gap: { xs: 0.5, sm: 1 },
+                },
+                '& .MuiTablePagination-spacer': {
+                  display: { xs: 'none', sm: 'block' },
+                },
+                '& .MuiTablePagination-selectLabel': {
                   fontWeight: 600,
-                  fontSize: '0.82rem',
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  m: 0,
+                },
+                '& .MuiTablePagination-select': {
+                  fontWeight: 600,
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  pl: { xs: 0.5, sm: 1 },
+                  pr: { xs: '18px !important', sm: '24px !important' },
+                },
+                '& .MuiTablePagination-displayedRows': {
+                  fontWeight: 600,
+                  fontSize: { xs: '0.74rem', sm: '0.82rem' },
+                  m: 0,
+                },
+                '& .MuiTablePagination-actions': {
+                  ml: { xs: 0.5, sm: 2 },
+                  '& .MuiIconButton-root': {
+                    p: { xs: 0.5, sm: 1 },
+                  },
                 },
               }}
             />
@@ -2877,6 +2961,7 @@ export const SalesPage = () => {
           {isLeadsFetching && leadsResponse && (
             <LinearProgress sx={{ mt: -0.5, borderRadius: '0 0 12px 12px' }} />
           )}
+          </QueryState>
         </Box>
       )}
 
@@ -2963,7 +3048,7 @@ export const SalesPage = () => {
               }
             }}
             sx={{
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#fff',
               textTransform: 'none',
               fontWeight: 700,
@@ -3009,6 +3094,36 @@ export const SalesPage = () => {
         onCancel={() => setDisqualifyLeadId('')}
         isPending={disqualifyLead.isPending}
       />
+      {isElevated && (
+        <>
+          <EnrichMissingContactsDialog
+            open={enrichOpen}
+            onClose={() => setEnrichOpen(false)}
+            leadFilters={leadFilters}
+            defaultTopN={rowsPerPage}
+            onBatchStarted={(batchId) => {
+              setEnrichBatchId(batchId);
+              setEnrichResultsOpen(true);
+            }}
+          />
+          <BulkEnrichResultsDialog
+            open={enrichResultsOpen}
+            batchId={enrichBatchId}
+            onClose={() => {
+              setEnrichResultsOpen(false);
+              setEnrichBatchId(null);
+            }}
+          />
+          <EnrichmentHistoryDialog
+            open={enrichHistoryOpen}
+            onClose={() => setEnrichHistoryOpen(false)}
+            onOpenBatch={(batchId) => {
+              setEnrichBatchId(batchId);
+              setEnrichResultsOpen(true);
+            }}
+          />
+        </>
+      )}
       {isAdmin && (
         <ExportLeadsDialog
           open={exportOpen}

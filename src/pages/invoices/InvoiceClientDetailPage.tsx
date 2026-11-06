@@ -22,7 +22,9 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,6 +46,10 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import ClearIcon from '@mui/icons-material/Clear';
+import type { ReactNode } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 import { tokens } from '@/styles/tokens';
@@ -122,6 +128,91 @@ const getStatusStyle = (status: InvoiceStatus | 'void', overdue: boolean, isDark
 };
 
 const dateLabel = (value: string) => value.slice(0, 10);
+
+const invoiceActionIconSx = {
+  width: 34,
+  height: 34,
+  borderRadius: '10px',
+};
+
+const InvoiceActionIcon = ({
+  title,
+  ariaLabel,
+  onClick,
+  disabled,
+  color,
+  children,
+}: {
+  title: string;
+  ariaLabel: string;
+  onClick: () => void;
+  disabled?: boolean;
+  color?: 'default' | 'primary' | 'success' | 'warning' | 'inherit';
+  children: ReactNode;
+}) => (
+  <Tooltip title={title} arrow>
+    <span>
+      <IconButton
+        aria-label={ariaLabel}
+        size="small"
+        disabled={disabled}
+        onClick={onClick}
+        color={color && color !== 'default' ? color : 'default'}
+        sx={invoiceActionIconSx}
+      >
+        {children}
+      </IconButton>
+    </span>
+  </Tooltip>
+);
+
+const InvoiceDateLine = ({ issueDate, dueDate, compact }: { issueDate: string; dueDate: string; compact?: boolean }) => {
+  const issued = dateLabel(issueDate);
+  const due = dateLabel(dueDate);
+
+  if (compact) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.25,
+          flexWrap: 'wrap',
+          color: 'text.secondary',
+          fontSize: '0.75rem',
+          fontWeight: 550,
+        }}
+      >
+        <Tooltip title={`Issued ${issued}`} arrow>
+          <Box
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35 }}
+            aria-label={`Issued ${issued}`}
+          >
+            <EventOutlinedIcon sx={{ fontSize: 14, opacity: 0.85 }} aria-hidden />
+            {issued}
+          </Box>
+        </Tooltip>
+        <Tooltip title={`Due ${due}`} arrow>
+          <Box
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35 }}
+            aria-label={`Due ${due}`}
+          >
+            <ScheduleOutlinedIcon sx={{ fontSize: 14, opacity: 0.85 }} aria-hidden />
+            {due}
+          </Box>
+        </Tooltip>
+      </Box>
+    );
+  }
+
+  return (
+    <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', fontWeight: 550 }}>
+      Issued {issued} · Due {due}
+    </Typography>
+  );
+};
 
 const InvoiceStatusChip = ({
   status,
@@ -205,6 +296,135 @@ const InvoiceStatusChip = ({
         </Typography>
       </Popover>
     </>
+  );
+};
+
+type InvoiceActionHandlers = {
+  downloadingId: string | null;
+  sendingId: string | null;
+  remindingId: string | null;
+  onOpen: (invoice: InvoiceRecord) => void;
+  onDownload: (invoice: InvoiceRecord) => void;
+  onSend: (invoice: InvoiceRecord) => void;
+  onRemind: (invoice: InvoiceRecord) => void;
+  onMarkPaid: (invoice: InvoiceRecord) => void;
+  onDispute: (invoice: InvoiceRecord) => void;
+};
+
+const InvoiceRecordActions = ({
+  invoice,
+  sx,
+  downloadingId,
+  sendingId,
+  remindingId,
+  onOpen,
+  onDownload,
+  onSend,
+  onRemind,
+  onMarkPaid,
+  onDispute,
+}: InvoiceActionHandlers & { invoice: InvoiceRecord; sx?: object }) => (
+  <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexWrap: 'wrap', ...sx }}>
+    <InvoiceActionIcon title="Open invoice" ariaLabel="Open invoice" onClick={() => onOpen(invoice)}>
+      <OpenInNewIcon sx={{ fontSize: 18 }} />
+    </InvoiceActionIcon>
+    <InvoiceActionIcon
+      title="Download PDF"
+      ariaLabel="Download PDF"
+      disabled={downloadingId === invoice._id}
+      onClick={() => onDownload(invoice)}
+    >
+      {downloadingId === invoice._id ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon sx={{ fontSize: 18 }} />}
+    </InvoiceActionIcon>
+    {invoice.status === 'draft' && (
+      <InvoiceActionIcon
+        title="Send invoice"
+        ariaLabel="Send invoice"
+        color="primary"
+        disabled={sendingId === invoice._id}
+        onClick={() => onSend(invoice)}
+      >
+        <SendIcon sx={{ fontSize: 18 }} />
+      </InvoiceActionIcon>
+    )}
+    {invoice.status === 'sent' && invoice.overdue && (
+      <InvoiceActionIcon
+        title="Send payment reminder"
+        ariaLabel="Send payment reminder"
+        color="warning"
+        disabled={remindingId === invoice._id}
+        onClick={() => onRemind(invoice)}
+      >
+        <EmailOutlinedIcon sx={{ fontSize: 18 }} />
+      </InvoiceActionIcon>
+    )}
+    {invoice.status === 'sent' && (
+      <InvoiceActionIcon title="Mark as paid" ariaLabel="Mark as paid" color="success" onClick={() => onMarkPaid(invoice)}>
+        <CheckCircleOutlineIcon sx={{ fontSize: 18 }} />
+      </InvoiceActionIcon>
+    )}
+    {(invoice.status === 'draft' || invoice.status === 'sent') && (
+      <InvoiceActionIcon title="Mark as disputed" ariaLabel="Mark as disputed" color="warning" onClick={() => onDispute(invoice)}>
+        <GavelIcon sx={{ fontSize: 18 }} />
+      </InvoiceActionIcon>
+    )}
+  </Box>
+);
+
+const InvoiceClientInvoiceListMobile = ({
+  invoices,
+  isDarkMode,
+  emptyMessage,
+  handlers,
+}: {
+  invoices: InvoiceRecord[];
+  isDarkMode: boolean;
+  emptyMessage: string;
+  handlers: InvoiceActionHandlers;
+}) => {
+  if (invoices.length === 0) {
+    return (
+      <Typography sx={{ py: 6, textAlign: 'center', color: 'text.secondary', fontWeight: 600 }}>
+        {emptyMessage}
+      </Typography>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: { xs: 1.25, sm: 1.5 } }}>
+      {invoices.map((invoice) => (
+        <Box
+          key={invoice._id}
+          sx={{
+            p: { xs: 1.35, sm: 1.75 },
+            borderRadius: '16px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+              {invoice.invoiceNumber}
+            </Typography>
+            <InvoiceStatusChip
+              status={invoice.status}
+              overdue={invoice.overdue}
+              disputeReason={invoice.disputeReason}
+              isDarkMode={isDarkMode}
+            />
+          </Box>
+          <InvoiceDateLine issueDate={invoice.issueDate} dueDate={invoice.dueDate} compact />
+          <Typography sx={{ fontWeight: 850, fontSize: '0.95rem', color: tokens.brand.primary, my: 0.75 }}>
+            {formatInvoiceMoney(invoice.currency, invoice.grandTotal)}
+          </Typography>
+          <InvoiceRecordActions
+            invoice={invoice}
+            sx={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}
+            {...handlers}
+          />
+        </Box>
+      ))}
+    </Box>
   );
 };
 
@@ -408,10 +628,38 @@ const headerButtonSx = {
   borderRadius: '12px',
 };
 
+const headerIconButtonSx = (isDarkMode: boolean) => ({
+  width: 40,
+  height: 40,
+  borderRadius: '12px',
+  bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
+  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+  color: 'text.secondary',
+  '&:hover': {
+    color: tokens.brand.primary,
+    borderColor: tokens.brand.primary,
+  },
+});
+
+const headerPrimaryIconButtonSx = {
+  width: 40,
+  height: 40,
+  borderRadius: '12px',
+  bgcolor: tokens.brand.solid,
+  color: '#fff',
+  boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
+  '&:hover': {
+    bgcolor: tokens.brand.primaryDark,
+  },
+};
+
 const InvoiceClientDetailPage = () => {
   const { clientId = '' } = useParams();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const compactHeaderActions = useMediaQuery(theme.breakpoints.down('md'));
+  const isNarrowClientHeader = useMediaQuery('(max-width:499.95px)');
+  const hideClientHeaderAvatar = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { isAdmin } = usePermissions();
   const clients = useInvoiceClients(true);
@@ -598,29 +846,43 @@ const InvoiceClientDetailPage = () => {
           mb: 2.5,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', lg: 'center' },
-          gap: 2,
-          flexWrap: 'wrap',
+          alignItems: isNarrowClientHeader
+            ? 'flex-start'
+            : compactHeaderActions
+              ? 'center'
+              : { xs: 'flex-start', lg: 'center' },
+          gap: isNarrowClientHeader ? 1.25 : 2,
+          flexWrap: isNarrowClientHeader || compactHeaderActions ? 'nowrap' : 'wrap',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, minWidth: 0, flex: '1 1 240px' }}>
-          <Avatar
-            sx={{
-              width: 46,
-              height: 46,
-              borderRadius: '14px',
-              background: isDarkMode
-                ? 'linear-gradient(135deg, rgba(93, 26, 137, 0.5) 0%, rgba(155, 107, 184, 0.25) 100%)'
-                : 'linear-gradient(135deg, #F3E8FF 0%, #FFFFFF 100%)',
-              border: `1.5px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
-              color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
-              fontWeight: 850,
-              fontSize: '1.2rem',
-              flexShrink: 0,
-            }}
-          >
-            {initial}
-          </Avatar>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 2,
+            minWidth: 0,
+            flex: isNarrowClientHeader ? '1 1 0' : compactHeaderActions ? '1 1 auto' : '1 1 240px',
+          }}
+        >
+          {!hideClientHeaderAvatar ? (
+            <Avatar
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: '14px',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(93, 26, 137, 0.5) 0%, rgba(155, 107, 184, 0.25) 100%)'
+                  : 'linear-gradient(135deg, #F3E8FF 0%, #FFFFFF 100%)',
+                border: `1.5px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
+                color: tokens.brand.primary,
+                fontWeight: 850,
+                fontSize: '1.2rem',
+                flexShrink: 0,
+              }}
+            >
+              {initial}
+            </Avatar>
+          ) : null}
 
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 0.25 }}>
@@ -649,86 +911,175 @@ const InvoiceClientDetailPage = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: { xs: 'flex-start', lg: 'center' }, flexWrap: 'wrap', gap: { xs: 0.65, lg: 1.75 }, mt: 0.75, color: 'text.secondary', fontSize: '0.8rem' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary, flexShrink: 0 }} />
-                <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.email}</Box>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: isNarrowClientHeader ? 'column' : { xs: 'column', lg: 'row' },
+                alignItems: isNarrowClientHeader ? 'flex-start' : { xs: 'flex-start', lg: 'center' },
+                flexWrap: 'wrap',
+                gap: isNarrowClientHeader ? 0.5 : { xs: 0.65, lg: 1.75 },
+                mt: 0.75,
+                color: 'text.secondary',
+                fontSize: '0.8rem',
+                width: isNarrowClientHeader ? '100%' : undefined,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, maxWidth: '100%' }}>
+                <EmailOutlinedIcon sx={{ fontSize: 14, color: tokens.brand.primary, flexShrink: 0, mt: 0.15 }} />
+                <Box
+                  component="span"
+                  sx={{
+                    overflowWrap: 'anywhere',
+                    ...(isNarrowClientHeader ? { wordBreak: 'break-all' } : {}),
+                  }}
+                >
+                  {client.email}
+                </Box>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <ReceiptLongOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
                 <span>NTN: <strong>{client.ntn || '—'}</strong></span>
               </Box>
               {(client.location || client.address) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                  <LocationOnOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
-                  <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{client.location || client.address}</Box>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, maxWidth: '100%' }}>
+                  <LocationOnOutlinedIcon sx={{ fontSize: 14, flexShrink: 0, mt: 0.15 }} />
+                  <Box
+                    component="span"
+                    sx={{
+                      overflowWrap: 'anywhere',
+                      ...(isNarrowClientHeader ? { wordBreak: 'break-all' } : {}),
+                    }}
+                  >
+                    {client.location || client.address}
+                  </Box>
                 </Box>
               )}
             </Box>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 1, flexShrink: 0, alignItems: { xs: 'stretch', lg: 'center' }, minWidth: { xs: 168, lg: 'auto' } }}>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={startEdit}
-            startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
-            sx={{
-              ...headerButtonSx,
-              borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-              color: 'text.primary',
-              '&:hover': {
-                borderColor: tokens.brand.primary,
-                color: tokens.brand.primary,
-              }
-            }}
-          >
-            Edit Profile
-          </Button>
-
-          {client.isArchived ? (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<UnarchiveOutlinedIcon sx={{ fontSize: 15 }} />}
-              sx={{ ...headerButtonSx, borderColor: 'rgba(0,0,0,0.15)', color: 'text.primary' }}
-              disabled={mutations.unarchiveClient.isPending}
-              onClick={() => run(() => mutations.unarchiveClient.mutateAsync(client._id))}
-            >
-              Unarchive
-            </Button>
+        <Box
+          sx={{
+            display: 'flex',
+            flexShrink: 0,
+            flexDirection: isNarrowClientHeader ? 'column' : 'row',
+            alignItems: isNarrowClientHeader ? 'center' : 'center',
+            alignSelf: isNarrowClientHeader ? 'flex-start' : undefined,
+            gap: compactHeaderActions ? 0.75 : 1,
+            flexWrap: 'nowrap',
+          }}
+        >
+          {compactHeaderActions ? (
+            <>
+              <Tooltip title="Edit profile" arrow>
+                <IconButton aria-label="Edit profile" onClick={startEdit} sx={headerIconButtonSx(isDarkMode)}>
+                  <EditOutlinedIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+              {client.isArchived ? (
+                <Tooltip title="Unarchive client" arrow>
+                  <span>
+                    <IconButton
+                      aria-label="Unarchive client"
+                      disabled={mutations.unarchiveClient.isPending}
+                      onClick={() => run(() => mutations.unarchiveClient.mutateAsync(client._id))}
+                      sx={headerIconButtonSx(isDarkMode)}
+                    >
+                      <UnarchiveOutlinedIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Tooltip title="Archive client" arrow>
+                  <span>
+                    <IconButton
+                      aria-label="Archive client"
+                      disabled={mutations.archiveClient.isPending}
+                      onClick={() => run(() => mutations.archiveClient.mutateAsync(client._id))}
+                      sx={headerIconButtonSx(isDarkMode)}
+                    >
+                      <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              )}
+              <Tooltip title="Create invoice" arrow>
+                <span>
+                  <IconButton
+                    aria-label="Create invoice"
+                    disabled={client.isArchived}
+                    onClick={() => navigate(`/invoices/new?clientId=${client._id}`)}
+                    sx={headerPrimaryIconButtonSx}
+                  >
+                    <AddIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
           ) : (
-            <Button
-              size="small"
-              variant="outlined"
-              color="inherit"
-              startIcon={<ArchiveOutlinedIcon sx={{ fontSize: 15 }} />}
-              sx={{ ...headerButtonSx, borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)', color: 'text.secondary' }}
-              disabled={mutations.archiveClient.isPending}
-              onClick={() => run(() => mutations.archiveClient.mutateAsync(client._id))}
-            >
-              Archive
-            </Button>
-          )}
+            <>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={startEdit}
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
+                sx={{
+                  ...headerButtonSx,
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+                  color: 'text.primary',
+                  '&:hover': {
+                    borderColor: tokens.brand.primary,
+                    color: tokens.brand.primary,
+                  },
+                }}
+              >
+                Edit Profile
+              </Button>
 
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon sx={{ fontSize: '17px !important' }} />}
-            disabled={client.isArchived}
-            onClick={() => navigate(`/invoices/new?clientId=${client._id}`)}
-            sx={{
-              ...headerButtonSx,
-              bgcolor: tokens.brand.primary,
-              boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
-              '&:hover': {
-                bgcolor: tokens.brand.primaryDark,
-              },
-            }}
-          >
-            Create Invoice
-          </Button>
+              {client.isArchived ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<UnarchiveOutlinedIcon sx={{ fontSize: 15 }} />}
+                  sx={{ ...headerButtonSx, borderColor: 'rgba(0,0,0,0.15)', color: 'text.primary' }}
+                  disabled={mutations.unarchiveClient.isPending}
+                  onClick={() => run(() => mutations.unarchiveClient.mutateAsync(client._id))}
+                >
+                  Unarchive
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<ArchiveOutlinedIcon sx={{ fontSize: 15 }} />}
+                  sx={{ ...headerButtonSx, borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)', color: 'text.secondary' }}
+                  disabled={mutations.archiveClient.isPending}
+                  onClick={() => run(() => mutations.archiveClient.mutateAsync(client._id))}
+                >
+                  Archive
+                </Button>
+              )}
+
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon sx={{ fontSize: '17px !important' }} />}
+                disabled={client.isArchived}
+                onClick={() => navigate(`/invoices/new?clientId=${client._id}`)}
+                sx={{
+                  ...headerButtonSx,
+                  bgcolor: tokens.brand.solid,
+                  boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
+                  '&:hover': {
+                    bgcolor: tokens.brand.primaryDark,
+                  },
+                }}
+              >
+                Create Invoice
+              </Button>
+            </>
+          )}
         </Box>
       </Paper>
 
@@ -858,15 +1209,14 @@ const InvoiceClientDetailPage = () => {
 
       {notice && <Alert severity="success" sx={{ mb: 2.5, borderRadius: '14px' }}>{notice}</Alert>}
       {/* Invoices Toolbar & History Table */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
         <Typography
           variant="h6"
           sx={{
             fontWeight: 800,
             color: isDarkMode ? '#fff' : tokens.text.primary,
             letterSpacing: '-0.01em',
-            pt: 0.5,
-            mr: 'auto',
+            fontSize: { xs: '1.05rem', sm: '1.25rem' },
           }}
         >
           Billing History & Invoices
@@ -874,18 +1224,17 @@ const InvoiceClientDetailPage = () => {
 
         <Box
           sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr 1fr', sm: '160px 168px 168px auto' },
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 1.25,
-            maxWidth: '100%',
+            gap: { xs: 1, sm: 1.25 },
+            width: '100%',
           }}
         >
           <TextField
             select
             size="small"
-            label="Invoice type"
+            label="Status"
             value={filter}
             onChange={(event) => setFilter(event.target.value as '' | InvoiceStatus | 'overdue')}
             InputLabelProps={{ shrink: true }}
@@ -894,7 +1243,9 @@ const InvoiceClientDetailPage = () => {
               renderValue: (value) => FILTERS.find((item) => item.id === value)?.label || 'All Invoices',
             }}
             sx={{
-              width: 160,
+              gridColumn: { xs: '1 / -1', sm: 'auto' },
+              width: '100%',
+              maxWidth: { sm: 160 },
               '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 },
               '& .MuiSelect-select': { fontWeight: 700, fontSize: '0.85rem' },
             }}
@@ -908,35 +1259,44 @@ const InvoiceClientDetailPage = () => {
           <TextField
             size="small"
             type="date"
-            label="Issued from"
+            label="From"
             value={issuedFrom}
             onChange={(event) => setIssuedFrom(event.target.value)}
             InputLabelProps={{ shrink: true }}
-            inputProps={{ max: issuedTo || undefined }}
-            sx={{ width: 168, '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
+            inputProps={{ max: issuedTo || undefined, 'aria-label': 'Issued from date' }}
+            sx={{ width: '100%', '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
           />
           <TextField
             size="small"
             type="date"
-            label="Issued to"
+            label="To"
             value={issuedTo}
             onChange={(event) => setIssuedTo(event.target.value)}
             InputLabelProps={{ shrink: true }}
-            inputProps={{ min: issuedFrom || undefined }}
+            inputProps={{ min: issuedFrom || undefined, 'aria-label': 'Issued to date' }}
             error={dateRangeInvalid}
-            sx={{ width: 168, '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
+            sx={{ width: '100%', '& .MuiOutlinedInput-root': { borderRadius: '10px', height: 40 } }}
           />
           {(issuedFrom || issuedTo) && (
-            <Button
-              size="small"
-              onClick={() => {
-                setIssuedFrom('');
-                setIssuedTo('');
-              }}
-              sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, color: 'text.secondary' }}
-            >
-              Clear dates
-            </Button>
+            <Tooltip title="Clear date filters" arrow>
+              <IconButton
+                aria-label="Clear date filters"
+                size="small"
+                onClick={() => {
+                  setIssuedFrom('');
+                  setIssuedTo('');
+                }}
+                sx={{
+                  justifySelf: { xs: 'end', sm: 'auto' },
+                  gridColumn: { xs: '2', sm: 'auto' },
+                  ...headerIconButtonSx(isDarkMode),
+                  width: 36,
+                  height: 36,
+                }}
+              >
+                <ClearIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
       </Box>
@@ -961,12 +1321,51 @@ const InvoiceClientDetailPage = () => {
             <CircularProgress size={32} sx={{ color: tokens.brand.primary }} />
           </Box>
         ) : (
-          <Box sx={{ overflowX: 'auto' }}>
+          <>
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <InvoiceClientInvoiceListMobile
+              invoices={invoices.data || []}
+              isDarkMode={isDarkMode}
+              emptyMessage={
+                dateRangeInvalid
+                  ? 'Issued from must be on or before issued to.'
+                  : issuedFrom || issuedTo
+                    ? 'No invoices were issued in this date range.'
+                    : 'No invoice records found for this filter.'
+              }
+              handlers={{
+                downloadingId,
+                sendingId,
+                remindingId,
+                onOpen: (invoice) => navigate(`/invoices/${invoice._id}?clientId=${client._id}`),
+                onDownload: (invoice) =>
+                  run(async () => {
+                    setDownloadingId(invoice._id);
+                    try {
+                      await exportInvoiceRecordToPdf(invoice, settings.data?.bankAccounts || []);
+                    } finally {
+                      setDownloadingId(null);
+                    }
+                  }),
+                onSend: openSendConfirm,
+                onRemind: setRemindConfirmInvoice,
+                onMarkPaid: (invoice) =>
+                  run(async () => {
+                    const pdf = await renderInvoicePreviewToBlob(
+                      previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
+                    );
+                    await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
+                  }),
+                onDispute: setDisputeInvoice,
+              }}
+            />
+          </Box>
+          <Box sx={{ overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
           <Table
             size="medium"
             sx={{
               width: '100%',
-              minWidth: { xs: 1200, lg: 820 },
+              minWidth: { lg: 820 },
               '& th, & td': { whiteSpace: 'nowrap' },
             }}
           >
@@ -1036,90 +1435,35 @@ const InvoiceClientDetailPage = () => {
                       />
                     </TableCell>
                     <TableCell align="right" sx={{ pr: 2 }}>
-                      <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <Button
-                          size="small"
-                          onClick={() => navigate(`/invoices/${invoice._id}?clientId=${client._id}`)}
-                          startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                          sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
-                        >
-                          Open
-                        </Button>
-                        
-                        <Button
-                          size="small"
-                          startIcon={downloadingId === invoice._id ? <CircularProgress size={13} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
-                          sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
-                          disabled={downloadingId === invoice._id}
-                          onClick={() =>
-                            run(async () => {
-                              setDownloadingId(invoice._id);
-                              try {
-                                await exportInvoiceRecordToPdf(invoice, settings.data?.bankAccounts || []);
-                              } finally {
-                                setDownloadingId(null);
-                              }
-                            })
-                          }
-                        >
-                          PDF
-                        </Button>
-
-                        {invoice.status === 'draft' && (
-                          <Button
-                            size="small"
-                            color="primary"
-                            startIcon={<SendIcon sx={{ fontSize: 14 }} />}
-                            sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
-                            disabled={sendingId === invoice._id}
-                            onClick={() => openSendConfirm(invoice)}
-                          >
-                            Send
-                          </Button>
-                        )}
-
-                        {invoice.status === 'sent' && invoice.overdue && (
-                          <Button
-                            size="small"
-                            color="warning"
-                            startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
-                            sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
-                            disabled={remindingId === invoice._id}
-                            onClick={() => setRemindConfirmInvoice(invoice)}
-                          >
-                            Send Reminder
-                          </Button>
-                        )}
-
-                        {invoice.status === 'sent' && (
-                          <Button
-                            size="small"
-                            color="success"
-                            startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
-                            sx={{ textTransform: 'none', fontWeight: 750, fontSize: '0.78rem', borderRadius: '8px' }}
-                            onClick={() => run(async () => {
-                              const pdf = await renderInvoicePreviewToBlob(
-                                previewDataFromInvoice(invoice, settings.data?.bankAccounts || [], true),
-                              );
-                              await mutations.markPaid.mutateAsync({ id: invoice._id, pdf });
-                            })}
-                          >
-                            Mark Paid
-                          </Button>
-                        )}
-
-                        {(invoice.status === 'draft' || invoice.status === 'sent') && (
-                          <Button
-                            size="small"
-                            color="warning"
-                            startIcon={<GavelIcon sx={{ fontSize: 14 }} />}
-                            sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', borderRadius: '8px' }}
-                            onClick={() => setDisputeInvoice(invoice)}
-                          >
-                            Dispute
-                          </Button>
-                        )}
-                      </Box>
+                      <InvoiceRecordActions
+                        invoice={invoice}
+                        sx={{ justifyContent: 'flex-end' }}
+                        downloadingId={downloadingId}
+                        sendingId={sendingId}
+                        remindingId={remindingId}
+                        onOpen={(inv) => navigate(`/invoices/${inv._id}?clientId=${client._id}`)}
+                        onDownload={(inv) =>
+                          run(async () => {
+                            setDownloadingId(inv._id);
+                            try {
+                              await exportInvoiceRecordToPdf(inv, settings.data?.bankAccounts || []);
+                            } finally {
+                              setDownloadingId(null);
+                            }
+                          })
+                        }
+                        onSend={openSendConfirm}
+                        onRemind={setRemindConfirmInvoice}
+                        onMarkPaid={(inv) =>
+                          run(async () => {
+                            const pdf = await renderInvoicePreviewToBlob(
+                              previewDataFromInvoice(inv, settings.data?.bankAccounts || [], true),
+                            );
+                            await mutations.markPaid.mutateAsync({ id: inv._id, pdf });
+                          })
+                        }
+                        onDispute={setDisputeInvoice}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -1127,6 +1471,7 @@ const InvoiceClientDetailPage = () => {
             </TableBody>
           </Table>
           </Box>
+          </>
         )}
       </Paper>
 
@@ -1172,7 +1517,7 @@ const InvoiceClientDetailPage = () => {
               textTransform: 'none',
               fontWeight: 800,
               borderRadius: '12px',
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               px: 3,
               py: 0.8,
               boxShadow: '0 4px 14px rgba(93,26,137,0.25)',

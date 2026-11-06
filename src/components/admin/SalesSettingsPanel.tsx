@@ -112,7 +112,7 @@ const EntryList = ({
           disabled={!newValue.trim() || isAdding}
           startIcon={isAdding ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
           sx={{
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             fontWeight: 700,
             borderRadius: '14px',

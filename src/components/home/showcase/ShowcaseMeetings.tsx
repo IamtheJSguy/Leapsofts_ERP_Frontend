@@ -208,7 +208,7 @@ export const ShowcaseMeetings: React.FC = () => {
           startIcon={scheduledSuccess ? <CheckCircleIcon sx={{ fontSize: 13 }} /> : <AddIcon sx={{ fontSize: 13 }} />}
           onClick={handleQuickSchedule}
           sx={{
-            bgcolor: scheduledSuccess ? '#10B981' : tokens.brand.primary,
+            bgcolor: scheduledSuccess ? '#10B981' : tokens.brand.solid,
             color: '#FFFFFF',
             fontWeight: 750,
             fontSize: '0.68rem',
@@ -563,7 +563,7 @@ export const ShowcaseMeetings: React.FC = () => {
 
                 {/* Right: Attendees + Join Button */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
-                  <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.6rem', fontWeight: 800, bgcolor: tokens.brand.primary } }}>
+                  <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.6rem', fontWeight: 800, bgcolor: tokens.brand.solid } }}>
                     {meeting.participants.map((p, pIdx) => (
                       <Tooltip key={pIdx} title={p.name}>
                         <Avatar>{p.name.charAt(0)}</Avatar>
@@ -726,7 +726,7 @@ export const ShowcaseMeetings: React.FC = () => {
                   </Box>
 
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
-                    <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.6rem', fontWeight: 800, bgcolor: tokens.brand.primary } }}>
+                    <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 22, height: 22, fontSize: '0.6rem', fontWeight: 800, bgcolor: tokens.brand.solid } }}>
                       {meeting.participants.map((p, pIdx) => (
                         <Tooltip key={pIdx} title={p.name}>
                           <Avatar>{p.name.charAt(0)}</Avatar>

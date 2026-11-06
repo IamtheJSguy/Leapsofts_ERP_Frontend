@@ -14,6 +14,7 @@ import {
   ToggleButtonGroup,
   Typography,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CloseIcon from '@mui/icons-material/Close';
@@ -113,6 +114,7 @@ const invalidTimeWindow = (item: DraftItem) => {
 export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const addToast = useUIStore((s) => s.addToast);
   const assignableUsers = useAssignableUsers();
   const createMutation = useCreateSalesKpiTemplate();
@@ -225,18 +227,20 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: '24px',
+          borderRadius: isMobile ? 0 : '24px',
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
           backgroundImage: 'none',
-          boxShadow: isDarkMode ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 25px 50px -12px rgba(0,0,0,0.1)',
+          boxShadow: isMobile ? 'none' : isDarkMode ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 25px 50px -12px rgba(0,0,0,0.1)',
           overflowX: 'hidden',
+          ...(isMobile ? { display: 'flex', flexDirection: 'column', maxHeight: '100dvh' } : {}),
         },
       }}
       slotProps={{ backdrop: { sx: { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.2)' } } }}
     >
-      <DialogTitle sx={{ fontWeight: 800, pr: 5, pb: 2, pt: 3, display: 'flex', alignItems: 'center', color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em' }}>
+      <DialogTitle sx={{ fontWeight: 800, pr: 5, pb: 2, pt: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 }, display: 'flex', alignItems: 'center', flexShrink: 0, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em' }}>
         {template ? (
           <EditNoteIcon sx={{ mr: 1.5, color: tokens.brand.accent, fontSize: 26 }} />
         ) : (
@@ -248,7 +252,7 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '8px !important', overflowX: 'hidden' }}>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important', px: { xs: 2, sm: 3 }, flex: isMobile ? 1 : undefined, overflowY: 'auto', overflowX: 'hidden' }}>
         <TextField label="Template name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required sx={textFieldStyle} />
         <TextField label="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline rows={2} sx={textFieldStyle} />
 
@@ -287,14 +291,22 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <TextField
                     label="Task name"
                     value={item.name}
                     onChange={(e) => patchItem(index, { name: e.target.value })}
                     required
                     size="small"
-                    sx={{ flex: 2, minWidth: 200, ...textFieldStyle }}
+                    fullWidth={isMobile}
+                    sx={{ flex: { sm: 2 }, minWidth: { sm: 200 }, ...textFieldStyle }}
                   />
                   <TextField
                     select
@@ -302,7 +314,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                     value={item.metric}
                     onChange={(e) => changeMetric(index, e.target.value as SalesKpiMetric)}
                     size="small"
-                    sx={{ flex: 1, minWidth: 160, ...textFieldStyle }}
+                    fullWidth={isMobile}
+                    sx={{ flex: { sm: 1 }, minWidth: { sm: 160 }, ...textFieldStyle }}
                   >
                     {SALES_KPI_METRIC_OPTIONS.map((m) => (
                       <MenuItem key={m} value={m}>{SALES_KPI_METRIC_LABELS[m]}</MenuItem>
@@ -314,7 +327,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                     value={item.priority}
                     onChange={(e) => patchItem(index, { priority: e.target.value as KpiPriority })}
                     size="small"
-                    sx={{ flex: 1, minWidth: 120, ...textFieldStyle }}
+                    fullWidth={isMobile}
+                    sx={{ flex: { sm: 1 }, minWidth: { sm: 120 }, ...textFieldStyle }}
                   >
                     {KPI_PRIORITY_OPTIONS.map((p) => (
                       <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
@@ -329,8 +343,9 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                       required
                       error={invalidTarget(item)}
                       size="small"
+                      fullWidth={isMobile}
                       inputProps={{ min: 0 }}
-                      sx={{ flex: 1, minWidth: 110, ...textFieldStyle }}
+                      sx={{ flex: { sm: 1 }, minWidth: { sm: 110 }, ...textFieldStyle }}
                     />
                   )}
                 </Box>
@@ -344,13 +359,16 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                   sx={textFieldStyle}
                 />
 
-                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  <WeekdayPicker
-                    label="Runs on"
-                    value={item.daysOfWeek}
-                    onChange={(daysOfWeek) => patchItem(index, { daysOfWeek })}
-                  />
-                  <Box>
+                <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', alignItems: 'flex-start', width: '100%' }}>
+                  <Box sx={{ width: '100%', minWidth: 0, flex: { sm: '1 1 auto' } }}>
+                    <WeekdayPicker
+                      size="small"
+                      label="Runs on"
+                      value={item.daysOfWeek}
+                      onChange={(daysOfWeek) => patchItem(index, { daysOfWeek })}
+                    />
+                  </Box>
+                  <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Schedule
                     </Typography>
@@ -376,29 +394,39 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(2, minmax(0, 180px))' },
+                    gap: 2,
+                    width: '100%',
+                    alignItems: 'flex-start',
+                  }}
+                >
                   <TextField
-                    label="Start time (optional)"
+                    label={isMobile ? 'Start' : 'Start time (optional)'}
                     type="time"
                     value={item.startTime}
                     onChange={(e) => patchItem(index, { startTime: e.target.value })}
                     size="small"
+                    fullWidth
                     InputLabelProps={{ shrink: true }}
                     inputProps={{ step: 60 }}
-                    sx={{ width: 180, ...textFieldStyle }}
-                    helperText="Empty = start of day"
+                    sx={textFieldStyle}
+                    helperText={isMobile ? undefined : 'Empty = start of day'}
                   />
                   <TextField
-                    label="End time (optional)"
+                    label={isMobile ? 'End' : 'End time (optional)'}
                     type="time"
                     value={item.endTime}
                     onChange={(e) => patchItem(index, { endTime: e.target.value })}
                     size="small"
+                    fullWidth
                     InputLabelProps={{ shrink: true }}
                     inputProps={{ step: 60 }}
                     error={invalidTimeWindow(item)}
-                    sx={{ width: 180, ...textFieldStyle }}
-                    helperText={invalidTimeWindow(item) ? 'Must be after start time' : 'Empty = end of day'}
+                    sx={textFieldStyle}
+                    helperText={invalidTimeWindow(item) ? 'Must be after start time' : isMobile ? undefined : 'Empty = end of day'}
                   />
                 </Box>
 
@@ -459,7 +487,12 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
               value={assignUsers}
               onChange={(_, v) => setAssignUsers(v)}
               renderInput={(params) => (
-                <TextField {...params} label="Assign to users" sx={textFieldStyle} />
+                <TextField
+                  {...params}
+                  label={isMobile ? 'Assign users' : 'Assign to users'}
+                  placeholder={isMobile ? 'Optional — assign later' : undefined}
+                  sx={textFieldStyle}
+                />
               )}
               sx={{
                 '& .MuiChip-root': {
@@ -472,14 +505,29 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 4, pb: 4, pt: 1, gap: 1.5 }}>
-        <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 4 },
+          pb: { xs: 3, sm: 4 },
+          pt: 1,
+          gap: 1.5,
+          flexShrink: 0,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
+      >
+        <Button
+          onClick={onClose}
+          fullWidth={isMobile}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}
+        >
           Cancel
         </Button>
         <Button
           variant="contained"
           onClick={handleSave}
           disabled={isPending || !canSave}
+          fullWidth={isMobile}
           sx={{
             textTransform: 'none',
             borderRadius: '12px',
@@ -487,8 +535,8 @@ export const SalesKpiTemplateForm = ({ open, onClose, template }: Props) => {
             py: 1.25,
             fontWeight: 700,
             boxShadow: 'none',
-            bgcolor: tokens.brand.primary,
-            '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-1px)' },
+            bgcolor: tokens.brand.solid,
+            '&:hover': { bgcolor: tokens.brand.solid, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transform: 'translateY(-1px)' },
             transition: 'all 0.2s',
           }}
         >

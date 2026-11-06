@@ -464,6 +464,8 @@ const LoginPage = () => {
               </Typography>
               <TextField
                 {...register('email')}
+                id="login-email"
+                label="Email Address"
                 placeholder="you@example.com"
                 type="email"
                 fullWidth
@@ -529,6 +531,8 @@ const LoginPage = () => {
               </Box>
               <TextField
                 {...register('password')}
+                id="login-password"
+                label="Password"
                 placeholder="Enter password"
                 type={showPassword ? 'text' : 'password'}
                 fullWidth

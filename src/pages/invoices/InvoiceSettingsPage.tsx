@@ -419,7 +419,7 @@ const InvoiceSettingsPage = () => {
               py: 1.1,
               textTransform: 'none',
               fontWeight: 800,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 14px rgba(93, 26, 137, 0.25)',
               '&:hover': { bgcolor: tokens.brand.primaryDark },
             }}

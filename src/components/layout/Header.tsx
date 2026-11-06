@@ -10,6 +10,8 @@ import {
   Avatar,
   Divider,
   Chip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
@@ -17,6 +19,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +32,13 @@ import { tokens } from '@/styles/tokens';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
 
 export const Header = () => {
-  const { toggleSidebar, setNotificationPanelOpen, theme, setTheme } = useUIStore();
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const setNotificationPanelOpen = useUIStore((s) => s.setNotificationPanelOpen);
+  const toggleAiDrawer = useUIStore((s) => s.toggleAiDrawer);
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
+  const muiTheme = useTheme();
+  const themeInMenu = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const { user } = useAuth();
   const { data: unreadCount = 0 } = useUnreadCount();
   const logout = useLogout();
@@ -99,7 +108,7 @@ export const Header = () => {
         borderBottom: `1px solid ${tokens.surface.border}`,
       }}
     >
-      <Toolbar sx={{ gap: 2, py: 1.5, minHeight: { xs: 64, sm: 72 } }}>
+      <Toolbar sx={{ gap: { xs: 0.75, sm: 2 }, px: { xs: 1.25, sm: 3 }, py: 1.5, minHeight: { xs: 60, sm: 72 } }}>
         <IconButton
           edge="start"
           onClick={toggleSidebar}
@@ -320,6 +329,22 @@ export const Header = () => {
           */}
 
           <IconButton
+            onClick={() => toggleAiDrawer()}
+            aria-label="Open Lumi"
+            title="Lumi — Your AI Assistant"
+            sx={{
+              color: tokens.brand.primary,
+              bgcolor: theme === 'dark' ? 'rgba(138, 63, 252, 0.14)' : 'rgba(93, 26, 137, 0.08)',
+              border: `1px solid ${theme === 'dark' ? 'rgba(138, 63, 252, 0.3)' : 'rgba(93, 26, 137, 0.2)'}`,
+              mx: 0.5,
+              '&:hover': {
+                bgcolor: theme === 'dark' ? 'rgba(138, 63, 252, 0.22)' : 'rgba(93, 26, 137, 0.14)',
+              },
+            }}
+          >
+            <AutoAwesomeIcon fontSize="small" />
+          </IconButton>
+          <IconButton
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"
             sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline-flex' } }}
@@ -360,7 +385,7 @@ export const Header = () => {
               sx={{
                 width: { xs: 32, sm: 40 },
                 height: { xs: 32, sm: 40 },
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 fontSize: { xs: 12, sm: 14 },
                 fontWeight: 700,
               }}
@@ -463,7 +488,34 @@ export const Header = () => {
             My Profile
           </MenuItem>
 
-
+          {themeInMenu && (
+            <MenuItem
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              sx={{
+                py: 1,
+                px: 2,
+                borderRadius: '8px',
+                mx: 0.5,
+                fontSize: '0.86rem',
+                fontWeight: 600,
+                gap: 1.5,
+                color: 'text.primary',
+                display: { xs: 'flex', sm: 'none' },
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(93, 26, 137, 0.04)',
+                  color: tokens.brand.primary,
+                },
+              }}
+            >
+              {theme === 'light' ? (
+                <DarkModeOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+              ) : (
+                <LightModeOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+              )}
+              {theme === 'light' ? 'Dark mode' : 'Light mode'}
+            </MenuItem>
+          )}
 
           <Divider sx={{ mx: 1, my: 0.5, opacity: theme === 'dark' ? 0.08 : 0.08 }} />
 
