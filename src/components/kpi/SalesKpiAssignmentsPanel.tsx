@@ -12,6 +12,7 @@ import {
   TextField,
   Typography,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -117,6 +118,7 @@ const invalidDraft = (d: DraftItem) =>
 const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const addToast = useUIStore((s) => s.addToast);
   const updateMutation = useUpdateSalesKpiAssignment();
   const deleteMutation = useDeleteSalesKpiAssignment();
@@ -191,31 +193,59 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
 
   const textFieldStyle = {
     '& .MuiOutlinedInput-root': {
-      borderRadius: '12px',
+      borderRadius: { xs: '10px', sm: '12px' },
       bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)',
+    },
+    '& .MuiInputBase-root': {
+      fontSize: { xs: '0.875rem', sm: '1rem' },
     },
   };
 
   return (
     <Card
       sx={{
-        p: 2.5,
-        borderRadius: '24px',
+        p: { xs: 1.25, sm: 2.5 },
+        borderRadius: { xs: '16px', sm: '24px' },
         bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.45)' : '#fff',
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
         boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.03)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 2,
+        gap: { xs: 1.25, sm: 2 },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar src={typeof assignment.userId === 'object' ? assignment.userId.avatarUrl || undefined : undefined} sx={{ bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)', color: tokens.brand.primary, fontWeight: 800, width: 44, height: 44 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1, sm: 2 } }}>
+        <Avatar
+          src={typeof assignment.userId === 'object' ? assignment.userId.avatarUrl || undefined : undefined}
+          sx={{
+            bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.2)' : 'rgba(93, 26, 137, 0.1)',
+            color: tokens.brand.primary,
+            fontWeight: 800,
+            width: { xs: 40, sm: 44 },
+            height: { xs: 40, sm: 44 },
+            fontSize: { xs: '0.9rem', sm: '1rem' },
+          }}
+        >
           {userName.charAt(0).toUpperCase()}
         </Avatar>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.95rem' }}>{userName}</Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: { xs: '0.9rem', sm: '0.95rem' }, lineHeight: 1.3 }}>
+            {userName}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+              display: 'block',
+              lineHeight: 1.35,
+              ...(isCompact && {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }),
+            }}
+          >
             {templateName(assignment)} · {drafts.filter((d) => d.isActive).length} active of {drafts.length}
           </Typography>
         </Box>
@@ -229,7 +259,7 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
         </IconButton>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, sm: 1.5 } }}>
         {drafts.map((d) => {
           const manual = isManualTarget(d.targetMode);
           const isNew = !d._id;
@@ -237,60 +267,103 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
             <Box
               key={d.key}
               sx={{
-                p: 2,
-                borderRadius: '18px',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: '14px', sm: '18px' },
                 border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                 bgcolor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                 opacity: d.isActive ? 1 : 0.55,
                 display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
-                gap: 2,
-                alignItems: { xs: 'stretch', md: 'center' },
+                flexDirection: isCompact ? 'column' : 'row',
                 flexWrap: 'wrap',
+                alignItems: isCompact ? 'stretch' : 'center',
+                gap: isCompact ? 1 : 2,
               }}
             >
               {isNew ? (
-                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', minWidth: 280, flex: 1.4 }}>
-                  <TextField
-                    label="Task name"
-                    size="small"
-                    required
-                    value={d.name}
-                    onChange={(e) => patch(d.key, { name: e.target.value })}
-                    sx={{ flex: 2, minWidth: 160, ...textFieldStyle }}
-                  />
-                  <TextField
-                    select
-                    label="Metric"
-                    size="small"
-                    value={d.metric}
-                    onChange={(e) => changeMetric(d.key, e.target.value as SalesKpiMetric)}
-                    sx={{ flex: 1, minWidth: 150, ...textFieldStyle }}
-                  >
-                    {SALES_KPI_METRIC_OPTIONS.map((m) => (
-                      <MenuItem key={m} value={m}>{SALES_KPI_METRIC_LABELS[m]}</MenuItem>
-                    ))}
-                  </TextField>
-                </Box>
-              ) : (
-                <Box sx={{ minWidth: 180, flex: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{d.name}</Typography>
-                  <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
-                    <Chip
-                      label={SALES_KPI_METRIC_LABELS[d.metric] ?? d.metric}
+                isCompact ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <TextField
+                      label="Task name"
                       size="small"
-                      sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                      required
+                      fullWidth
+                      value={d.name}
+                      onChange={(e) => patch(d.key, { name: e.target.value })}
+                      sx={textFieldStyle}
                     />
-                    <Chip
-                      label={d.scheduleMode === 'span' ? 'Single task' : 'Per day'}
-                      size="small"
-                      sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
-                    />
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                      <TextField
+                        select
+                        label="Metric"
+                        size="small"
+                        fullWidth
+                        value={d.metric}
+                        onChange={(e) => changeMetric(d.key, e.target.value as SalesKpiMetric)}
+                        sx={textFieldStyle}
+                      >
+                        {SALES_KPI_METRIC_OPTIONS.map((m) => (
+                          <MenuItem key={m} value={m}>{SALES_KPI_METRIC_LABELS[m]}</MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        select
+                        label="Schedule"
+                        size="small"
+                        fullWidth
+                        value={d.scheduleMode}
+                        onChange={(e) => patch(d.key, { scheduleMode: e.target.value as DraftItem['scheduleMode'] })}
+                        sx={textFieldStyle}
+                      >
+                        <MenuItem value="per_day">Per day</MenuItem>
+                        <MenuItem value="span">Single task</MenuItem>
+                      </TextField>
+                    </Box>
                   </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', minWidth: 280, flex: 1.4 }}>
+                    <TextField
+                      label="Task name"
+                      size="small"
+                      required
+                      value={d.name}
+                      onChange={(e) => patch(d.key, { name: e.target.value })}
+                      sx={{ flex: 2, minWidth: 160, ...textFieldStyle }}
+                    />
+                    <TextField
+                      select
+                      label="Metric"
+                      size="small"
+                      value={d.metric}
+                      onChange={(e) => changeMetric(d.key, e.target.value as SalesKpiMetric)}
+                      sx={{ flex: 1, minWidth: 150, ...textFieldStyle }}
+                    >
+                      {SALES_KPI_METRIC_OPTIONS.map((m) => (
+                        <MenuItem key={m} value={m}>{SALES_KPI_METRIC_LABELS[m]}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                )
+              ) : (
+                <Box sx={{ minWidth: isCompact ? undefined : 180, flex: isCompact ? undefined : 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 800, fontSize: { xs: '0.88rem', sm: '0.875rem' } }}>{d.name}</Typography>
+                  {!isCompact && (
+                    <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={SALES_KPI_METRIC_LABELS[d.metric] ?? d.metric}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: 'rgba(93, 26, 137, 0.08)', color: tokens.brand.primary }}
+                      />
+                      <Chip
+                        label={d.scheduleMode === 'span' ? 'Single task' : 'Per day'}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'text.secondary' }}
+                      />
+                    </Box>
+                  )}
                 </Box>
               )}
 
-              {isNew && (
+              {isNew && !isCompact && (
                 <TextField
                   select
                   label="Schedule"
@@ -304,84 +377,193 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
                 </TextField>
               )}
 
-              <WeekdayPicker
-                size="small"
-                value={d.daysOfWeek}
-                onChange={(daysOfWeek) => patch(d.key, { daysOfWeek })}
-                disabled={!d.isActive}
-              />
-
-              {manual && (
-                <TextField
-                  label="Target"
-                  type="number"
+              <Box sx={{ flexShrink: 0, ...(isCompact ? { width: '100%' } : {}) }}>
+                <WeekdayPicker
                   size="small"
-                  value={d.targetValue}
-                  onChange={(e) => patch(d.key, { targetValue: e.target.value })}
+                  value={d.daysOfWeek}
+                  onChange={(daysOfWeek) => patch(d.key, { daysOfWeek })}
                   disabled={!d.isActive}
-                  inputProps={{ min: 1 }}
-                  sx={{ width: 110, ...textFieldStyle }}
                 />
-              )}
+              </Box>
 
-              <TextField
-                select
-                label="Priority"
-                size="small"
-                value={d.priority}
-                onChange={(e) => patch(d.key, { priority: e.target.value as KpiPriority })}
-                disabled={!d.isActive}
-                sx={{ width: 130, ...textFieldStyle }}
-              >
-                {KPI_PRIORITY_OPTIONS.map((p) => (
-                  <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                label="Start"
-                type="time"
-                size="small"
-                value={d.startTime}
-                onChange={(e) => patch(d.key, { startTime: e.target.value })}
-                disabled={!d.isActive}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ step: 60 }}
-                sx={{ width: 130, ...textFieldStyle }}
-              />
-              <TextField
-                label="End"
-                type="time"
-                size="small"
-                value={d.endTime}
-                onChange={(e) => patch(d.key, { endTime: e.target.value })}
-                disabled={!d.isActive}
-                error={invalidTimeWindow(d)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ step: 60 }}
-                sx={{ width: 130, ...textFieldStyle }}
-              />
-
-              <Button
-                size="small"
-                startIcon={d.isActive ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
-                onClick={() => patch(d.key, { isActive: !d.isActive })}
-                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px', color: d.isActive ? tokens.text.secondary : tokens.brand.primary }}
-              >
-                {d.isActive ? 'Pause' : 'Resume'}
-              </Button>
-
-              {isNew && (
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setDrafts((prev) => prev.filter((item) => item.key !== d.key));
-                    setDirty(true);
+              {isCompact ? (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 1,
+                    width: '100%',
+                    alignItems: 'center',
                   }}
-                  sx={{ color: tokens.semantic.error, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
                 >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
+                  {manual && (
+                    <TextField
+                      label="Target"
+                      type="number"
+                      size="small"
+                      fullWidth
+                      value={d.targetValue}
+                      onChange={(e) => patch(d.key, { targetValue: e.target.value })}
+                      disabled={!d.isActive}
+                      inputProps={{ min: 1 }}
+                      sx={textFieldStyle}
+                    />
+                  )}
+
+                  <TextField
+                    select
+                    label="Priority"
+                    size="small"
+                    fullWidth
+                    value={d.priority}
+                    onChange={(e) => patch(d.key, { priority: e.target.value as KpiPriority })}
+                    disabled={!d.isActive}
+                    sx={{
+                      ...textFieldStyle,
+                      gridColumn: !manual ? '1 / -1' : undefined,
+                    }}
+                  >
+                    {KPI_PRIORITY_OPTIONS.map((p) => (
+                      <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    label="Start"
+                    type="time"
+                    size="small"
+                    fullWidth
+                    value={d.startTime}
+                    onChange={(e) => patch(d.key, { startTime: e.target.value })}
+                    disabled={!d.isActive}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    sx={textFieldStyle}
+                  />
+                  <TextField
+                    label="End"
+                    type="time"
+                    size="small"
+                    fullWidth
+                    value={d.endTime}
+                    onChange={(e) => patch(d.key, { endTime: e.target.value })}
+                    disabled={!d.isActive}
+                    error={invalidTimeWindow(d)}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    sx={textFieldStyle}
+                  />
+
+                  <Box sx={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                    <Button
+                      size="small"
+                      startIcon={d.isActive ? <VisibilityOffOutlinedIcon sx={{ fontSize: '18px !important' }} /> : <VisibilityOutlinedIcon sx={{ fontSize: '18px !important' }} />}
+                      onClick={() => patch(d.key, { isActive: !d.isActive })}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        borderRadius: '10px',
+                        minHeight: 36,
+                        px: 1.5,
+                        color: d.isActive ? tokens.text.secondary : tokens.brand.primary,
+                      }}
+                    >
+                      {d.isActive ? 'Pause' : 'Resume'}
+                    </Button>
+                    {isNew && (
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setDrafts((prev) => prev.filter((item) => item.key !== d.key));
+                          setDirty(true);
+                        }}
+                        sx={{ color: tokens.semantic.error, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Box>
+              ) : (
+                <>
+                  {manual && (
+                    <TextField
+                      label="Target"
+                      type="number"
+                      size="small"
+                      value={d.targetValue}
+                      onChange={(e) => patch(d.key, { targetValue: e.target.value })}
+                      disabled={!d.isActive}
+                      inputProps={{ min: 1 }}
+                      sx={{ width: 110, ...textFieldStyle }}
+                    />
+                  )}
+
+                  <TextField
+                    select
+                    label="Priority"
+                    size="small"
+                    value={d.priority}
+                    onChange={(e) => patch(d.key, { priority: e.target.value as KpiPriority })}
+                    disabled={!d.isActive}
+                    sx={{ width: 130, ...textFieldStyle }}
+                  >
+                    {KPI_PRIORITY_OPTIONS.map((p) => (
+                      <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    label="Start"
+                    type="time"
+                    size="small"
+                    value={d.startTime}
+                    onChange={(e) => patch(d.key, { startTime: e.target.value })}
+                    disabled={!d.isActive}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    sx={{ width: 130, ...textFieldStyle }}
+                  />
+                  <TextField
+                    label="End"
+                    type="time"
+                    size="small"
+                    value={d.endTime}
+                    onChange={(e) => patch(d.key, { endTime: e.target.value })}
+                    disabled={!d.isActive}
+                    error={invalidTimeWindow(d)}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 60 }}
+                    sx={{ width: 130, ...textFieldStyle }}
+                  />
+
+                  <Button
+                    size="small"
+                    startIcon={d.isActive ? <VisibilityOffOutlinedIcon sx={{ fontSize: '18px !important' }} /> : <VisibilityOutlinedIcon sx={{ fontSize: '18px !important' }} />}
+                    onClick={() => patch(d.key, { isActive: !d.isActive })}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      color: d.isActive ? tokens.text.secondary : tokens.brand.primary,
+                    }}
+                  >
+                    {d.isActive ? 'Pause' : 'Resume'}
+                  </Button>
+
+                  {isNew && (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setDrafts((prev) => prev.filter((item) => item.key !== d.key));
+                        setDirty(true);
+                      }}
+                      sx={{ color: tokens.semantic.error, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </>
               )}
             </Box>
           );
@@ -404,11 +586,11 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
         >
           Add new KPI
         </Button>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, ml: 'auto' }}>
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' }, gap: 1.5, ml: { xs: 0, sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
           <Button
             onClick={() => { setDrafts(toDrafts(assignment)); setDirty(false); }}
             disabled={!dirty || updateMutation.isPending}
-            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary }}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: tokens.text.secondary, flex: { xs: 1, sm: 'none' } }}
           >
             Reset
           </Button>
@@ -422,11 +604,12 @@ const AssignmentCard = ({ assignment }: { assignment: SalesKpiAssignment }) => {
               borderRadius: '12px',
               px: 3,
               boxShadow: 'none',
-              bgcolor: tokens.brand.primary,
-              '&:hover': { bgcolor: tokens.brand.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+              bgcolor: tokens.brand.solid,
+              '&:hover': { bgcolor: tokens.brand.solid, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+              flex: { xs: 1, sm: 'none' },
             }}
           >
-            {updateMutation.isPending ? 'Saving...' : 'Save changes'}
+            {updateMutation.isPending ? 'Saving...' : 'Save'}
           </Button>
         </Box>
       </Box>

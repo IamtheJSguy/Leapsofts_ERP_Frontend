@@ -1625,7 +1625,7 @@ const TeamPage = () => {
                 variant="contained"
                 disabled={updateUserMutation.isPending}
                 sx={{
-                  bgcolor: tokens.brand.primary,
+                  bgcolor: tokens.brand.solid,
                   color: '#fff',
                   fontWeight: 700,
                   borderRadius: '12px',
@@ -1737,7 +1737,7 @@ const TeamPage = () => {
               variant="contained"
               disabled={resetTwoFactorMutation.isPending}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 fontWeight: 700,
                 borderRadius: '12px',
@@ -1791,7 +1791,7 @@ const TeamPage = () => {
               variant="contained"
               disabled={resetPasswordMutation.isPending}
               sx={{
-                bgcolor: tokens.brand.primary,
+                bgcolor: tokens.brand.solid,
                 color: '#fff',
                 fontWeight: 700,
                 borderRadius: '12px',
@@ -2111,13 +2111,15 @@ const TeamPage = () => {
             borderRadius: '20px',
             p: 0.5,
             gap: 0.5,
-            alignSelf: { xs: 'flex-end', sm: 'center' },
+            alignSelf: { xs: 'stretch', sm: 'center' },
+            justifyContent: { xs: 'center', sm: 'flex-start' },
           }}
         >
           <IconButton
             size="small"
             onClick={() => setViewMode('grid')}
             sx={{
+              flex: { xs: 1, sm: 'initial' },
               borderRadius: '16px',
               px: 2,
               py: 0.75,
@@ -2136,6 +2138,7 @@ const TeamPage = () => {
             size="small"
             onClick={() => setViewMode('list')}
             sx={{
+              flex: { xs: 1, sm: 'initial' },
               borderRadius: '16px',
               px: 2,
               py: 0.75,
@@ -2289,69 +2292,73 @@ const TeamPage = () => {
                       />
                     </Box>
 
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
-                          ? 'repeat(3, 1fr)'
-                          : 'repeat(4, 1fr)',
-                        gap: 1,
-                        width: '100%',
-                        mt: 2,
-                        pt: 2,
-                        borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                      }}
-                    >
-                      {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
-                        ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
-                            key: stat.metric,
-                            label: stat.label,
-                            display: formatSalesKpiActual(stat.current, stat.target, stat.extra),
-                            extra: stat.extra,
-                          }))
-                        : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
-                            key: stat.key,
-                            label: stat.label,
-                            display: `${stat.value}`,
-                          }))
-                      ).map((stat) => (
-                        <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0 }}>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: 'text.secondary',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                              fontSize: '0.58rem',
-                              display: 'block',
-                              mb: 0.35,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {stat.label}
-                          </Typography>
-                          <Tooltip
-                            title={'extra' in stat && stat.extra > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
-                            disableHoverListener={!('extra' in stat) || stat.extra <= 0}
-                          >
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
+                            ? 'repeat(3, 1fr)'
+                            : 'repeat(4, 1fr)',
+                          gap: { xs: 0.5, sm: 1 },
+                          width: '100%',
+                          mt: 2,
+                          pt: 2,
+                          borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                        }}
+                      >
+                        {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
+                          ? (salesKpisByUser[member._id] || emptySalesKpiStats()).map((stat) => ({
+                              key: stat.metric,
+                              label: stat.label,
+                              display: formatSalesKpiActual(stat.current, stat.target, stat.extra),
+                              extra: stat.extra,
+                            }))
+                          : (taskStatsByUser[member._id] || emptyTaskStats()).map((stat) => ({
+                              key: stat.key,
+                              label: stat.label,
+                              display: `${stat.value}`,
+                            }))
+                        ).map((stat) => (
+                          <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0, px: 0.25 }}>
                             <Typography
-                              variant="body2"
+                              variant="caption"
+                              title={stat.label}
                               sx={{
-                                fontWeight: 800,
-                                color: isDarkMode ? '#fff' : tokens.text.primary,
-                                fontSize: '0.82rem',
-                                lineHeight: 1.1,
+                                color: 'text.secondary',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.02em',
+                                fontSize: { xs: '0.54rem', sm: '0.58rem' },
+                                lineHeight: 1.15,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 26,
+                                mb: 0.35,
+                                textAlign: 'center',
+                                wordBreak: 'break-word',
                               }}
                             >
-                              {stat.display}
+                              {stat.label}
                             </Typography>
-                          </Tooltip>
-                        </Box>
-                      ))}
-                    </Box>
+                            <Tooltip
+                              title={'extra' in stat && stat.extra > 0 ? SALES_KPI_EXTRA_TOOLTIP : ''}
+                              disableHoverListener={!('extra' in stat) || stat.extra <= 0}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 800,
+                                  color: isDarkMode ? '#fff' : tokens.text.primary,
+                                  fontSize: '0.82rem',
+                                  lineHeight: 1.1,
+                                }}
+                              >
+                                {stat.display}
+                              </Typography>
+                            </Tooltip>
+                          </Box>
+                        ))}
+                      </Box>
 
                   </CardContent>
                 </Card>
@@ -2383,9 +2390,11 @@ const TeamPage = () => {
                 }}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  alignItems: { xs: 'stretch', md: 'center' },
                   justifyContent: 'space-between',
-                  p: 2,
+                  p: { xs: 1.5, sm: 2 },
+                  gap: { xs: 1.5, md: 2 },
                   bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.65)' : tokens.surface.card,
                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : tokens.surface.border}`,
                   borderRadius: '16px',
@@ -2393,7 +2402,7 @@ const TeamPage = () => {
                   cursor: 'pointer',
                   transition: 'all 0.25s ease',
                   '&:hover': {
-                    transform: 'translateX(4px)',
+                    transform: { xs: 'translateY(-2px)', md: 'translateX(4px)' },
                     borderColor: tokens.brand.primaryMuted,
                     bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.05)' : 'rgba(93, 26, 137, 0.02)',
                     boxShadow: isDarkMode
@@ -2402,77 +2411,146 @@ const TeamPage = () => {
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Badge
-                    overlap="circular"
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                    variant="dot"
+                {/* Top/Left Section: Avatar + Name + Title + Mobile Badges */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                    minWidth: 0,
+                    width: { xs: '100%', md: 'auto' },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 }, minWidth: 0, flex: 1 }}>
+                    <Badge
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                      variant="dot"
+                      sx={{
+                        flexShrink: 0,
+                        '& .MuiBadge-badge': {
+                          backgroundColor: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                          color: (member as any).isOnline ? '#10B981' : '#9CA3AF',
+                          boxShadow: `0 0 0 2px ${isDarkMode ? 'rgba(30, 27, 36, 1)' : '#fff'}`,
+                          minWidth: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                        },
+                      }}
+                    >
+                      <Avatar
+                        src={member.avatarUrl || undefined}
+                        sx={{
+                          width: { xs: 44, sm: 46 },
+                          height: { xs: 44, sm: 46 },
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
+                          color: isDarkMode ? '#FFFFFF' : '#1A1625',
+                          fontSize: '1.1rem',
+                          fontWeight: 800,
+                          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                        }}
+                      >
+                        {initials}
+                      </Avatar>
+                    </Badge>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 700,
+                          color: isDarkMode ? '#fff' : tokens.text.primary,
+                          fontSize: { xs: '0.92rem', sm: '0.96rem' },
+                          lineHeight: 1.2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {name}
+                      </Typography>
+                      <MemberTeamBadges teams={teamQuery.data ?? []} userId={member._id} />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: tokens.brand.primaryMuted,
+                          fontWeight: 650,
+                          fontSize: '0.74rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          mt: 0.25,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <WorkIcon sx={{ fontSize: 12, flexShrink: 0 }} />
+                        {member.jobTitle || 'Team Representative'}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Badges on mobile: cleanly placed on top right */}
+                  <Box
                     sx={{
-                      '& .MuiBadge-badge': {
-                        backgroundColor: (member as any).isOnline ? '#10B981' : '#9CA3AF',
-                        color: (member as any).isOnline ? '#10B981' : '#9CA3AF',
-                        boxShadow: `0 0 0 2px ${isDarkMode ? 'rgba(30, 27, 36, 1)' : '#fff'}`,
-                        minWidth: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                      },
+                      display: { xs: 'flex', md: 'none' },
+                      flexDirection: 'column',
+                      gap: 0.5,
+                      alignItems: 'flex-end',
+                      flexShrink: 0,
                     }}
                   >
-                    <Avatar
-                      src={member.avatarUrl || undefined}
+                    <Chip
+                      label={member.role === 'admin' ? 'Admin' : member.role === 'manager' ? 'Manager' : 'Employee'}
+                      size="small"
                       sx={{
-                        width: 46,
-                        height: 46,
-                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.06)' : '#F2EEEC',
-                        color: isDarkMode ? '#FFFFFF' : '#1A1625',
-                        fontSize: '1.1rem',
-                        fontWeight: 800,
-                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                        bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : member.role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                        color: member.role === 'admin' ? tokens.brand.accent : member.role === 'manager' ? '#10B981' : tokens.brand.primary,
+                        fontWeight: 750,
+                        fontSize: '0.64rem',
+                        height: 20,
                       }}
-                    >
-                      {initials}
-                    </Avatar>
-                  </Badge>
-                  <Box>
-                    <Typography
-                      variant="subtitle1"
+                    />
+                    <Chip
+                      label={member.department || 'Staff'}
+                      size="small"
                       sx={{
-                        fontWeight: 700,
-                        color: isDarkMode ? '#fff' : tokens.text.primary,
-                        fontSize: '0.96rem',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {name}
-                    </Typography>
-                    <MemberTeamBadges teams={teamQuery.data ?? []} userId={member._id} />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: tokens.brand.primaryMuted,
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        color: tokens.text.secondary,
                         fontWeight: 650,
-                        fontSize: '0.76rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mt: 0.25,
+                        fontSize: '0.64rem',
+                        height: 20,
                       }}
-                    >
-                      <WorkIcon sx={{ fontSize: 12 }} />
-                      {member.jobTitle || 'Team Representative'}
-                    </Typography>
+                    />
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {/* Bottom/Right Section: Stats Box + Desktop Badges */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    width: { xs: '100%', md: 'auto' },
+                    justifyContent: { xs: 'stretch', md: 'flex-end' },
+                    flexShrink: 0,
+                  }}
+                >
                   <Box
                     sx={{
                       display: 'grid',
                       gridTemplateColumns: salesModuleOn && isSalesOrMarketingDepartment(member.department)
-                        ? 'repeat(3, minmax(52px, auto))'
-                        : 'repeat(4, minmax(52px, auto))',
-                      gap: 1.5,
-                      mr: { xs: 0, sm: 1 },
+                        ? { xs: 'repeat(3, 1fr)', sm: 'repeat(3, minmax(64px, 1fr))', md: 'repeat(3, minmax(52px, auto))' }
+                        : { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(4, minmax(52px, auto))' },
+                      gap: { xs: 1.25, sm: 1.5 },
+                      width: { xs: '100%', md: 'auto' },
+                      bgcolor: { xs: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', md: 'transparent' },
+                      borderRadius: { xs: '12px', md: 0 },
+                      py: { xs: 1, md: 0 },
+                      px: { xs: 1.25, md: 0 },
+                      border: { xs: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`, md: 'none' },
+                      mr: { xs: 0, md: 1 },
                     }}
                   >
                     {(salesModuleOn && isSalesOrMarketingDepartment(member.department)
@@ -2488,17 +2566,21 @@ const TeamPage = () => {
                           display: `${stat.value}`,
                         }))
                     ).map((stat) => (
-                      <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0 }}>
+                      <Box key={stat.key} sx={{ textAlign: 'center', minWidth: 0, px: 0.5 }}>
                         <Typography
                           variant="caption"
+                          title={stat.label}
                           sx={{
                             color: 'text.secondary',
                             fontWeight: 700,
                             textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            fontSize: '0.58rem',
+                            letterSpacing: '0.03em',
+                            fontSize: { xs: '0.6rem', sm: '0.58rem' },
                             display: 'block',
                             mb: 0.25,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
                         >
                           {stat.label}
@@ -2512,7 +2594,7 @@ const TeamPage = () => {
                             sx={{
                               fontWeight: 800,
                               color: isDarkMode ? '#fff' : tokens.text.primary,
-                              fontSize: '0.8rem',
+                              fontSize: { xs: '0.82rem', sm: '0.82rem' },
                               lineHeight: 1.1,
                             }}
                           >
@@ -2522,28 +2604,32 @@ const TeamPage = () => {
                       </Box>
                     ))}
                   </Box>
-                  <Chip
-                    label={member.department || 'Staff'}
-                    size="small"
-                    sx={{
-                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                      color: tokens.text.secondary,
-                      fontWeight: 650,
-                      fontSize: '0.68rem',
-                      height: 22,
-                    }}
-                  />
-                  <Chip
-                    label={member.role === 'admin' ? 'Administrator' : member.role === 'manager' ? 'Manager' : 'Employee'}
-                    size="small"
-                    sx={{
-                      bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : member.role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
-                      color: member.role === 'admin' ? tokens.brand.accent : member.role === 'manager' ? '#10B981' : tokens.brand.primary,
-                      fontWeight: 750,
-                      fontSize: '0.68rem',
-                      height: 22,
-                    }}
-                  />
+
+                  {/* Desktop Chips (hidden on mobile, shown on md and above) */}
+                  <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, alignItems: 'center' }}>
+                    <Chip
+                      label={member.department || 'Staff'}
+                      size="small"
+                      sx={{
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        color: tokens.text.secondary,
+                        fontWeight: 650,
+                        fontSize: '0.68rem',
+                        height: 22,
+                      }}
+                    />
+                    <Chip
+                      label={member.role === 'admin' ? 'Administrator' : member.role === 'manager' ? 'Manager' : 'Employee'}
+                      size="small"
+                      sx={{
+                        bgcolor: member.role === 'admin' ? 'rgba(255, 127, 17, 0.08)' : member.role === 'manager' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(93, 26, 137, 0.08)',
+                        color: member.role === 'admin' ? tokens.brand.accent : member.role === 'manager' ? '#10B981' : tokens.brand.primary,
+                        fontWeight: 750,
+                        fontSize: '0.68rem',
+                        height: 22,
+                      }}
+                    />
+                  </Box>
                 </Box>
               </Box>
             );

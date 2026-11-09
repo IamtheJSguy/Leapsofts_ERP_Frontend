@@ -427,13 +427,13 @@ export const ImportBoardDialog = ({
           disabled={!parsed || !boardName.trim() || isPending}
           variant="contained"
           sx={{
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             fontWeight: 700,
             borderRadius: '24px',
             textTransform: 'none',
             boxShadow: 'none',
-            '&:hover': { bgcolor: tokens.brand.primary, boxShadow: 'none' },
+            '&:hover': { bgcolor: tokens.brand.solid, boxShadow: 'none' },
           }}
         >
           {isPending ? <CircularProgress size={20} color="inherit" /> : 'Create board'}

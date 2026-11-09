@@ -1,5 +1,5 @@
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
-import { RichTextEditor } from '@/components/chat/RichTextEditor';
+import { LazyRichTextEditor } from '@/components/chat/LazyRichTextEditor';
 import { leadCommentLevelTokens } from '@/styles/tokens';
 import type { LeadCommentFormat, LeadCommentLevel, User } from '@/types';
 
@@ -59,7 +59,7 @@ export function LeadCommentComposer({
             overflow: 'hidden',
           }}
         >
-          <RichTextEditor
+          <LazyRichTextEditor
             value={value.text}
             onChange={(html) => onChange({ ...value, text: html, format: 'html' })}
             submitOnEnter={false}

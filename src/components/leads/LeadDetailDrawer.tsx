@@ -136,8 +136,13 @@ export const LeadDetailDrawer = ({
   const followUps = [...(lead.followUps ?? [])].sort((a, b) => b.number - a.number);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: 400, p: 2 }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, maxWidth: '100%' } }}
+    >
+      <Box sx={{ width: { xs: '100%', sm: 400 }, maxWidth: '100%', p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">{getLeadDisplayName(lead)}</Typography>
           <IconButton onClick={onClose} aria-label="Close">

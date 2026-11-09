@@ -24,6 +24,8 @@ interface GlassDatePickerProps {
   isDarkMode: boolean;
   label?: string;
   displayValue?: string;
+  fullWidth?: boolean;
+  compact?: boolean;
 }
 
 export const GlassDatePicker = ({
@@ -32,6 +34,8 @@ export const GlassDatePicker = ({
   isDarkMode,
   label = 'Filter by Date',
   displayValue,
+  fullWidth = false,
+  compact = false,
 }: GlassDatePickerProps) => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
@@ -70,13 +74,14 @@ export const GlassDatePicker = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
-          px: 2.5,
-          py: 1,
-          borderRadius: '16px',
+          gap: compact ? 1 : 1.5,
+          px: compact ? 1.75 : 2.5,
+          py: compact ? 0.75 : 1,
+          borderRadius: compact ? '12px' : '16px',
           bgcolor: isDarkMode ? 'rgba(0,0,0,0.15)' : '#fff',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          minWidth: 220,
+          minWidth: fullWidth ? 0 : 220,
+          width: fullWidth ? '100%' : 'auto',
           textAlign: 'left',
           justifyContent: 'flex-start',
           color: isDarkMode ? '#fff' : tokens.text.primary,
@@ -196,7 +201,7 @@ export const GlassDatePicker = ({
                         : isDarkMode
                           ? '#fff'
                           : tokens.text.primary,
-                    bgcolor: isSelected ? tokens.brand.primary : 'transparent',
+                    bgcolor: isSelected ? tokens.brand.solid : 'transparent',
                     transition: 'all 0.2s',
                     opacity: isCurrentMonth ? 1 : 0.4,
                     '&:hover': {

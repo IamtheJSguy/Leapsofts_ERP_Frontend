@@ -14,6 +14,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -48,6 +49,7 @@ const invalidTimeWindow = (
 export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const addToast = useUIStore((s) => s.addToast);
   const assignableUsers = useAssignableUsers();
   const createMutation = useCreateKPI();
@@ -181,14 +183,16 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
       open={open} 
       onClose={onClose} 
       maxWidth="sm" 
-      fullWidth 
+      fullWidth
+      fullScreen={isMobile}
       PaperProps={{ 
         sx: { 
-          borderRadius: '24px', 
+          borderRadius: isMobile ? 0 : '24px', 
           bgcolor: isDarkMode ? 'rgba(30, 27, 36, 0.95)' : '#fff',
           backgroundImage: 'none',
-          boxShadow: isDarkMode ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 25px 50px -12px rgba(0,0,0,0.1)',
+          boxShadow: isMobile ? 'none' : isDarkMode ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 25px 50px -12px rgba(0,0,0,0.1)',
           overflowX: 'hidden',
+          ...(isMobile ? { display: 'flex', flexDirection: 'column', maxHeight: '100dvh' } : {}),
         } 
       }}
       slotProps={{
@@ -197,24 +201,25 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
         }
       }}
     >
-      <DialogTitle sx={{ fontWeight: 800, pr: 5, pb: 2, pt: 3, display: 'flex', alignItems: 'center', color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em' }}>
+      <DialogTitle sx={{ fontWeight: 800, pr: 5, pb: 2, pt: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 }, display: 'flex', alignItems: 'center', flexShrink: 0, color: isDarkMode ? '#fff' : tokens.text.primary, letterSpacing: '-0.02em' }}>
         {headerIcon}
         {kpi ? 'Edit Standalone KPI' : 'Create Standalone KPI'}
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 16, top: 16, bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' } }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: '8px !important', overflowX: 'hidden' }}>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: '16px !important', px: { xs: 2, sm: 3 }, flex: isMobile ? 1 : undefined, overflowY: 'auto', overflowX: 'hidden' }}>
         <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required sx={textFieldStyle} />
         <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline rows={2} sx={textFieldStyle} />
-        <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 2.5, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap' }}>
           <TextField
             label="Target (optional)"
             type="number"
             value={targetValue}
             onChange={(e) => setTargetValue(e.target.value)}
             placeholder="Leave blank for a simple task"
-            sx={{ flex: 1, minWidth: 100, ...textFieldStyle }}
+            fullWidth={isMobile}
+            sx={{ flex: { sm: 1 }, minWidth: { sm: 100 }, ...textFieldStyle }}
           />
           {!hasSchedule && (
             <TextField
@@ -222,11 +227,12 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              fullWidth={isMobile}
               InputLabelProps={{ shrink: true }}
-              sx={{ flex: 1, minWidth: 140, ...textFieldStyle }}
+              sx={{ flex: { sm: 1 }, minWidth: { sm: 140 }, ...textFieldStyle }}
             />
           )}
-          <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as KpiPriority)} sx={{ flex: 1, minWidth: 100, ...textFieldStyle }}>
+          <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as KpiPriority)} fullWidth={isMobile} sx={{ flex: { sm: 1 }, minWidth: { sm: 100 }, ...textFieldStyle }}>
             {KPI_PRIORITY_OPTIONS.map((p) => (
               <MenuItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</MenuItem>
             ))}
@@ -248,12 +254,15 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
             Schedule
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <WeekdayPicker
-              label="Runs on"
-              value={daysOfWeek}
-              onChange={handleDaysChange}
-            />
+          <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', alignItems: 'flex-start', width: '100%' }}>
+            <Box sx={{ width: '100%', minWidth: 0, flex: { sm: '1 1 auto' } }}>
+              <WeekdayPicker
+                size="small"
+                label="Runs on"
+                value={daysOfWeek}
+                onChange={handleDaysChange}
+              />
+            </Box>
             {hasSchedule && (
               <Box>
                 <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: tokens.text.muted, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -353,7 +362,8 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Assign to team members (empty = all eligible users)"
+              label={isMobile ? 'Assign members' : 'Assign to team members (empty = all eligible users)'}
+              placeholder={isMobile ? 'All eligible if empty' : undefined}
               sx={textFieldStyle}
             />
           )}
@@ -362,14 +372,29 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
           }}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 4, pb: 4, pt: 1, gap: 1.5 }}>
-        <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 4 },
+          pb: { xs: 3, sm: 4 },
+          pt: 1,
+          gap: 1.5,
+          flexShrink: 0,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
+      >
+        <Button
+          onClick={onClose}
+          fullWidth={isMobile}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '12px', color: isDarkMode ? 'rgba(255,255,255,0.7)' : tokens.text.secondary, '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' } }}
+        >
           Cancel
         </Button>
         <Button 
           variant="contained" 
           onClick={handleSave} 
-          disabled={isPending || !name.trim() || timeInvalid} 
+          disabled={isPending || !name.trim() || timeInvalid}
+          fullWidth={isMobile}
           sx={{ 
             textTransform: 'none', 
             borderRadius: '12px', 
@@ -377,9 +402,9 @@ export const StandaloneKPIForm = ({ open, onClose, kpi }: Props) => {
             py: 1.25, 
             fontWeight: 700, 
             boxShadow: 'none',
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             '&:hover': {
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               transform: 'translateY(-1px)'
             },

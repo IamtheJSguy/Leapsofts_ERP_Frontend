@@ -532,7 +532,7 @@ export const ShowcaseSales: React.FC = () => {
               fontSize: '0.68rem',
               height: 26,
               px: 1.25,
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               boxShadow: 'none',
               '&:hover': { bgcolor: tokens.brand.primaryLight, boxShadow: 'none' },
             }}
@@ -987,7 +987,7 @@ export const ShowcaseSales: React.FC = () => {
                             color: 'text.secondary',
                             whiteSpace: 'nowrap',
                             '&:hover': {
-                              bgcolor: tokens.brand.primary,
+                              bgcolor: tokens.brand.solid,
                               borderColor: tokens.brand.primary,
                               color: '#FFFFFF',
                             },

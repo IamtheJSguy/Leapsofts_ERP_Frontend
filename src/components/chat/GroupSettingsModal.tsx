@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   Box,
@@ -54,6 +54,13 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery('');
+      setShowAddMember(false);
+    }
+  }, [open]);
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -177,7 +184,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
             height: 72,
             mx: 'auto',
             mb: 2,
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             color: '#fff',
             fontSize: '1.8rem',
             fontWeight: 800,
@@ -229,7 +236,7 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
                       <PersonRemoveIcon fontSize="small" />
                     </IconButton>
                   ) : isGroupAdmin ? (
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, px: 1, py: 0.5, bgcolor: tokens.brand.primary + '15', borderRadius: '8px' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: tokens.brand.primary, px: 1, py: 0.5, bgcolor: 'rgba(var(--brand-primary-rgb), 0.08)', borderRadius: '8px' }}>
                       Admin
                     </Typography>
                   ) : null
@@ -364,11 +371,11 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
             variant="contained"
             disabled={isAdding || isRemoving}
             sx={{
-              bgcolor: confirmDialog.action === 'add' ? tokens.brand.primary : tokens.semantic.error,
+              bgcolor: confirmDialog.action === 'add' ? tokens.brand.solid : tokens.semantic.error,
               fontWeight: 700,
               borderRadius: '8px',
               '&:hover': {
-                bgcolor: confirmDialog.action === 'add' ? tokens.brand.primary : tokens.semantic.error,
+                bgcolor: confirmDialog.action === 'add' ? tokens.brand.solid : tokens.semantic.error,
                 opacity: 0.9
               }
             }}

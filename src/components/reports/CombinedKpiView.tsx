@@ -31,7 +31,8 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import { tokens } from '@/styles/tokens';
-import type { CombinedKpiMetrics, CombinedKpiRow, CombinedKpiSection, KpiPerformanceMetrics } from '@/types';
+import type { CombinedKpiMetrics, CombinedKpiRow, CombinedKpiSection } from '@/types';
+export { fromLegacyKpiPerformance } from './combinedKpiLegacy';
 
 interface CombinedKpiViewProps {
   metrics: CombinedKpiMetrics;
@@ -40,16 +41,6 @@ interface CombinedKpiViewProps {
   compact?: boolean;
 }
 
-const emptySection = (): CombinedKpiSection => ({
-  assigned: 0,
-  completed: 0,
-  overdue: 0,
-  completionRate: 0,
-  rows: [],
-  byName: [],
-  dailyTrend: [],
-});
-
 /** Rate is actual/target when a target exists; otherwise assigned completion. */
 const rowRatePercent = (row: CombinedKpiRow): number => {
   if (typeof row.target === 'number' && row.target > 0) {
@@ -57,48 +48,6 @@ const rowRatePercent = (row: CombinedKpiRow): number => {
   }
   return row.completionRate;
 };
-
-export const fromLegacyKpiPerformance = (legacy: KpiPerformanceMetrics): CombinedKpiMetrics => ({
-  headlines: {
-    assigned: legacy.totalAssigned,
-    completed: legacy.completed,
-    overdue: legacy.missed,
-    completionRate: legacy.completionRate,
-    salesAttainment: 0,
-    simpleCompletionRate: legacy.completionRate,
-    kanbanCompletionRate: 0,
-    completedLate: 0,
-  },
-  simple: {
-    assigned: legacy.totalAssigned,
-    completed: legacy.completed,
-    overdue: legacy.missed,
-    completionRate: legacy.completionRate,
-    rows: (legacy.byKpi ?? []).map((row) => ({
-      name: row.kpiName,
-      assigned: row.entriesTotal,
-      completed: row.entriesCompleted,
-      overdue: 0,
-      completionRate: row.entriesTotal > 0 ? Math.round((row.entriesCompleted / row.entriesTotal) * 100) : 0,
-      target: row.target,
-      actual: row.actual,
-      attainmentRate: row.attainmentRate,
-    })),
-    byName: (legacy.byKpi ?? []).map((row) => ({
-      name: row.kpiName,
-      assigned: row.entriesTotal,
-      completed: row.entriesCompleted,
-      overdue: 0,
-      completionRate: row.entriesTotal > 0 ? Math.round((row.entriesCompleted / row.entriesTotal) * 100) : 0,
-      target: row.target,
-      actual: row.actual,
-      attainmentRate: row.attainmentRate,
-    })),
-    dailyTrend: legacy.dailyTrend,
-  },
-  kanban: emptySection(),
-  sales: emptySection(),
-});
 
 const SectionTable = ({
   section,

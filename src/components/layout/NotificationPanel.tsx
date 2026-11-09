@@ -64,14 +64,15 @@ const getChatMentionMessageId = (notification: Notification): string | undefined
 
 export const NotificationPanel = () => {
   const navigate = useNavigate();
-  const { notificationPanelOpen, setNotificationPanelOpen } = useUIStore();
+  const notificationPanelOpen = useUIStore((s) => s.notificationPanelOpen);
+  const setNotificationPanelOpen = useUIStore((s) => s.setNotificationPanelOpen);
   const {
     data,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
-  } = useInfiniteNotifications(30);
+  } = useInfiniteNotifications(30, { enabled: notificationPanelOpen });
   const { data: serverUnreadCount } = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -286,7 +287,13 @@ export const NotificationPanel = () => {
                   <Box
                     onClick={() => {
                       if (!n.isRead) markAsRead.mutate(n._id);
-                      if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
+                      if (n.type === NOTIFICATION_TYPE.LEAD_ENRICHMENT_BATCH) {
+                        const batchId = (n as { metadata?: { batchId?: string } }).metadata?.batchId;
+                        if (batchId) {
+                          setNotificationPanelOpen(false);
+                          navigate(`/sales?enrichBatch=${encodeURIComponent(batchId)}`);
+                        }
+                      } else if (n.type === NOTIFICATION_TYPE.APPROVAL_REQUIRED && (n as { metadata?: { changeRequestId?: string } }).metadata?.changeRequestId) {
                         setNotificationPanelOpen(false);
                         navigate('/tasks?tab=change_requests');
                       } else if (n.type === NOTIFICATION_TYPE.MEETING_REMINDER && (n as any).metadata?.meetingId) {
@@ -362,7 +369,7 @@ export const NotificationPanel = () => {
                           transform: 'translate(-50%, -50%)', 
                           width: 8, height: 8, 
                           borderRadius: '50%', 
-                          bgcolor: tokens.brand.primary,
+                          bgcolor: tokens.brand.solid,
                           boxShadow: `0 0 10px ${`color-mix(in srgb, ${tokens.brand.primary} 50%, transparent)`}`
                         }} 
                       />

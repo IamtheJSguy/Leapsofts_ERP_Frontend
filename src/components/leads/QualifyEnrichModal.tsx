@@ -41,6 +41,10 @@ import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { showApiError } from '@/utils/apiError';
 import { PushToSalesBoardModal } from './PushToSalesBoardModal';
 import { MeetingCreateFormBlock } from '@/components/meetings/MeetingCreateFormBlock';
+import { useEnrichLeadWithAi, type AiPendingAction } from '@/hooks/api/useAi';
+import { AiActionPreviewCard } from '@/components/ai/AiActionPreviewCard';
+import { AiAgentPhaseTimeline } from '@/components/ai/AiAgentPhaseTimeline';
+import { useAiChatSessionStore } from '@/store/useAiChatSessionStore';
 
 interface QualifyEnrichModalProps {
   open: boolean;
@@ -550,6 +554,12 @@ export const QualifyEnrichModal = ({
   const [sharedWith, setSharedWith] = useState<User[]>([]);
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [pushToSalesBoardOpen, setPushToSalesBoardOpen] = useState(false);
+  const [aiPendingAction, setAiPendingAction] = useState<AiPendingAction | null>(null);
+  const enrichLeadWithAi = useEnrichLeadWithAi();
+  const setAiDrawerOpen = useUIStore((s) => s.setAiDrawerOpen);
+  const modalEnrichPendingOp = useAiChatSessionStore(
+    (s) => s.pendingByConv[`modal_enrich_${leadId}`],
+  );
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -611,8 +621,44 @@ export const QualifyEnrichModal = ({
       }
 
       setShowMeetingForm(false);
+      setAiPendingAction(null);
     }
   }, [lead, open, dbUsers]);
+
+  const handleRunAiEnrich = () => {
+    if (!leadId || enrichLeadWithAi.isPending) return;
+    const modalKey = `modal_enrich_${leadId}`;
+    const requestId = `enrich-modal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionStore = useAiChatSessionStore.getState();
+
+    setAiPendingAction(null);
+    sessionStore.setPendingOperation(modalKey, {
+      conversationKey: modalKey,
+      requestId,
+      provider: sessionStore.provider,
+      kind: 'enrich',
+      startedAt: Date.now(),
+      phases: [],
+    });
+
+    enrichLeadWithAi.mutate(
+      { leadId, requestId },
+      {
+        onSuccess: (res) => {
+          useAiChatSessionStore.getState().setPendingOperation(modalKey, null);
+          setAiPendingAction(res.enrichment.pendingAction);
+          addToast({
+            message: `AI discovered ${Object.keys(res.enrichment.pendingAction.proposed).length} field(s) for ${res.enrichment.leadName}`,
+            severity: 'success',
+          });
+        },
+        onError: (err) => {
+          useAiChatSessionStore.getState().setPendingOperation(modalKey, null);
+          showApiError(err);
+        },
+      },
+    );
+  };
 
   const handleLeadDataChange = useCallback((field: keyof Lead, value: string) => {
     if (field === 'prospectName') {
@@ -870,8 +916,10 @@ export const QualifyEnrichModal = ({
       PaperProps={{
         sx: {
           borderRadius: { xs: '20px', md: '24px' },
-          maxHeight: 'calc(100vh - 32px)',
-          height: { xs: 'calc(100vh - 32px)', md: 'auto' },
+          m: { xs: 1, sm: 4 },
+          width: { xs: 'calc(100% - 16px)', sm: 'calc(100% - 64px)' },
+          maxHeight: { xs: 'calc(100dvh - 16px)', sm: 'calc(100vh - 32px)' },
+          height: { xs: 'calc(100dvh - 16px)', md: 'auto' },
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -888,14 +936,16 @@ export const QualifyEnrichModal = ({
       <DialogTitle sx={{ p: 0, flexShrink: 0 }}>
         <Box sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
           justifyContent: 'space-between',
+          gap: { xs: 1, sm: 0 },
           px: { xs: 2, md: 3 },
           py: 1.5,
           borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         }}>
-          <Box sx={{ minWidth: 0, pr: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 850, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+          <Box sx={{ minWidth: 0, pr: { xs: 0, sm: 2 } }}>
+            <Typography variant="h6" sx={{ fontWeight: 850, fontSize: { xs: '1.05rem', sm: '1.25rem' }, color: tokens.text.primary, letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {isUpdateMode ? 'Update Lead' : 'Qualify Lead'}
             </Typography>
             <Typography variant="body2" sx={{ color: tokens.text.secondary, fontWeight: 500, mt: 0.25, display: { xs: 'none', sm: 'block' } }}>
@@ -904,24 +954,101 @@ export const QualifyEnrichModal = ({
                 : 'Review and enrich the profile before pushing it to the pipeline.'}
             </Typography>
           </Box>
-          <IconButton
-            onClick={onClose}
-            disabled={isPending}
-            size="small"
-            sx={{
-              color: tokens.text.muted,
-              bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              p: 1,
-              flexShrink: 0,
-              '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-end', sm: 'flex-start' }, gap: 1, flexShrink: 0 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={
+                enrichLeadWithAi.isPending ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <AutoAwesomeIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              onClick={handleRunAiEnrich}
+              disabled={isPending || enrichLeadWithAi.isPending || !leadId}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                borderColor: tokens.brand.primary,
+                color: tokens.brand.primary,
+              }}
+            >
+              {enrichLeadWithAi.isPending ? 'Enriching...' : 'AI Enrich'}
+            </Button>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setAiDrawerOpen(true, leadId)}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                color: 'text.secondary',
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
+            >
+              Ask Lumi
+            </Button>
+            <IconButton
+              onClick={onClose}
+              disabled={isPending}
+              size="small"
+              sx={{
+                color: tokens.text.muted,
+                bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                p: 1,
+                flexShrink: 0,
+                '&:hover': { bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {modalEnrichPendingOp && (
+          <Box sx={{ px: { xs: 2, md: 3 }, pt: 1.5, pb: 1, borderBottom: `1px solid ${tokens.surface.border}` }}>
+            <AiAgentPhaseTimeline pendingOp={modalEnrichPendingOp} compact />
+          </Box>
+        )}
+        {aiPendingAction && (
+          <Box sx={{ px: { xs: 2, md: 3 }, pt: 1.5, pb: 1, maxHeight: 280, overflowY: 'auto', borderBottom: `1px solid ${tokens.surface.border}` }}>
+            <AiActionPreviewCard
+              action={aiPendingAction}
+              onConfirmed={(confirmed, entityResult) => {
+                setAiPendingAction(confirmed);
+                const applied = confirmed.applied || confirmed.proposed || {};
+                setLeadData((prev) => ({
+                  ...prev,
+                  ...(applied.firstName ? { firstName: String(applied.firstName) } : {}),
+                  ...(applied.lastName ? { lastName: String(applied.lastName) } : {}),
+                  ...(applied.prospectName ? { prospectName: String(applied.prospectName) } : {}),
+                  ...(applied.jobTitle ? { title: String(applied.jobTitle) } : {}),
+                  ...(applied.company ? { company: String(applied.company) } : {}),
+                  ...(applied.email ? { email: String(applied.email) } : {}),
+                  ...(applied.phone ? { phone: String(applied.phone) } : {}),
+                  ...(applied.website ? { website: String(applied.website) } : {}),
+                  ...(applied.industry ? { industry: String(applied.industry) } : {}),
+                  ...(applied.location ? { location: String(applied.location) } : {}),
+                  ...(applied.companySize ? { companySize: String(applied.companySize) } : {}),
+                  ...(applied.profileUrl ? { profileUrl: String(applied.profileUrl) } : {}),
+                }));
+                if (applied.notes) {
+                  setNotes(String(applied.notes));
+                }
+                if (entityResult && typeof entityResult === 'object') {
+                  onSuccess(undefined, undefined, entityResult as Lead);
+                }
+              }}
+            />
+          </Box>
+        )}
         {(
           <Box sx={{
             display: 'flex',
@@ -949,6 +1076,8 @@ export const QualifyEnrichModal = ({
         px: { xs: 2, md: 3 },
         py: 1.25,
         flexShrink: 0,
+        flexWrap: 'wrap',
+        gap: { xs: 1, sm: 0 },
         borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)'}`,
         bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.01)',
       }}>
@@ -958,11 +1087,13 @@ export const QualifyEnrichModal = ({
           variant="outlined"
           startIcon={<DashboardIcon sx={{ fontSize: 17 }} />}
           sx={{
-            mr: 'auto',
+            mr: { xs: 0, sm: 'auto' },
+            width: { xs: '100%', sm: 'auto' },
+            whiteSpace: 'nowrap',
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 750,
-            fontSize: '0.85rem',
+            fontSize: { xs: '0.8rem', sm: '0.85rem' },
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
             color: tokens.brand.primary,
             '&:hover': {
@@ -987,7 +1118,7 @@ export const QualifyEnrichModal = ({
           disabled={isPending || !lead}
           variant="contained"
           sx={{
-            bgcolor: tokens.brand.primary, color: '#fff', fontWeight: 800, borderRadius: '12px', px: 3.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
+            bgcolor: tokens.brand.solid, color: '#fff', fontWeight: 800, borderRadius: '12px', px: 3.5, py: 0.75, textTransform: 'none', fontSize: '0.9rem',
             background: `linear-gradient(135deg, ${tokens.brand.accent} 0%, ${tokens.brand.primary} 100%)`,
             boxShadow: '0 6px 16px rgba(93, 26, 137, 0.25)',
             transition: 'all 0.3s ease',

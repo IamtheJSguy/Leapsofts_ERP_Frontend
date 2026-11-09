@@ -1,4 +1,4 @@
-import { Box, Tooltip, Typography, useTheme } from '@mui/material';
+import { Box, Tooltip, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { WEEKDAY_INITIALS, WEEKDAY_SHORT_LABELS } from '@/lib/constants';
 import { tokens } from '@/styles/tokens';
 
@@ -14,7 +14,8 @@ interface WeekdayPickerProps {
 export const WeekdayPicker = ({ value, onChange, label, disabled, size = 'medium' }: WeekdayPickerProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const dim = size === 'small' ? 28 : 34;
+  const isNarrow = useMediaQuery(theme.breakpoints.down('sm'));
+  const dim = size === 'small' ? (isNarrow ? 26 : 28) : isNarrow ? 30 : 34;
 
   const toggle = (day: number) => {
     if (disabled) return;
@@ -22,7 +23,7 @@ export const WeekdayPicker = ({ value, onChange, label, disabled, size = 'medium
   };
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', minWidth: 0 }}>
       {label && (
         <Typography
           variant="caption"
@@ -31,7 +32,15 @@ export const WeekdayPicker = ({ value, onChange, label, disabled, size = 'medium
           {label}
         </Typography>
       )}
-      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: { xs: 0.25, sm: 0.75 },
+          flexWrap: { xs: 'nowrap', sm: 'wrap' },
+          width: '100%',
+          justifyContent: { xs: 'space-between', sm: 'flex-start' },
+        }}
+      >
         {WEEKDAY_INITIALS.map((initial, day) => {
           const selected = value.includes(day);
           return (
@@ -51,7 +60,7 @@ export const WeekdayPicker = ({ value, onChange, label, disabled, size = 'medium
                   fontFamily: 'inherit',
                   transition: 'all 0.2s',
                   opacity: disabled ? 0.5 : 1,
-                  bgcolor: selected ? tokens.brand.primary : isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                  bgcolor: selected ? tokens.brand.solid : isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
                   color: selected ? '#fff' : isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
                   border: `1px solid ${selected ? tokens.brand.primary : isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
                   '&:hover': disabled

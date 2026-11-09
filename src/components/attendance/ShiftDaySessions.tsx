@@ -227,7 +227,7 @@ export const ShiftDaySessions = ({
                         height: 18,
                         fontSize: '0.6rem',
                         fontWeight: 800,
-                        bgcolor: `${tokens.brand.primary}18`,
+                        bgcolor: `${tokens.brand.solid}18`,
                         color: tokens.brand.primary,
                       }}
                     />

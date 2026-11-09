@@ -1252,7 +1252,7 @@ export const ShowcaseDashboard: React.FC = () => {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.primary }} />
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.brand.solid }} />
               <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: isDark ? '#FFFFFF' : tokens.text.primary }}>
                 New Leads (+14%)
               </Typography>

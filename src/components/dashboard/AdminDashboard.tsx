@@ -310,7 +310,7 @@ export const AdminDashboard = () => {
   const upcomingDeadlines = teamAnalysis?.deadlines ?? [];
 
   const renderStatsGrid = (stats: PipelineStat[], keyPrefix: string) => (
-    <Grid container spacing={2.5}>
+    <Grid container spacing={{ xs: 1.5, sm: 2.5 }}>
       {stats.map((stat) => (
         <Grid
           item
@@ -322,7 +322,7 @@ export const AdminDashboard = () => {
         >          <Box
             onClick={() => handleStatClick(stat)}
             sx={{
-              p: 2.2,
+              p: { xs: 1.5, sm: 2.2 },
               borderRadius: '16px',
               bgcolor: 'rgba(0,0,0,0.008)',
               border: '1px solid rgba(0,0,0,0.015)',
@@ -342,8 +342,8 @@ export const AdminDashboard = () => {
               sx={{
                 color: tokens.text.muted,
                 fontWeight: 750,
-                letterSpacing: '0.08em',
-                fontSize: '0.62rem',
+                letterSpacing: { xs: '0.04em', sm: '0.08em' },
+                fontSize: { xs: '0.58rem', sm: '0.62rem' },
                 display: 'block',
                 mb: 0.5
               }}
@@ -352,7 +352,7 @@ export const AdminDashboard = () => {
             </Typography>
             <Typography
               sx={{
-                fontSize: { xs: '1.4rem', sm: '1.8rem' },
+                fontSize: { xs: '1.25rem', sm: '1.8rem' },
                 fontWeight: 850,
                 color: tokens.text.primary,
                 lineHeight: 1,
@@ -369,7 +369,7 @@ export const AdminDashboard = () => {
                   fontWeight: 600,
                   mt: 0.5,
                   display: 'block',
-                  fontSize: '0.68rem',
+                  fontSize: { xs: '0.62rem', sm: '0.68rem' },
                 }}
               >
                 {stat.sub}
@@ -386,7 +386,7 @@ export const AdminDashboard = () => {
       {/* 1. Today in Pipeline Card (Team Admin Context) */}
       <Box
         sx={{
-          p: 3.5,
+          p: { xs: 2, sm: 3.5 },
           borderRadius: '24px',
           bgcolor: tokens.surface.card,
           border: `1px solid ${tokens.surface.border}`,
@@ -441,6 +441,7 @@ export const AdminDashboard = () => {
               variant="outlined"
               onClick={() => navigate('/sales')}
               sx={{
+                flex: { xs: 1, sm: 'initial' },
                 borderColor: tokens.surface.border,
                 color: tokens.text.primary,
                 fontWeight: 700,
@@ -548,7 +549,7 @@ export const AdminDashboard = () => {
         <Grid item xs={12} md={7} sx={{ display: 'flex' }}>
           <Box
             sx={{
-              p: 3.5,
+              p: { xs: 2, sm: 3.5 },
               borderRadius: '24px',
               bgcolor: tokens.surface.card,
               border: `1px solid ${tokens.surface.border}`,
@@ -640,10 +641,10 @@ export const AdminDashboard = () => {
                             }
                           }}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.success }} />
-                            <Box>
-                              <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.success, flexShrink: 0 }} />
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Typography noWrap sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
                                 {task.title}
                                 {hasProgress && (
                                   <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
@@ -662,7 +663,7 @@ export const AdminDashboard = () => {
                               )}
                             </Box>
                           </Box>
-                          <Box sx={{ textAlign: 'right' }}>
+                          <Box sx={{ textAlign: 'right', flexShrink: 0, ml: 1 }}>
                             <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.success }}>
                               <span style={{ fontWeight: 500, color: tokens.text.muted, fontSize: '0.72rem', marginRight: 4 }}>Date:</span>
                               {formatTaskDate(task.dueDate, userTimeZone)}
@@ -702,10 +703,10 @@ export const AdminDashboard = () => {
                             }
                           }}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.error }} />
-                            <Box>
-                              <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.semantic.error, flexShrink: 0 }} />
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Typography noWrap sx={{ fontWeight: 600, fontSize: '0.86rem', color: tokens.text.primary }}>
                                 {task.title}
                                 {hasProgress && (
                                   <Typography component="span" sx={{ fontSize: '0.78rem', color: tokens.text.muted, ml: 1, fontWeight: 600 }}>
@@ -724,8 +725,8 @@ export const AdminDashboard = () => {
                               )}
                             </Box>
                           </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 800, color: tokens.semantic.error, display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.8, sm: 1.5 }, flexShrink: 0, ml: 1 }}>
+                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 800, color: tokens.semantic.error, display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.3 }}>
                               <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} /> Overdue
                             </Typography>
                             <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: tokens.semantic.error }}>
@@ -749,7 +750,7 @@ export const AdminDashboard = () => {
             {/* Reminders Card */}
             <Box
               sx={{
-                p: 3.5,
+                p: { xs: 2, sm: 3.5 },
                 borderRadius: '24px',
                 bgcolor: tokens.surface.card,
                 border: `1px solid ${tokens.surface.border}`,
@@ -862,7 +863,7 @@ export const AdminDashboard = () => {
             {/* Upcoming Deadlines Card */}
             <Box
               sx={{
-                p: 3.5,
+                p: { xs: 2, sm: 3.5 },
                 borderRadius: '24px',
                 bgcolor: tokens.surface.card,
                 border: `1px solid ${tokens.surface.border}`,

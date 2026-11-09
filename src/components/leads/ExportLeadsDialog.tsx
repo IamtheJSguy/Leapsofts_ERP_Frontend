@@ -493,7 +493,7 @@ export const ExportLeadsDialog = ({ open, onClose, filters }: ExportLeadsDialogP
             textTransform: 'none',
             fontWeight: 700,
             borderRadius: '20px',
-            bgcolor: tokens.brand.primary,
+            bgcolor: tokens.brand.solid,
             '&:hover': { bgcolor: tokens.brand.primaryLight },
           }}
         >

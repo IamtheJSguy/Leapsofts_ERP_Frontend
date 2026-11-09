@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography, useTheme, useMediaQuery } from '@mui/material';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
 import { NotificationPanel } from './NotificationPanel';
+import { lazyRetry } from '@/utils/lazyRetry';
 import { useUIStore } from '@/store/useUIStore';
 import { useTimeTrackerStore } from '@/store/useTimeTrackerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -15,7 +16,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { getMergedUnreadCount } from '@/utils/chatUnreadUtils';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { tokens } from '@/styles/tokens';
-import api from '@/lib/axios';
+import { useAcknowledgeMonitoring, useMonitoringConfig } from '@/hooks/api/useAdmin';
 import { DRIVE_CONNECTED_EVENT, refreshDriveConnection } from '@/hooks/api/useDrive';
 import { useLogout } from '@/hooks/api/useAuth';
 import { useEntitlements, type OrgModuleFlags } from '@/hooks/useEntitlements';
@@ -25,16 +26,44 @@ import {
   markMonitoringPromptCompleted,
 } from '@/utils/monitoringPromptSession';
 
+const AiAssistantDrawer = lazyRetry(() =>
+  import('@/components/ai/AiAssistantDrawer').then((module) => ({ default: module.AiAssistantDrawer })),
+);
+
+const scheduleIdle = (run: () => void) => {
+  if (typeof window.requestIdleCallback === 'function') {
+    const id = window.requestIdleCallback(run, { timeout: 4000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(run, 1500);
+  return () => window.clearTimeout(id);
+};
+
 export const AppLayout = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const isCheckedIn = useTimeTrackerStore((s) => s.isCheckedIn);
   const tick = useTimeTrackerStore((s) => s.tick);
   const user = useAuthStore((s) => s.user);
+  const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isChat = location.pathname.startsWith('/chat');
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const isMobileConversation = isMobile && isChat && Boolean(activeConversationId);
   const organizationId = user?.organizationId;
   const queryClient = useQueryClient();
   const previousOrganizationId = useRef(organizationId);
   const logout = useLogout();
   const [monitoringOpen, setMonitoringOpen] = useState(false);
+  const acknowledgeMonitoring = useAcknowledgeMonitoring();
+  const monitoringConfigEnabled = useMemo(() => {
+    if (!user?._id) return false;
+    if (hasCompletedMonitoringPromptThisSession(user._id)) return false;
+    if (user.monitoringPolicyAcknowledgedAt) return false;
+    return isMonitoringPromptPending();
+  }, [user]);
+  const { data: monitoringCfg, isError: monitoringCfgError } = useMonitoringConfig(monitoringConfigEnabled);
   const entitlements: OrgModuleFlags = useEntitlements();
   const chatEnabled = entitlements.chat;
   useMe();
@@ -86,17 +115,26 @@ export const AppLayout = () => {
     }
   }, [conversations, syncUnreadFromConversations]);
 
-  // Prefetch latest message pages into React Query / IndexedDB so chats open instantly.
+  // Warm chat history after the page the user opened has painted. On /chat, start immediately.
   useEffect(() => {
     if (!chatEnabled || !conversations.length) return;
     let cancelled = false;
-    void warmMessagesForConversations(queryClient, conversations, organizationId).then(() => {
+    const run = () => {
       if (cancelled) return;
-    });
+      void warmMessagesForConversations(queryClient, conversations, organizationId);
+    };
+    if (location.pathname.startsWith('/chat')) {
+      run();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const cancelIdle = scheduleIdle(run);
     return () => {
       cancelled = true;
+      cancelIdle();
     };
-  }, [chatEnabled, conversations, organizationId, queryClient]);
+  }, [chatEnabled, conversations, organizationId, queryClient, location.pathname]);
 
   useEffect(() => {
     if (!isCheckedIn || user?.role === 'admin') return;
@@ -137,36 +175,54 @@ export const AppLayout = () => {
 
   useEffect(() => {
     if (!user?._id) return;
-    // Already handled for this browser session (covers refresh + org switch).
-    if (hasCompletedMonitoringPromptThisSession(user._id)) return;
-    // Already acknowledged in the past — don't prompt again this session.
     if (user.monitoringPolicyAcknowledgedAt) {
       markMonitoringPromptCompleted(user._id);
       return;
     }
-    // Only arm this dialog from a fresh login/register, not refresh or org switch.
-    if (!isMonitoringPromptPending()) return;
-
-    let cancelled = false;
-    api.get('/admin/monitoring-config').then((res) => {
-      if (cancelled) return;
-      const cfg = res.data.data as { screenshotsEnabled?: boolean; appUsageEnabled?: boolean };
-      // Consume the pending flag whether or not monitoring is enabled, so refresh won't re-open.
-      markMonitoringPromptCompleted(user._id);
-      if (cfg.screenshotsEnabled || cfg.appUsageEnabled) setMonitoringOpen(true);
-    }).catch(() => {
-      if (!cancelled) markMonitoringPromptCompleted(user._id);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+    if (!monitoringConfigEnabled) return;
+    if (!monitoringCfg && !monitoringCfgError) return;
+    markMonitoringPromptCompleted(user._id);
+    if (monitoringCfg?.screenshotsEnabled || monitoringCfg?.appUsageEnabled) {
+      setMonitoringOpen(true);
+    }
+  }, [user, monitoringConfigEnabled, monitoringCfg, monitoringCfgError]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: tokens.surface.main }}>
+      <Box
+        component="a"
+        href="#app-main-content"
+        sx={{
+          position: 'absolute',
+          left: -9999,
+          top: 'auto',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          '&:focus': {
+            position: 'fixed',
+            left: 16,
+            top: 16,
+            width: 'auto',
+            height: 'auto',
+            overflow: 'visible',
+            zIndex: tokens.zIndex.skipLink,
+            px: 2,
+            py: 1,
+            bgcolor: tokens.surface.card,
+            color: tokens.text.primary,
+            borderRadius: 2,
+            boxShadow: 2,
+            textDecoration: 'none',
+            fontWeight: 700,
+          },
+        }}
+      >
+        Skip to main content
+      </Box>
       <Sidebar />
       <Box
+        id="app-main-content"
         component="main"
         sx={{
           flexGrow: 1,
@@ -174,6 +230,21 @@ export const AppLayout = () => {
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          height: isChat ? { xs: '100dvh', md: 'auto' } : 'auto',
+          maxHeight: isChat ? { xs: '100dvh', md: 'none' } : 'none',
+          overflow: isChat ? { xs: 'hidden', md: 'visible' } : 'visible',
+          ...(isMobileConversation
+            ? {
+                position: { xs: 'fixed', md: 'static' },
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: { xs: '100dvh', md: 'auto' },
+                maxHeight: { xs: '100dvh', md: 'none' },
+                zIndex: { xs: 100, md: 'auto' },
+              }
+            : {}),
           transition: (t) =>
             t.transitions.create(['width', 'margin'], {
               easing: t.transitions.easing.sharp,
@@ -200,20 +271,30 @@ export const AppLayout = () => {
             Viewing as {user.firstName || user.email} — impersonated by Leapsofts support
           </Alert>
         )}
-        <Header />
+        {!isMobileConversation && <Header />}
         <Box
           component="section"
           sx={{
             flex: 1,
-            px: { xs: 2, sm: 3, md: 4 },
-            py: { xs: 2, sm: 3 },
-            pb: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            height: isChat ? { xs: '100%', md: 'auto' } : 'auto',
+            overflow: isChat ? 'hidden' : 'visible',
+            px: isChat ? { xs: 0, sm: 1, md: 4 } : { xs: 2, sm: 3, md: 4 },
+            py: isChat ? { xs: 0, sm: 1, md: 3 } : { xs: 2, sm: 3 },
+            pb: isChat ? { xs: 0, sm: 1, md: 4 } : 4,
           }}
         >
           <Outlet />
         </Box>
       </Box>
       <NotificationPanel />
+      {aiDrawerOpen ? (
+        <Suspense fallback={null}>
+          <AiAssistantDrawer />
+        </Suspense>
+      ) : null}
       <Dialog open={monitoringOpen}>
         <DialogTitle>Workplace monitoring</DialogTitle>
         <DialogContent>
@@ -225,11 +306,17 @@ export const AppLayout = () => {
         <DialogActions>
           <Button
             variant="contained"
-            onClick={async () => {
-              await api.post('/users/me/acknowledge-monitoring');
-              useAuthStore.getState().updateUser({ monitoringPolicyAcknowledgedAt: new Date().toISOString() });
-              if (user?._id) markMonitoringPromptCompleted(user._id);
-              setMonitoringOpen(false);
+            disabled={acknowledgeMonitoring.isPending}
+            onClick={() => {
+              acknowledgeMonitoring.mutate(undefined, {
+                onSuccess: () => {
+                  useAuthStore.getState().updateUser({
+                    monitoringPolicyAcknowledgedAt: new Date().toISOString(),
+                  });
+                  if (user?._id) markMonitoringPromptCompleted(user._id);
+                  setMonitoringOpen(false);
+                },
+              });
             }}
           >
             I understand

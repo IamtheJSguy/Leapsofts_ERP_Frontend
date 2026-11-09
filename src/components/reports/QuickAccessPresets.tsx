@@ -44,7 +44,7 @@ export const QuickAccessPresets = ({ activePreset, onSelectPreset }: QuickAccess
               fontWeight: 500,
               fontSize: '0.9rem',
               borderColor: tokens.surface.border,
-              backgroundColor: isActive ? tokens.brand.primary : 'transparent',
+              backgroundColor: isActive ? tokens.brand.solid : 'transparent',
               color: isActive ? '#FFFFFF' : tokens.text.primary,
               boxShadow: isActive ? '0 8px 16px rgba(93, 26, 137, 0.15)' : 'none',
               transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',

@@ -23,6 +23,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ShieldIcon from '@mui/icons-material/Shield';
 import PersonIcon from '@mui/icons-material/Person';
 import { useUsers, useDeleteUser } from '@/hooks/api/useUsers';
+import { useAdminUserAiQuotas } from '@/hooks/api/useAi';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getDisplayName } from '@/utils/formatters';
 import { RoleAssignmentModal } from './RoleAssignmentModal';
@@ -35,6 +36,7 @@ export const UserManagementTable = () => {
   const { data: users = [], isLoading } = useUsers();
   const deleteUser = useDeleteUser();
   const { canPromoteRoles, canDeactivateUsers } = usePermissions();
+  const { data: aiQuotasData } = useAdminUserAiQuotas(canPromoteRoles);
   const [roleUser, setRoleUser] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,12 +166,71 @@ export const UserManagementTable = () => {
             </Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 650 }}>
+          <>
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.25, p: 1.5 }}>
+            {filteredUsers.map((user) => {
+              const initials = `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase() || '?';
+              const isAdminUser = user.role === 'admin';
+              const isActive = user.isActive !== false;
+              const quota = aiQuotasData?.users?.find((u) => u.userId === user._id);
+              const used = quota?.tokensUsed ?? 0;
+              const limit = quota?.effectiveTokenLimit ?? aiQuotasData?.defaultUserTokenLimit ?? 10000;
+              return (
+                <Box
+                  key={user._id}
+                  sx={{
+                    p: 1.75,
+                    borderRadius: '16px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                    <Avatar
+                      src={user.avatarUrl || undefined}
+                      sx={{ width: 38, height: 38, fontWeight: 800, fontSize: '0.88rem' }}
+                    >
+                      {initials}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{getDisplayName(user)}</Typography>
+                      <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', wordBreak: 'break-word' }}>{user.email}</Typography>
+                    </Box>
+                  </Box>
+                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 750, textTransform: 'uppercase', color: isAdminUser ? '#d95236' : tokens.brand.primary, mb: 0.5 }}>
+                    {user.role} · {isActive ? 'Active' : 'Inactive'}
+                  </Typography>
+                  {canPromoteRoles && (
+                    <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 1 }}>
+                      AI tokens {used.toLocaleString()} / {limit.toLocaleString()}
+                    </Typography>
+                  )}
+                  {showActions && (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {canPromoteRoles && (
+                        <IconButton size="small" onClick={() => setRoleUser(user)} aria-label="Edit role">
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
+                      {canDeactivateUsers && (
+                        <IconButton size="small" onClick={() => setDeleteId(user._id)} aria-label="Delete user" sx={{ color: tokens.semantic.error }}>
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+          <Table sx={{ minWidth: 650, display: { xs: 'none', md: 'table' } }}>
             <TableHead sx={{ bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.015)' }}>
               <TableRow>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, pl: 3 }}>Name</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Email Address</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>System Role</TableCell>
+                {canPromoteRoles && (
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>AI Token Usage</TableCell>
+                )}
                 <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>Account Status</TableCell>
                 {showActions && (
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', py: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`, textAlign: 'right', pr: 4 }}>Actions</TableCell>
@@ -248,6 +309,30 @@ export const UserManagementTable = () => {
                       </Box>
                     </TableCell>
 
+                    {canPromoteRoles && (
+                      <TableCell sx={{ py: 1.75, borderBottom: 0 }}>
+                        {(() => {
+                          const q = aiQuotasData?.users?.find((u) => u.userId === user._id);
+                          const used = q?.tokensUsed ?? 0;
+                          const limit = q?.effectiveTokenLimit ?? aiQuotasData?.defaultUserTokenLimit ?? 10000;
+                          return (
+                            <Box>
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: isDarkMode ? '#fff' : tokens.text.primary }}>
+                                {used.toLocaleString()} / {limit.toLocaleString()}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
+                                {q?.hasCustomKey
+                                  ? 'Custom API Key Active'
+                                  : q?.tokenLimitOverride !== null && q?.tokenLimitOverride !== undefined
+                                  ? 'Custom Admin Limit'
+                                  : 'Default Quota'}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
+                      </TableCell>
+                    )}
+
                     {/* Status Dot */}
                     <TableCell sx={{ py: 1.75, borderBottom: 0 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -325,6 +410,7 @@ export const UserManagementTable = () => {
               })}
             </TableBody>
           </Table>
+          </>
         )}
       </TableContainer>
 

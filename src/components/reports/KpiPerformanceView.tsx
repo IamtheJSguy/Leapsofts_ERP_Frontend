@@ -456,7 +456,7 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
                             borderRadius: 3,
                             backgroundColor: tokens.brand.primary100,
                             '& .MuiLinearProgress-bar': {
-                              backgroundColor: PRIORITY_COLORS[p.priority] || tokens.brand.primary,
+                              backgroundColor: PRIORITY_COLORS[p.priority] || tokens.brand.solid,
                               borderRadius: 3,
                             },
                           }}
@@ -516,7 +516,7 @@ export const KpiPerformanceView = ({ metrics, comparison, userName }: KpiPerform
                                 borderRadius: 3,
                                 backgroundColor: tokens.brand.primary100,
                                 '& .MuiLinearProgress-bar': {
-                                  backgroundColor: row.attainmentRate >= 100 ? tokens.semantic.success : tokens.brand.primary,
+                                  backgroundColor: row.attainmentRate >= 100 ? tokens.semantic.success : tokens.brand.solid,
                                   borderRadius: 3,
                                 },
                               }}

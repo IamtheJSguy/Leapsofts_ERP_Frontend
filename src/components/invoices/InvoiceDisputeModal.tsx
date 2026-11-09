@@ -107,7 +107,7 @@ export const InvoiceDisputeModal = ({
             fontWeight: 800,
             borderRadius: '12px',
             px: 2.5,
-            bgcolor: isDarkMode ? '#D97706' : tokens.brand.primary,
+            bgcolor: isDarkMode ? '#D97706' : tokens.brand.solid,
             '&:hover': { bgcolor: isDarkMode ? '#B45309' : tokens.brand.primaryDark },
           }}
         >

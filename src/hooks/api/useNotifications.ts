@@ -27,8 +27,9 @@ const notificationApi = {
   getUnreadCount: () => api.get<{ data: { count: number } }>('/notifications/unread-count'),
 };
 
-export const useInfiniteNotifications = (limit = 30) => {
+export const useInfiniteNotifications = (limit = 30, options?: { enabled?: boolean }) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const enabled = options?.enabled ?? true;
   return useInfiniteQuery({
     queryKey: ['notifications', organizationId, { limit }],
     queryFn: ({ pageParam = 1 }) =>
@@ -40,7 +41,8 @@ export const useInfiniteNotifications = (limit = 30) => {
       }
       return undefined;
     },
-    refetchInterval: 30000,
+    enabled,
+    refetchInterval: enabled ? 30000 : false,
   });
 };
 

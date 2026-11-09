@@ -122,10 +122,10 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
       case 'checked_out':
         return {
           label: 'CHECKED OUT',
-          color: isDarkMode ? '#C084FC' : tokens.brand.primary,
+          color: tokens.brand.primary,
           bg: isDarkMode ? 'rgba(149, 99, 184, 0.18)' : 'rgba(93, 26, 137, 0.08)',
           border: isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.2)',
-          dot: isDarkMode ? '#C084FC' : tokens.brand.primary,
+          dot: tokens.brand.primary,
           iconType: 'check' as const,
           pulse: false,
         };
@@ -332,7 +332,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
             <Typography
               variant="caption"
               sx={{
-                color: isDarkMode ? '#C084FC' : tokens.brand.primary,
+                color: tokens.brand.primary,
                 fontWeight: 850,
                 fontSize: dense ? '0.62rem' : '0.68rem',
                 letterSpacing: '0.04em',
@@ -449,7 +449,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
         >
           {/* Worked Hours */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <TimerRoundedIcon sx={{ fontSize: 16, color: isDarkMode ? '#C084FC' : tokens.brand.primary }} />
+            <TimerRoundedIcon sx={{ fontSize: 16, color: tokens.brand.primary }} />
             <Box>
               <Typography
                 variant="caption"
@@ -551,7 +551,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
-              <ScheduleRoundedIcon sx={{ fontSize: 15, color: isDarkMode ? '#C084FC' : tokens.brand.primary, flexShrink: 0 }} />
+              <ScheduleRoundedIcon sx={{ fontSize: 15, color: tokens.brand.primary, flexShrink: 0 }} />
               <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.72rem', color: isDarkMode ? '#FFF' : tokens.text.primary }}>
                 Work Sessions ({sessions.length})
               </Typography>
@@ -597,7 +597,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
                           fontSize: '0.6rem',
                           fontWeight: 800,
                           bgcolor: isDarkMode ? 'rgba(149, 99, 184, 0.2)' : 'rgba(93, 26, 137, 0.08)',
-                          color: isDarkMode ? '#C084FC' : tokens.brand.primary,
+                          color: tokens.brand.primary,
                           borderRadius: '4px',
                         }}
                       />
@@ -765,7 +765,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
             fontWeight: 800,
             borderRadius: '8px',
             bgcolor: isDarkMode ? 'rgba(93, 26, 137, 0.3)' : 'rgba(93, 26, 137, 0.08)',
-            color: isDarkMode ? '#E9D5FF' : tokens.brand.primary,
+            color: tokens.brand.primary,
             border: `1px solid ${isDarkMode ? 'rgba(149, 99, 184, 0.35)' : 'rgba(93, 26, 137, 0.15)'}`,
             transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
             '& .MuiChip-deleteIcon': {
@@ -774,7 +774,7 @@ export const AttendanceShiftCard: React.FC<AttendanceShiftCardProps> = ({
               transition: 'transform 0.2s ease',
             },
             '&:hover': {
-              bgcolor: tokens.brand.primary,
+              bgcolor: tokens.brand.solid,
               color: '#FFFFFF',
               borderColor: tokens.brand.primary,
               '& .MuiChip-deleteIcon': {
