@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   Box,
@@ -54,6 +54,13 @@ export const GroupSettingsModal = ({ open, onClose, conversation }: GroupSetting
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery('');
+      setShowAddMember(false);
+    }
+  }, [open]);
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;

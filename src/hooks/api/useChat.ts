@@ -145,8 +145,13 @@ const chatApi = {
     api.post<{ data: Conversation }>('/chat/conversations/board', { boardId }),
   getBoardConversation: (boardId: string) =>
     api.get<{ data: Conversation }>(`/chat/conversations/board/${boardId}`),
-  searchMessages: (query: string) =>
-    api.get('/chat/search', { params: { q: query } }),
+  searchMessages: (query: string, conversationId?: string | null) =>
+    api.get('/chat/search', {
+      params: {
+        q: query,
+        ...(conversationId ? { conversationId } : {}),
+      },
+    }),
   addGroupMember: (data: { conversationId: string; participantId: string }) =>
     api.post(`/chat/conversations/group/${data.conversationId}/participants`, {
       participantId: data.participantId,
@@ -733,11 +738,14 @@ export const useCreateBoardConversation = () => {
   });
 };
 
-export const useSearchMessages = (query: string) => {
+export const useSearchMessages = (query: string, conversationId?: string | null) => {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   return useQuery({
-    queryKey: ['messageSearch', query, organizationId],
-    queryFn: () => chatApi.searchMessages(query).then((r) => r.data.data),
+    queryKey: ['messageSearch', query, organizationId, conversationId ?? null],
+    queryFn: () =>
+      chatApi
+        .searchMessages(query, conversationId || undefined)
+        .then((r) => r.data.data),
     enabled: query.length > 2,
   });
 };
