@@ -169,7 +169,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
             }}
           >
             <ToggleButton value="gemini" sx={{ fontWeight: 700, textTransform: 'none' }}>
-              Google Gemini (2.5 Flash)
+              Google Gemini (3.5 Flash Lite)
             </ToggleButton>
             <ToggleButton value="claude" sx={{ fontWeight: 700, textTransform: 'none' }}>
               Anthropic Claude (Sonnet 4)

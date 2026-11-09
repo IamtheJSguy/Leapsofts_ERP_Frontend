@@ -238,7 +238,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                   disabled={readOnly}
                   onChange={(e) => setAiDefaultProvider(e.target.value as 'gemini' | 'claude')}
                 >
-                  <MenuItem value="gemini">Google Gemini (2.5 Flash)</MenuItem>
+                  <MenuItem value="gemini">Google Gemini (3.5 Flash Lite)</MenuItem>
                   <MenuItem value="claude">Anthropic Claude (Sonnet 4)</MenuItem>
                 </TextField>
 
