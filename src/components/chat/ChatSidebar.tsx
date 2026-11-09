@@ -31,6 +31,7 @@ const stripHtml = (html: string) => {
 };
 
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -84,6 +85,12 @@ export const ChatSidebar = () => {
   const [newChatSearch, setNewChatSearch] = useState('');
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isNewChatModalOpen) {
+      setNewChatSearch('');
+    }
+  }, [isNewChatModalOpen]);
 
   // Track unsent chat drafts across conversations
   const [drafts, setDrafts] = useState<Record<string, ChatDraftItem>>(() => getAllDrafts());
@@ -447,6 +454,19 @@ export const ChatSidebar = () => {
                 <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
               </InputAdornment>
             ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setSearchQuery('')}
+                  edge="end"
+                  aria-label="Clear chat search"
+                  sx={{ p: 0.5 }}
+                >
+                  <CloseIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
           }}
           sx={{
             bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
@@ -851,6 +871,19 @@ export const ChatSidebar = () => {
                   <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
                 </InputAdornment>
               ),
+              endAdornment: newChatSearch ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setNewChatSearch('')}
+                    edge="end"
+                    aria-label="Clear user search"
+                    sx={{ p: 0.5 }}
+                  >
+                    <CloseIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
             }}
             sx={{
               bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
