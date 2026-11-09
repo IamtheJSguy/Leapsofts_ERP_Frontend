@@ -239,7 +239,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                   onChange={(e) => setAiDefaultProvider(e.target.value as 'gemini' | 'claude')}
                 >
                   <MenuItem value="gemini">Google Gemini (3.5 Flash Lite)</MenuItem>
-                  <MenuItem value="claude">Anthropic Claude (Sonnet 4)</MenuItem>
+                  <MenuItem value="claude">Anthropic Claude (Sonnet 5.5)</MenuItem>
                 </TextField>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '16px', bgcolor: isDarkMode ? `color-mix(in srgb, #fff 2%, transparent)` : `color-mix(in srgb, #000 2%, transparent)` }}>
