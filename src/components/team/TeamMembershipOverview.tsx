@@ -48,7 +48,16 @@ export const TeamMembershipOverview = ({ teams }: { teams: Team[] }) => <Box sx=
   </Box>)}
 </Box>;
 
-export const MemberTeamBadges = ({ teams, userId }: { teams: Team[]; userId: string }) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, my: 1 }}>
-  {teams.filter((team) => team.managerId?._id === userId || team.members.some((member) => member._id === userId))
-    .map((team) => <Chip key={team._id} label={team.name} size="small" variant="outlined" />)}
-</Box>;
+export const MemberTeamBadges = ({ teams, userId }: { teams: Team[]; userId: string }) => {
+  const userTeams = teams.filter(
+    (team) => team.managerId?._id === userId || team.members.some((member) => member._id === userId)
+  );
+  if (userTeams.length === 0) return null;
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, my: 0.5 }}>
+      {userTeams.map((team) => (
+        <Chip key={team._id} label={team.name} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.62rem' }} />
+      ))}
+    </Box>
+  );
+};
