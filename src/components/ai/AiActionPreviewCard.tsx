@@ -62,6 +62,20 @@ const FIELD_LABELS: Record<string, string> = {
   timeZone: 'Timezone',
   durationMinutes: 'Duration (minutes)',
   sendGoogleInvite: 'Google Calendar',
+  assignees: 'Assignees',
+  template: 'KPI template',
+  board: 'Board',
+  columnId: 'Column',
+  invoice: 'Invoice',
+  effect: 'What happens',
+  emailsClient: 'Emails the client',
+  lines: 'Line items',
+  sendsEmail: 'Email',
+  issueDate: 'Issue date',
+  dueDate: 'Due date',
+  client: 'Client',
+  cardId: 'Card',
+  isDone: 'Done',
 };
 
 const SOURCE_TIER_LABELS: Record<string, string> = {
@@ -76,6 +90,7 @@ const HIDDEN_PROPOSED_KEYS = new Set([
   'googleCalendarConnected',
   'sendGoogleInvite',
   'scheduledAt',
+  'operation',
 ]);
 
 const formatProposedFieldValue = (
@@ -104,7 +119,25 @@ const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
   update_lead: 'Lead Edit Proposal',
   update_user: 'User Profile Edit Proposal',
   create_meeting: 'Meeting Booking Proposal',
+  create_kpi: 'Create KPI',
+  update_kpi: 'Update KPI',
+  assign_kpi_template: 'Assign KPI template',
+  create_invoice: 'Create invoice',
+  update_invoice: 'Update invoice',
+  send_invoice: 'Send invoice',
+  send_invoice_reminder: 'Send invoice reminder',
+  mark_invoice_paid: 'Mark invoice paid',
+  dispute_invoice: 'Dispute invoice',
+  create_kanban_card: 'Create board card',
+  move_kanban_card: 'Move board card',
+  update_kanban_card: 'Update board card',
 };
+
+const EMAILS_CLIENT = new Set<AiPendingAction['actionType']>([
+  'send_invoice',
+  'send_invoice_reminder',
+  'mark_invoice_paid',
+]);
 
 interface AiActionPreviewCardProps {
   action: AiPendingAction;
@@ -128,6 +161,7 @@ export const AiActionPreviewCard = ({
     action.actionType === 'create_meeting'
       ? String(action.proposed.timeZone || getDefaultMeetingTimeZone(user ?? undefined))
       : '';
+  const [emailAck, setEmailAck] = useState(false);
 
   const proposedEntries = useMemo(() => {
     const contactFirst = ['email', 'phone'];
@@ -175,6 +209,13 @@ export const AiActionPreviewCard = ({
   const isPending = action.status === 'pending';
 
   const handleConfirm = () => {
+    if (EMAILS_CLIENT.has(action.actionType) && !emailAck) {
+      addToast({
+        message: 'Confirm that this will email the client before approving.',
+        severity: 'warning',
+      });
+      return;
+    }
     const overrides: Record<string, unknown> = {};
     for (const [k] of proposedEntries) {
       if (selectedFields[k]) {
@@ -537,6 +578,14 @@ export const AiActionPreviewCard = ({
             ))}
           </Box>
         </Box>
+      )}
+
+      {isPending && EMAILS_CLIENT.has(action.actionType) && (
+        <FormControlLabel
+          sx={{ mt: 1, alignItems: 'flex-start' }}
+          control={<Checkbox checked={emailAck} onChange={(event) => setEmailAck(event.target.checked)} />}
+          label="I understand this emails the client."
+        />
       )}
 
       {/* Action Buttons */}

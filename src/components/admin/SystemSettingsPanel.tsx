@@ -11,9 +11,13 @@ import {
   Switch,
   TextField,
   MenuItem,
+  IconButton,
+  InputAdornment,
+  Tooltip,
 } from '@mui/material';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import {
   useSystemSettings,
   useUpdateSystemSettings,
@@ -38,6 +42,10 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
   const [aiDefaultProvider, setAiDefaultProvider] = useState<'gemini' | 'claude'>('gemini');
   const [aiEnrichmentEnabled, setAiEnrichmentEnabled] = useState<boolean>(true);
   const [providerEnrichmentEnabled, setProviderEnrichmentEnabled] = useState<boolean>(true);
+  const [orgGeminiKey, setOrgGeminiKey] = useState('');
+  const [orgClaudeKey, setOrgClaudeKey] = useState('');
+  const [clearOrgGemini, setClearOrgGemini] = useState(false);
+  const [clearOrgClaude, setClearOrgClaude] = useState(false);
 
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -60,6 +68,10 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
         setAiEnrichmentEnabled(settings.aiSettings.enrichmentEnabled ?? true);
         setProviderEnrichmentEnabled(settings.aiSettings.providerEnrichmentEnabled ?? true);
       }
+      setOrgGeminiKey('');
+      setOrgClaudeKey('');
+      setClearOrgGemini(false);
+      setClearOrgClaude(false);
     }
   }, [settings]);
 
@@ -84,6 +96,16 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
           defaultProvider: aiDefaultProvider,
           enrichmentEnabled: aiEnrichmentEnabled,
           providerEnrichmentEnabled,
+          ...(clearOrgGemini
+            ? { geminiApiKey: null }
+            : orgGeminiKey.trim()
+              ? { geminiApiKey: orgGeminiKey.trim() }
+              : {}),
+          ...(clearOrgClaude
+            ? { claudeApiKey: null }
+            : orgClaudeKey.trim()
+              ? { claudeApiKey: orgClaudeKey.trim() }
+              : {}),
         },
       },
       {
@@ -214,7 +236,7 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                 Lumi & Lead Enrichment Quota
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2, fontSize: '0.8rem' }}>
-                Configure the default free token allocation per user and default LLM provider. Users can also add their own Gemini or Claude API key.
+                Set the organization Gemini and Claude keys shared by every user. Usage counts against each person's token quota unless they save a personal key. There is no server-wide API key.
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -227,6 +249,87 @@ export const SystemSettingsPanel = ({ readOnly = false }: { readOnly?: boolean }
                   disabled={readOnly}
                   onChange={(e) => setAiDefaultUserTokenLimit(Math.max(0, Number(e.target.value) || 0))}
                   helperText="Platform tokens allocated to each user before requiring their own API key."
+                />
+
+                <TextField
+                  type="password"
+                  size="small"
+                  fullWidth
+                  label="Organization Gemini API key"
+                  value={orgGeminiKey}
+                  disabled={readOnly}
+                  placeholder={settings?.aiSettings?.geminiApiKeyHint || 'Not set'}
+                  onChange={(e) => {
+                    setOrgGeminiKey(e.target.value);
+                    setClearOrgGemini(false);
+                  }}
+                  helperText={
+                    clearOrgGemini
+                      ? 'This key will be removed when you save.'
+                      : settings?.aiSettings?.hasOrgGeminiKey
+                        ? `Saved key ${settings.aiSettings.geminiApiKeyHint}. Leave blank to keep it.`
+                        : 'Used when a user has not saved a personal Gemini key.'
+                  }
+                  InputProps={
+                    !readOnly && settings?.aiSettings?.hasOrgGeminiKey
+                      ? {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Tooltip title={clearOrgGemini ? 'Undo remove' : 'Remove organization Gemini key'}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label="Remove organization Gemini key"
+                                  onClick={() => setClearOrgGemini((current) => !current)}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </InputAdornment>
+                          ),
+                        }
+                      : undefined
+                  }
+                />
+                <TextField
+                  type="password"
+                  size="small"
+                  fullWidth
+                  label="Organization Claude API key"
+                  value={orgClaudeKey}
+                  disabled={readOnly}
+                  placeholder={settings?.aiSettings?.claudeApiKeyHint || 'Not set'}
+                  onChange={(e) => {
+                    setOrgClaudeKey(e.target.value);
+                    setClearOrgClaude(false);
+                  }}
+                  helperText={
+                    clearOrgClaude
+                      ? 'This key will be removed when you save.'
+                      : settings?.aiSettings?.hasOrgClaudeKey
+                        ? `Saved key ${settings.aiSettings.claudeApiKeyHint}. Leave blank to keep it.`
+                        : 'Used when a user has not saved a personal Claude key.'
+                  }
+                  InputProps={
+                    !readOnly && settings?.aiSettings?.hasOrgClaudeKey
+                      ? {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Tooltip title={clearOrgClaude ? 'Undo remove' : 'Remove organization Claude key'}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label="Remove organization Claude key"
+                                  onClick={() => setClearOrgClaude((current) => !current)}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </InputAdornment>
+                          ),
+                        }
+                      : undefined
+                  }
                 />
 
                 <TextField

@@ -116,7 +116,7 @@ export const AiApiKeyModal = ({ open, onClose }: AiApiKeyModalProps) => {
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
           Each user receives a limited platform token allocation managed by the administrator.
-          Add your own Gemini or Claude API key for unlimited personal usage.
+          A personal key is used before the organization key. Organization keys are set by an admin in System Settings and count against your token quota.
         </Typography>
 
         {/* Quota Card */}

@@ -1333,6 +1333,12 @@ export interface SystemSettings {
     defaultProvider?: 'gemini' | 'claude';
     enrichmentEnabled?: boolean;
     providerEnrichmentEnabled?: boolean;
+    geminiApiKey?: string | null;
+    claudeApiKey?: string | null;
+    geminiApiKeyHint?: string;
+    claudeApiKeyHint?: string;
+    hasOrgGeminiKey?: boolean;
+    hasOrgClaudeKey?: boolean;
   };
   icps?: IcpEntry[];
   profiles?: ProfileEntry[];

@@ -40,6 +40,10 @@ Main router: `src/router/index.tsx` (dashboard, tasks, sales, projects, Kanban, 
 
 For full API coverage and roles, see the backend README route table.
 
+## Lumi (AI assistant)
+
+Lumi chats at `/ai` and from the global drawer. Organization Gemini and Claude keys are saved in System Settings; users can add a personal key that takes priority. Lumi can read org ICPs and profiles, break leads down by those buckets, and propose KPI, invoice, and Kanban changes that apply only after the user approves the preview card.
+
 ## Related packages
 
 - [Backend API](../leapsoft-sales-automation-backend/Readme.md)
