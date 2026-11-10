@@ -324,23 +324,67 @@ export const MeetingFormFields = ({
       <Controller
         name="timeZone"
         control={control}
-        render={({ field }) => (
-          <Box sx={{ width: '100%', mb }}>
-            <Typography variant="caption" sx={fieldCaptionSx}>Timezone</Typography>
-            <FormControl fullWidth size={size}>
-              <Select
-                value={field.value || defaultTimeZone}
-                onChange={(e) => field.onChange(e.target.value)}
+        render={({ field }) => {
+          const currentTz = field.value || defaultTimeZone;
+          const options = timeZoneOptions.includes(currentTz)
+            ? timeZoneOptions
+            : [currentTz, ...timeZoneOptions];
+
+          return (
+            <Box sx={{ width: '100%', mb }}>
+              <Typography variant="caption" sx={fieldCaptionSx}>Timezone</Typography>
+              <Autocomplete
+                options={options}
+                value={currentTz}
+                onChange={(_, newValue) => {
+                  if (newValue) {
+                    field.onChange(newValue);
+                  }
+                }}
                 disabled={disabled}
-                sx={modernSelectFieldSx(isDarkMode, compact)}
-              >
-                {timeZoneOptions.map((tz) => (
-                  <MenuItem key={tz} value={tz}>{tz}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        )}
+                disableClearable
+                autoHighlight
+                openOnFocus
+                filterOptions={(opts, { inputValue }) => {
+                  const query = inputValue.toLowerCase().trim();
+                  if (!query) return opts;
+                  return opts.filter((tz) => tz.toLowerCase().includes(query));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size={size}
+                    placeholder="Search timezone (e.g. Karachi, New York, UTC)..."
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: inputRadius(compact),
+                        bgcolor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                        fontWeight: 600,
+                        '& fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: tokens.brand.primaryMuted,
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: tokens.brand.primary,
+                          borderWidth: 1.5,
+                        },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontWeight: 600,
+                        color: isDarkMode ? '#fff' : tokens.text.primary,
+                      },
+                      '& .MuiSvgIcon-root': {
+                        color: isDarkMode ? 'rgba(255,255,255,0.6)' : tokens.text.secondary,
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Box>
+          );
+        }}
       />
 
       <Controller
