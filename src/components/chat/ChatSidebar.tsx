@@ -713,9 +713,17 @@ export const ChatSidebar = () => {
                             {conv.lastMessage?.type === 'file' && (
                               <ImageOutlinedIcon sx={{ fontSize: '0.9rem', color: 'inherit', opacity: 0.8 }} />
                             )}
-                            {conv.lastMessage?.type === 'file'
-                              ? stripHtml(conv.lastMessage.content || '').trim() || 'Photo'
-                              : stripHtml(conv.lastMessage?.content || '') || 'No messages yet.'}
+                            {(() => {
+                              if (!conv.lastMessage) return 'No messages yet.';
+                              if (conv.lastMessage.type === 'file') {
+                                return stripHtml(conv.lastMessage.content || '').trim() || 'Photo';
+                              }
+                              if (conv.lastMessage.type === 'drive_file') {
+                                return stripHtml(conv.lastMessage.content || '').trim() || 'Google Drive file';
+                              }
+                              const text = stripHtml(conv.lastMessage.content || '').trim();
+                              return text || 'No messages yet.';
+                            })()}
                           </Typography>
                         )}
                         {unreadCount > 0 && (
