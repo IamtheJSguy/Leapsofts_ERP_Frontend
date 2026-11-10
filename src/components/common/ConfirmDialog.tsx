@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,9 +14,10 @@ import { tokens } from '@/styles/tokens';
 interface ConfirmDialogProps {
   open: boolean;
   title?: string;
-  message?: string;
+  message?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmColor?: 'primary' | 'danger';
   isPending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -27,6 +29,7 @@ export const ConfirmDialog = ({
   message = 'Are you sure?',
   confirmLabel = 'Yes',
   cancelLabel = 'No',
+  confirmColor = 'danger',
   isPending = false,
   onConfirm,
   onCancel,
@@ -62,6 +65,7 @@ export const ConfirmDialog = ({
       </DialogTitle>
       <DialogContent>
         <DialogContentText
+          component="div"
           sx={{
             color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
             fontSize: '0.94rem',
@@ -94,25 +98,29 @@ export const ConfirmDialog = ({
           variant="contained"
           disabled={isPending}
           sx={{
-            bgcolor: '#d95236',
+            bgcolor: confirmColor === 'primary' ? tokens.brand.solid : '#d95236',
             color: '#fff',
             fontWeight: 700,
             fontSize: '0.86rem',
             px: 4,
             py: 1,
             borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(217, 82, 54, 0.2)',
+            boxShadow: confirmColor === 'primary'
+              ? '0 4px 12px rgba(93, 26, 137, 0.25)'
+              : '0 4px 12px rgba(217, 82, 54, 0.2)',
             textTransform: 'none',
             transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
             '&:hover': {
-              bgcolor: '#c7452b',
-              boxShadow: '0 6px 16px rgba(217, 82, 54, 0.3)',
+              bgcolor: confirmColor === 'primary' ? tokens.brand.primaryDark : '#c7452b',
+              boxShadow: confirmColor === 'primary'
+                ? '0 6px 16px rgba(93, 26, 137, 0.35)'
+                : '0 6px 16px rgba(217, 82, 54, 0.3)',
             },
             '&:active': {
               transform: 'translateY(1px)',
             },
             '&.Mui-disabled': {
-              bgcolor: 'rgba(217, 82, 54, 0.3)',
+              bgcolor: confirmColor === 'primary' ? 'rgba(93, 26, 137, 0.3)' : 'rgba(217, 82, 54, 0.3)',
               color: 'rgba(255, 255, 255, 0.5)',
             }
           }}

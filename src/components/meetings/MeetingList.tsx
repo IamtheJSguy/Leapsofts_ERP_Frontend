@@ -47,6 +47,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { meetingSchema, type MeetingFormData } from '@/utils/validators';
 import { getDefaultMeetingTimeZone, utcToWallClock, wallClockToUtcIso } from '@/utils/meetingTimezone';
+import { formatDateTime } from '@/utils/formatters';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useCalendarStatus } from '@/hooks/api/useCalendar';
@@ -740,6 +741,9 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   const calendarConnected = calendarStatus?.connected === true;
   const defaultTz = meeting.timeZone || getDefaultMeetingTimeZone(user ?? undefined);
 
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
+  const [stagedData, setStagedData] = useState<MeetingFormData | null>(null);
+
   const { register, handleSubmit, control, formState: { errors } } = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
     defaultValues: {
@@ -758,15 +762,26 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
   });
 
   const onSubmit = (data: MeetingFormData) => {
+    setStagedData(data);
+    setConfirmUpdateOpen(true);
+  };
+
+  const handleConfirmUpdate = () => {
+    if (!stagedData) return;
     updateMeeting.mutate(
       {
         id: meeting._id,
-        data: buildMeetingSubmitPayload(data, calendarConnected),
+        data: buildMeetingSubmitPayload(stagedData, calendarConnected),
       },
       {
         onSuccess: () => {
           addToast({ message: 'Meeting updated successfully', severity: 'success' });
+          setConfirmUpdateOpen(false);
+          setStagedData(null);
           onClose();
+        },
+        onError: () => {
+          setConfirmUpdateOpen(false);
         }
       }
     );
@@ -882,6 +897,70 @@ const EditForm = ({ meeting, onClose, dbUsers, onDeleteTrigger, canDelete }: Edi
           {updateMeeting.isPending ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
         </Button>
       </DialogActions>
+
+      <ConfirmDialog
+        open={confirmUpdateOpen}
+        title="Confirm Meeting Update"
+        message={
+          stagedData ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Are you sure you want to save the changes to this meeting?
+              </Typography>
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: '16px',
+                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
+                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.98rem' }}>
+                    {stagedData.title}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={`${stagedData.durationMinutes ?? 30} mins`}
+                    sx={{
+                      fontWeight: 650,
+                      fontSize: '0.75rem',
+                      bgcolor: tokens.brand.primaryMuted,
+                      color: tokens.brand.solid,
+                    }}
+                  />
+                </Box>
+                <Typography variant="body2" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  📅 {stagedData.scheduledAt ? formatDateTime(stagedData.scheduledAt) : '—'}
+                  {stagedData.timeZone ? ` (${stagedData.timeZone})` : ''}
+                </Typography>
+                {stagedData.participants && stagedData.participants.length > 0 && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    👥 {stagedData.participants.length} participant{stagedData.participants.length > 1 ? 's' : ''}
+                  </Typography>
+                )}
+                {stagedData.guestEmails && stagedData.guestEmails.length > 0 && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    ✉️ {stagedData.guestEmails.length} guest email{stagedData.guestEmails.length > 1 ? 's' : ''}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          ) : undefined
+        }
+        confirmLabel="Confirm & Update"
+        cancelLabel="Review Details"
+        confirmColor="primary"
+        isPending={updateMeeting.isPending}
+        onConfirm={handleConfirmUpdate}
+        onCancel={() => {
+          setConfirmUpdateOpen(false);
+          setStagedData(null);
+        }}
+      />
     </form>
   );
 };
