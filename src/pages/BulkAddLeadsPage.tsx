@@ -16,6 +16,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import { nativeFieldStyle } from '@/components/leads/nativeFieldStyles';
 import { ColdFutureDateTimeField } from '@/components/leads/ColdFutureDateTimeField';
+import { IcpAutocompleteSelect } from '@/components/leads/IcpAutocompleteSelect';
 import { useBulkCreateLeads } from '@/hooks/api/useLeads';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -138,10 +139,14 @@ const normalizeDraftRows = (raw: unknown): BulkLeadRow[] | null => {
   return rows;
 };
 
-const validateRow = (row: BulkLeadRow): RowErrors => {
+const validateRow = (row: BulkLeadRow, validIcpNames?: Set<string>): RowErrors => {
   const errors: RowErrors = {};
   if (!row.prospectName.trim()) errors.prospectName = true;
-  if (!row.icp.trim()) errors.icp = true;
+  if (!row.icp.trim()) {
+    errors.icp = true;
+  } else if (validIcpNames && validIcpNames.size > 0 && !validIcpNames.has(row.icp.trim().toLowerCase())) {
+    errors.icp = true;
+  }
   if (!row.profile.trim()) errors.profile = true;
   if (row.messageStatus === 'future_lead' && !row.futureLeadDate) {
     errors.futureLeadDate = true;
@@ -258,18 +263,14 @@ const BulkLeadRowView = memo(function BulkLeadRowView({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <select
+          <IcpAutocompleteSelect
             value={row.icp}
-            onChange={(e) => onUpdate(index, { icp: e.target.value })}
-            style={nativeFieldStyle(isDarkMode, !!errors.icp)}
-          >
-            <option value="">ICP *</option>
-            {icpsList.map((icp) => (
-              <option key={icp._id} value={icp.name}>
-                {icp.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onUpdate(index, { icp: val })}
+            icpsList={icpsList}
+            isDarkMode={isDarkMode}
+            error={!!errors.icp}
+            placeholder="ICP *"
+          />
           <select
             value={row.profile}
             onChange={(e) => onUpdate(index, { profile: e.target.value })}
@@ -587,11 +588,17 @@ export const BulkAddLeadsPage = () => {
       return;
     }
 
+    const validIcpNames = new Set(
+      (icpsList || [])
+        .map((i: any) => (typeof i === 'string' ? i : i.name)?.trim().toLowerCase())
+        .filter(Boolean),
+    );
+
     const errors: Record<number, RowErrors> = {};
     let hasFutureDateError = false;
     let hasCommentError = false;
     for (const { index, row } of filled) {
-      const rowErr = validateRow(row);
+      const rowErr = validateRow(row, validIcpNames);
       if (Object.keys(rowErr).length > 0) {
         errors[index] = rowErr;
         if (rowErr.futureLeadDate || rowErr.coldFutureLeadAt) hasFutureDateError = true;

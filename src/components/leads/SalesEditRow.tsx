@@ -16,6 +16,7 @@ import { composeProspectName, splitProspectName } from '@/utils/formatters';
 import { nativeFieldStyle } from './nativeFieldStyles';
 import { LeadCommentButton, type LeadCommentAddPayload } from './LeadCommentButton';
 import { ColdFutureDateTimeField } from './ColdFutureDateTimeField';
+import { IcpAutocompleteSelect } from './IcpAutocompleteSelect';
 
 type OptionItem = { _id: string; name: string };
 
@@ -155,18 +156,13 @@ export const SalesEditRow = memo(function SalesEditRow({
       </TableCell>
       <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <select
-            value={editData.icp || ''}
-            onChange={(e) => onUpdate(leadId, { icp: e.target.value })}
-            style={field}
-          >
-            <option value="">No ICP</option>
-            {icpsList.map((icp) => (
-              <option key={icp._id} value={icp.name}>
-                {icp.name}
-              </option>
-            ))}
-          </select>
+          <IcpAutocompleteSelect
+            value={editData.icp}
+            onChange={(val) => onUpdate(leadId, { icp: val })}
+            icpsList={icpsList}
+            isDarkMode={isDarkMode}
+            placeholder="No ICP"
+          />
           <select
             value={editData.profile || ''}
             onChange={(e) => onUpdate(leadId, { profile: e.target.value })}
@@ -443,18 +439,14 @@ export const SalesInlineAddRow = memo(function SalesInlineAddRow({
       </TableCell>
       <TableCell sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-          <select
-            value={data.icp || ''}
-            onChange={(e) => onUpdate({ icp: e.target.value })}
-            style={nativeFieldStyle(isDarkMode, !!errors.icp)}
-          >
-            <option value="">No ICP</option>
-            {icpsList.map((icp) => (
-              <option key={icp._id} value={icp.name}>
-                {icp.name}
-              </option>
-            ))}
-          </select>
+          <IcpAutocompleteSelect
+            value={data.icp}
+            onChange={(val) => onUpdate({ icp: val })}
+            icpsList={icpsList}
+            isDarkMode={isDarkMode}
+            error={!!errors.icp}
+            placeholder="ICP *"
+          />
           <select
             value={data.profile || ''}
             onChange={(e) => onUpdate({ profile: e.target.value })}

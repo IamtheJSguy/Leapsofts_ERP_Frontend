@@ -378,8 +378,21 @@ export const SalesPage = () => {
   const handleInlineSave = () => {
     const errors: Record<string, boolean> = {};
     const prospectName = (newLeadData.prospectName || '').trim();
+    const chosenIcp = (newLeadData.icp || '').trim();
+
+    const validIcpNames = new Set(
+      (icpsList || [])
+        .map((i: any) => (typeof i === 'string' ? i : i.name)?.trim().toLowerCase())
+        .filter(Boolean),
+    );
+
     if (!prospectName) errors.prospectName = true;
-    if (!newLeadData.icp?.trim()) errors.icp = true;
+    if (!chosenIcp) {
+      errors.icp = true;
+    } else if (validIcpNames.size > 0 && !validIcpNames.has(chosenIcp.toLowerCase())) {
+      errors.icp = true;
+      errors.icpInvalid = true;
+    }
     if (!newLeadData.profile?.trim()) errors.profile = true;
     if (newLeadData.messageStatus === 'future_lead' && !newLeadData.futureLeadDate) {
       errors.futureLeadDate = true;
@@ -393,7 +406,9 @@ export const SalesPage = () => {
     if (Object.keys(errors).length > 0) {
       setAddLeadErrors(errors);
       addToast({
-        message: errors.futureLeadDate
+        message: errors.icpInvalid
+          ? 'Invalid ICP. Please select a valid ICP.'
+          : errors.futureLeadDate
           ? 'Please select a Future Lead date.'
           : errors.leadComment
             ? 'Please add a reason comment for the Invalid Lead status.'
@@ -607,6 +622,20 @@ export const SalesPage = () => {
     }
     if (dataToSave.coldCalling.responseStatus === 'invalid_lead' && !leadHasComment(dataToSave)) {
       addToast({ message: 'Please add a reason comment for the Invalid Lead status.', severity: 'error' }); return;
+    }
+
+    const validIcpNames = new Set(
+      (icpsList || [])
+        .map((i: any) => (typeof i === 'string' ? i : i.name)?.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const editIcp = (dataToSave.icp || '').trim();
+    if (editIcp && validIcpNames.size > 0 && !validIcpNames.has(editIcp.toLowerCase())) {
+      addToast({
+        message: `Invalid ICP "${editIcp}". Please select a valid ICP.`,
+        severity: 'error',
+      });
+      return;
     }
 
     const nameParts = splitProspectName(dataToSave.prospectName || composeProspectName(dataToSave));

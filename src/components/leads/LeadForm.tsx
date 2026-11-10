@@ -15,6 +15,7 @@ import { leadSchema, type LeadFormData } from '@/utils/validators';
 import type { Lead } from '@/types';
 import { useIcps, useProfiles } from '@/hooks/api/useSettings';
 import { composeProspectName, splitProspectName } from '@/utils/formatters';
+import { IcpAutocompleteSelect } from './IcpAutocompleteSelect';
 
 interface LeadFormProps {
   open: boolean;
@@ -109,24 +110,14 @@ export const LeadForm = ({ open, lead, onClose, onSubmit, isPending }: LeadFormP
                 name="icp"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    value={field.value || ''}
-                    select
-                    label="ICP"
-                    fullWidth
+                  <IcpAutocompleteSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    icpsList={icps || []}
+                    isDarkMode={false}
                     error={!!errors.icp}
-                    helperText={errors.icp?.message}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {(icps || []).map((icp) => (
-                      <MenuItem key={icp._id} value={icp.name}>
-                        {icp.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                    placeholder="Select ICP"
+                  />
                 )}
               />
             </Grid>
