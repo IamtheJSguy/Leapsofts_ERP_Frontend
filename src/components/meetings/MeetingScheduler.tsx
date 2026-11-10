@@ -13,7 +13,9 @@ import {
   useTheme,
   useMediaQuery,
   Typography,
+  Chip,
 } from '@mui/material';
+import { formatDateTime } from '@/utils/formatters';
 import { MeetingFormFields } from '@/components/meetings/MeetingFormFields';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,6 +74,8 @@ export const MeetingScheduler = ({
   const isCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, isElevated } = useAuth();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState<boolean>(false);
+  const [stagedFormData, setStagedFormData] = useState<MeetingFormData | null>(null);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   const [conflictMessage, setConflictMessage] = useState('');
   const [pendingSubmit, setPendingSubmit] = useState<MeetingFormData | null>(null);
@@ -159,6 +163,8 @@ export const MeetingScheduler = ({
     setDialogOpen(false);
     setSelectedSlot(null);
     setEditingMeeting(null);
+    setConfirmSubmitOpen(false);
+    setStagedFormData(null);
     reset();
   };
 
@@ -231,7 +237,24 @@ export const MeetingScheduler = ({
     }
   };
 
-  const onSubmit = (data: MeetingFormData) => saveMeeting(data, false);
+  const onSubmit = (data: MeetingFormData) => {
+    const payload = buildMeetingSubmitPayload(data, calendarConnected);
+    if (!payload.scheduledAt) return;
+    if (!editingMeeting && new Date(payload.scheduledAt) < new Date()) {
+      setError('scheduledAt', { type: 'manual', message: 'Cannot schedule meetings in the past.' });
+      return;
+    }
+    setStagedFormData(data);
+    setConfirmSubmitOpen(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    if (!stagedFormData) return;
+    const dataToSave = stagedFormData;
+    setConfirmSubmitOpen(false);
+    setStagedFormData(null);
+    saveMeeting(dataToSave, false);
+  };
 
   const eventPropGetter = (event: any) => {
     const meeting = event.resource as Meeting | undefined;
@@ -588,6 +611,73 @@ export const MeetingScheduler = ({
         isPending={deleteMeeting.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Create / Edit Meeting Confirmation */}
+      <ConfirmDialog
+        open={confirmSubmitOpen}
+        title={editingMeeting ? 'Confirm Meeting Update' : 'Confirm Schedule Meeting'}
+        message={
+          stagedFormData ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {editingMeeting
+                  ? 'Are you sure you want to save the changes to this meeting?'
+                  : 'Are you sure you want to schedule this new meeting?'}
+              </Typography>
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: '16px',
+                  bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)',
+                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.98rem' }}>
+                    {stagedFormData.title}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={`${stagedFormData.durationMinutes ?? 30} mins`}
+                    sx={{
+                      fontWeight: 650,
+                      fontSize: '0.75rem',
+                      bgcolor: tokens.brand.primaryMuted,
+                      color: tokens.brand.solid,
+                    }}
+                  />
+                </Box>
+                <Typography variant="body2" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  📅 {stagedFormData.scheduledAt ? formatDateTime(stagedFormData.scheduledAt) : '—'}
+                  {stagedFormData.timeZone ? ` (${stagedFormData.timeZone})` : ''}
+                </Typography>
+                {stagedFormData.participants && stagedFormData.participants.length > 0 && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    👥 {stagedFormData.participants.length} participant{stagedFormData.participants.length > 1 ? 's' : ''}
+                  </Typography>
+                )}
+                {stagedFormData.guestEmails && stagedFormData.guestEmails.length > 0 && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    ✉️ {stagedFormData.guestEmails.length} guest email{stagedFormData.guestEmails.length > 1 ? 's' : ''}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          ) : undefined
+        }
+        confirmLabel={editingMeeting ? 'Confirm & Update' : 'Confirm & Schedule'}
+        cancelLabel="Review Details"
+        confirmColor="primary"
+        isPending={createMeeting.isPending || updateMeeting.isPending}
+        onConfirm={handleConfirmSubmit}
+        onCancel={() => {
+          setConfirmSubmitOpen(false);
+          setStagedFormData(null);
+        }}
       />
 
       <ConfirmDialog
