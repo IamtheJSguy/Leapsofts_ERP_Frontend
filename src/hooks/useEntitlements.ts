@@ -13,6 +13,7 @@ export type OrgModuleKey =
   | 'crmSync'
   | 'desktopApp'
   | 'invoicingModule'
+  | 'leadDataExport'
   | 'screenshotsEnabled';
 
 export type OrgModuleFlags = Record<OrgModuleKey, boolean>;
@@ -28,6 +29,7 @@ export const DEFAULT_ORG_MODULE_FLAGS: OrgModuleFlags = {
   crmSync: false,
   desktopApp: true,
   invoicingModule: false,
+  leadDataExport: false,
   screenshotsEnabled: true,
 };
 

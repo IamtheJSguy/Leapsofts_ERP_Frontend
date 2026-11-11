@@ -61,6 +61,7 @@ import {
 } from '@/hooks/useLeadAutoSync';
 import { useSalesPipelineStats } from '@/hooks/api/useConnections';
 import { useAuth } from '@/hooks/useAuth';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUIStore } from '@/store/useUIStore';
 import StarIcon from '@mui/icons-material/Star';
@@ -268,6 +269,8 @@ export const SalesPage = () => {
   const activeTab = 'prospects'; // Pipeline tab removed per user request
 
   const { user, isAdmin } = useAuth();
+  const entitlements = useEntitlements();
+  const canExportLeads = isAdmin && entitlements.leadDataExport;
   const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>('linkedin');
 
   useEffect(() => {
@@ -2205,7 +2208,7 @@ export const SalesPage = () => {
                   </Button>
                   </>
                 )}
-                {isAdmin && (
+                {canExportLeads && (
                   <Button
                     variant="outlined"
                     startIcon={<FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />}
@@ -3153,7 +3156,7 @@ export const SalesPage = () => {
           />
         </>
       )}
-      {isAdmin && (
+      {canExportLeads && (
         <ExportLeadsDialog
           open={exportOpen}
           onClose={() => setExportOpen(false)}
