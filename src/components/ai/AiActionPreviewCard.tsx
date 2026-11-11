@@ -62,6 +62,29 @@ const FIELD_LABELS: Record<string, string> = {
   timeZone: 'Timezone',
   durationMinutes: 'Duration (minutes)',
   sendGoogleInvite: 'Google Calendar',
+  assignees: 'Assignees',
+  schedule: 'Schedule',
+  days: 'Days',
+  repeat: 'Repeat',
+  scheduleMode: 'Task layout',
+  startTime: 'Start time',
+  endTime: 'End time',
+  template: 'KPI template',
+  itemCount: 'Items',
+  itemSummary: 'Item details',
+  metric: 'Metric',
+  board: 'Board',
+  columnId: 'Column',
+  invoice: 'Invoice',
+  effect: 'What happens',
+  emailsClient: 'Emails the client',
+  lines: 'Line items',
+  sendsEmail: 'Email',
+  issueDate: 'Issue date',
+  dueDate: 'Due date',
+  client: 'Client',
+  cardId: 'Card',
+  isDone: 'Done',
 };
 
 const SOURCE_TIER_LABELS: Record<string, string> = {
@@ -76,7 +99,14 @@ const HIDDEN_PROPOSED_KEYS = new Set([
   'googleCalendarConnected',
   'sendGoogleInvite',
   'scheduledAt',
+  'operation',
+  'items',
 ]);
+
+const isArrayOfObjects = (value: unknown): boolean =>
+  Array.isArray(value)
+  && value.length > 0
+  && value.every((entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry));
 
 const formatProposedFieldValue = (
   fieldKey: string,
@@ -85,6 +115,25 @@ const formatProposedFieldValue = (
   user?: { timezone?: string; timeZone?: string; organization?: { timezone?: string } },
 ): string => {
   if (fieldKey === 'guestEmails' && Array.isArray(value)) {
+    return value.map((e) => String(e)).join(', ');
+  }
+  if (fieldKey === 'itemSummary' && Array.isArray(value)) {
+    return value.map((line) => String(line)).join('\n');
+  }
+  if (isArrayOfObjects(value)) {
+    const rows = value as Array<Record<string, unknown>>;
+    const lines = rows.map((row) => {
+      const name = typeof row.name === 'string' ? row.name : 'Item';
+      const metric = typeof row.metric === 'string' ? row.metric.replace(/_/g, ' ') : '';
+      const days = Array.isArray(row.daysOfWeek)
+        ? (row.daysOfWeek as number[]).join(', ')
+        : '';
+      const parts = [name, metric, days].filter(Boolean);
+      return parts.join(' — ');
+    });
+    return lines.length > 0 ? lines.join('\n') : '';
+  }
+  if (Array.isArray(value)) {
     return value.map((e) => String(e)).join(', ');
   }
   if (fieldKey === 'scheduledAtLocal' && typeof value === 'string') {
@@ -104,7 +153,28 @@ const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
   update_lead: 'Lead Edit Proposal',
   update_user: 'User Profile Edit Proposal',
   create_meeting: 'Meeting Booking Proposal',
+  create_kpi: 'Create KPI',
+  update_kpi: 'Update KPI',
+  assign_kpi_template: 'Assign standalone KPI template',
+  create_sales_kpi_template: 'Create sales KPI template',
+  update_sales_kpi_template: 'Update sales KPI template',
+  assign_sales_kpi_template: 'Assign sales KPI template',
+  create_invoice: 'Create invoice',
+  update_invoice: 'Update invoice',
+  send_invoice: 'Send invoice',
+  send_invoice_reminder: 'Send invoice reminder',
+  mark_invoice_paid: 'Mark invoice paid',
+  dispute_invoice: 'Dispute invoice',
+  create_kanban_card: 'Create board card',
+  move_kanban_card: 'Move board card',
+  update_kanban_card: 'Update board card',
 };
+
+const EMAILS_CLIENT = new Set<AiPendingAction['actionType']>([
+  'send_invoice',
+  'send_invoice_reminder',
+  'mark_invoice_paid',
+]);
 
 interface AiActionPreviewCardProps {
   action: AiPendingAction;
@@ -128,6 +198,7 @@ export const AiActionPreviewCard = ({
     action.actionType === 'create_meeting'
       ? String(action.proposed.timeZone || getDefaultMeetingTimeZone(user ?? undefined))
       : '';
+  const [emailAck, setEmailAck] = useState(false);
 
   const proposedEntries = useMemo(() => {
     const contactFirst = ['email', 'phone'];
@@ -135,8 +206,14 @@ export const AiActionPreviewCard = ({
       .filter(([k, v]) => {
         if (HIDDEN_PROPOSED_KEYS.has(k)) return false;
         if (v === undefined || v === null) return false;
+        if (isArrayOfObjects(v)) {
+          if (k === 'items' && Array.isArray(action.proposed.itemSummary)) return false;
+          return (v as unknown[]).length > 0;
+        }
         if (Array.isArray(v)) return v.length > 0;
-        return String(v).trim() !== '';
+        const text = String(v).trim();
+        if (text === '[object Object]' || text.startsWith('[object Object]')) return false;
+        return text !== '';
       })
       .sort(([a], [b]) => {
         if (action.actionType !== 'enrich_lead') return 0;
@@ -175,6 +252,13 @@ export const AiActionPreviewCard = ({
   const isPending = action.status === 'pending';
 
   const handleConfirm = () => {
+    if (EMAILS_CLIENT.has(action.actionType) && !emailAck) {
+      addToast({
+        message: 'Confirm that this will email the client before approving.',
+        severity: 'warning',
+      });
+      return;
+    }
     const overrides: Record<string, unknown> = {};
     for (const [k] of proposedEntries) {
       if (selectedFields[k]) {
@@ -461,7 +545,8 @@ export const AiActionPreviewCard = ({
                     multiline={
                       fieldKey === 'notes' ||
                       fieldKey === 'description' ||
-                      fieldKey === 'guestEmails'
+                      fieldKey === 'guestEmails' ||
+                      fieldKey === 'itemSummary'
                     }
                     maxRows={3}
                     placeholder={
@@ -486,7 +571,14 @@ export const AiActionPreviewCard = ({
                     }}
                   />
                 ) : (
-                  <Typography variant="body2" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      wordBreak: 'break-word',
+                      ...(fieldKey === 'itemSummary' ? { whiteSpace: 'pre-line' } : {}),
+                    }}
+                  >
                     {fieldKey === 'scheduledAtLocal' &&
                     (action.applied?.scheduledAt || action.proposed.scheduledAt) &&
                     meetingTimeZone
@@ -496,7 +588,12 @@ export const AiActionPreviewCard = ({
                         )
                       : fieldKey === 'guestEmails' && Array.isArray(action.applied?.guestEmails)
                       ? (action.applied.guestEmails as string[]).join(', ')
-                      : String(action.applied?.[fieldKey] ?? action.proposed[fieldKey] ?? '')}
+                      : formatProposedFieldValue(
+                          fieldKey,
+                          action.applied?.[fieldKey] ?? action.proposed[fieldKey],
+                          action,
+                          user ?? undefined,
+                        )}
                   </Typography>
                 )}
               </Box>
@@ -537,6 +634,14 @@ export const AiActionPreviewCard = ({
             ))}
           </Box>
         </Box>
+      )}
+
+      {isPending && EMAILS_CLIENT.has(action.actionType) && (
+        <FormControlLabel
+          sx={{ mt: 1, alignItems: 'flex-start' }}
+          control={<Checkbox checked={emailAck} onChange={(event) => setEmailAck(event.target.checked)} />}
+          label="I understand this emails the client."
+        />
       )}
 
       {/* Action Buttons */}

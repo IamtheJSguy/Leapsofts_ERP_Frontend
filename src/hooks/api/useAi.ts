@@ -18,8 +18,8 @@ export interface AiQuotaSummary {
   geminiApiKeyHint: string | null;
   hasClaudeKey: boolean;
   claudeApiKeyHint: string | null;
-  hasSystemGeminiKey: boolean;
-  hasSystemClaudeKey: boolean;
+  hasOrganizationGeminiKey: boolean;
+  hasOrganizationClaudeKey: boolean;
 }
 
 export interface AiCitationSource {
@@ -29,7 +29,26 @@ export interface AiCitationSource {
 
 export interface AiPendingAction {
   actionId: string;
-  actionType: 'enrich_lead' | 'update_lead' | 'update_user' | 'create_meeting';
+  actionType:
+    | 'enrich_lead'
+    | 'update_lead'
+    | 'update_user'
+    | 'create_meeting'
+    | 'create_kpi'
+    | 'update_kpi'
+    | 'assign_kpi_template'
+    | 'create_sales_kpi_template'
+    | 'update_sales_kpi_template'
+    | 'assign_sales_kpi_template'
+    | 'create_invoice'
+    | 'update_invoice'
+    | 'send_invoice'
+    | 'send_invoice_reminder'
+    | 'mark_invoice_paid'
+    | 'dispute_invoice'
+    | 'create_kanban_card'
+    | 'move_kanban_card'
+    | 'update_kanban_card';
   status: 'pending' | 'confirmed' | 'rejected';
   targetId?: string;
   targetLabel: string;

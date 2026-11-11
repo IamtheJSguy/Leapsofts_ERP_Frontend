@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -54,7 +54,8 @@ import {
   AiAgentPhaseTimeline,
   AiCompletedPhasesSummary,
 } from './AiAgentPhaseTimeline';
-import { AI_STARTER_PROMPTS, formatTokenCount } from './aiUiConstants';
+import { AI_STARTER_PROMPTS, getAiStarterPrompts, formatTokenCount } from './aiUiConstants';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export const AiAssistantDrawer = () => {
   const aiDrawerOpen = useUIStore((s) => s.aiDrawerOpen);
@@ -63,6 +64,11 @@ export const AiAssistantDrawer = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
+  const { isElevated, canViewSalesPage } = usePermissions();
+  const starterPrompts = useMemo(
+    () => getAiStarterPrompts({ isElevated, canViewSalesPage }),
+    [isElevated, canViewSalesPage],
+  );
 
   const activeConversationId = useAiChatSessionStore((s) => s.activeConversationId);
   const setActiveConversationId = useAiChatSessionStore((s) => s.setActiveConversationId);
@@ -695,7 +701,7 @@ export const AiAssistantDrawer = () => {
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {AI_STARTER_PROMPTS.map((prompt) => (
+                {starterPrompts.map((prompt) => (
                   <Button
                     key={prompt}
                     variant="outlined"
