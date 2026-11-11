@@ -55,7 +55,8 @@ import {
   AiAgentPhaseTimeline,
   AiCompletedPhasesSummary,
 } from '@/components/ai/AiAgentPhaseTimeline';
-import { AI_STARTER_PROMPTS, formatTokenCount } from '@/components/ai/aiUiConstants';
+import { AI_STARTER_PROMPTS, getAiStarterPrompts, formatTokenCount } from '@/components/ai/aiUiConstants';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const formatRelativeDate = (iso: string): string => {
   try {
@@ -80,6 +81,11 @@ export const AiAssistantPage = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { isElevated, canViewSalesPage } = usePermissions();
+  const starterPrompts = useMemo(
+    () => getAiStarterPrompts({ isElevated, canViewSalesPage }),
+    [isElevated, canViewSalesPage],
+  );
 
   const aiContextLeadId = useUIStore((s) => s.aiContextLeadId);
 
@@ -977,7 +983,7 @@ export const AiAssistantPage = () => {
                   gap: 1.25,
                 }}
               >
-                {AI_STARTER_PROMPTS.map((prompt) => (
+                {starterPrompts.map((prompt) => (
                   <Button
                     key={prompt}
                     variant="outlined"
