@@ -46,7 +46,18 @@ const FIELD_LABELS: Record<string, string> = {
   companySize: 'Company Size',
   profileUrl: 'LinkedIn URL',
   icp: 'ICP',
+  profile: 'Profile',
   notes: 'Notes',
+  channel: 'Channel',
+  futureLeadDate: 'Future lead date',
+  leadCommentText: 'Invalid-lead comment',
+  leadCommentLevel: 'Comment level',
+  coldCallingOutreachStatus: 'Cold call — dial status',
+  coldCallingResponseStatus: 'Cold call — response',
+  coldCallingFutureLeadAt: 'Cold call — future date',
+  note: 'Follow-up note',
+  number: 'Follow-up #',
+  followUpCount: 'Current follow-up #',
   connectionStatus: 'Connection Status',
   messageStatus: 'Message Status',
   bio: 'Bio',
@@ -101,6 +112,7 @@ const HIDDEN_PROPOSED_KEYS = new Set([
   'scheduledAt',
   'operation',
   'items',
+  '_leadInput',
 ]);
 
 const isArrayOfObjects = (value: unknown): boolean =>
@@ -150,7 +162,9 @@ const formatProposedFieldValue = (
 
 const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
   enrich_lead: 'AI Lead Enrichment Preview',
+  create_lead: 'Create Lead Proposal',
   update_lead: 'Lead Edit Proposal',
+  log_lead_follow_up: 'Log LinkedIn Follow-up',
   update_user: 'User Profile Edit Proposal',
   create_meeting: 'Meeting Booking Proposal',
   create_kpi: 'Create KPI',
@@ -193,6 +207,12 @@ export const AiActionPreviewCard = ({
   const { data: calendarStatus } = useCalendarStatus();
   const calendarAuth = useCalendarAuthUrl();
   const calendarConnected = calendarStatus?.connected === true;
+  const calendarProvider = calendarStatus?.provider ?? 'google';
+  const calendarLabel = calendarProvider === 'microsoft' ? 'Outlook Calendar' : 'Google Calendar';
+  const videoLinkHint =
+    calendarProvider === 'microsoft'
+      ? 'Generates a Microsoft Teams link automatically if meeting link is left empty.'
+      : 'Generates a Google Meet link automatically if meeting link is left empty.';
   const user = useAuthStore((s) => s.user);
   const meetingTimeZone =
     action.actionType === 'create_meeting'
@@ -289,14 +309,14 @@ export const AiActionPreviewCard = ({
       const link = String(overrides.meetingLink ?? editedValues.meetingLink ?? '').trim();
       if (sendGoogleInvite && !calendarConnected) {
         addToast({
-          message: 'Connect Google Calendar first to book on Calendar and send invites.',
+          message: `Connect ${calendarLabel} first to book on Calendar and send invites.`,
           severity: 'warning',
         });
         return;
       }
       if (!sendGoogleInvite && !link) {
         addToast({
-          message: 'Add a meeting link or enable Google Calendar for this booking.',
+          message: `Add a meeting link or enable ${calendarLabel} for this booking.`,
           severity: 'warning',
         });
         return;
@@ -401,14 +421,14 @@ export const AiActionPreviewCard = ({
               }
               label={
                 <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
-                  Create on Google Calendar and send invites
+                  Create on {calendarLabel} and send invites
                   <Typography
                     component="span"
                     variant="caption"
                     color="text.secondary"
                     sx={{ display: 'block', fontWeight: 500, mt: 0.25 }}
                   >
-                    Generates a Google Meet link automatically if meeting link is left empty.
+                    {videoLinkHint}
                   </Typography>
                 </Typography>
               }
@@ -417,25 +437,39 @@ export const AiActionPreviewCard = ({
           ) : (
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem', mb: 0.75 }}>
-                Google Calendar is not connected
+                No calendar connected
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Connect your account to book meetings on Google Calendar with email invites and
-                Meet links from AI booking.
+                Connect Google or Outlook from Meetings to book with email invites and auto-generated
+                video links from AI booking.
               </Typography>
               <Button
                 size="small"
                 variant="outlined"
                 disabled={calendarAuth.isPending}
                 onClick={() => {
-                  calendarAuth.mutate(undefined, {
+                  calendarAuth.mutate('google', {
+                    onSuccess: (url) => openCalendarOAuthPopup(url),
+                    onError: (err) => showApiError(err),
+                  });
+                }}
+                sx={{ textTransform: 'none', fontWeight: 700, mr: 1 }}
+              >
+                Connect Google
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={calendarAuth.isPending}
+                onClick={() => {
+                  calendarAuth.mutate('microsoft', {
                     onSuccess: (url) => openCalendarOAuthPopup(url),
                     onError: (err) => showApiError(err),
                   });
                 }}
                 sx={{ textTransform: 'none', fontWeight: 700 }}
               >
-                Connect Google Calendar
+                Connect Outlook
               </Button>
             </Box>
           )}
@@ -447,7 +481,7 @@ export const AiActionPreviewCard = ({
         action.applied?.sendGoogleInvite === true && (
         <Chip
           size="small"
-          label="Booked on Google Calendar"
+          label={`Booked on ${calendarLabel}`}
           color="success"
           sx={{ mb: 1, fontWeight: 700, fontSize: '0.7rem' }}
         />

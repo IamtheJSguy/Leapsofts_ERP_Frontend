@@ -93,7 +93,7 @@ export const meetingSchema = z
     if (!link && !useGoogleMeet) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Add a video link or turn on Google Calendar to generate Google Meet',
+        message: 'Add a video link or connect a calendar to generate a Meet or Teams link',
         path: ['meetingLink'],
       });
     }

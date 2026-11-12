@@ -25,8 +25,11 @@ export const consumeCalendarReturnPath = () => {
   return path.startsWith('/') ? path : CALENDAR_DEFAULT_RETURN_PATH;
 };
 
+export type CalendarProvider = 'google' | 'microsoft';
+
 export type CalendarStatus = {
   connected: boolean;
+  provider?: CalendarProvider | null;
   lastSyncedAt?: string | null;
   importError?: string | null;
   accountEmail?: string | null;
@@ -41,7 +44,8 @@ export type CalendarSyncResult = {
 };
 
 const calendarApi = {
-  getAuthUrl: () => api.get<{ data: { url: string } }>('/calendar/auth'),
+  getAuthUrl: (provider: CalendarProvider = 'google') =>
+    api.get<{ data: { url: string } }>('/calendar/auth', { params: { provider } }),
   getStatus: () => api.get<{ data: CalendarStatus }>('/calendar/status'),
   sync: () => api.post<{ data: CalendarSyncResult }>('/calendar/sync'),
   disconnect: () => api.delete<{ data: { connected: boolean } }>('/calendar/disconnect'),
@@ -57,7 +61,8 @@ export const useCalendarStatus = () => {
 
 export const useCalendarAuthUrl = () =>
   useMutation({
-    mutationFn: () => calendarApi.getAuthUrl().then((r) => r.data.data.url),
+    mutationFn: (provider: CalendarProvider = 'google') =>
+      calendarApi.getAuthUrl(provider).then((r) => r.data.data.url),
   });
 
 export const useDisconnectCalendar = () => {

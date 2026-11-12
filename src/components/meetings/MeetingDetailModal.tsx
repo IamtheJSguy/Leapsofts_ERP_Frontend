@@ -59,6 +59,10 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
   const allLeads = leadsResponse?.data || [];
   const retryCalendarSync = useRetryMeetingCalendarSync();
   const { data: calendarStatus } = useCalendarStatus();
+  const calendarName =
+    meeting?.calendarProvider === 'microsoft' || calendarStatus?.provider === 'microsoft'
+      ? 'Outlook Calendar'
+      : 'Google Calendar';
 
   if (!meeting) return null;
 
@@ -259,6 +263,9 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
         {meeting.source === 'google' && (
           <Chip size="small" label="From Google Calendar" sx={{ mb: 1.5 }} variant="outlined" />
         )}
+        {meeting.source === 'outlook' && (
+          <Chip size="small" label="From Outlook Calendar" sx={{ mb: 1.5 }} variant="outlined" />
+        )}
 
         {meeting.calendarSyncStatus && meeting.calendarSyncStatus !== 'not_requested' && (
           <Box sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -266,11 +273,11 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
               size="small"
               label={
                 meeting.calendarSyncStatus === 'synced'
-                  ? 'Google Calendar synced'
+                  ? `${calendarName} synced`
                   : meeting.calendarSyncStatus === 'pending'
-                    ? 'Syncing to Google Calendar…'
+                    ? `Syncing to ${calendarName}…`
                     : meeting.calendarSyncStatus === 'detached'
-                      ? 'No longer linked to Google'
+                      ? `No longer linked to ${calendarName}`
                       : 'Calendar sync failed'
               }
               color={
@@ -291,7 +298,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                 rel="noopener noreferrer"
                 endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
               >
-                Open in Google Calendar
+                Open in {calendarName}
               </Button>
             )}
             {meeting.calendarSyncStatus === 'failed' && calendarStatus?.connected && (

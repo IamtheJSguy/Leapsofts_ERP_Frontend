@@ -802,7 +802,7 @@ export interface MeetingLinkedCard {
 
 export type CalendarSyncStatus = 'not_requested' | 'pending' | 'synced' | 'failed' | 'detached';
 
-export type MeetingSource = 'erp' | 'google';
+export type MeetingSource = 'erp' | 'google' | 'outlook';
 
 export interface Meeting {
   _id: string;
@@ -820,6 +820,8 @@ export interface Meeting {
   leadId?: string | Lead;
   linkedCards?: MeetingLinkedCard[];
   googleCalendarEventId?: string;
+  outlookCalendarEventId?: string;
+  calendarProvider?: 'google' | 'microsoft';
   calendarHtmlLink?: string;
   calendarSyncStatus?: CalendarSyncStatus;
   calendarSyncError?: string;
