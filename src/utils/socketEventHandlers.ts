@@ -201,6 +201,26 @@ export const setupSocketEventHandlers = (
     queryClient.invalidateQueries({ queryKey: ['salesKpiSummary'] });
   });
 
+  socket.on(SOCKET_EVENTS.MEETING_SYNCED, (data?: { meetingId?: string }) => {
+    queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lead'] });
+    if (data?.meetingId) {
+      queryClient.invalidateQueries({ queryKey: ['meeting', data.meetingId] });
+    }
+  });
+
+  socket.on(SOCKET_EVENTS.MEETING_UPDATED, (data?: { meetingId?: string }) => {
+    queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lead'] });
+    if (data?.meetingId) {
+      queryClient.invalidateQueries({ queryKey: ['meeting', data.meetingId] });
+    }
+  });
+
   socket.on(SOCKET_EVENTS.MESSAGE_NEW, (data: unknown) => {
     const message = normalizeMessageReceipts(data as Message);
     if (!belongsToActiveOrg((message as Message & { organizationId?: unknown }).organizationId)) {

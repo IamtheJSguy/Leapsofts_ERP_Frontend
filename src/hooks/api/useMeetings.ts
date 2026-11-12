@@ -33,6 +33,13 @@ export const useMeetings = (
     queryKey: ['meetings', organizationId, filters],
     queryFn: () => meetingApi.getMeetings(filters).then((r) => r.data.data),
     enabled: options?.enabled ?? true,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (Array.isArray(data) && data.some((m) => m.calendarSyncStatus === 'pending')) {
+        return 2000;
+      }
+      return false;
+    },
   });
 };
 
@@ -42,6 +49,12 @@ export const useMeeting = (id: string | undefined) => {
     queryKey: ['meeting', id, organizationId],
     queryFn: () => meetingApi.getMeeting(id!).then((r) => r.data.data),
     enabled: !!id,
+    refetchInterval: (query) => {
+      if (query.state.data?.calendarSyncStatus === 'pending') {
+        return 2000;
+      }
+      return false;
+    },
   });
 };
 
