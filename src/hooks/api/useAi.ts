@@ -31,7 +31,9 @@ export interface AiPendingAction {
   actionId: string;
   actionType:
     | 'enrich_lead'
+    | 'create_lead'
     | 'update_lead'
+    | 'log_lead_follow_up'
     | 'update_user'
     | 'create_meeting'
     | 'create_kpi'
@@ -48,7 +50,14 @@ export interface AiPendingAction {
     | 'dispute_invoice'
     | 'create_kanban_card'
     | 'move_kanban_card'
-    | 'update_kanban_card';
+    | 'update_kanban_card'
+    | 'create_icp'
+    | 'rename_icp'
+    | 'remove_icp'
+    | 'create_profile'
+    | 'rename_profile'
+    | 'remove_profile'
+    | 'update_org_settings';
   status: 'pending' | 'confirmed' | 'rejected';
   targetId?: string;
   targetLabel: string;
