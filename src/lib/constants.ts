@@ -134,6 +134,8 @@ export const SOCKET_EVENTS = {
   CHAT_TYPING: 'chat:typing',
   ORG_ENTITLEMENTS_UPDATED: 'org:entitlements_updated',
   AI_AGENT_PROGRESS: 'ai:agent_progress',
+  MEETING_SYNCED: 'meeting:synced',
+  MEETING_UPDATED: 'meeting:updated',
 } as const;
 
 /** Quick-bar emojis shown on message hover / long-press (full picker via +). */
