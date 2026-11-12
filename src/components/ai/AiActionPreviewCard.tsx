@@ -46,7 +46,23 @@ const FIELD_LABELS: Record<string, string> = {
   companySize: 'Company Size',
   profileUrl: 'LinkedIn URL',
   icp: 'ICP',
+  profile: 'Profile',
   notes: 'Notes',
+  channel: 'Channel',
+  futureLeadDate: 'Future lead date',
+  leadCommentText: 'Invalid-lead comment',
+  leadCommentLevel: 'Comment level',
+  coldCallingOutreachStatus: 'Cold call — dial status',
+  coldCallingResponseStatus: 'Cold call — response',
+  coldCallingFutureLeadAt: 'Cold call — future date',
+  note: 'Follow-up note',
+  number: 'Follow-up #',
+  followUpCount: 'Current follow-up #',
+  name: 'Name',
+  notificationBroadcastEnabled: 'Notification broadcast',
+  automatedUserReportSchedule: 'Automated user reports',
+  notificationPreferences: 'Notification preferences',
+  aiSettings: 'AI defaults',
   connectionStatus: 'Connection Status',
   messageStatus: 'Message Status',
   bio: 'Bio',
@@ -101,6 +117,8 @@ const HIDDEN_PROPOSED_KEYS = new Set([
   'scheduledAt',
   'operation',
   'items',
+  '_leadInput',
+  '_settingsPatch',
 ]);
 
 const isArrayOfObjects = (value: unknown): boolean =>
@@ -145,12 +163,17 @@ const formatProposedFieldValue = (
     );
     return utcToWallClock(value, tz);
   }
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    return JSON.stringify(value, null, 2);
+  }
   return String(value);
 };
 
 const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
   enrich_lead: 'AI Lead Enrichment Preview',
+  create_lead: 'Create Lead Proposal',
   update_lead: 'Lead Edit Proposal',
+  log_lead_follow_up: 'Log LinkedIn Follow-up',
   update_user: 'User Profile Edit Proposal',
   create_meeting: 'Meeting Booking Proposal',
   create_kpi: 'Create KPI',
@@ -168,6 +191,13 @@ const ACTION_TYPE_TITLES: Record<AiPendingAction['actionType'], string> = {
   create_kanban_card: 'Create board card',
   move_kanban_card: 'Move board card',
   update_kanban_card: 'Update board card',
+  create_icp: 'Add ICP',
+  rename_icp: 'Rename ICP',
+  remove_icp: 'Remove ICP',
+  create_profile: 'Add sales profile',
+  rename_profile: 'Rename sales profile',
+  remove_profile: 'Remove sales profile',
+  update_org_settings: 'Update organization settings',
 };
 
 const EMAILS_CLIENT = new Set<AiPendingAction['actionType']>([
